@@ -1,45 +1,67 @@
+# Próximo incremento — SkyCanvas v3 + plataforma refatorada
 
-# Plano — Aplicar `fxkontrol-online-main-audit-safe-patch.zip` de forma cirúrgica
+A entrega anterior cobriu TabbedDockPanel + 12 abas + CatalogImportDialog + SMPTE tab + Group A safety hardening. O arquivo `src/pages/SkyCanvas.tsx` agora carrega tudo no novo dock, mas ainda **carrega ~150 linhas de código morto** (`Inspector`, `TimelineStrip`, `Row`) que foram substituídos pelas tabs. Também faltam três coisas que aparecem no plan.md como pendências reais: persistência local do show, mobile sheet switcher claro, e sincronia audio→Show3DEngine.
 
-O ZIP contém **15 arquivos novos + 64 modificados**. Após auditar diff por diff, as mudanças se dividem em **dois grupos com intenções opostas**: ganhos reais de safety vs. retrocessos de UI/rota que conflitam com decisões já consolidadas em memória. Proponho aplicar **só o grupo seguro** e descartar o resto.
+Vou agrupar em 4 lotes pequenos. Cada um é independente — paro entre lotes pra você revisar.
 
-## ✅ Grupo A — Safety hardening (APLICAR)
+## Lote 1 — Limpeza de código morto em `SkyCanvas.tsx`
 
-Mudanças puramente defensivas, alinhadas a `mem://restricoes/seguranca-latencia-e-auditoria-v5-crificos` e `mem://funcionalidades/p0-safety-hardening-trio`. Sem impacto visual.
+Remover:
+- `function Inspector({ cap })` (linhas 293–353) — substituído por `InspectorCueTab/SceneTab/RenderTab`.
+- `function Row({ k, v })` (355–361) — usado só pelo Inspector.
+- `function TimelineStrip({ ... })` (367–470) — substituído por `TimelineStripView` + `TimelineCuesTab`.
+- Imports órfãos: `Slider`, `Tabs/TabsList/TabsTrigger/TabsContent`, `ScrollArea`, `EffectLibrarySidebar`, `Sun`, `Camera`, `Activity` (se nenhum outro caller).
 
-1. **`src/core/command/CommandBus.ts`** — corrige bug em `drain()`: quando a fila está vazia, ele reusava o `_drain` array do tick anterior sem limpá-lo, podendo re-aplicar comandos antigos (incluindo `E_STOP`). Patch zera `_drain.length`.
-2. **`src/core/command/__tests__/CommandBus.drain.test.ts`** (novo) — regressão para o bug acima.
-3. **`src/core/network/fieldBus.ts`** — adiciona `isNonReplayable(msg)` que **rejeita buffer/replay** de mensagens `pyro` e `estop` durante failover (replay = ignição tardia). Loga em blackbox como `emergency`. **Remove `setTransport()` runtime** (anti-padrão: substituir transporte vivo).
-4. **`src/core/execution/pyroExecutor.ts`** — valida `moduleAddress`, `channel ∈ [0,31]`, `duration ∈ (0,10]s` antes de despachar; **remove `_localBuffer` de cues pyro** (substitui por no-op `flushBuffer` para compat). Single-intent commands nunca são replayados.
+Ganho: ~160 linhas removidas, bundle do chunk SkyCanvas menor, leitura mais clara.
 
-> Esses 4 itens reforçam invariantes já documentadas em memória e adicionam um teste novo. Pode aplicar direto.
+## Lote 2 — Persistência local do show (`fxk.skycanvas.show.v1`)
 
-## ❌ Grupo B — Retrocessos de produto (NÃO aplicar)
+Hoje cues e duração se perdem em refresh. Adicionar:
+- Hook `useSkyCanvasShowPersistence()` em `src/hooks/useSkyCanvasShowPersistence.ts`:
+  - Lê `cueMarkers + duration + audioName` de `useProjectStore` com `subscribeWithSelector`.
+  - Debounce 500ms → grava em localStorage `fxk.skycanvas.show.v1` (≤32KB, quota-safe).
+  - Hidrata 1× no mount via `useProjectStore.getState().setCueMarkers/setDuration` (idempotente, não chama setPlaying).
+- Toast discreto "Show salvo localmente" na 1ª gravação (sessão).
+- Botão "Reset show" no Master Menu (`skyActions.ts`) ao lado de "Reset layout", com confirmação `window.confirm`.
 
-Conflitam com decisões recentes registradas em memória:
+Não persiste: playhead `currentTime`, `isPlaying`, áudio em si (só nome).
 
-| Mudança no patch | Conflito |
-|---|---|
-| Re-cria `src/pages/{AIChoreography,Admin,Dashboard,Training,FieldTest,SwarmGPT,DevicePairing,AccreditationDashboard,Agenda,FXK16ValidatePage,FXK16CalibrationPage}.tsx` (~5.3k LoC) | `mem://implantacao/roadmap-master-v1` lista exatamente essas 10 páginas como **DELETE p/ Rodada 2** |
-| `src/App.tsx` remove rotas `/skycanvas`, `/dev/skycanvas-3d`, `/dev/skycanvas-2`, `/dev/ue5-bridge`, `/dev/video-editor`, `/training/center`, `/dev/module-roster`, `/dev/e2e-test` | Apaga toda a entrega **SkyCanvas v3** acabada de fazer (TabbedDockPanel, SMPTE tab, CatalogImportDialog) e o **Studio Mode** + **UE5 Bridge** registrados em `mem://tecnologia/modo-estudio-arquitetura-cinematica-v1` e `mem://tecnologia/contrato-operacional-swarm-manager-unreal-v1` |
-| `AppSidebar.tsx` remove item "SkyCanvas", troca `FxkLogo variant="full" tone="sync"` por logo bare + `textShadow` literal HSL, troca token `--status-sync` por `190 100% 50%` hardcoded | Reverte `mem://design/fxk-logo-brand-component` e `mem://arquitetura/hierarquia-prioridade-decisoes-design` (proibição de cores hardcoded fora do sistema de tokens) |
-| `src/components/safety/GlobalEStopButton.tsx` remove animações `op-estop-shake`/`op-arm-pulse`/`op-disarm-flash` | Remove feedback haptic-visual sem justificativa de safety; degrada UX sem ganho |
-| `src/lib/featureFlags.ts` (-76 linhas) | Apaga flags em uso (training_v2_cinematic, skycanvas_v2_stage, real_only_mode etc. — todos em memórias ativas) |
-| `src/index.css` (-178/+21) | Remove tokens DS já adotados (`mem://interface/design-system-fxkontrol-v1`, `mem://interface/typography-ds-scale-unified`) |
-| Demais ~50 arquivos modificados (Landing, Pricing, Comercial, Pricing, Strategy, Privacy, Terms, etc.) | Mistura de cosmético + revert de Studio/PixelStreaming/Cesium — alto risco, baixo benefício |
+## Lote 3 — Mobile sheet switcher (chip bar)
 
-## Plano de execução (Grupo A apenas)
+Hoje `mobileActive` controla qual painel está aberto, mas a única forma de trocar é colapsar/expandir manualmente. Adicionar:
+- Chip bar fixo no rodapé (acima do `MobileTransportFab`) só em `<md`:
+  - 3 chips glass: BIBLIOTECA · INSPECTOR · TIMELINE.
+  - Active chip: cyan-300 + ring; inactive: zinc-400 muted.
+  - Click → `setMobileActive(key)` (já invalida os outros via `useEffect` existente).
+- Componente isolado `<MobilePanelSwitcher active onChange />` em `src/components/skycanvas/MobilePanelSwitcher.tsx`.
+- Z-index 50 (mesmo do FAB), `bottom-20` pra não colidir com o transport.
 
-1. Sobrescrever **somente** os 4 arquivos:
-   - `src/core/command/CommandBus.ts`
-   - `src/core/command/__tests__/CommandBus.drain.test.ts` (novo)
-   - `src/core/network/fieldBus.ts`
-   - `src/core/execution/pyroExecutor.ts`
-2. Verificar callers de `fieldBus.setTransport(...)` (removido) — se houver, manter o método antigo como deprecated no-op para não quebrar import; a busca rápida indica uso interno apenas em testes/mocks.
-3. Verificar callers de `pyroExecutor.flushBuffer(...)` — patch já mantém shim que retorna `0`.
-4. Rodar suíte de testes (build automático). Esperado: novo teste verde + zero regressão.
-5. Atualizar memória: append em `mem://restricoes/seguranca-latencia-e-auditoria-v5-crificos` notando que pyro FIRE e E-STOP são **não-replayáveis por contrato** e que `CommandBus.drain` é defensivo contra reutilização do buffer.
+## Lote 4 — Show3DEngine ↔ audio clock sync no SkyCanvas
 
-## Pergunta pra confirmar
+A memória `mem://funcionalidades/show3d-timeline-audio-sync` documenta o pipeline (`useAudioMasterClock → useProjectStore → engine.seek`), mas SkyCanvas v3 ainda usa um RAF próprio que avança `currentTime` (linhas 501–514). Isso compete com o relógio mestre quando há áudio carregado.
 
-Vou tratar o ZIP como **fonte de auditoria** (extrair só os 4 ganhos de safety) e ignorar todo o restante — ou você quer que eu reaplique as 10 páginas deletadas / desfaça o SkyCanvas v3? Default: aplicar **só Grupo A**.
+Mudança cirúrgica:
+- Quando `audioName != null` E `peaks != null` → desativar o RAF local e plugar `useAudioMasterClock(audioElementRef)`.
+- Manter o RAF atual como fallback (sem áudio → comportamento idêntico).
+- Audio tag `<audio ref={audioRef} src={audioObjectUrl} />` invisível (criada quando `onPickAudio` faz decode); seu `play()/pause()` espelha `setPlaying`.
+- Zero impacto em CommandBus/SafetyStateMachine (SkyCanvas é Plano Show, não Hardware).
+
+## Resumo técnico
+
+```text
+SkyCanvas.tsx          -160 lines  (lote 1: dead code)
++useSkyCanvasShowPersistence.ts    (lote 2: localStorage)
++MobilePanelSwitcher.tsx           (lote 3: UX mobile)
+SkyCanvas.tsx playback hook        (lote 4: audio master clock)
+```
+
+Nenhum lote toca: CommandBus, FieldBus, uiCommandGateway, SafetyStateMachine, workMode, fxk16Bridge, portRegistry, deviceAggregator. SkyCanvas continua plano Show puro (mem://arquitetura/v6-quatro-planos), SIM · ADVISORY preservado, E-STOP global continua roteando pra `/command`.
+
+## Sequência de execução
+
+1. Lote 1 (limpeza) — primeiro porque destrava leitura.
+2. Lote 2 (persistência) — ganho imediato pro operador.
+3. Lote 3 (mobile switcher) — paraleliza sem dependência.
+4. Lote 4 (audio sync) — exige Show3DEngine montado + audio tag, mais cirúrgico.
+
+Aprova para executar os 4 em sequência, ou prefere parar depois do lote 2?
