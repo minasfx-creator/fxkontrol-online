@@ -142,60 +142,79 @@ function FloatingPanelImpl({ id, title, state, bottomStrip, className, children 
     );
   }
 
-  // Expanded panel ----------------------------------------------------
-  const style: React.CSSProperties = bottomStrip
-    ? { left: 16, right: 16, bottom: 16, height: state.h }
-    : { left: state.x, top: state.y, width: state.w, height: state.h };
+  // Snap-target ghost preview (rendered as sibling overlay during drag)
+  const ghost = dragging && snapHint ? (() => {
+    const vw = typeof window !== 'undefined' ? window.innerWidth : 0;
+    const vh = typeof window !== 'undefined' ? window.innerHeight : 0;
+    const positions: Record<string, React.CSSProperties> = {
+      TL: { left: SNAP_MARGIN, top: SNAP_MARGIN, width: state.w, height: state.h },
+      TR: { left: vw - state.w - SNAP_MARGIN, top: SNAP_MARGIN, width: state.w, height: state.h },
+      BL: { left: SNAP_MARGIN, top: vh - state.h - SNAP_MARGIN, width: state.w, height: state.h },
+      BR: { left: vw - state.w - SNAP_MARGIN, top: vh - state.h - SNAP_MARGIN, width: state.w, height: state.h },
+    };
+    const pos = positions[snapHint];
+    if (!pos) return null;
+    return (
+      <div
+        aria-hidden
+        className="absolute z-30 rounded-2xl pointer-events-none border border-cyan-300/40 bg-cyan-300/[0.04]"
+        style={{ ...pos, boxShadow: '0 0 0 1px hsl(190 70% 58% / 0.25), inset 0 0 24px hsl(190 70% 58% / 0.12)' }}
+      />
+    );
+  })() : null;
 
   return (
-    <section
-      ref={ref}
-      role="dialog"
-      aria-label={title}
-      aria-expanded
-      className={cn(
-        'glass-pane absolute z-40 flex flex-col overflow-hidden',
-        'rounded-2xl text-zinc-200',
-        dragging ? 'cursor-grabbing select-none' : '',
-        reducedMotion ? '' : 'transition-shadow duration-300',
-        className,
-      )}
-      style={style}
-    >
-      <header
-        onPointerDown={onPointerDown}
-        onPointerMove={onPointerMove}
-        onPointerUp={finishDrag}
-        onPointerCancel={finishDrag}
+    <>
+      {ghost}
+      <section
+        ref={ref}
+        role="dialog"
+        aria-label={title}
+        aria-expanded
         className={cn(
-          'flex h-9 shrink-0 items-center gap-2 px-3 border-b border-white/[0.06]',
-          bottomStrip ? '' : (dragging ? 'cursor-grabbing' : 'cursor-grab'),
-          'touch-none', // prevent scroll during drag
+          'glass-pane absolute z-40 flex flex-col overflow-hidden',
+          'rounded-2xl text-zinc-200',
+          dragging ? 'cursor-grabbing select-none' : '',
+          reducedMotion ? '' : 'transition-shadow duration-300',
+          className,
         )}
-        title={bottomStrip ? title : 'Arraste para mover · clique no botão para recolher'}
+        style={style}
       >
-        {!bottomStrip && (
-          <GripVertical className="h-3.5 w-3.5 text-cyan-300/40 shrink-0" aria-hidden />
-        )}
-        <span className="ds-mono text-[10px] tracking-wider uppercase text-cyan-300/80 truncate">
-          {title}
-        </span>
-        <div className="flex-1" />
-        <button
-          type="button"
-          data-no-drag
-          aria-label={`Recolher ${title}`}
-          aria-expanded
-          onClick={() => dockStore.toggleCollapsed(id)}
-          className="ds-focus rounded-md p-1 text-zinc-400 hover:text-cyan-200 hover:bg-white/[0.04] transition-colors"
+        <header
+          onPointerDown={onPointerDown}
+          onPointerMove={onPointerMove}
+          onPointerUp={finishDrag}
+          onPointerCancel={finishDrag}
+          className={cn(
+            'flex h-9 shrink-0 items-center gap-2 px-3 border-b border-white/[0.06]',
+            bottomStrip ? '' : (dragging ? 'cursor-grabbing' : 'cursor-grab'),
+            'touch-none',
+          )}
+          title={bottomStrip ? title : 'Arraste para mover · clique no botão para recolher'}
         >
-          <Minus className="h-3.5 w-3.5" />
-        </button>
-      </header>
-      <div className="min-h-0 flex-1 overflow-hidden">
-        {children}
-      </div>
-    </section>
+          {!bottomStrip && (
+            <GripVertical className="h-3.5 w-3.5 text-cyan-300/40 shrink-0" aria-hidden />
+          )}
+          <span className="ds-mono text-[10px] tracking-wider uppercase text-cyan-300/80 truncate">
+            {title}
+          </span>
+          <div className="flex-1" />
+          <button
+            type="button"
+            data-no-drag
+            aria-label={`Recolher ${title}`}
+            aria-expanded
+            onClick={() => dockStore.toggleCollapsed(id)}
+            className="ds-focus rounded-md p-1 text-zinc-400 hover:text-cyan-200 hover:bg-white/[0.04] transition-colors"
+          >
+            <Minus className="h-3.5 w-3.5" />
+          </button>
+        </header>
+        <div className="min-h-0 flex-1 overflow-hidden">
+          {children}
+        </div>
+      </section>
+    </>
   );
 }
 
