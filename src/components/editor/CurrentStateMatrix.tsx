@@ -156,7 +156,7 @@ export default function CurrentStateMatrix() {
                 <span className={cn('text-[7px] font-mono px-1.5 py-0.5 rounded', cfg.bg, cfg.color)}>{cfg.label}</span>
               </div>
               <div className="flex justify-center">
-                <span className={cn('text-[7px] font-mono px-1.5 py-0.5 rounded', MODE_COLORS[row.integrationMode])}>{badge.label}</span>
+                <ProvenanceBadge mode={row.integrationMode} compact />
               </div>
               <div className="flex justify-center">
                 <span className={cn('text-[7px] font-mono', EVIDENCE_COLORS[row.evidenceLevel])}>{row.evidenceLevel.replace(/_/g, ' ')}</span>
