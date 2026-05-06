@@ -1,66 +1,55 @@
 
-# FireOne Wireless — Toggle CABLE/WIRELESS/AUTO + RSSI/Bateria
+# Module Roster — tela de inventário ao vivo da fleet FireOne
 
-Adiciona suporte explícito a módulos FireOne via rádio (TNC USB-RF dock) ao lado do cabo XLII+ existente, expondo no painel a alternância entre os modos e os indicadores ao vivo de sinal e bateria por slat — sem inventar dados.
+Cria uma tela `/dev/module-roster` que lista cada módulo conhecido e classifica-o em **NOT INTEGRATED / OFFLINE / ONLINE** a partir de telemetria real, com endereço, contagem de cues, COM LED e indicadores RSSI / bateria — sem inventar dados.
 
-## Escopo (cirúrgico)
+## O que vai ser construído
 
-### 1. `src/features/fieldbus/useFireOneFleet.ts` — refactor
-Hoje o hook abre um único `SerialTransport` 9600 (cabo). Vai virar fleet de **dois** transports independentes:
+### `src/pages/dev/ModuleRoster.tsx` (novo, ~200 linhas)
+Página standalone que monta `useFireOneFleet` e renderiza uma tabela:
 
-- `cable` — `SerialTransport` 9600 8N1 (XLII+/XL4-3 direto via FTDI).
-- `radio` — `SerialTransport` **38400 8N1** (dock USB-RF do TNC FireOne).
+| Coluna | Origem | Comportamento |
+|---|---|---|
+| **COM** | `lastReplyAt` da link que respondeu | LED `CircleDot` esmeralda pulsa quando frame < 800ms; cinza se nunca chegou |
+| **ADDR** | `module.moduleAddress` | `01..99` zero-padded |
+| **STATE** | derivado | `ONLINE` se telemetria ≤5s · `OFFLINE` se >5s · `NOT INTEGRATED` se nunca respondeu |
+| **LINK** | `connectionMode` | chip `WIRED / WIRELESS / FALLBACK` (cor por tipo) |
+| **CUES** | `igniters[]` | `cuesOk / cuesConnected` (continuidade OK / conectados) |
+| **RSSI** | `rssiDbm` ou `—` | amber se <−85 dBm |
+| **BAT** | `batteryVoltage` ou `—` | amber se <11.0 V |
+| **FW** | `firmwareVersion` ou `—` | mono |
+| **LAST** | `Math.round((now − lastReplyAt)/1000)+'s ago'` | `—` se NOT_INTEGRATED |
 
-Estado novo:
+**Strip agregada** no topo: `ONLINE: N · OFFLINE: M · NOT INTEGRATED: K · Link: <state> · Mode: <mode>`.
+
+**Linhas placeholder NOT INTEGRATED**: para qualquer endereço entre 1 e o maior endereço já visto que nunca respondeu, gera linha cinza com cues `—` (transparência operacional — sem inventar slot ativo).
+
+**Tick interno** de 500 ms (`setInterval` em `useEffect` com cleanup) só para reavaliar OFFLINE/COM-pulse a partir dos timestamps. Zero polling adicional ao bus — apenas leitura do estado já mantido pelo hook.
+
+### Rota em `src/App.tsx`
 ```ts
-mode: 'cable' | 'wireless' | 'auto'  // persistido em fxk.fireone.linkMode.v1
-cable: { state, error, txBytes, rxBytes, lastReplyAt }
-radio: { state, error, txBytes, rxBytes, lastReplyAt }
-link:  // agregado: 'connected' se qualquer link up
+const ModuleRoster = lazy(lazyRetry(() => import("./pages/dev/ModuleRoster")));
+// ...
+<Route path="/dev/module-roster" element={<ModuleRoster />} />
 ```
+Inserida ao lado de `/dev/readiness-audit`.
 
-Comportamento por modo:
-- **cable**: abre só o transport 9600 → registra `cableLink` no `realTransports` (rs485).
-- **wireless**: abre só o transport 38400 → registra `radioLink` no `realTransports` (relay).
-- **auto**: abre cabo primeiro; se em 3s nenhum slat respondeu, abre radio em paralelo. Ambos podem coexistir.
-
-Cada slat recebido é taggeado com `connectionMode: 'wired' | 'wireless'` segundo o link de origem da resposta. O polling 2 Hz prioriza o link de origem do slat.
-
-API pública: + `setMode(mode)`. Mantém `connect/disconnect/arm/disarm/eStop/fire/continuityCheck/queryWireless` (assinaturas inalteradas).
-
-### 2. `src/features/fieldbus/FireOnePanel.tsx` — UI
-- **Header**: troca o badge único por **três badges** independentes (CABLE / RADIO / agregado), cada um com cor por estado.
-- **Toggle CABLE / WIRELESS / AUTO** (segmented control de 3 botões) na barra de conexão. Persiste e dispara reconnect.
-- **Identifiers visuais**: lucide `Cable` para cabo, `RadioTower` para rádio, `Wifi` para AUTO.
-- **Strip global** mostrando contagem de slats por modo (`5 wired · 3 wireless`) + RSSI médio dos wireless + bateria mínima da fleet (alerta se < 11.0 V).
-- **Card por slat** já tem `Bat`, RSSI e ícone Wifi/WifiOff — reorganizado para destacar `connectionMode` (chip "WIRED"/"WIRELESS"/"FALLBACK") e usa cor amber se RSSI < −85 dBm ou bateria < 11.0 V.
-- **Botão RADIO** existente em cada slat continua chamando `queryWireless()` (já implementado no protocolo via `buildWirelessStatusQuery`).
-
-### 3. `src/core/network/realTransports.ts` — sem mudança lógica
-Já tem `registerCableLink` + `registerRadioLink` separados. O hook só passa a chamá-los segundo o transport ativo.
-
-### 4. Testes
-- `useFireOneFleet.modeToggle.spec.ts` (vitest):
-  - `setMode('wireless')` persiste em localStorage e abre transport 38400.
-  - `setMode('auto')` programa fallback de 3s para abrir radio se cabo silenciar.
-  - Disconnect revoga `cableLink` e `radioLink` no `realTransports`.
-- `FireOnePanel.modeToggle.spec.tsx` (RTL):
-  - Click em "WIRELESS" chama `setMode('wireless')` e mostra badge de rádio ativo.
-  - Slat com `connectionMode='wireless'` renderiza chip WIRELESS + RSSI.
+## Honesty contract
+- Sem `connectionMode` ⇒ chip mostra `—`, não inventa "WIRED".
+- Sem `lastReplyAt` ⇒ COM LED apaga, LAST = `—`, STATE = `NOT INTEGRATED`.
+- `rssiDbm`/`batteryVoltage` ausentes ⇒ célula `—`, nunca zero falso.
 
 ## Fora de escopo
-- `FireOneRadioDiscoverer` standalone (auto-detectar dock TNC entre as portas serial sem operador clicar Connect) — fica para a próxima.
-- Página `/dev/hardware-integration` (matriz JOI) — fica para a próxima.
+- Edição de roster / pairing — esta tela é read-only.
+- Persistência do roster esperado — usa só o que o bus realmente acknowledgou.
+- Integração com FXK16 / Arduino Nano — fica para próxima (esta tela é FireOne-only).
 
 ## Arquivos
 ```text
-EDIT  src/features/fieldbus/useFireOneFleet.ts        (~200 linhas, refactor)
-EDIT  src/features/fieldbus/FireOnePanel.tsx          (~70 linhas: header, toggle, badges, strip)
-NEW   src/features/fieldbus/__tests__/useFireOneFleet.modeToggle.spec.ts
-NEW   src/features/fieldbus/__tests__/FireOnePanel.modeToggle.spec.tsx
-ZERO  uiCommandGateway, commandBus, SafetyStateMachine, fieldBus, pyroExecutor,
-      pyroTransportPolicy, _quarantine, fireoneProtocol, realTransports
+NEW   src/pages/dev/ModuleRoster.tsx   (~200 linhas)
+EDIT  src/App.tsx                      (+2 linhas: lazy import + Route)
+ZERO  uiCommandGateway, commandBus, fieldBus, useFireOneFleet (apenas consumido)
 ```
 
 ## Resultado
-Operador no painel FireOne escolhe **CABLE** (XLII+ via FTDI), **WIRELESS** (TNC USB-RF) ou **AUTO** (cabo prioritário, rádio como fallback automático). Cada slat exibe RSSI e tensão de bateria reais (ou nada — sem fake), com chip indicando por qual link respondeu. O caminho de FIRE permanece exatamente o mesmo: `uiCommandGateway → commandBus → commandFireRouter → pyroExecutor → fieldBus → realTransports.{rs485|relay}` — a única diferença é qual link estará vivo.
+Operador acessa `/dev/module-roster` e vê, em tempo real, exatamente quais módulos a frota reconheceu, quais sumiram (OFFLINE) e quais estão no plano mas nunca falaram (NOT INTEGRATED) — com COM LED pulsando a cada frame de telemetria, contagem de cues funcionais por slat, e indicadores honestos de sinal e bateria.
