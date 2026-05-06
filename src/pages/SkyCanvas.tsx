@@ -405,6 +405,31 @@ export default function SkyCanvasPage() {
   };
   const dropEffectAtPlayhead = (effectId: string) => dropEffectAt(effectId, time);
 
+  // Audio loading → peaks for waveform + sets project duration.
+  const setDuration = useProjectStore((s) => s.setDuration);
+  const [peaks, setPeaks] = useState<Float32Array | null>(null);
+  const [audioName, setAudioName] = useState<string | null>(null);
+  const [decoding, setDecoding] = useState(false);
+  const onPickAudio = async (file: File) => {
+    if (decoding) return;
+    setDecoding(true);
+    const tid = toast.loading(`Decodificando ${file.name}…`);
+    try {
+      const result = await decodeAudioPeaks(file, 1024);
+      setPeaks(result.peaks);
+      setAudioName(file.name);
+      setDuration(result.durationSec);
+      setCurrentTime(0);
+      setPlaying(false);
+      toast.success(`Áudio carregado · ${result.durationSec.toFixed(1)}s · ${result.sampleRate} Hz`, { id: tid });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Falha ao decodificar áudio';
+      toast.error(msg, { id: tid });
+    } finally {
+      setDecoding(false);
+    }
+  };
+
   return (
     <div className="relative h-[100dvh] w-full bg-[#050810] text-zinc-200 overflow-hidden"
          style={{ paddingTop: 'env(safe-area-inset-top)', paddingBottom: 'env(safe-area-inset-bottom)' }}>
@@ -431,7 +456,7 @@ export default function SkyCanvasPage() {
           timelineHeight: cap.landscapePhone ? 96 : 180,
         }}
         topbar={
-          <Topbar cap={cap} playing={playing} onTogglePlay={togglePlay} onStop={stop} onSeek={seek} time={time} duration={duration} />
+          <Topbar cap={cap} playing={playing} onTogglePlay={togglePlay} onStop={stop} onSeek={seek} time={time} duration={duration} onPickAudio={onPickAudio} audioName={audioName} />
         }
         left={
           <StudioErrorBoundary area="SkyCanvas · Library">
@@ -445,7 +470,7 @@ export default function SkyCanvasPage() {
         }
         timeline={
           <StudioErrorBoundary area="SkyCanvas · Timeline">
-            <TimelineStrip time={time} duration={duration} onSeekAbs={seekAbs} onDropEffect={dropEffectAt} />
+            <TimelineStrip time={time} duration={duration} onSeekAbs={seekAbs} onDropEffect={dropEffectAt} peaks={peaks} />
           </StudioErrorBoundary>
         }
       >
