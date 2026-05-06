@@ -974,7 +974,7 @@ export default function MobileLinkMode({ fs, fireChannel, channels, artNetConnec
 
             {hwModules.length === 0 ? (
               <div className={cn("text-center text-muted-foreground/20 py-4 font-mono rounded border border-dashed border-border/10", tsS)}>
-                {hwSimulated || hwConnected ? 'Clique em Scan para descobrir módulos' : 'Conecte o hardware ou ative o modo SIM'}
+                {hwConnected ? 'Clique em Scan para descobrir módulos' : 'Conecte o hardware FireOne via USB para descobrir módulos'}
               </div>
             ) : (
               <div className="space-y-1.5">
