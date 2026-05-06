@@ -148,6 +148,27 @@ export class FieldBus {
     blackbox.record('net', `FieldBus: flushed ${count} buffered messages`);
   }
 
+  /**
+   * Wire (or revoke) a real transport implementation. Replaces the no-op stub
+   * created by the constructor without touching failover counters or the local
+   * buffer. Pass a stub `{ send: () => false, isAlive: () => false }` to revoke.
+   */
+  setTransport(
+    id: TransportId,
+    impl: Pick<Transport, 'send' | 'isAlive'>,
+  ): void {
+    const idx = this._transports.findIndex(t => t.id === id);
+    if (idx < 0) return;
+    const prev = this._transports[idx];
+    this._transports[idx] = {
+      id,
+      send: impl.send,
+      isAlive: impl.isAlive,
+      lastHeartbeat: prev.lastHeartbeat,
+    };
+    blackbox.record('net', `FieldBus: transport[${id}] wired`);
+  }
+
   /** Record a heartbeat for a transport. */
   heartbeat(id: TransportId): void {
     const t = this._transports.find(tr => tr.id === id);
