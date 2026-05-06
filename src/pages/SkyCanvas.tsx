@@ -230,11 +230,17 @@ function GlassTopbar({
       <div className="flex-1" />
 
       {/* Layout toggles — desktop only */}
-      <div className="hidden lg:flex items-center gap-1 rounded-ds-md border border-ds-border-default bg-ds-surface-elevated/60 p-0.5">
+      <div
+        className="hidden lg:flex items-center gap-1 rounded-ds-md border border-ds-border-default bg-ds-surface-elevated/60 p-0.5"
+        role="group"
+        aria-label="Controles de layout do editor"
+      >
         <LayoutIconButton
           ariaLabel={layoutControls.leftCollapsed ? 'Expandir Biblioteca' : 'Recolher Biblioteca'}
           onClick={layoutControls.toggleLeft}
           active={!layoutControls.leftCollapsed}
+          shortcut="Control+1"
+          controls="panel-library"
         >
           {layoutControls.leftCollapsed ? <PanelLeftOpen className="size-3.5" /> : <PanelLeftClose className="size-3.5" />}
         </LayoutIconButton>
@@ -242,6 +248,8 @@ function GlassTopbar({
           ariaLabel={layoutControls.timelineCollapsed ? 'Expandir Timeline' : 'Recolher Timeline'}
           onClick={layoutControls.toggleTimeline}
           active={!layoutControls.timelineCollapsed}
+          shortcut="Control+3"
+          controls="panel-timeline"
         >
           {layoutControls.timelineCollapsed ? <PanelBottomOpen className="size-3.5" /> : <PanelBottomClose className="size-3.5" />}
         </LayoutIconButton>
@@ -249,17 +257,20 @@ function GlassTopbar({
           ariaLabel={layoutControls.rightCollapsed ? 'Expandir Inspector' : 'Recolher Inspector'}
           onClick={layoutControls.toggleRight}
           active={!layoutControls.rightCollapsed}
+          shortcut="Control+2"
+          controls="panel-inspector"
         >
           {layoutControls.rightCollapsed ? <PanelRightOpen className="size-3.5" /> : <PanelRightClose className="size-3.5" />}
         </LayoutIconButton>
         <button
           type="button"
           onClick={layoutControls.reset}
-          title="Resetar layout"
+          title="Resetar layout (⇧⌘0)"
           aria-label="Resetar layout"
+          aria-keyshortcuts="Control+Shift+0"
           className="flex size-7 items-center justify-center rounded-ds-sm text-ds-text-muted hover:text-status-sync hover:bg-ds-surface-deep transition-colors ds-focus"
         >
-          <RotateCw className="size-3.5" />
+          <RotateCw className="size-3.5" aria-hidden="true" />
         </button>
       </div>
 
