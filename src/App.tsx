@@ -210,6 +210,7 @@ function App() {
                         view of VerificationEngine + ReadinessEvaluator + Hardware
                         Registry with adapter provenance. No commands sent. */}
                     <Route path="/dev/readiness-audit" element={<ReadinessAudit />} />
+                    <Route path="/dev/module-roster" element={<ModuleRoster />} />
                     {/* Phase 1 golden show inspector — pure read of the
                         Libertadores ShowPlan + PDF + honest export ZIP. */}
                     <Route path="/dev/libertadores" element={<Navigate to="/dev/golden-shows" replace />} />
