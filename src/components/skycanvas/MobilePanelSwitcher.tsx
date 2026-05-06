@@ -1,8 +1,9 @@
 /**
  * MobilePanelSwitcher — 3-chip glass bar shown only below md breakpoint.
- * Lets the operator switch which floating sheet is open without juggling
- * collapse states. Pure presentation; only mutates dock via the parent
- * `onChange` callback.
+ * Pure presentational tab strip: it owns no state and has no knowledge of
+ * dockStore. The parent (SkyCanvas) keeps a single `MobilePanelKey` in
+ * React state and uses it to drive the EditorShell `layout` slots
+ * (left / right / timeline widths collapse to 0 when not active).
  */
 import { Library, SlidersHorizontal, Clock } from 'lucide-react';
 import { cn } from '@/lib/utils';
