@@ -9,14 +9,16 @@
  */
 import { useMemo } from 'react';
 import { useProjectStore } from '@/store/useProjectStore';
-import { EFFECT_LIBRARY, type Effect } from '@/data/effectLibrary';
+import type { Effect } from '@/data/effectLibrary';
+import {
+  resolveEffectLedAccurate,
+  ledAccurateColor,
+} from '@/data/effectsLibraries/resolveEffect';
 import type { Vec3 } from './types';
 
-const EFFECT_BY_ID: Record<string, Effect> = Object.fromEntries(
-  EFFECT_LIBRARY.map((e) => [e.id, e]),
-);
-
-const getEffect = (id: string): Effect | undefined => EFFECT_BY_ID[id];
+// Unified lookup: legacy EFFECT_LIBRARY ∪ Finale-imported parts (527),
+// with Effect.color already passed through the VDL render-accurate pipeline.
+const getEffect = (id: string): Effect | undefined => resolveEffectLedAccurate(id);
 
 // ──────────────────────────────────────────────────────────────────────────
 // Drones / lights — structural list (per-frame "active" computed in layer)
