@@ -485,6 +485,9 @@ export default function SkyCanvasPage() {
   }, []);
 
   const cap = useMemo(() => detectSkyCapability(), []);
+  const workMode = useWorkMode();
+  const workModeLabel = workMode === 'design' ? 'DESIGN' : workMode === 'simulation' ? 'SIM' : 'REAL OP';
+  const session = useActiveDemoSession();
 
   // Transport
   const playing = useProjectStore((s) => s.isPlaying);
