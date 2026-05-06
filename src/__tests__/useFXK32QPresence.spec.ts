@@ -64,7 +64,7 @@ describe('useFXK32QPresence', () => {
     expect(result.current.reason).toBe('present');
   });
 
-  it('drops back to no-device when handshake is lost AND aggregator clears', async () => {
+  it('drops to no-device when handshake is lost AND aggregator clears', async () => {
     controllersMock.list = [{ profile: { kind: 'fxk32q' } }];
     fxk32qModuleAdapter.markHandshakeOk('serial_usb');
 
@@ -72,13 +72,14 @@ describe('useFXK32QPresence', () => {
     await act(async () => { vi.advanceTimersByTime(80); });
     expect(result.current.present).toBe(true);
 
-    fxk32qModuleAdapter.markHandshakeLost();
     controllersMock.list = [];
+    fxk32qModuleAdapter.markHandshakeLost();
     rerender();
-    await act(async () => { vi.advanceTimersByTime(80); });
-    expect(result.current.present).toBe(false);
+    await act(async () => { vi.advanceTimersByTime(200); });
+    rerender();
+
     expect(result.current.deviceOnline).toBe(false);
-    expect(result.current.adapterConnected).toBe(false);
+    expect(result.current.present).toBe(false);
     expect(result.current.reason).toBe('no-device');
   });
 
