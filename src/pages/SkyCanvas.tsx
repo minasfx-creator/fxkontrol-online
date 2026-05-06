@@ -44,6 +44,7 @@ import { useActiveDemoSession } from '@/hooks/useActiveDemoSession';
 
 import { EditorShell, DsSegmentTabs, type SegmentItem } from '@/components/ds';
 import { useEditorLayout } from '@/hooks/editor/useEditorLayout';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 
 import { useWorkMode } from '@/core/safety/workMode';
 import { useSkyCanvasShowPersistence, clearPersistedSkyCanvasShow } from '@/hooks/useSkyCanvasShowPersistence';
