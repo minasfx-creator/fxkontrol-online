@@ -9,8 +9,28 @@
 import { memo, useCallback, useEffect, useRef, useState } from 'react';
 import { GripVertical, Minus, Maximize2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { dockStore, type PanelState } from '@/hooks/useFloatingDock';
+import { dockStore, type PanelState, type DockSlot } from '@/hooks/useFloatingDock';
 import { useReducedMotion } from '@/hooks/useReducedMotion';
+
+const SNAP_RADIUS = 56; // px to corner before magnetic pull engages
+const SNAP_MARGIN = 16;
+
+function nearestSlot(x: number, y: number, w: number, h: number, vw: number, vh: number): { slot: DockSlot; x: number; y: number } | null {
+  const corners: Array<{ slot: DockSlot; cx: number; cy: number }> = [
+    { slot: 'TL', cx: SNAP_MARGIN,            cy: SNAP_MARGIN },
+    { slot: 'TR', cx: vw - w - SNAP_MARGIN,   cy: SNAP_MARGIN },
+    { slot: 'BL', cx: SNAP_MARGIN,            cy: vh - h - SNAP_MARGIN },
+    { slot: 'BR', cx: vw - w - SNAP_MARGIN,   cy: vh - h - SNAP_MARGIN },
+  ];
+  let best: { slot: DockSlot; x: number; y: number; d: number } | null = null;
+  for (const c of corners) {
+    const d = Math.hypot(x - c.cx, y - c.cy);
+    if (d < SNAP_RADIUS && (!best || d < best.d)) {
+      best = { slot: c.slot, x: c.cx, y: c.cy, d };
+    }
+  }
+  return best ? { slot: best.slot, x: best.x, y: best.y } : null;
+}
 
 interface Props {
   id: string;
@@ -31,6 +51,7 @@ function FloatingPanelImpl({ id, title, state, bottomStrip, className, children 
     active: false, sx: 0, sy: 0, ox: 0, oy: 0, pid: null,
   });
   const [dragging, setDragging] = useState(false);
+  const [snapHint, setSnapHint] = useState<DockSlot | null>(null);
   const reducedMotion = useReducedMotion();
 
   // Drag handlers — store delta in ref, commit on pointerup (no re-render mid-drag).
@@ -55,18 +76,26 @@ function FloatingPanelImpl({ id, title, state, bottomStrip, className, children 
     const dx = e.clientX - d.sx;
     const dy = e.clientY - d.sy;
     ref.current.style.transform = `translate(${dx}px, ${dy}px)`;
-  }, []);
+    // live snap hint
+    const nx = d.ox + dx;
+    const ny = d.oy + dy;
+    const snap = nearestSlot(nx, ny, state.w, state.h, window.innerWidth, window.innerHeight);
+    setSnapHint(snap ? snap.slot : null);
+  }, [state.w, state.h]);
 
   const finishDrag = useCallback((e?: React.PointerEvent<HTMLDivElement>) => {
     const d = dragRef.current;
     if (!d.active) return;
     const el = ref.current;
     let nx = state.x, ny = state.y;
+    let nextSlot: DockSlot = 'free';
     if (e && el) {
       nx = d.ox + (e.clientX - d.sx);
       ny = d.oy + (e.clientY - d.sy);
-      // clamp to viewport
       const vw = window.innerWidth, vh = window.innerHeight;
+      const snap = nearestSlot(nx, ny, state.w, state.h, vw, vh);
+      if (snap) { nx = snap.x; ny = snap.y; nextSlot = snap.slot; }
+      // clamp to viewport
       nx = Math.max(8, Math.min(nx, vw - state.w - 8));
       ny = Math.max(8, Math.min(ny, vh - state.h - 8));
       el.style.transform = '';
@@ -74,10 +103,11 @@ function FloatingPanelImpl({ id, title, state, bottomStrip, className, children 
     }
     dragRef.current = { active: false, sx: 0, sy: 0, ox: 0, oy: 0, pid: null };
     setDragging(false);
+    setSnapHint(null);
     if (e) {
       try { (e.currentTarget as Element).releasePointerCapture(e.pointerId); } catch { /* */ }
     }
-    dockStore.updatePanel(id, { x: nx, y: ny, slot: 'free' });
+    dockStore.updatePanel(id, { x: nx, y: ny, slot: nextSlot });
 
     // Debounced silent save toast (deferred import to avoid SSR)
     const now = Date.now();
@@ -117,55 +147,79 @@ function FloatingPanelImpl({ id, title, state, bottomStrip, className, children 
     ? { left: 16, right: 16, bottom: 16, height: state.h }
     : { left: state.x, top: state.y, width: state.w, height: state.h };
 
+  // Snap-target ghost preview (rendered as sibling overlay during drag)
+  const ghost = dragging && snapHint ? (() => {
+    const vw = typeof window !== 'undefined' ? window.innerWidth : 0;
+    const vh = typeof window !== 'undefined' ? window.innerHeight : 0;
+    const positions: Record<string, React.CSSProperties> = {
+      TL: { left: SNAP_MARGIN, top: SNAP_MARGIN, width: state.w, height: state.h },
+      TR: { left: vw - state.w - SNAP_MARGIN, top: SNAP_MARGIN, width: state.w, height: state.h },
+      BL: { left: SNAP_MARGIN, top: vh - state.h - SNAP_MARGIN, width: state.w, height: state.h },
+      BR: { left: vw - state.w - SNAP_MARGIN, top: vh - state.h - SNAP_MARGIN, width: state.w, height: state.h },
+    };
+    const pos = positions[snapHint];
+    if (!pos) return null;
+    return (
+      <div
+        aria-hidden
+        className="absolute z-30 rounded-2xl pointer-events-none border border-cyan-300/40 bg-cyan-300/[0.04]"
+        style={{ ...pos, boxShadow: '0 0 0 1px hsl(190 70% 58% / 0.25), inset 0 0 24px hsl(190 70% 58% / 0.12)' }}
+      />
+    );
+  })() : null;
+
   return (
-    <section
-      ref={ref}
-      role="dialog"
-      aria-label={title}
-      aria-expanded
-      className={cn(
-        'glass-pane absolute z-40 flex flex-col overflow-hidden',
-        'rounded-2xl text-zinc-200',
-        dragging ? 'cursor-grabbing select-none' : '',
-        reducedMotion ? '' : 'transition-shadow duration-300',
-        className,
-      )}
-      style={style}
-    >
-      <header
-        onPointerDown={onPointerDown}
-        onPointerMove={onPointerMove}
-        onPointerUp={finishDrag}
-        onPointerCancel={finishDrag}
+    <>
+      {ghost}
+      <section
+        ref={ref}
+        role="dialog"
+        aria-label={title}
+        aria-expanded
         className={cn(
-          'flex h-9 shrink-0 items-center gap-2 px-3 border-b border-white/[0.06]',
-          bottomStrip ? '' : (dragging ? 'cursor-grabbing' : 'cursor-grab'),
-          'touch-none', // prevent scroll during drag
+          'glass-pane absolute z-40 flex flex-col overflow-hidden',
+          'rounded-2xl text-zinc-200',
+          dragging ? 'cursor-grabbing select-none' : '',
+          reducedMotion ? '' : 'transition-shadow duration-300',
+          className,
         )}
-        title={bottomStrip ? title : 'Arraste para mover · clique no botão para recolher'}
+        style={style}
       >
-        {!bottomStrip && (
-          <GripVertical className="h-3.5 w-3.5 text-cyan-300/40 shrink-0" aria-hidden />
-        )}
-        <span className="ds-mono text-[10px] tracking-wider uppercase text-cyan-300/80 truncate">
-          {title}
-        </span>
-        <div className="flex-1" />
-        <button
-          type="button"
-          data-no-drag
-          aria-label={`Recolher ${title}`}
-          aria-expanded
-          onClick={() => dockStore.toggleCollapsed(id)}
-          className="ds-focus rounded-md p-1 text-zinc-400 hover:text-cyan-200 hover:bg-white/[0.04] transition-colors"
+        <header
+          onPointerDown={onPointerDown}
+          onPointerMove={onPointerMove}
+          onPointerUp={finishDrag}
+          onPointerCancel={finishDrag}
+          className={cn(
+            'flex h-9 shrink-0 items-center gap-2 px-3 border-b border-white/[0.06]',
+            bottomStrip ? '' : (dragging ? 'cursor-grabbing' : 'cursor-grab'),
+            'touch-none',
+          )}
+          title={bottomStrip ? title : 'Arraste para mover · clique no botão para recolher'}
         >
-          <Minus className="h-3.5 w-3.5" />
-        </button>
-      </header>
-      <div className="min-h-0 flex-1 overflow-hidden">
-        {children}
-      </div>
-    </section>
+          {!bottomStrip && (
+            <GripVertical className="h-3.5 w-3.5 text-cyan-300/40 shrink-0" aria-hidden />
+          )}
+          <span className="ds-mono text-[10px] tracking-wider uppercase text-cyan-300/80 truncate">
+            {title}
+          </span>
+          <div className="flex-1" />
+          <button
+            type="button"
+            data-no-drag
+            aria-label={`Recolher ${title}`}
+            aria-expanded
+            onClick={() => dockStore.toggleCollapsed(id)}
+            className="ds-focus rounded-md p-1 text-zinc-400 hover:text-cyan-200 hover:bg-white/[0.04] transition-colors"
+          >
+            <Minus className="h-3.5 w-3.5" />
+          </button>
+        </header>
+        <div className="min-h-0 flex-1 overflow-hidden">
+          {children}
+        </div>
+      </section>
+    </>
   );
 }
 
