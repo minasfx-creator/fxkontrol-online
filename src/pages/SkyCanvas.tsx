@@ -43,6 +43,7 @@ import { TimelineCuesProvider } from '@/components/skycanvas/tabs/TimelineCuesTa
 import { useActiveDemoSession } from '@/hooks/useActiveDemoSession';
 import { ClaimBadge } from '@/components/strategy/ClaimBadge';
 import { useWorkMode } from '@/core/safety/workMode';
+import { useSkyCanvasShowPersistence, clearPersistedSkyCanvasShow } from '@/hooks/useSkyCanvasShowPersistence';
 import { cn } from '@/lib/utils';
 
 const SkyCanvas2 = lazy(lazyRetry(() => import('@/components/show3d/v2/SkyCanvas2')));
