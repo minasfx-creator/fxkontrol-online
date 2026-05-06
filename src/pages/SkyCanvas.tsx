@@ -586,6 +586,17 @@ export default function SkyCanvasPage() {
         }}
       />
 
+      {/* Audio master clock element — drives currentTime when a track is loaded */}
+      {audioUrl && (
+        <audio
+          ref={audioElRef}
+          src={audioUrl}
+          preload="auto"
+          className="hidden"
+          aria-hidden="true"
+        />
+      )}
+
       {/* VIEWPORT — edge-to-edge */}
       <StudioErrorBoundary area="SkyCanvas · Viewport">
         <div
