@@ -220,12 +220,13 @@ function Row({ k, v }: { k: string; v: string }) {
 // ─────────────────────────────────────────────────────────────────────────
 
 function TimelineStrip({
-  time, duration, onSeekAbs, onDropEffect,
+  time, duration, onSeekAbs, onDropEffect, peaks,
 }: {
   time: number;
   duration: number;
   onSeekAbs: (t: number) => void;
   onDropEffect: (effectId: string, t: number) => void;
+  peaks: Float32Array | null;
 }) {
   const ref = useRef<HTMLDivElement | null>(null);
   const [dragOver, setDragOver] = useState(false);
@@ -281,7 +282,9 @@ function TimelineStrip({
             </div>
           ))}
         </div>
-        {/* Cue markers */}
+        {/* Waveform */}
+        <WaveformLayer peaks={peaks} height={80} />
+
         {cueMarkers.map((c) => {
           const left = duration > 0 ? (c.time / duration) * 100 : 0;
           return (
