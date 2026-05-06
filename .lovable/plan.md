@@ -1,74 +1,54 @@
-## Round 1 — Integrar módulos do SkyCanvas legado ao novo `/skycanvas`
+# Rodada 10 — UI Honesta + Discovery Inline
 
-Você subiu o `Index.tsx` legado (861 linhas, ~80 painéis lazy). Vou puxar **só os módulos do plane Show/Experience** (criação, edição, simulação, render). Tudo do plane Hardware/Safety (LiveFiring, DMXOutput, Bluetooth, NFC, Radio, MA3, SACN, Fleet, Geofence, MAVLink, FlightLog, Telemetry, FlightCheck) **fica fora** — esses já vivem em `/command`, `/field`, `/pairing/*`.
+## Diagnóstico
+Código já está limpo de telemetria sintética nas camadas críticas (deviceAggregator, FXK16, FireOne usam dados reais). Os pontos restantes de "informação enganosa" são puramente de chrome no `DashboardPanel.tsx`:
 
-### O que entra agora (Round 1 — núcleo de criação)
+- **`MOCK_NEWS = []`** — feed Instagram-style dead code (nunca renderiza nada útil) ocupando 200+ linhas (FeedCard, filtros, estado liked/saved).
+- **Hero "SYS::ONLINE"** — chip estático que mente: pisca verde mesmo sem hardware. `PROJ:`/`EVT:`/`T:` duplicam o que `OfficeKpiHero` já mostra honestamente acima.
+- **`MOCK_NEWS` import paths** — `feedFilter`, `CATEGORY_FILTERS`, `FeedCard`, `Heart/Bookmark/Share2/MessageCircle/TrendingUp/TrendingDown/Minus/Circle` lucides, todos dead.
+- **Sem empty state** quando 0 hardware: layout assume sempre que tem device, painéis Field Ops viram cliques sem destino.
 
-**Library (Left 280) — passa de 4 → 7 abas**
-- Catalog → `SupplierCatalogPanel`
-- Marketplace → `TemplateMarketplace`
-- Templates legado → `ShowTemplatesPanel` (substitui o stub atual)
+`OfficeKpiHero` já é a fonte canônica honesta (Shows real do Supabase, devices via `deviceAggregator`, missions via localStorage, mode via `workMode.subscribe`).
 
-**Inspector (Right 320) — passa de 5 → 11 abas**
-- Effect → `EffectEditor`
-- Chain → `ChainEditorPanel`
-- Light → `LightProgramPanel`
-- Laser → `LaserControlPanel`
-- Boids → `BoidsPanel`
-- Particle → `ParticleEditorPanel`
+## Mudanças
 
-**Timeline (180) — passa de 3 → 5 abas**
-- Waveform → `AudioWaveform` (já existe, alimentado pelo audio master clock)
-- Storyboard → `StoryboardPanel`
+### 1. Novo: `src/components/office/EmptyHardwareHint.tsx`
+Cartão de estado vazio que aparece quando `deviceAggregator.getDevices().filter(online).length === 0`:
+- Texto honesto: "Nenhum hardware detectado · conecte FXK16/FireOne/Art-Net/DMX-USB"
+- Botão **Iniciar Discovery** → chama `unifiedDiscovery.scanLight()` inline com spinner
+- Link **Pareamento** → `/pairing`
+- Subscribe ao `deviceAggregator.watch` — auto-some quando 1º device fica online
 
-### O que NÃO entra (decisão consciente, justificada)
+### 2. `src/components/office/DashboardPanel.tsx` — limpeza
+- **Remove** `MOCK_NEWS`, `NewsItem`, `CATEGORY_FILTERS`, `FeedCard`, `feedFilter`, `filteredNews`, `visibleNews` e a coluna central "feed" inteira do grid (~250 linhas dead).
+- **Remove** o bloco "telemetria readouts" (PROJ/EVT/T) duplicado — vive em `OfficeKpiHero`.
+- **Substitui** chip estático "SYS::ONLINE / FXK v2.0" por:
+  - Chip dinâmico que reflete `deviceAggregator` (verde "X DEVICES ONLINE" quando >0, cinza "OFFLINE" quando 0).
+- **Monta** `<EmptyHardwareHint />` logo após o hero, dentro do contêiner principal.
+- **Reduz grid** de `[1fr_420px_1fr]` para `[1fr_1fr]` (sem coluna central).
+- Imports lucide enxutos (remove Heart/Bookmark/Share2/MessageCircle/Trending*/Minus/Circle).
+- Corrige: rota `'/swarmgpt'` no `goToTool` agora aponta para `/ai-builder` (já redireciona, mas evita hop extra).
 
-| Painel | Motivo |
-|---|---|
-| `LiveFiringPanel`, `DMXOutputPanel`, `BluetoothPanel`, `NFCPairPanel`, `RadioControlPanel`, `MA3ControlPanel`, `SACNMonitorPanel`, `RemoteControlPanel`, `MAVLinkPanel` | Hardware live → `/command` + `/pairing` |
-| `SafetyPanel`, `FlightCheckTab`, `DiagnosticPanel`, `CollisionPanel`, `WeatherPanel`, `GeofencePanel` | Safety/preflight → `/command` |
-| `FleetManagementPanel`, `BatteryPanel`, `TelemetryDashboard`, `FlightLogPanel`, `MobileLinkMonitor` | Telemetria/frota → `/field` |
-| `ShowCommanderPanel`, `VirtualControllerHub`, `HardwareHubPanel`, `ShowvenEquipmentPanel` | Operação → `/command` |
-| `SwarmGPTPanel`, `SmartScriptAssistant`, `StudioPromptModal` | IA dedicada → `/ai-builder` (já no Master Menu) |
-| `MobileTabBar`, `MobileFloatingPanel`, `MobileHUD`, `MobileQuickActions`, `MobileWelcomeScreen`, `MobileConsoleFullscreen`, `LiveModeOverlay`, `UnifiedPanelMenu` | Mobile shell legado → substituídos por `MobilePanelSwitcher` v2 atual |
-| `CinematicIntro`, `SplashScreen` | Já desativados no legado |
-| `VenueShowOverlay`, `VenueQuickSelector` | Já cobertos por `LibraryGeoTab` |
-| `GoogleMapsPanel`, `IndoorSimPanel`, `SiteLayoutPanel`, `SiteModelsPanel`, `FieldMap2D` | Geo já coberto por `LibraryGeoTab` (consolidar depois, sem duplicar) |
-| `AROverlayPanel` | Adiado para Round 2 (overlay de viewport, não tab) |
-| `ScriptWindow`, `WaypointEditor`, `PositionWindow`, `EffectLibrary` (antigo), `Timeline` (antigo) | Já substituídos por equivalentes DS v1 (TimelineStripView, EffectLibrarySidebar usado em LibraryEffectsTab, etc.) |
-| `ReportsPanel`, `RackManager`, `AddressingPanel`, `InventoryPanel`, `LogisticsPanel`, `FiringExportPanel`, `LabelsPanel`, `VideoRecorderPanel`, `ModelImportPanel`, `ScriptingToolsPanel`, `AudienceAnalyzerPanel`, `PIDPanel`, `PositionGroupsPanel`, `SceneEditorPanel`, `SoundLevelPanel`, `ShowSharePanel`, `VersioningPanel`, `ClientApprovalPanel`, `TrajectoryOptimizerPanel`, `ManufacturerCalibrationPanel`, `TakeoffGridPanel`, `TransitionPlannerPanel`, `VideoChoreoPanel`, `GenerativeEffectsPanel`, `SetlistPanel`, `RiderPanel`, `BudgetPanel`, `ShowPreviewPanel`, `MobileLinkPanel`, `ShowSettingsPanel`, `ShowInspectorPanel`, `SynesthesiaPanel`, `QAStudioPanel`, `DMXPanel`, `SMPTEPanel` | **Round 2** (avalio individualmente — alguns são ferramentas grandes que merecem `/dev/*` ou rota própria; outros viram aba) |
+### 3. Tests
+- Adicionar `src/__tests__/dashboardPanel.honesty.spec.tsx` (smoke):
+  - garante zero `MOCK_NEWS` no DashboardPanel
+  - garante presença de `EmptyHardwareHint` import
+  - garante hero não contém string `'SYS::ONLINE'` literal estática
 
-### Implementação técnica
+## Arquivos
+- **Novo**: `src/components/office/EmptyHardwareHint.tsx` (~85 linhas)
+- **Editado**: `src/components/office/DashboardPanel.tsx` (~808 → ~520 linhas)
+- **Novo**: `src/__tests__/dashboardPanel.honesty.spec.tsx`
+- **Memória**: `mem://funcionalidades/dashboard-honesty-empty-state` + index update
 
-1. **10 wrappers `*Tab.tsx` novos** em `src/components/skycanvas/tabs/`:
-   - `LibraryCatalogTab.tsx`, `LibraryMarketplaceTab.tsx`, `LibraryTemplatesTab.tsx` (substitui o atual stub)
-   - `InspectorEffectTab.tsx`, `InspectorChainTab.tsx`, `InspectorLightTab.tsx`, `InspectorLaserTab.tsx`, `InspectorBoidsTab.tsx`, `InspectorParticleTab.tsx`
-   - `TimelineWaveformTab.tsx`, `TimelineStoryboardTab.tsx`
-   
-   Padrão: `<section role="region" aria-label tabIndex={-1}>` + lazy boundary externa via `TabbedDockPanel`. `onClose` passado como no-op (a aba não fecha).
+## Garantias
+- Zero impacto em CommandBus/FieldBus/SafetyStateMachine/workMode.
+- Zero mudança em rotas existentes.
+- `OfficeKpiHero` permanece autoridade dos KPIs honestos.
+- Golden shows, fxk16 emulator (gated por flag), workMode=simulation, smoke physics, weather particles — TODOS preservados (são prova/render legítimos, não UI enganosa).
+- Tests existentes (1238/1238) devem continuar verde + 1-3 novos.
 
-2. **`SkyCanvas.tsx`** — registra as novas abas em cada `TabbedDockPanel`. Mantém defaultValue atual.
-
-3. **`skyActions.ts`** — adiciona ações de Master Menu para abrir cada aba nova (Library/Marketplace/Inspector/Boids/Lasers etc.) com kbd opcional.
-
-4. **`skycanvas.safetyImports.guard.spec.ts`** — sem mudança; ele já cobre `src/components/skycanvas/**` recursivamente. Os wrappers passam porque importam só de `@/components/editor/*` (que não tem regex banido nos arquivos puxados — vou validar antes de finalizar).
-
-5. **Smoke test** — estendo `skycanvas.editorShell.smoke.spec.ts`: assert dos 10 novos wrappers existirem e serem referenciados em `SkyCanvas.tsx`.
-
-### O que FICA igual
-
-- Contrato Plane Show/Experience: zero CommandBus / FieldBus / SafetyStateMachine / workMode.
-- A11y já entregue (roving tabindex, aria-controls, tooltips kbd, skip-link, focus-on-toggle).
-- Persistência de layout cloud + localStorage.
-- Audio master clock + Show3D Engine sync.
-- `Index.tsx` legado **não** é deletado nesta rodada (rota `/editor/*` segue funcionando — DELETE entra na Rodada 2 do `ROUTE_AUDIT.md`).
-
-### Próximas rodadas (não nesta resposta)
-
-- **Round 2**: viewport overlays (AR Compass, BoxSelect, EdgeSnap, Alignment), 4º chip mobile "HUD", `SelectionStatusBar` na topbar, persistência da aba ativa por slot no cloud.
-- **Round 3**: triagem dos ~30 painéis "Round 2" listados acima — cada um vira aba, ferramenta `/dev/*` ou é descartado.
-- **Round 4**: deletar `Index.tsx` + redirect `/editor` → `/skycanvas`.
-
-### Aprovar?
-
-Posso executar o **Round 1** (10 wrappers + SkyCanvas wiring + skyActions + smoke test). Vai ficar tudo verde no mesmo loop. Confirma?
+## Fora de escopo
+- Não toca `fireoneModuleEmulator`/`indoorSimulation`/`grandMA3Node` (escopo "UI + emulators" foi rejeitado).
+- Não força `real_only_mode` (escopo agressivo rejeitado).
+- Não altera `simulationGuard` nem o trio de modos (design/simulation/real_operation continua intacto).
