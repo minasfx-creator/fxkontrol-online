@@ -14,6 +14,7 @@ import { Nfc, Activity, Smartphone, Cable, Flame } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { isFireOneXL43RealOpsEnabled, isFxk32qFieldOpsEnabled } from '@/lib/featureFlags';
 import { useActiveControllers } from '@/hooks/useActiveControllers';
+import { useFXK32QPresence } from '@/hooks/useFXK32QPresence';
 
 const DevicePairing = lazy(() => import('@/components/field/DevicePairingPanel'));
 const FieldTest = lazy(() => import('@/components/command/FieldTestPanel'));
@@ -37,8 +38,10 @@ export default function FieldOpsPage() {
   const controllers = useActiveControllers();
   const fireoneOnline = controllers.controllers.some(c => c.profile.kind === 'fireone');
   const fireoneVisible = isFireOneXL43RealOpsEnabled() || fireoneOnline;
-  const fxk32qOnline = controllers.controllers.some(c => c.profile.kind === 'fxk32q');
-  const fxk32qVisible = isFxk32qFieldOpsEnabled() || fxk32qOnline;
+  // FXK32Q presence: aggregator + adapter handshake + verified provenance.
+  // Bench/preflight override stays via the localStorage flag.
+  const fxk32qPresence = useFXK32QPresence();
+  const fxk32qVisible = isFxk32qFieldOpsEnabled() || fxk32qPresence.deviceOnline;
   const TABS = ALL_TABS.filter(t =>
        (t.key !== 'fireone' || fireoneVisible)
     && (t.key !== 'fxk32q'  || fxk32qVisible)
