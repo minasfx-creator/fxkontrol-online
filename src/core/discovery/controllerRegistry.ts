@@ -148,7 +148,7 @@ export function clearClassification(deviceId?: string): void {
 /** Resolve a `PhysicalDevice` to its controller profile. */
 export function resolveControllerProfile(dev: PhysicalDevice): ControllerProfile {
   // 1) Operator/probe override always wins.
-  const cached = _cache[dev.id];
+  const cached = _cache[dev.aggregateId];
   if (cached) return PROFILES[cached];
 
   // mDNS Art-Net nodes always map to Art-Net regardless of family text.
