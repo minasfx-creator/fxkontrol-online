@@ -18,6 +18,7 @@ import { fxk16ModuleAdapter } from './adapters/FXK16ModuleAdapter';
 import { batteryMonitorAdapter } from './adapters/BatteryMonitorAdapter';
 import { artNetNodeAdapter } from './adapters/ArtNetNodeAdapter';
 import { fireOneProfileAdapter } from './adapters/FireOneProfileAdapter';
+import { fireOneXL4Adapter } from './adapters/FireOneXL4Adapter';
 import { dmxUniverseAdapter } from './adapters/DMXUniverseAdapter';
 
 class UnifiedHardwareRegistry {
@@ -36,6 +37,7 @@ class UnifiedHardwareRegistry {
     this.registerAdapter(batteryMonitorAdapter);
     this.registerAdapter(artNetNodeAdapter);
     this.registerAdapter(fireOneProfileAdapter);
+    this.registerAdapter(fireOneXL4Adapter);
     this.registerAdapter(dmxUniverseAdapter);
 
     // Wire the real-only gate so it can resolve provenance for events.
