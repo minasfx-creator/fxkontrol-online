@@ -221,3 +221,20 @@ export function isFireOneXL43RealOpsEnabled(): boolean {
   }
   return false;
 }
+
+/**
+ * FXK32Q (32ch ESP32-S3 + 2×16-relay) field-ops tab gate. Default OFF.
+ * localStorage 'fxk.flag.fxk32q_fieldops' = '1' → reveals tab even when
+ * no controller is online (bench preflight). When the adapter is promoted
+ * to LIVE-RO via discoveryRegistryBridge, the tab auto-shows regardless.
+ */
+export function isFxk32qFieldOpsEnabled(): boolean {
+  if (typeof window !== 'undefined') {
+    try {
+      const v = window.localStorage.getItem('fxk.flag.fxk32q_fieldops');
+      if (v === '1' || v === 'true') return true;
+      if (v === '0' || v === 'false') return false;
+    } catch { /* fall through */ }
+  }
+  return false;
+}
