@@ -62,7 +62,7 @@ export function SuccessStep({ entry, onPairAnother }: Props) {
       </div>
 
       <div className="space-y-2">
-        <Button onClick={() => navigate('/studio')} className="w-full min-h-[56px] gap-2">
+        <Button onClick={() => navigate('/skycanvas')} className="w-full min-h-[56px] gap-2">
           Abrir Studio
           <ArrowRight className="w-4 h-4" />
         </Button>

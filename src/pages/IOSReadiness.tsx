@@ -337,7 +337,7 @@ export default function IOSReadiness() {
 
         {/* Voltar */}
         <div className="flex flex-wrap gap-3 pt-6 border-t border-border/20">
-          <Link to="/studio" className="text-ds-caption text-muted-foreground hover:text-foreground inline-flex items-center gap-1">
+          <Link to="/skycanvas" className="text-ds-caption text-muted-foreground hover:text-foreground inline-flex items-center gap-1">
             ← Voltar ao Studio
           </Link>
           <Link to="/comercial" className="text-ds-caption text-muted-foreground hover:text-foreground inline-flex items-center gap-1 ml-auto">
