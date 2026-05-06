@@ -104,6 +104,8 @@ const PROFILES: Record<ControllerKind, ControllerProfile> = {
 
 /** Family-string → ControllerKind. Match by lower-cased substring. */
 const FAMILY_RULES: Array<{ test: RegExp; kind: ControllerKind }> = [
+  // FXK32Q first — more specific than the generic FXK16 rule below.
+  { test: /fxk[\s-]*32q?|ifmx[\s-]*i?32q/i, kind: 'fxk32q' },
   { test: /fxk[\s-]*16|fxkpyro/i,           kind: 'fxk16' },
   { test: /arduino|fxk[\s-]*nano|nano[\s-]*relay/i, kind: 'fxk16' },
   // FireOne family: cable (XLII+), radio (TNC USB-RF dock), legacy
