@@ -52,7 +52,7 @@ function normalizeRow(raw: Record<string, unknown>, headerMap: Record<string, st
   }
   if (!out.partNumber) return null;
   out.partNumber = String(out.partNumber).trim();
-  return out as FinalePart;
+  return out as unknown as FinalePart;
 }
 
 function buildHeaderMap(headers: string[]): { map: Record<string, string>; isWinda: boolean } {
@@ -123,7 +123,7 @@ export function parseFinalePartsJson(text: string, opts: ImportOptions = {}): Im
   const warnings: string[] = [];
   const parts: FinalePart[] = [];
   const seen = new Set<string>();
-  for (const raw of data.parts as Record<string, unknown>[]) {
+  for (const raw of data.parts as unknown as Record<string, unknown>[]) {
     const map: Record<string, string> = {};
     for (const k of Object.keys(raw)) if (CANON.has(k)) map[k] = k;
     const part = normalizeRow(raw, map);
