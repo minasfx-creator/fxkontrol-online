@@ -6,10 +6,14 @@
  *  - Defaults MovieRenderPipeline (WBP_RenderSettings)
  *
  * Toggle de FixturesLayer + visualização ao vivo no SkyCanvas 2.0.
+ * Round 7: usa o `SkyCanvasMount` canônico (engine='v2') em vez de mount
+ * direto — compartilha o chunk lazy com o resto da plataforma e ganha
+ * boundaries de erro/loader uniformes.
+ *
  * Presentation only — não toca safety/hardware.
  */
-import { useState } from 'react';
-import { SkyCanvas2 } from '@/components/show3d/v2';
+import { useMemo, useState } from 'react';
+import SkyCanvasMount from '@/components/editor/SkyCanvasMount';
 import { getMvrSummary, getNiagaraPresets, getRenderSettings } from '@/lib/ue5Bridge';
 
 export default function UE5BridgePage() {
@@ -18,9 +22,18 @@ export default function UE5BridgePage() {
   const presets = getNiagaraPresets();
   const render = getRenderSettings();
 
+  // Memoized so SkyCanvasMount (memo'd) only re-mounts when the toggle changes.
+  const v2Props = useMemo(() => ({ showFixtures }), [showFixtures]);
+
   return (
     <div className="relative w-screen h-screen bg-[#050810] text-white">
-      <SkyCanvas2 showFixtures={showFixtures} />
+      <SkyCanvasMount
+        instanceKey="ue5-bridge"
+        engine="v2"
+        area="UE5 bridge viewport"
+        loaderLabel="Loading UE5 bridge…"
+        v2Props={v2Props}
+      />
 
       <div className="absolute top-3 left-3 z-10 max-w-md p-3 rounded-md bg-black/70 backdrop-blur border border-cyan-500/30 text-xs font-mono space-y-3 max-h-[90vh] overflow-y-auto">
         <div>
