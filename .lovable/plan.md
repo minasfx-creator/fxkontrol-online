@@ -1,111 +1,98 @@
-# FXK32Q — Réplica Melhorada do IFMx-i32Q
+# Implantação 100% — Roadmap, Limpeza & Reorganização
 
-Réplica do módulo **FireOne IFMx-i32Q** (32 canais DMX→pyro) usando **ESP32-S3 + 2× placas de relé 16ch**, com **integração real** a todo o stack FireOne já existente no app (XLII+ RS-485, Art-Net/DMX, USB-CDC, BLE, Wi-Fi Direct).
+Você pediu "tudo em sequência", "deletar páginas antigas" e "todo hardware no roadmap". Vou executar em **3 rodadas separadas**, com você aprovando entre elas. Esta aprovação cobre só a **Rodada 1**; rodadas 2 e 3 voltam pra revisão.
 
-## 1. Hardware-alvo
+Sobre "criar nova pasta atualizada do projeto": **não vou duplicar o repositório** (quebra git, CI, Lovable Cloud, memórias e 1000+ tests). O que faz sentido é reorganizar `src/` in-place — feito na Rodada 3.
 
-```text
-ESP32-S3 DevKitC-1 (v1.3, 8MB)
- ├── Relay Bank A (IN1..IN16)  → GPIOs canônicos (mesmo mapa do FXK16)
- ├── Relay Bank B (IN17..IN32) → GPIOs estendidos (38,39,40,41,42, 47, 1,2)
- ├── RS-485 transceiver (MAX485) UART1: GPIO 43 TX / 44 RX / DE+RE comum
- ├── LED status RGB (GPIO 48)
- ├── E-STOP físico (GPIO 14, INPUT_PULLUP)
- ├── Jumper UNSAFE_GPIO (GPIO 21)
- └── Sensor de continuidade ADC (GPIO 6 via mux) — opcional
-```
+---
 
-Activos-baixos (JQC-3FF). Boot-safe: todos os 32 pinos vão `OUTPUT`+`HIGH` antes de qualquer transporte subir.
+## Rodada 1 — Roadmap mestre + auditoria (esta entrega)
 
-## 2. Firmware novo: `firmware/fxk32q-esp32s3/`
+### 1.1 `docs/ROADMAP_MASTER.md`
+Documento único cruzando estado real (do código + memórias) com pendências até produção. Estrutura:
 
-Estrutura espelha `fxk16-esp32s3/` com:
+- **Status atual** por subsistema, com checklist verificável (arquivo/teste que prova):
+  - Safety core (uiCommandGateway, SSM, GlobalEStop, BlackBox, P0 hardening) — ✅
+  - WorkMode 3-mode + Phase 1/2 gates — ✅
+  - FXK16 firmware + bridge + commandApi + sync — ✅
+  - FXK32Q firmware v1.1 + adapter + bridge + diagnose CLI — ✅
+  - Discovery multi-transport + portRegistry + auto-fallback — ✅
+- **Hardware roadmap completo** (todo o projeto, conforme você escolheu):
+  | Família | Firmware | Adapter | Discovery | Bridge UI | Field-tested |
+  |---|---|---|---|---|---|
+  | FXK16 | ✅ | ✅ | ✅ | ✅ | parcial |
+  | FXK32Q ESP32 | ✅ v1.1 | ✅ | ✅ | ✅ | ❌ |
+  | FXK XL4 Gateway | rascunho .ino | ❌ | ❌ | ❌ | ❌ |
+  | FXK M1 | rascunho .ino | ❌ | ❌ | ❌ | ❌ |
+  | Showven Sonicboom/SPARKULAR/PyroAdaptor | mem ref | parcial | ✅ ArtPoll | parcial | ❌ |
+  | FireOne FXK-PYRO 2.0 | ext | ✅ | ✅ | ✅ | parcial |
+  | FX Commander Pro (PBUS) | ext | parcial | parcial | parcial | ❌ |
+  | CubeMesh RE168 | ext | parcial | parcial | parcial | ❌ |
+  | Tuya outlets (BLE/Wi-Fi) | ext | ✅ | ✅ | ✅ | ❌ (banido p/ pyro) |
+  | Skybrush drones | ext | export ✅ | n/a | parcial | ❌ |
+  | Maiman lasers 16/39CH | mem ref | ❌ | parcial DMX | ❌ | ❌ |
+  | DMX/Art-Net/sACN nexus | n/a | ✅ | ✅ | ✅ | parcial |
+  | Radio CC1101/SX127x | ext | rascunho | ❌ | ❌ | ❌ |
 
-- `src/fxk32q_config.h` — `#define FXK32Q_CHANNELS 32`, limites duros (`FIRE_MAX_DURATION_MS=5000`, `WATCHDOG_TIMEOUT_S=2`).
-- `src/fxk32q_pinmap.h` — Tabela `CHANNEL_MAP[32]` com `static_assert` de unicidade de GPIO (padrão herdado do FXK16).
-- `src/fxk32q_relay.{h,cpp}` — `arm/disarm/fire(pin,ms)/batch(mask32,ms)/eStopLatch/reset`. Timer FreeRTOS por canal força open após `ms` mesmo se host travar.
-- `src/fxk32q_protocol.{h,cpp}` — Parser ASCII (compat 1:1 com `FireOneHardwareBridge`) **+** modo binário `FireOnePbus` para Art-Net pass-through.
-- `src/fxk32q_artnet.{h,cpp}` — Listener UDP 6454 (Art-Net) e sACN E1.31 (5568); mapeia universos configuráveis → canais 1..32; thresholds DMX>=128 disparam pulso configurado.
-- `src/fxk32q_rs485.{h,cpp}` — Slave do protocolo FireOne XLII+ (`fireoneProtocol.ts`): responde a `ARM/DISARM/FIRE/CONT/STATUS/HEARTBEAT/ESTOP/IDENTIFY` no endereço configurado (1..40). Frame `[STX][ADDR][CMD][PAYLOAD][CKSUM][ETX]` 9600 8N1.
-- `src/fxk32q_ble.cpp` — NimBLE service `0000ffe0` TX `ffe1` RX `ffe2` (mesmo do FXK16).
-- `src/fxk32q_wifi.cpp` — STA/AP, OTA, WebSocket relay (`/fireone-bridge`) compatível com `fireoneWifiDirectTransport.ts`.
-- `src/main.ino` — Boot-safe init, watchdog, loop multiplexa: Serial USB-CDC, BLE, Wi-Fi WS, Art-Net UDP, RS-485.
-- `docs/PINMAP.md`, `docs/ARTNET_MAP.md`, `README.md`.
+- **Fases até 100%**:
+  - **Fase 0** Readiness audit (✅ pronto, /dev/readiness-audit)
+  - **Fase 1** Golden show simulado completo (✅ Libertadores+Maracanã)
+  - **Fase 2** Hardware-sync simulado (✅ gate pronto)
+  - **Fase 3** Bench-test físico FXK16+FXK32Q (pendente — checklist no doc)
+  - **Fase 4** Integração XL4 Gateway + M1 (pendente — firmware p/ produção, adapter, discovery, bridge)
+  - **Fase 5** Field-test full stack com FireOne + Showven em sítio fechado (pendente)
+  - **Fase 6** Show real autorizado (pendente — depende de Fase 5 verde + oath produção)
 
-### Comandos ASCII suportados
+- **Critério "100%"**: tabela hardware toda ✅ + Fases 0-6 verdes + 0 testes vermelhos + safety blackbox íntegra.
 
-Mesmos do FXK16 + estendidos:
-| Comando | Resposta |
-|---|---|
-| `VERSION` | `VER:FXK32Q-1.0.0` |
-| `STATUS` | `BAT:<v>;PINS:<mask32>;RSSI:<dbm>;MODEL:FXK32Q;CH:32;ART:<u>` |
-| `FIRE:<1..32>:<ms>` | `OK:FIRE:<n>` / `ERR:FIRE:<n>:<reason>` |
-| `BATCH:<mask32>:<ms>` | `OK:BATCH:<mask32>` |
-| `CONT:<1..32>` | `CONT:<n>:<ohms>` |
-| `SET_ARTNET:<universe>:<startCh>` | `OK:ART:<u>:<s>` |
-| `SET_RS485:<addr1..40>` | `OK:RS485:<addr>` |
-| `ESTOP` / `RESET` | `OK:ESTOP` (latch) / `OK:RESET` |
+### 1.2 `docs/ROUTE_AUDIT.md`
+Auditoria das 43 páginas em `src/pages/` × 49 rotas em `App.tsx`. Para cada página: rota(s) ativa(s), referências externas, recomendação (KEEP / MERGE / **DELETE**). Achados preliminares já confirmados:
 
-## 3. Integração host (TypeScript)
+- **Órfãs (zero referência fora do próprio arquivo):** `AIChoreography.tsx`, `AccreditationDashboard.tsx`, `SwarmGPT.tsx` → DELETE
+- **Só referenciadas em `prefetchRoutes.ts`** (sem rota viva): `Admin.tsx`, `Agenda.tsx`, `Training.tsx` → DELETE + limpar prefetch
+- **Substituídas por `Office` tabs** (rotas viraram `Navigate`): `Dashboard.tsx` → DELETE
+- **Substituídas por wizards específicos**: `DevicePairing.tsx`, `FieldTest.tsx`, `FXK16ValidatePage.tsx`, `FXK16CalibrationPage.tsx` → MERGE em `/dev/fxk16` + DELETE
+- **Manter:** Auth, NotFound, Office, Index, CommandCenter, Strategy, TrainingCenter, FieldOps, Settings, NetworkSettings, PlatformStatus, AIBuilder, IOSReadiness, Install, Pairing wizards (USB/BLE/genérico), RealDiscoveryProbe, Pricing, Landing, Manifesto, Comercial, PitchUS, Unsubscribe, CheckoutSuccess, VideoEditor, Create+3 subs, legal/3, dev/12.
 
-### 3.1 Identificação automática
-- `src/lib/fxk16BleHandshake.ts` e `unifiedDiscovery` já fazem handshake `VERSION/STATUS`. Adicionar reconhecimento `MODEL:FXK32Q` → registra adapter como `FXK32Q — 32ch (ESP32-S3 IFMx-replica)`.
-- Bridge promove para `live_read_only` no **mesmo único handshake** (regra Discovery→Registry Bridge).
+Total proposto p/ Rodada 2: **~10 páginas deletadas**, ~6 redirects/imports limpos.
 
-### 3.2 Novo arquivo `src/lib/fxk32q/`
-- `commandApi.ts` — Tipado, com `CommandResponse` discriminada (segue padrão `fxk16/commandApi.ts`): `arm/disarm/fire/batch/continuity/status/setArtnet/setRs485Addr/eStop/reset`. ARM gate client-side; auto-disarm em link loss.
-- `pinmap.ts` — Espelho TypeScript do `CHANNEL_MAP` para o Module Roster.
-- `syncStore.ts` — Ring buffer de eventos, similar ao `fxk16/syncStore.ts`.
+### 1.3 Atualização do diagrama
+Atualizar `FXK_System_Status_Report.mmd` e `FXKontrol_Module_Dependencies.mmd` (em `/mnt/documents/`) refletindo o estado pós-roadmap.
 
-### 3.3 Wiring nos transportes existentes
-- **USB-CDC + BLE** → `useFXK32QBridge` (clone do `useFXK16Bridge`, mas 32 canais; máscara 32-bit em `BATCH`).
-- **RS-485 (cabo XLII+)** → registrar via `registerCableLink` em `realTransports.ts`. O firmware responde como módulo XLII+ no endereço configurado, então **nenhuma mudança de protocolo no host** é necessária — o `fireoneProtocol.ts` já fala com ele.
-- **Wi-Fi Direct** → `fireoneWifiDirectTransport.ts` aponta para o WS do firmware.
-- **Art-Net** → `ArtNetBridge.sendDmx(universe, bytes)` já chega ao firmware (universo configurável via `SET_ARTNET`). Pass-through: o módulo vira saída pyro DMX equivalente ao IFMx-i32Q real.
+---
 
-### 3.4 UI
-- **FXK32QPanel** em `src/components/hardware/` (clone enxuto do `FXK16ConnectionPanel`): conexão USB/BLE, seletor de transporte preferido (cabo XLII+/Art-Net/Wi-Fi/BLE), indicador per-link, batch test 1..32 com Hold-to-Confirm 800ms.
-- **FXK32QStatusBar** + **ActivityFeed** (espelho dos componentes FXK16) montados em FieldOps, FieldTest harness e Live Firing.
-- Adicionar entrada no **Module Roster** (`/dev/module-roster`) com chip `IFMx-REPLICA · 32CH`.
+## Rodada 2 — Limpeza de rotas e páginas (após você aprovar Rodada 1)
 
-### 3.5 Safety (sem alteração de SSM)
-- `pyroTransportPolicy.PYRO_FIRE_PRIORITY = ['serial','usb','artnet']`; BLE banido em `real_operation` (regra existente).
-- Todo dispatch passa por `uiCommandGateway.fire()` → CommandBus → SSM → `evaluatePyroDispatchVerdict` → `safetyBlackBox`.
-- E-STOP global cobre o módulo via broadcast nos 4 transportes simultaneamente (FieldBus já faz fan-out).
+- Deletar fisicamente as ~10 páginas marcadas DELETE.
+- Remover imports lazy correspondentes em `src/App.tsx`.
+- Limpar `src/lib/prefetchRoutes.ts`.
+- Adicionar redirects 301-style (`<Navigate replace>`) pras URLs antigas que possam estar em emails/bookmarks (ex.: `/dashboard` → `/office`, `/swarmgpt` já existe).
+- Rodar suite de testes; corrigir quebras.
+- Atualizar `docs/ROADMAP_MASTER.md` marcando "Limpeza ✅".
 
-## 4. Testes
+## Rodada 3 — Reorganização física (após você aprovar Rodada 2)
 
-- `firmware/fxk32q-esp32s3/test/` — emulator ASCII (espelho do `fxk16AsciiEmulator.test.ts`) cobrindo `FIRE/BATCH/CONT/SET_ARTNET/SET_RS485/ESTOP latch/RESET`.
-- `src/lib/fxk32q/__tests__/commandApi.spec.ts` — ARM gate, máscara 32-bit, auto-disarm on link loss.
-- `src/lib/__tests__/fxk32qDiscovery.spec.ts` — handshake `MODEL:FXK32Q` → adapter promovido.
-- `src/lib/__tests__/fxk32qRs485Slave.spec.ts` — fala `fireoneProtocol` com o emulator e valida ACK/NAK em ARM/FIRE/CONT.
-- `src/lib/__tests__/fxk32qArtnetMap.spec.ts` — universo+startCh → canal correto, threshold 128.
+In-place, sem nova pasta-projeto:
+- `src/pages/` → agrupar por domínio: `pages/operacional/`, `pages/comercial/`, `pages/dev/`, `pages/legal/`, `pages/onboarding/`.
+- Mover restos de `src/components/editor/` para `src/features/<bucket>/` (continuar F5.B já na memória).
+- Atualizar todos os imports via codemod (`rg`+`sed` controlado).
+- Validar com testes + typecheck antes de commitar.
 
-## 5. Documentação
+---
 
-- `firmware/fxk32q-esp32s3/README.md` — pinout, gravação, protocolo, IFMx-i32Q parity matrix.
-- `docs/hardware/FXK32Q_VS_IFMX_I32Q.md` — diferenças e melhorias (4 transportes simultâneos vs DMX único; per-channel timer FreeRTOS; ESTOP <50ms latch; OTA; custo).
-- Atualizar `docs/architecture/entry-points.md` com a entrada FXK32Q.
+## Detalhes técnicos (Rodada 1)
 
-## 6. Arquivos
+- **Sem mudanças em código de runtime** — só docs (`docs/ROADMAP_MASTER.md`, `docs/ROUTE_AUDIT.md`) e diagramas em `/mnt/documents/`.
+- **Sem mudanças de rota, safety, workMode, CommandBus, FieldBus**.
+- **Sem migrations Supabase**.
+- **Memória nova:** `mem://implantacao/roadmap-master-v1` referenciando o doc, e atualização do índice.
 
-**Novos**
-- `firmware/fxk32q-esp32s3/{platformio.ini, README.md, docs/PINMAP.md, docs/ARTNET_MAP.md, src/*}`
-- `src/lib/fxk32q/{commandApi.ts, pinmap.ts, syncStore.ts}`
-- `src/hooks/useFXK32QBridge.ts`, `src/hooks/useFXK32QSync.ts`, `src/hooks/useFXK32QCommands.ts`
-- `src/components/hardware/FXK32QConnectionPanel.tsx`, `FXK32QStatusBar.tsx`, `FXK32QActivityFeed.tsx`
-- Suítes de teste listadas na §4
-- `docs/hardware/FXK32Q_VS_IFMX_I32Q.md`
+---
 
-**Editados**
-- `src/lib/discovery/...` — reconhecer `MODEL:FXK32Q`
-- `src/pages/dev/ModuleRoster.tsx` — exibir famílias FXK32Q
-- `src/pages/FieldOps.tsx` / `src/pages/dev/FXK16Hub.tsx` — montar FXK32QStatusBar
-- `docs/architecture/entry-points.md`
+## O que fica fora desta rodada (intencionalmente)
 
-## 7. Restrições respeitadas
+- Implementação de adapter/discovery pros hardwares ainda em rascunho (XL4 Gateway, M1, Maiman, Radio) — entram na Fase 4 do roadmap, não nesta rodada.
+- Field-tests reais — exigem hardware físico + autorização Phase 2 fresca.
+- Mover arquivos físicos — Rodada 3.
 
-- **Zero alteração** em `safetyStateMachine`, `commandBus`, `uiCommandGateway`, `workMode`.
-- **Honest Hardware**: sem ACKs sintéticos; `isAlive()` reflete handshake real.
-- **Vantablack/cyan-dessat** mantidos; sem emojis nos componentes.
-- Adapters honestos (default `disconnected/unknown`); simulação só sob `dev_hardware_simulator`.
+Aprovar pra eu começar pela Rodada 1?
