@@ -16,6 +16,12 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 
+export interface EditorActiveTabs {
+  left?: string;
+  right?: string;
+  timeline?: string;
+}
+
 export interface EditorLayoutState {
   leftWidth: number;
   rightWidth: number;
@@ -23,6 +29,8 @@ export interface EditorLayoutState {
   leftCollapsed: boolean;
   rightCollapsed: boolean;
   timelineCollapsed: boolean;
+  /** Optional active tab id per dock slot (Round 2 — persisted). */
+  activeTabs?: EditorActiveTabs;
 }
 
 export const EDITOR_LAYOUT_DEFAULTS: EditorLayoutState = {
@@ -32,6 +40,7 @@ export const EDITOR_LAYOUT_DEFAULTS: EditorLayoutState = {
   leftCollapsed: false,
   rightCollapsed: false,
   timelineCollapsed: false,
+  activeTabs: {},
 };
 
 export const EDITOR_LAYOUT_LIMITS = {
