@@ -45,7 +45,13 @@ const PROFILES: Record<ControllerKind, ControllerProfile> = {
     kind: 'fxk16',
     label: 'FXK16 Pyro Controller',
     capabilities: { arm: true, fire: true, eStop: true, safetyCritical: true },
-    consoleRoute: '/studio?panel=pyro-fireone',
+    consoleRoute: '/field#fxk16',
+  },
+  fxk32q: {
+    kind: 'fxk32q',
+    label: 'FXK32Q 32ch Pyro Controller',
+    capabilities: { arm: true, fire: true, eStop: true, safetyCritical: true },
+    consoleRoute: '/field#fxk32q',
   },
   fireone: {
     kind: 'fireone',
