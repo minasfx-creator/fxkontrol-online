@@ -63,6 +63,10 @@ function normColor(value: number | undefined): number {
   return clamp255(Number(value));
 }
 
+// VDL pipeline lives on the main module graph — Vite bundles it into the
+// worker. Falling back to raw rgbToHex on failure keeps the worker honest.
+import { quantizeRgbToVdl } from '@/lib/vdlColorPipeline';
+
 function extractColor(payloads: VVIZPayload[]): string {
   let bestR = 0, bestG = 0, bestB = 0, bestWeight = 0;
   for (const p of payloads) {
@@ -80,7 +84,14 @@ function extractColor(payloads: VVIZPayload[]): string {
       if (weight > bestWeight) { bestWeight = weight; bestR = r; bestG = g; bestB = b; }
     }
   }
-  return bestWeight > 0 ? rgbToHex(bestR, bestG, bestB) : '#00B4D8';
+  if (bestWeight <= 0) return '#00B4D8';
+  // Quantize to VDL palette + tint by input luminance so the rendered LED
+  // matches what the real fixture would emit on a Finale 3D VDL command.
+  try {
+    return quantizeRgbToVdl(bestR, bestG, bestB).renderHex;
+  } catch {
+    return rgbToHex(bestR, bestG, bestB);
+  }
 }
 
 // ── Simplification config ──────────────────────────────────────────
