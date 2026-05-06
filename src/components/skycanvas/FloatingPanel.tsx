@@ -142,6 +142,11 @@ function FloatingPanelImpl({ id, title, state, bottomStrip, className, children 
     );
   }
 
+  // Expanded panel ----------------------------------------------------
+  const style: React.CSSProperties = bottomStrip
+    ? { left: 16, right: 16, bottom: 16, height: state.h }
+    : { left: state.x, top: state.y, width: state.w, height: state.h };
+
   // Snap-target ghost preview (rendered as sibling overlay during drag)
   const ghost = dragging && snapHint ? (() => {
     const vw = typeof window !== 'undefined' ? window.innerWidth : 0;
