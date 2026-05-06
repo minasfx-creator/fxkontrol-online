@@ -1,83 +1,78 @@
-# Rodada 13 — Cockpit Mission Control: SafetyBar + Readiness Unificada
+## Rodada 14 — Continuity Matrix 4×8 + Field Diagnostics
 
-## Estado real (auditado agora)
+Objetivo: substituir o `ContinuityMatrix` atual (32 chips genéricos sem ligação real ao hardware) por uma **matriz 4×8 honesta** acoplada ao FXK16 + MuxReader, com painel **Field Diagnostics** ao lado da `GlobalSafetyBar` mostrando heartbeat por módulo, RSSI/BAT/firmware e provenance — sem violar nenhum interlock.
 
-Três itens do "Próxima ação certa" do relatório **já estão implementados** no repo:
+### Estado atual (auditado)
 
-- **ProvenanceBadge** canônico — `src/components/safety/ProvenanceBadge.tsx` (Rodada 12) com 4 labels honestos (SIMULATED/REPLAY/LIVE READ-ONLY/NOT INTEGRATED) sobre tokens `ds-status-*`.
-- **ShowPlan SSoT** — `ShowPlanManager.fromProjectStore()` é invocado por `useShowPlanSync()` automaticamente, montado em `src/orchestration/EngineProvider.tsx`. Toda mutação do `useProjectStore` propaga ao ShowPlan canônico.
-- **BlackBox forensic** — `/dev/blackbox-inspector` com chain verify + 100 entries + record note (Rodada 12).
+- `src/components/editor/ContinuityMatrix.tsx` — grid 8×4 chato, lê só `continuityCheckService.getAllPins()`. Sem polling, sem provenance, sem origem de leitura visível, sem dock por módulo.
+- `src/core/safety/ContinuityCheckService.ts` — kernel já existe (TOTAL_PINS=32, classify, isPassingForArm). Aceita `ContinuityReader` opcional, mas **nenhum reader real é injetado** hoje.
+- `src/core/hardware/adapters/MuxReaderAdapterCD4051.ts` — adapter read-only honesto (16 ch dual-MUX) com provenance, getAllChannels, pollTelemetry. Não está conectado ao service.
+- `src/hooks/useSystemReadiness.ts` + `GlobalSafetyBar` — Rodada 13. Já agregam `deviceAggregator` por provenance.
+- `src/components/safety/ProvenanceBadge.tsx` — Rodada 12. Reusável.
 
-O que **falta** para virar cockpit C2 de verdade:
+Conclusão: temos as peças, falta **costurá-las** numa superfície de campo coerente.
 
-1. Estado de prontidão derivado, **único e consumível por toda UI**.
-2. **GlobalSafetyBar** sempre visível no topo do `MainLayout` agregando E-STOP, work mode, readiness, safety state, provenance dominante.
-3. **"Ready" hardcoded** removido de surfaces que mentem (Index/dashboard/headers que mostram OK sem checar `readinessEvaluator`).
+### Entregáveis
 
-## O que será construído
+**1. ContinuityReader real — `MuxContinuityReader`** *(novo)*
+`src/core/safety/MuxContinuityReader.ts`
+- Implementa `ContinuityReader` lendo `MuxReaderAdapterCD4051.getAllChannels()` (mapeia `resistance_ohms`).
+- Para canais 16–31, fallback honesto: `Infinity` (sem reader → UNKNOWN).
+- Função `resolveContinuityReader()` que tenta MuxReader real do `deviceAggregator`; se ausente → `null` (service cai em UNKNOWN, nunca inventa).
 
-### A. `useSystemReadiness()` — hook canônico
-`src/hooks/useSystemReadiness.ts`. Pure read agregando, em poll de 1s + subscribe quando disponível:
-- `readinessEvaluator.evaluate()` → status + canExport + blockingReasons.
-- `safetyStateMachine.state` → IDLE/LOCKED/ARMED/FIRING/FAULT/E_STOPPED.
-- `useWorkMode()` → design / simulation / real_operation.
-- `verificationEngine.lastResult()` → erros bloqueantes.
-- `deviceAggregator.getDevices()` → contagem online + provenance dominante (live_read_only > replay > simulated > not_integrated).
+**2. ContinuityMatrix v2 — 4×8 honesto** *(refatora)*
+`src/components/editor/ContinuityMatrix.tsx`
+- Layout 4 linhas × 8 colunas com **rótulo de origem por linha** (FXK16 #1/#2/#3/#4 ou "—") via `controllerRegistry`.
+- Cada célula mostra: `CH##`, status (OK/OPEN/SHORT/UNKNOWN com tokens `ds-status-*`), Ω.
+- Header passa a usar `<ProvenanceBadge>` derivado do MuxReader (`live_read_only` / `simulated` / `not_integrated`).
+- Botão `RUN CHECK` injeta `MuxContinuityReader` quando disponível; quando não, dispara check honesto que retorna 32× UNKNOWN com tooltip "no hardware reader".
+- Subscribe leve via `setInterval` 1s só enquanto montado (limpo em unmount, padrão `useInterval`).
+- Banner inferior: "ARM READY" só quando `isPassingForArm()` E provenance ≠ `simulated` (em real_operation). Em design/simulation: badge "SIM · ADVISORY".
 
-Retorna `SystemReadiness` com 6 estados visuais oficiais (`EMPTY/INVALID/BLOCKED/READY/ARMED/FIRING/FAULT/E_STOPPED`) + `dominantProvenance` + `blockingReasons[]`. **Nunca chama** `uiCommandGateway`/`fieldBus`. Cleanup garantido (clearInterval no unmount).
+**3. FieldDiagnosticsDock** *(novo)*
+`src/components/safety/FieldDiagnosticsDock.tsx`
+- Painel sticky abaixo da `GlobalSafetyBar` (toggle via chevron, default colapsado).
+- Lista um row por **PhysicalDevice** ativo do `deviceAggregator`: kind, label, transports[] com OK/Timeout/last-latency, RSSI (se BLE), BAT (se BatteryMonitor), FW (se conhecido), heartbeat age ("3s ago"), `<ProvenanceBadge>`.
+- 100% read-only. Zero botão de comando. Zero chamada a `uiCommandGateway`/`fieldBus`/`safetyStateMachine.transition()`.
+- Mount em `MainLayout` ao lado da SafetyBar; mesmas exclusões de path (`/command`, `/pairing/*`).
 
-### B. `<GlobalSafetyBar>` — topo soberano
-`src/components/safety/GlobalSafetyBar.tsx`. Faixa fixa 36px topo (acima do conteúdo, abaixo do `GlobalEStopButton` z-[9999]) com chips:
+**4. Hook canônico — `useContinuityMatrix()`** *(novo)*
+`src/hooks/useContinuityMatrix.ts`
+- Encapsula `getAllPins()`, `getReport()`, `isPassingForArm()`, polling 1s, e expõe `provenance` derivada do MuxReader.
+- Retorna `{ pins, report, provenance, runCheck, checking }`.
+- Único consumidor inicial: ContinuityMatrix. Pronto para reuso em Field Test e Live Firing.
+
+**5. Testes** *(novos)*
+- `src/__tests__/muxContinuityReader.honesty.spec.ts` (5): sem MUX → null reader → 32 UNKNOWN; com MUX → ohms refletem `getAllChannels()`; ch 16–31 sempre `Infinity`; provenance respeitada; runFullCheck idempotente.
+- `src/__tests__/continuityMatrix.render.spec.tsx` (4): renderiza 4×8 = 32 cells; provenance badge "NOT INTEGRATED" sem MUX; banner "ARM BLOCKED" quando 0 OK; layout 4 linhas com label FXK16 #N/—.
+- `src/__tests__/fieldDiagnosticsDock.render.spec.tsx` (3): zero devices → empty honesto; 1 device com transports → renderiza chips; oculto em `/command`.
+
+### Restrições de segurança (não-negociáveis)
+
+- `FieldDiagnosticsDock` e `ContinuityMatrix` **read-only**. Nenhum import de `uiCommandGateway`, `commandBus`, `fieldBus`, `safetyStateMachine.transition`.
+- `MuxContinuityReader` apenas lê; nunca arma, nunca dispara, nunca toca `workMode`.
+- `runCheck` continua passando por `continuityCheckService.runFullCheck()` (kernel já atualiza `safetyStateMachine.setConditions` — caminho consolidado, não muda).
+- Em `design`/`simulation`, banner é **advisory** (não bloqueia); em `real_operation`, exige provenance `live_read_only` para mostrar "ARM READY".
+
+### Arquivos tocados
 
 ```text
-[ MODE: SIM ] [ STATE: ARMED ] [ READINESS: READY ] [ DEV: 3/4 LIVE-RO ] [ HASH: a91…f02 ]
++ src/core/safety/MuxContinuityReader.ts
++ src/hooks/useContinuityMatrix.ts
++ src/components/safety/FieldDiagnosticsDock.tsx
+~ src/components/editor/ContinuityMatrix.tsx
+~ src/layouts/MainLayout.tsx          (mount FieldDiagnosticsDock)
++ src/__tests__/muxContinuityReader.honesty.spec.ts
++ src/__tests__/continuityMatrix.render.spec.tsx
++ src/__tests__/fieldDiagnosticsDock.render.spec.tsx
+~ mem://index.md + mem://funcionalidades/continuity-matrix-v2-field-diagnostics
 ```
 
-- Cores: tokens `ds-status-*` (sync/ok/warn/fail). Tipografia `ds-mono`.
-- Click no chip de readiness abre tooltip com `blockingReasons[]`.
-- Click no hash copia para clipboard (`showPlanHash` já existe).
-- Esconde-se em `/command` e nas rotas `pairing/*` (replicar regra do `GlobalEStopButton`).
+### Critérios de aceite
 
-Montado em `src/layouts/MainLayout.tsx` logo abaixo do header.
-
-### C. Expurgo "Ready" hardcoded
-`rg -n "SYS::ONLINE|status.*=.*['\"]ready['\"]|>READY<"` para localizar; substituir por leitura do `useSystemReadiness().status`. Alvos prováveis (a confirmar na implementação):
-- `src/pages/Index.tsx` (topo do SkyCanvas)
-- `src/components/office/DashboardPanel.tsx` (já parcialmente honesto na Rodada 10)
-- Qualquer chip "READY" estático em headers de página.
-
-### D. Testes
-- `useSystemReadiness.spec.ts`: empty plan → `EMPTY`; plan + verification fail → `INVALID`; SSM=ARMED → `ARMED`; E-STOP → `E_STOPPED`; merge de provenances dominantes.
-- `GlobalSafetyBar.render.spec.tsx`: renderiza chips conforme hook mockado, esconde em `/command`.
-
-## Restrições inegociáveis
-
-- **Zero** chamadas a `uiCommandGateway`, `safetyStateMachine.transition`, `fieldBus.send`, `executor.fire` a partir do hook ou da bar. **Read-only puro**.
-- IA / agentes nunca disparam mudanças de workMode via essa bar.
-- Não introduzir novo store; consumir os existentes (`readinessEvaluator`, `safetyStateMachine`, `useWorkMode`, `deviceAggregator`).
-- Tokens canônicos `--field-*` / `--status-*` apenas. Sem cores hardcoded.
-- Esconder em `/command` (cockpit já tem própria barra) e em wizards de pairing (foco modal).
-
-## Arquivos
-
-- `src/hooks/useSystemReadiness.ts` (novo)
-- `src/components/safety/GlobalSafetyBar.tsx` (novo)
-- `src/layouts/MainLayout.tsx` (mount)
-- `src/__tests__/useSystemReadiness.spec.ts` (novo)
-- `src/__tests__/globalSafetyBar.render.spec.tsx` (novo)
-- Edits cirúrgicos onde "Ready" estiver hardcoded (lista final no commit)
-
-## Critérios de aceite
-
-- `useSystemReadiness()` retorna estado válido em todas as 8 condições mapeadas.
-- GlobalSafetyBar visível em `/office`, `/editor`, `/dev/*`; oculta em `/command` e `/pairing/*`.
-- `rg "SYS::ONLINE"` retorna vazio.
-- Suite verde (esperado 1242+/1242+).
-- Zero novos imports de `safetyStateMachine.transition` ou `fieldBus`.
-
-## Fora do escopo (próximas rodadas)
-
-- Refatorar VVIZ/CSV importers (já passam pelo ShowPlan via `useShowPlanSync`; auditoria fina é Rodada 14).
-- Continuity Matrix 4×8 e FieldDiagnostics dedicados (Rodada 15).
-- Tipos `SafetyInterlockState`/`IgnitionChannel`/`ContinuitySample`/`PowerState`/`ArtNetUniverseEntry` expandidos (Rodada 16 — mexe em adapters reais).
-- ECS / WASM / Web Workers (Fase 4 do roadmap mestre, multi-rodada).
+- `rg -n "ContinuityReader" src/core/safety/` mostra MuxContinuityReader além do service.
+- ContinuityMatrix renderiza 4×8 com label de origem por linha e ProvenanceBadge.
+- FieldDiagnosticsDock visível em `/editor` e `/skycanvas`, oculto em `/command` e `/pairing/*`.
+- Sem MUX conectado, todas células = `UNKNOWN` (zero dados sintéticos).
+- 12 novos testes verde, suite total ≥ atual.
+- Zero novo import de `uiCommandGateway`/`commandBus`/`fieldBus`/`safetyStateMachine.transition` nos arquivos novos/refatorados (guard via `rg`).
