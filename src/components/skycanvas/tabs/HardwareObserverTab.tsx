@@ -52,7 +52,7 @@ export default function HardwareObserverTab() {
         <ul className="space-y-1.5">
           {controllers.map((c) => {
             const dev = c.device;
-            const transports = (dev.links ?? []).map((l) => l.transport);
+            const transports = Object.keys(dev.links ?? {});
             return (
               <li
                 key={c.aggregateId}
