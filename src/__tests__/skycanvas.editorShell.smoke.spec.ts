@@ -21,8 +21,8 @@ describe('SkyCanvas → EditorShell DS v1 wiring (smoke)', () => {
   const css = readFileSync(CSS, 'utf8');
   const shell = readFileSync(SHELL, 'utf8');
 
-  it('imports EditorShell from @/components/ds', () => {
-    expect(page).toMatch(/from\s+['"]@\/components\/ds\/EditorShell['"]/);
+  it('imports EditorShell from the @/components/ds barrel', () => {
+    expect(page).toMatch(/import\s*\{[^}]*\bEditorShell\b[^}]*\}\s*from\s+['"]@\/components\/ds(?:\/EditorShell)?['"]/);
   });
 
   it("uses useEditorLayout('skycanvas') for persistent shell layout", () => {
