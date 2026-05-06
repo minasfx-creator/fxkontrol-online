@@ -66,7 +66,7 @@ describe('FieldTest polymorphic entry', () => {
 
   it('renders the mobile shell on touch / narrow devices', async () => {
     mockIsMobile.mockReturnValue(true);
-    const { default: FieldTest } = await import('@/pages/FieldTest');
+    const { default: FieldTest } = await import('@/components/command/FieldTestPanel');
     renderWithRouter(<FieldTest />);
     // Header only present in the mobile shell ("FIELD TEST" + back button).
     // Mobile shell renders the setup screen header. Multiple matches are
@@ -78,7 +78,7 @@ describe('FieldTest polymorphic entry', () => {
 
   it('lazy-mounts the desktop shell on desktop devices', async () => {
     mockIsMobile.mockReturnValue(false);
-    const { default: FieldTest } = await import('@/pages/FieldTest');
+    const { default: FieldTest } = await import('@/components/command/FieldTestPanel');
     renderWithRouter(<FieldTest />);
     expect(await screen.findByTestId('desktop-shell')).toBeInTheDocument();
   });
@@ -93,6 +93,6 @@ describe('CommandCenter ↔ FieldTest contract', () => {
       path.resolve(process.cwd(), 'src/pages/CommandCenter.tsx'),
       'utf8',
     );
-    expect(src).toMatch(/import\(['"]@\/pages\/FieldTest['"]\)/);
+    expect(src).toMatch(/import\(['"]@\/components\/command\/FieldTestPanel['"]\)/);
   });
 });
