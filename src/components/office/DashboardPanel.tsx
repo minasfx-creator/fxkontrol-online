@@ -11,14 +11,15 @@ import PwaInstallCard from '@/components/pwa/PwaInstallCard';
 import {
   Clapperboard, CalendarDays, Plus, FolderOpen,
   Zap, Rocket, Flame, Target, Clock, ArrowRight, Sparkles,
-  Radio, Cpu, Activity, Heart, MessageCircle, Share2,
-  TrendingUp, TrendingDown, Minus, Circle, Bookmark,
+  Radio, Cpu, Activity,
   Smartphone, Wand2, Layers,
   Lightbulb, Pencil, LayoutTemplate,
   Bluetooth, Usb, Wifi, ScanEye,
 } from 'lucide-react';
 import { format, differenceInDays } from 'date-fns';
 import { lazy, Suspense } from 'react';
+import { deviceAggregator } from '@/core/discovery/DeviceAggregator';
+import EmptyHardwareHint from '@/components/office/EmptyHardwareHint';
 const CinematicIntro = lazy(() => import('@/components/editor/CinematicIntro'));
 import { useIsMobile } from '@/hooks/use-mobile';
 
