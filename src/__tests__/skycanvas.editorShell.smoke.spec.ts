@@ -71,4 +71,42 @@ describe('SkyCanvas → EditorShell DS v1 wiring (smoke)', () => {
       expect(css, `index.css missing ${token}`).toContain(token);
     }
   });
+
+  it('Round 1 — registers all legacy creation tabs in SkyCanvas.tsx', () => {
+    const refs = [
+      'LibraryCatalogTab',
+      'LibraryMarketplaceTab',
+      'InspectorEffectTab',
+      'InspectorChainTab',
+      'InspectorLightTab',
+      'InspectorLaserTab',
+      'InspectorBoidsTab',
+      'InspectorParticleTab',
+      'TimelineWaveformTab',
+      'TimelineStoryboardTab',
+    ];
+    for (const r of refs) {
+      expect(page, `SkyCanvas.tsx missing tab wiring for ${r}`).toContain(`/tabs/${r}`);
+    }
+  });
+
+  it('Round 1 — wrapper files exist and have no banned safety imports', () => {
+    const FORBIDDEN = /commandBus|fieldBus|safetyStateMachine|workMode\.set|uiCommandGateway\.(arm|fire|disarm|eStop)/;
+    const wrappers = [
+      'LibraryCatalogTab',
+      'LibraryMarketplaceTab',
+      'InspectorEffectTab',
+      'InspectorChainTab',
+      'InspectorLightTab',
+      'InspectorLaserTab',
+      'InspectorBoidsTab',
+      'InspectorParticleTab',
+      'TimelineWaveformTab',
+      'TimelineStoryboardTab',
+    ];
+    for (const w of wrappers) {
+      const src = readFileSync(`src/components/skycanvas/tabs/${w}.tsx`, 'utf8');
+      expect(src, `${w} must not import safety/dispatch`).not.toMatch(FORBIDDEN);
+    }
+  });
 });

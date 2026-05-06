@@ -765,11 +765,13 @@ export default function SkyCanvasPage() {
               <TabbedDockPanel
                 defaultValue="effects"
                 tabs={[
-                  { value: 'effects',   label: 'Efeitos',  load: () => import('@/components/skycanvas/tabs/LibraryEffectsTab') },
-                  { value: 'fixtures',  label: 'Fixtures', load: () => import('@/components/skycanvas/tabs/LibraryFixturesTab') },
-                  { value: 'templates', label: 'Templates',load: () => import('@/components/skycanvas/tabs/LibraryTemplatesTab') },
-                  { value: 'geo',       label: 'Local',    load: () => import('@/components/skycanvas/tabs/LibraryGeoTab') },
-                ]}
+                   { value: 'effects',     label: 'Efeitos',     load: () => import('@/components/skycanvas/tabs/LibraryEffectsTab') },
+                   { value: 'fixtures',    label: 'Fixtures',    load: () => import('@/components/skycanvas/tabs/LibraryFixturesTab') },
+                   { value: 'templates',   label: 'Templates',   load: () => import('@/components/skycanvas/tabs/LibraryTemplatesTab') },
+                   { value: 'catalog',     label: 'Catálogo',    load: () => import('@/components/skycanvas/tabs/LibraryCatalogTab') },
+                   { value: 'marketplace', label: 'Marketplace', load: () => import('@/components/skycanvas/tabs/LibraryMarketplaceTab') },
+                   { value: 'geo',         label: 'Local',       load: () => import('@/components/skycanvas/tabs/LibraryGeoTab') },
+                 ]}
               />
             </section>
           </StudioErrorBoundary>
@@ -788,12 +790,18 @@ export default function SkyCanvasPage() {
                 defaultValue="cue"
                 dense
                 tabs={[
-                  { value: 'cue',      label: 'Cue',      load: () => import('@/components/skycanvas/tabs/InspectorCueTab') },
-                  { value: 'scene',    label: 'Cena',     load: () => import('@/components/skycanvas/tabs/InspectorSceneTab') },
-                  { value: 'render',   label: 'Render',   load: () => import('@/components/skycanvas/tabs/InspectorRenderTab') },
-                  { value: 'hardware', label: 'Hardware', load: () => import('@/components/skycanvas/tabs/HardwareObserverTab') },
-                  { value: 'strategy', label: 'Strategy', load: () => import('@/components/skycanvas/tabs/StrategyContextTab') },
-                ]}
+                   { value: 'cue',      label: 'Cue',      load: () => import('@/components/skycanvas/tabs/InspectorCueTab') },
+                   { value: 'scene',    label: 'Cena',     load: () => import('@/components/skycanvas/tabs/InspectorSceneTab') },
+                   { value: 'effect',   label: 'Efeito',   load: () => import('@/components/skycanvas/tabs/InspectorEffectTab') },
+                   { value: 'chain',    label: 'Chain',    load: () => import('@/components/skycanvas/tabs/InspectorChainTab') },
+                   { value: 'light',    label: 'Light',    load: () => import('@/components/skycanvas/tabs/InspectorLightTab') },
+                   { value: 'laser',    label: 'Laser',    load: () => import('@/components/skycanvas/tabs/InspectorLaserTab') },
+                   { value: 'boids',    label: 'Boids',    load: () => import('@/components/skycanvas/tabs/InspectorBoidsTab') },
+                   { value: 'particle', label: 'Particle', load: () => import('@/components/skycanvas/tabs/InspectorParticleTab') },
+                   { value: 'render',   label: 'Render',   load: () => import('@/components/skycanvas/tabs/InspectorRenderTab') },
+                   { value: 'hardware', label: 'Hardware', load: () => import('@/components/skycanvas/tabs/HardwareObserverTab') },
+                   { value: 'strategy', label: 'Strategy', load: () => import('@/components/skycanvas/tabs/StrategyContextTab') },
+                 ]}
               />
             </section>
           </StudioErrorBoundary>
@@ -813,10 +821,12 @@ export default function SkyCanvasPage() {
                   defaultValue="cues"
                   dense
                   tabs={[
-                    { value: 'cues',       label: 'Cues',       load: () => import('@/components/skycanvas/tabs/TimelineCuesTab') },
-                    { value: 'smpte',      label: 'SMPTE',      load: () => import('@/components/skycanvas/tabs/TimelineSmpteTab') },
-                    { value: 'validation', label: 'Validation', load: () => import('@/components/skycanvas/tabs/TimelineValidationTab') },
-                  ]}
+                     { value: 'cues',       label: 'Cues',       load: () => import('@/components/skycanvas/tabs/TimelineCuesTab') },
+                     { value: 'waveform',   label: 'Waveform',   load: () => import('@/components/skycanvas/tabs/TimelineWaveformTab') },
+                     { value: 'storyboard', label: 'Storyboard', load: () => import('@/components/skycanvas/tabs/TimelineStoryboardTab') },
+                     { value: 'smpte',      label: 'SMPTE',      load: () => import('@/components/skycanvas/tabs/TimelineSmpteTab') },
+                     { value: 'validation', label: 'Validation', load: () => import('@/components/skycanvas/tabs/TimelineValidationTab') },
+                   ]}
                 />
               </TimelineCuesProvider>
             </section>
