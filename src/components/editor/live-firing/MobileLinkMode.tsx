@@ -121,23 +121,9 @@ function fmtTC(ms: number): string {
 // ═══════════════════════════════════════════════════════════
 // DEFAULT FIELD MODULES (simulated)
 // ═══════════════════════════════════════════════════════════
-function createDefaultModules(): FieldModule[] {
-  return Array.from({ length: 6 }, (_, i) => ({
-    id: i + 1,
-    name: `FM-${String(i + 1).padStart(2, '0')}`,
-    connected: i < 4,
-    wireless: i >= 2,
-    batteryVoltage: 11.5 + Math.random() * 1.5,
-    signalStrength: 60 + Math.floor(Math.random() * 40),
-    igniters: Array.from({ length: 32 }, (_, j) => ({
-      position: j + 1,
-      connected: Math.random() > 0.15,
-      fired: false,
-      resistance: 1.5 + Math.random() * 3,
-    })),
-    armed: false,
-  }));
-}
+// Field modules now arrive ONLY from real hardware (FireOneController) or
+// from operator-persisted state in localStorage. No synthetic seed.
+function loadEmptyModules(): FieldModule[] { return []; }
 
 // ═══════════════════════════════════════════════════════════
 // MAIN COMPONENT
