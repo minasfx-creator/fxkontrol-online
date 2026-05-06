@@ -776,6 +776,7 @@ export default function SkyCanvasPage() {
                 tabs={[
                    { value: 'effects',     label: 'Efeitos',     load: () => import('@/components/skycanvas/tabs/LibraryEffectsTab') },
                    { value: 'fixtures',    label: 'Fixtures',    load: () => import('@/components/skycanvas/tabs/LibraryFixturesTab') },
+                   { value: 'models',      label: 'Modelos',     load: () => import('@/components/skycanvas/tabs/LibraryModelsTab') },
                    { value: 'templates',   label: 'Templates',   load: () => import('@/components/skycanvas/tabs/LibraryTemplatesTab') },
                    { value: 'catalog',     label: 'Catálogo',    load: () => import('@/components/skycanvas/tabs/LibraryCatalogTab') },
                    { value: 'marketplace', label: 'Marketplace', load: () => import('@/components/skycanvas/tabs/LibraryMarketplaceTab') },
@@ -801,17 +802,22 @@ export default function SkyCanvasPage() {
                 value={layout.activeTabs?.right ?? 'cue'}
                 onValueChange={(v) => layout.setActiveTab('right', v)}
                 tabs={[
-                   { value: 'cue',      label: 'Cue',      load: () => import('@/components/skycanvas/tabs/InspectorCueTab') },
-                   { value: 'scene',    label: 'Cena',     load: () => import('@/components/skycanvas/tabs/InspectorSceneTab') },
-                   { value: 'effect',   label: 'Efeito',   load: () => import('@/components/skycanvas/tabs/InspectorEffectTab') },
-                   { value: 'chain',    label: 'Chain',    load: () => import('@/components/skycanvas/tabs/InspectorChainTab') },
-                   { value: 'light',    label: 'Light',    load: () => import('@/components/skycanvas/tabs/InspectorLightTab') },
-                   { value: 'laser',    label: 'Laser',    load: () => import('@/components/skycanvas/tabs/InspectorLaserTab') },
-                   { value: 'boids',    label: 'Boids',    load: () => import('@/components/skycanvas/tabs/InspectorBoidsTab') },
-                   { value: 'particle', label: 'Particle', load: () => import('@/components/skycanvas/tabs/InspectorParticleTab') },
-                   { value: 'render',   label: 'Render',   load: () => import('@/components/skycanvas/tabs/InspectorRenderTab') },
-                   { value: 'hardware', label: 'Hardware', load: () => import('@/components/skycanvas/tabs/HardwareObserverTab') },
-                   { value: 'strategy', label: 'Strategy', load: () => import('@/components/skycanvas/tabs/StrategyContextTab') },
+                   { value: 'cue',          label: 'Cue',          load: () => import('@/components/skycanvas/tabs/InspectorCueTab') },
+                   { value: 'scene',        label: 'Cena',         load: () => import('@/components/skycanvas/tabs/InspectorSceneTab') },
+                   { value: 'sceneEditor',  label: 'Cena+',        load: () => import('@/components/skycanvas/tabs/InspectorSceneEditorTab') },
+                   { value: 'effect',       label: 'Efeito',       load: () => import('@/components/skycanvas/tabs/InspectorEffectTab') },
+                   { value: 'generative',   label: 'Generative',   load: () => import('@/components/skycanvas/tabs/InspectorGenerativeTab') },
+                   { value: 'chain',        label: 'Chain',        load: () => import('@/components/skycanvas/tabs/InspectorChainTab') },
+                   { value: 'light',        label: 'Light',        load: () => import('@/components/skycanvas/tabs/InspectorLightTab') },
+                   { value: 'laser',        label: 'Laser',        load: () => import('@/components/skycanvas/tabs/InspectorLaserTab') },
+                   { value: 'boids',        label: 'Boids',        load: () => import('@/components/skycanvas/tabs/InspectorBoidsTab') },
+                   { value: 'particle',     label: 'Particle',     load: () => import('@/components/skycanvas/tabs/InspectorParticleTab') },
+                   { value: 'trajectory',   label: 'Trajectory',   load: () => import('@/components/skycanvas/tabs/InspectorTrajectoryTab') },
+                   { value: 'transition',   label: 'Transition',   load: () => import('@/components/skycanvas/tabs/InspectorTransitionTab') },
+                   { value: 'synesthesia',  label: 'Synesthesia',  load: () => import('@/components/skycanvas/tabs/InspectorSynesthesiaTab') },
+                   { value: 'render',       label: 'Render',       load: () => import('@/components/skycanvas/tabs/InspectorRenderTab') },
+                   { value: 'hardware',     label: 'Hardware',     load: () => import('@/components/skycanvas/tabs/HardwareObserverTab') },
+                   { value: 'strategy',     label: 'Strategy',     load: () => import('@/components/skycanvas/tabs/StrategyContextTab') },
                  ]}
               />
             </section>
@@ -837,6 +843,9 @@ export default function SkyCanvasPage() {
                      { value: 'cues',       label: 'Cues',       load: () => import('@/components/skycanvas/tabs/TimelineCuesTab') },
                      { value: 'waveform',   label: 'Waveform',   load: () => import('@/components/skycanvas/tabs/TimelineWaveformTab') },
                      { value: 'storyboard', label: 'Storyboard', load: () => import('@/components/skycanvas/tabs/TimelineStoryboardTab') },
+                     { value: 'preview',    label: 'Preview',    load: () => import('@/components/skycanvas/tabs/TimelinePreviewTab') },
+                     { value: 'scripting',  label: 'Scripting',  load: () => import('@/components/skycanvas/tabs/TimelineScriptingTab') },
+                     { value: 'export',     label: 'Export',     load: () => import('@/components/skycanvas/tabs/TimelineExportTab') },
                      { value: 'smpte',      label: 'SMPTE',      load: () => import('@/components/skycanvas/tabs/TimelineSmpteTab') },
                      { value: 'validation', label: 'Validation', load: () => import('@/components/skycanvas/tabs/TimelineValidationTab') },
                    ]}
