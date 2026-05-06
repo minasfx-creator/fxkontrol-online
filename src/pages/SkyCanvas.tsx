@@ -93,16 +93,24 @@ function GlassIconButton({
 
 // Small icon button for layout toggles (matches EditorShellPreview).
 function LayoutIconButton({
-  ariaLabel, onClick, active, children,
+  ariaLabel, onClick, active, children, shortcut, controls,
 }: {
   ariaLabel: string; onClick: () => void; active: boolean; children: React.ReactNode;
+  /** ARIA keyboard shortcut hint, e.g. "Control+1". */
+  shortcut?: string;
+  /** id of the panel region this button toggles (aria-controls). */
+  controls?: string;
 }) {
+  const title = shortcut ? `${ariaLabel} (${shortcut.replace('Control', '⌘')})` : ariaLabel;
   return (
     <button
       type="button"
       aria-label={ariaLabel}
-      title={ariaLabel}
+      title={title}
       aria-pressed={active}
+      aria-keyshortcuts={shortcut}
+      aria-controls={controls}
+      aria-expanded={active}
       onClick={onClick}
       className={cn(
         'flex size-7 items-center justify-center rounded-ds-sm transition-colors ds-focus',
