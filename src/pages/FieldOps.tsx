@@ -33,7 +33,7 @@ const ALL_TABS: { key: TabKey; label: string; sub: string; icon: typeof Nfc }[] 
 
 export default function FieldOpsPage() {
   const controllers = useActiveControllers();
-  const fireoneOnline = controllers.controllers.some(c => c.kind === 'fireone');
+  const fireoneOnline = controllers.controllers.some(c => c.profile.kind === 'fireone');
   const fireoneVisible = isFireOneXL43RealOpsEnabled() || fireoneOnline;
   const TABS = ALL_TABS.filter(t => t.key !== 'fireone' || fireoneVisible);
 
