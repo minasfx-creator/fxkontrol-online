@@ -173,16 +173,35 @@ export default function FireOnePanel() {
                   <span className="text-[11px] font-mono font-bold tracking-[0.18em] text-foreground">
                     SLAT {slat.moduleAddress.toString().padStart(2, '0')}
                   </span>
+                  {slat.connectionMode && (
+                    <span className={cn(
+                      'text-[8px] font-mono font-bold tracking-[0.16em] px-1.5 py-0.5 rounded border',
+                      slat.connectionMode === 'wired'
+                        ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30'
+                        : slat.connectionMode === 'fallback'
+                          ? 'bg-amber-500/10 text-amber-400 border-amber-500/30'
+                          : 'bg-cyan-500/10 text-cyan-400 border-cyan-500/30',
+                    )}>
+                      {slat.connectionMode.toUpperCase()}
+                    </span>
+                  )}
                   <span className="ml-auto text-[9px] font-mono text-muted-foreground">
                     fw {slat.firmwareVersion || '?'}
                   </span>
                 </div>
                 <div className="grid grid-cols-3 gap-1 text-[9px] font-mono text-muted-foreground">
-                  <span>Bat <span className="text-foreground">{slat.batteryVoltage.toFixed(1)}V</span></span>
+                  <span className={cn(slat.batteryVoltage > 0 && slat.batteryVoltage < 11.0 && 'text-amber-400')}>
+                    Bat <span className="text-foreground">{slat.batteryVoltage.toFixed(1)}V</span>
+                  </span>
                   <span>T <span className="text-foreground">{slat.temperature.toFixed(0)}°C</span></span>
-                  <span className="flex items-center gap-1">
+                  <span className={cn(
+                    'flex items-center gap-1',
+                    typeof slat.rssiDbm === 'number' && slat.rssiDbm < -85 && 'text-amber-400',
+                  )}>
                     {slat.wireless ? <Wifi className="w-3 h-3 text-cyan-400" /> : <WifiOff className="w-3 h-3" />}
-                    <span className="text-foreground">{slat.rssiDbm ?? slat.signalStrength}dBm</span>
+                    <span className="text-foreground">
+                      {typeof slat.rssiDbm === 'number' ? `${slat.rssiDbm}dBm` : '—'}
+                    </span>
                   </span>
                 </div>
 
