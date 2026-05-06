@@ -25,7 +25,7 @@ export function CueConflictsConsole() {
   }, [projection.updatedAt, projection.plan]);
 
   const grouped = useMemo(() => {
-    const map = new Map<string, typeof result.issues>();
+    const map = new Map<string, VerificationIssue[]>();
     if (!result) return map;
     for (const i of result.issues) {
       if (i.passed) continue;
