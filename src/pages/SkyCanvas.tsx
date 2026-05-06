@@ -93,16 +93,24 @@ function GlassIconButton({
 
 // Small icon button for layout toggles (matches EditorShellPreview).
 function LayoutIconButton({
-  ariaLabel, onClick, active, children,
+  ariaLabel, onClick, active, children, shortcut, controls,
 }: {
   ariaLabel: string; onClick: () => void; active: boolean; children: React.ReactNode;
+  /** ARIA keyboard shortcut hint, e.g. "Control+1". */
+  shortcut?: string;
+  /** id of the panel region this button toggles (aria-controls). */
+  controls?: string;
 }) {
+  const title = shortcut ? `${ariaLabel} (${shortcut.replace('Control', '⌘')})` : ariaLabel;
   return (
     <button
       type="button"
       aria-label={ariaLabel}
-      title={ariaLabel}
+      title={title}
       aria-pressed={active}
+      aria-keyshortcuts={shortcut}
+      aria-controls={controls}
+      aria-expanded={active}
       onClick={onClick}
       className={cn(
         'flex size-7 items-center justify-center rounded-ds-sm transition-colors ds-focus',
@@ -222,11 +230,17 @@ function GlassTopbar({
       <div className="flex-1" />
 
       {/* Layout toggles — desktop only */}
-      <div className="hidden lg:flex items-center gap-1 rounded-ds-md border border-ds-border-default bg-ds-surface-elevated/60 p-0.5">
+      <div
+        className="hidden lg:flex items-center gap-1 rounded-ds-md border border-ds-border-default bg-ds-surface-elevated/60 p-0.5"
+        role="group"
+        aria-label="Controles de layout do editor"
+      >
         <LayoutIconButton
           ariaLabel={layoutControls.leftCollapsed ? 'Expandir Biblioteca' : 'Recolher Biblioteca'}
           onClick={layoutControls.toggleLeft}
           active={!layoutControls.leftCollapsed}
+          shortcut="Control+1"
+          controls="panel-library"
         >
           {layoutControls.leftCollapsed ? <PanelLeftOpen className="size-3.5" /> : <PanelLeftClose className="size-3.5" />}
         </LayoutIconButton>
@@ -234,6 +248,8 @@ function GlassTopbar({
           ariaLabel={layoutControls.timelineCollapsed ? 'Expandir Timeline' : 'Recolher Timeline'}
           onClick={layoutControls.toggleTimeline}
           active={!layoutControls.timelineCollapsed}
+          shortcut="Control+3"
+          controls="panel-timeline"
         >
           {layoutControls.timelineCollapsed ? <PanelBottomOpen className="size-3.5" /> : <PanelBottomClose className="size-3.5" />}
         </LayoutIconButton>
@@ -241,17 +257,20 @@ function GlassTopbar({
           ariaLabel={layoutControls.rightCollapsed ? 'Expandir Inspector' : 'Recolher Inspector'}
           onClick={layoutControls.toggleRight}
           active={!layoutControls.rightCollapsed}
+          shortcut="Control+2"
+          controls="panel-inspector"
         >
           {layoutControls.rightCollapsed ? <PanelRightOpen className="size-3.5" /> : <PanelRightClose className="size-3.5" />}
         </LayoutIconButton>
         <button
           type="button"
           onClick={layoutControls.reset}
-          title="Resetar layout"
+          title="Resetar layout (⇧⌘0)"
           aria-label="Resetar layout"
+          aria-keyshortcuts="Control+Shift+0"
           className="flex size-7 items-center justify-center rounded-ds-sm text-ds-text-muted hover:text-status-sync hover:bg-ds-surface-deep transition-colors ds-focus"
         >
-          <RotateCw className="size-3.5" />
+          <RotateCw className="size-3.5" aria-hidden="true" />
         </button>
       </div>
 
@@ -554,6 +573,13 @@ export default function SkyCanvasPage() {
 
   // Keyboard shortcuts
   useEffect(() => {
+    const focusPanel = (id: string) => {
+      // Defer to next frame so the panel has been laid out (uncollapsed) first.
+      requestAnimationFrame(() => {
+        const el = document.getElementById(id);
+        if (el) (el as HTMLElement).focus({ preventScroll: true });
+      });
+    };
     const onKey = (e: KeyboardEvent) => {
       const t = e.target as HTMLElement | null;
       const inField = !!t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable);
@@ -566,9 +592,9 @@ export default function SkyCanvasPage() {
       // Panel toggles (only outside form fields)
       if (!inField && ctrl && (e.key === '1' || e.key === '2' || e.key === '3')) {
         e.preventDefault();
-        if (e.key === '1') layout.toggleLeft();
-        else if (e.key === '2') layout.toggleRight();
-        else layout.toggleTimeline();
+        if (e.key === '1') { layout.toggleLeft(); focusPanel('panel-library'); }
+        else if (e.key === '2') { layout.toggleRight(); focusPanel('panel-inspector'); }
+        else { layout.toggleTimeline(); focusPanel('panel-timeline'); }
         return;
       }
       // Reset layout (Shift+Cmd+0 — destrutivo, exige Shift)
@@ -685,7 +711,14 @@ export default function SkyCanvasPage() {
         }
         left={
           <StudioErrorBoundary area="SkyCanvas · Library">
-            <div className="h-full flex flex-col" data-panel-id="library">
+            <section
+              id="panel-library"
+              role="region"
+              aria-label="Biblioteca"
+              tabIndex={-1}
+              className="h-full flex flex-col outline-none"
+              data-panel-id="library"
+            >
               <TabbedDockPanel
                 defaultValue="effects"
                 tabs={[
@@ -695,12 +728,19 @@ export default function SkyCanvasPage() {
                   { value: 'geo',       label: 'Local',    load: () => import('@/components/skycanvas/tabs/LibraryGeoTab') },
                 ]}
               />
-            </div>
+            </section>
           </StudioErrorBoundary>
         }
         right={
           <StudioErrorBoundary area="SkyCanvas · Inspector">
-            <div className="h-full flex flex-col" data-panel-id="inspector">
+            <section
+              id="panel-inspector"
+              role="region"
+              aria-label="Inspector"
+              tabIndex={-1}
+              className="h-full flex flex-col outline-none"
+              data-panel-id="inspector"
+            >
               <TabbedDockPanel
                 defaultValue="cue"
                 dense
@@ -712,12 +752,19 @@ export default function SkyCanvasPage() {
                   { value: 'strategy', label: 'Strategy', load: () => import('@/components/skycanvas/tabs/StrategyContextTab') },
                 ]}
               />
-            </div>
+            </section>
           </StudioErrorBoundary>
         }
         timeline={
           <StudioErrorBoundary area="SkyCanvas · Timeline">
-            <div className="h-full flex flex-col" data-panel-id="timeline">
+            <section
+              id="panel-timeline"
+              role="region"
+              aria-label="Timeline"
+              tabIndex={-1}
+              className="h-full flex flex-col outline-none"
+              data-panel-id="timeline"
+            >
               <TimelineCuesProvider value={{ time, duration, onSeekAbs: seekAbs, onDropEffect: dropEffectAt, peaks }}>
                 <TabbedDockPanel
                   defaultValue="cues"
@@ -729,7 +776,7 @@ export default function SkyCanvasPage() {
                   ]}
                 />
               </TimelineCuesProvider>
-            </div>
+            </section>
           </StudioErrorBoundary>
         }
       >
@@ -782,7 +829,19 @@ export default function SkyCanvasPage() {
         time={time}
         duration={duration}
       />
-      <MobilePanelSwitcher active={mobileActive} onChange={setMobileActive} />
+      <MobilePanelSwitcher
+        active={mobileActive}
+        onChange={(key) => {
+          setMobileActive(key);
+          requestAnimationFrame(() => {
+            const id = key === 'library' ? 'panel-library'
+              : key === 'inspector' ? 'panel-inspector'
+              : 'panel-timeline';
+            document.getElementById(id)?.focus({ preventScroll: true });
+          });
+        }}
+        panelIds={{ library: 'panel-library', inspector: 'panel-inspector', timeline: 'panel-timeline' }}
+      />
 
       {/* MASTER MENU PALETTE */}
       <Suspense fallback={null}>
