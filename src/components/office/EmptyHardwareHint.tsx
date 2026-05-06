@@ -6,7 +6,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { Cable, Radar, ArrowRight, Loader2 } from 'lucide-react';
 import { deviceAggregator } from '@/core/discovery/DeviceAggregator';
-import { unifiedDiscovery } from '@/core/discovery/unifiedDiscovery';
+import { unifiedDiscovery } from '@/core/discovery/UnifiedDiscoveryService';
 
 export default function EmptyHardwareHint() {
   const [onlineCount, setOnlineCount] = useState(0);
