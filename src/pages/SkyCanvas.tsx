@@ -39,6 +39,7 @@ import WaveformLayer from '@/components/skycanvas/WaveformLayer';
 import { decodeAudioPeaks } from '@/lib/skycanvasAudioPeaks';
 import { FloatingPanel } from '@/components/skycanvas/FloatingPanel';
 import { dockStore, useFloatingDock } from '@/hooks/useFloatingDock';
+import { useSmallViewport } from '@/hooks/useSmallViewport';
 import { buildSkyActions } from '@/components/skycanvas/skyActions';
 import { cn } from '@/lib/utils';
 
