@@ -998,6 +998,7 @@ export class FireOneHardwareBridge {
   private inferProtocolFamily(): BridgeStatus['protocolFamily'] {
     const m = (this.deviceModel ?? '').toUpperCase();
     if (m === 'FXK16')                  return 'showven-c16-compatible';
+    if (m === 'FXK32Q')                 return 'fireone-ascii';
     if (m === 'IFMX-I32Q' || m === 'IFMX-I32') return 'fireone-ascii';
     if (m.startsWith('PYROSLAVE'))      return 'pbus';
     return this.deviceModel ? 'generic' : undefined;
