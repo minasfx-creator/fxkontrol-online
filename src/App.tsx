@@ -60,6 +60,7 @@ const VideoEditor = lazy(lazyRetry(() => import("./pages/VideoEditor")));
 const DesignSystemShowcase = lazy(lazyRetry(() => import("./pages/dev/DesignSystemShowcase")));
 const EditorShellPreview = lazy(lazyRetry(() => import("./pages/dev/EditorShellPreview")));
 const ReadinessAudit = lazy(lazyRetry(() => import("./pages/dev/ReadinessAudit")));
+const ModuleRoster = lazy(lazyRetry(() => import("./pages/dev/ModuleRoster")));
 const GoldenShowsCatalog = lazy(lazyRetry(() => import("./pages/dev/GoldenShows")));
 const FXK16CalibrationPage = lazy(lazyRetry(() => import("./pages/FXK16CalibrationPage")));
 const FXK16Hub = lazy(lazyRetry(() => import("./pages/dev/FXK16Hub")));
