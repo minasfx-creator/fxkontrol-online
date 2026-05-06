@@ -42,11 +42,8 @@ import { LIBRARY_TABS, INSPECTOR_TABS, TIMELINE_TABS } from '@/components/skycan
 import MobilePanelSwitcher, { type MobilePanelKey } from '@/components/skycanvas/MobilePanelSwitcher';
 import { TimelineCuesProvider } from '@/components/skycanvas/tabs/TimelineCuesTab';
 
-// Round 2 — viewport overlays from legacy SkyCanvas (no commands, pure UI/HUD).
-const BoxSelectOverlay = lazy(() => import('@/components/editor/BoxSelectOverlay'));
-const SelectionModeBar = lazy(() => import('@/components/editor/SelectionModeBar'));
-const ARCompassHUD = lazy(() => import('@/components/editor/ARCompassHUD'));
-const ViewportTransitionOverlay = lazy(() => import('@/components/editor/ViewportTransitionOverlay'));
+// Round 8 — viewport HUD overlays consolidated under one chunk + Suspense.
+const ViewportOverlays = lazy(() => import('@/components/skycanvas/ViewportOverlays'));
 
 import { useActiveDemoSession } from '@/hooks/useActiveDemoSession';
 
@@ -868,15 +865,8 @@ export default function SkyCanvasPage() {
               <SkyFallback2D reason={cap.reasons[0]} />
             )}
 
-            {/* Round 2 — viewport HUD overlays (lazy, pure presentation). */}
-            <Suspense fallback={null}>
-              <ViewportTransitionOverlay />
-              <BoxSelectOverlay />
-              <ARCompassHUD />
-              <div className="absolute top-3 left-3 z-[35] pointer-events-auto">
-                <SelectionModeBar />
-              </div>
-            </Suspense>
+            {/* Round 8 — viewport HUD overlays consolidated. */}
+            <ViewportOverlays />
           </div>
         </StudioErrorBoundary>
       </EditorShell>
