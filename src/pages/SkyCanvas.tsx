@@ -764,6 +764,8 @@ export default function SkyCanvasPage() {
             >
               <TabbedDockPanel
                 defaultValue="effects"
+                value={layout.activeTabs?.left ?? 'effects'}
+                onValueChange={(v) => layout.setActiveTab('left', v)}
                 tabs={[
                    { value: 'effects',     label: 'Efeitos',     load: () => import('@/components/skycanvas/tabs/LibraryEffectsTab') },
                    { value: 'fixtures',    label: 'Fixtures',    load: () => import('@/components/skycanvas/tabs/LibraryFixturesTab') },
@@ -789,6 +791,8 @@ export default function SkyCanvasPage() {
               <TabbedDockPanel
                 defaultValue="cue"
                 dense
+                value={layout.activeTabs?.right ?? 'cue'}
+                onValueChange={(v) => layout.setActiveTab('right', v)}
                 tabs={[
                    { value: 'cue',      label: 'Cue',      load: () => import('@/components/skycanvas/tabs/InspectorCueTab') },
                    { value: 'scene',    label: 'Cena',     load: () => import('@/components/skycanvas/tabs/InspectorSceneTab') },
@@ -820,6 +824,8 @@ export default function SkyCanvasPage() {
                 <TabbedDockPanel
                   defaultValue="cues"
                   dense
+                  value={layout.activeTabs?.timeline ?? 'cues'}
+                  onValueChange={(v) => layout.setActiveTab('timeline', v)}
                   tabs={[
                      { value: 'cues',       label: 'Cues',       load: () => import('@/components/skycanvas/tabs/TimelineCuesTab') },
                      { value: 'waveform',   label: 'Waveform',   load: () => import('@/components/skycanvas/tabs/TimelineWaveformTab') },
