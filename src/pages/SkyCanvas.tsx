@@ -57,7 +57,11 @@ import { useWorkMode } from '@/core/safety/workMode';
 import { useSkyCanvasShowPersistence, clearPersistedSkyCanvasShow } from '@/hooks/useSkyCanvasShowPersistence';
 import { cn } from '@/lib/utils';
 
-const SkyCanvas2 = lazy(lazyRetry(() => import('@/components/show3d/v2/SkyCanvas2')));
+// Round 7: SkyCanvas2 viewport now mounts via the canonical SkyCanvasMount
+// (engine='v2'). One lazy chunk shared with the rest of the platform; the
+// mount itself is React.memo'd so the heavy 3D tree no longer re-renders
+// when this page's state changes (e.g. tab switches, panel resizes).
+import SkyCanvasMount from '@/components/editor/SkyCanvasMount';
 const SkyCanvasCommandPalette = lazy(() => import('@/components/skycanvas/SkyCanvasCommandPalette'));
 const CatalogImportDialog = lazy(() => import('@/components/editor/CatalogImportDialog'));
 
