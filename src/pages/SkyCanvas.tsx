@@ -750,7 +750,14 @@ export default function SkyCanvasPage() {
         }
         timeline={
           <StudioErrorBoundary area="SkyCanvas · Timeline">
-            <div className="h-full flex flex-col" data-panel-id="timeline">
+            <section
+              id="panel-timeline"
+              role="region"
+              aria-label="Timeline"
+              tabIndex={-1}
+              className="h-full flex flex-col outline-none"
+              data-panel-id="timeline"
+            >
               <TimelineCuesProvider value={{ time, duration, onSeekAbs: seekAbs, onDropEffect: dropEffectAt, peaks }}>
                 <TabbedDockPanel
                   defaultValue="cues"
@@ -762,7 +769,7 @@ export default function SkyCanvasPage() {
                   ]}
                 />
               </TimelineCuesProvider>
-            </div>
+            </section>
           </StudioErrorBoundary>
         }
       >
