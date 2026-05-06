@@ -193,10 +193,12 @@ export function startDiscoveryRegistryBridge(): void {
 /** Stop the bridge — primarily for tests. */
 export function stopDiscoveryRegistryBridge(): void {
   if (_unsubFxk) { _unsubFxk(); _unsubFxk = null; }
+  if (_unsubFxk32q) { _unsubFxk32q(); _unsubFxk32q = null; }
   if (_unsubArtnet) { _unsubArtnet(); _unsubArtnet = null; }
   if (_unsubSerial) { _unsubSerial(); _unsubSerial = null; }
   _started = false;
   _lastVerified = false;
+  _lastFxk32qVerified = false;
   _artnetOnline.clear();
   _dmxSerialOnline.clear();
 }
