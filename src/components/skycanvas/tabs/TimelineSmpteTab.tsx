@@ -55,17 +55,17 @@ function parseLooseTimecode(input: string, fps: SMPTEFrameRate, df: boolean): nu
   if (parts.length === 3 && parts.every((p) => /^\d+$/.test(p))) {
     // hh:mm:ss → 00 frames
     const tcStr = `${pad(parts[0])}:${pad(parts[1])}:${pad(parts[2])}:00`;
-    const tc = parseTimecode(tcStr, fps, df);
+    const tc = parseTimecode(tcStr, fps);
     return tc ? timecodeToSeconds(tc) : null;
   }
   if (parts.length === 4 && parts.every((p) => /^\d+$/.test(p))) {
     const tcStr = `${pad(parts[0])}:${pad(parts[1])}:${pad(parts[2])}:${pad(parts[3])}`;
-    const tc = parseTimecode(tcStr, fps, df);
+    const tc = parseTimecode(tcStr, fps);
     return tc ? timecodeToSeconds(tc) : null;
   }
 
   // Try the engine's strict parser as a last resort
-  const tc = parseTimecode(s, fps, df);
+  const tc = parseTimecode(s, fps);
   return tc ? timecodeToSeconds(tc) : null;
 }
 
