@@ -139,6 +139,14 @@ const FLAGS = {
    * (operadores ligam via /dev/ue5-bridge ou localStorage).
    */
   ue5_fixtures_layer: false,
+
+  /**
+   * ECS Unified Kernel — SoA world (pyro/particles/drones) + WASM-first
+   * deterministic step (Rust crate at wasm/fxk_ecs_kernel/, TS fallback at
+   * src/ecs/tsKernel.ts). Default ON: opt-out via localStorage
+   * 'fxk.flag.ecs_unified_kernel' = '0'. Bench: /dev/perf-bench.
+   */
+  ecs_unified_kernel: true,
 } as const;
 
 export type FeatureFlag = keyof typeof FLAGS;
