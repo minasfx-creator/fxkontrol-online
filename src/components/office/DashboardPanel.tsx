@@ -282,6 +282,7 @@ export default function Dashboard() {
   return (
     <div className="max-w-7xl mx-auto pb-10 relative br2049-rain">
       <PwaInstallCard />
+      <EmptyHardwareHint />
       {/* ── Hero Banner — Military Cyberpunk HUD ──── */}
       <div className="relative overflow-hidden rounded border bg-surface-1 mb-5 animate-fxk-fade-up"
         style={{ borderColor: 'hsl(32 100% 50% / 0.15)' }}>
