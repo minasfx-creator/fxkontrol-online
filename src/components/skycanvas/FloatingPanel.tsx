@@ -42,13 +42,15 @@ interface Props {
   /** When true, panel docks to bottom edge as a full-width strip (timeline). */
   bottomStrip?: boolean;
   className?: string;
+  /** Visual variant — v2 uses the aprimorado specular glass. */
+  variant?: 'v1' | 'v2';
   children: React.ReactNode;
 }
 
 const SAVE_TOAST_DEBOUNCE = 800;
 let lastSaveToast = 0;
 
-function FloatingPanelImpl({ id, title, state, bottomStrip, className, children }: Props) {
+function FloatingPanelImpl({ id, title, state, bottomStrip, className, variant = 'v2', children }: Props) {
   const ref = useRef<HTMLDivElement | null>(null);
   const dragRef = useRef<{ active: boolean; sx: number; sy: number; ox: number; oy: number; pid: number | null }>({
     active: false, sx: 0, sy: 0, ox: 0, oy: 0, pid: null,
