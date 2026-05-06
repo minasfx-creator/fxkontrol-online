@@ -28,6 +28,9 @@ import { EFFECT_LIBRARY } from '@/data/effectLibrary';
 import { detectSkyCapability, profileBudget, type SkyCapability } from '@/lib/skycanvasCapability';
 import EffectLibrarySidebar, { FXK_EFFECT_DRAG_TYPE } from '@/components/editor/EffectLibrarySidebar';
 import SkyFallback2D from '@/components/skycanvas/SkyFallback2D';
+import WaveformLayer from '@/components/skycanvas/WaveformLayer';
+import { decodeAudioPeaks } from '@/lib/skycanvasAudioPeaks';
+import { toast } from 'sonner';
 
 // SkyCanvas2 é nossa engine canônica para esta surface — modular, instanced,
 // com WebGLContextRecovery + AdaptiveDPRController + SkyCanvas2ErrorBoundary.
