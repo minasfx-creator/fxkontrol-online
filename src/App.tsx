@@ -65,6 +65,7 @@ const ReadinessAudit = lazy(lazyRetry(() => import("./pages/dev/ReadinessAudit")
 const ModuleRoster = lazy(lazyRetry(() => import("./pages/dev/ModuleRoster")));
 const E2ETestPage = lazy(lazyRetry(() => import("./pages/dev/E2ETestPage")));
 const GoldenShowsCatalog = lazy(lazyRetry(() => import("./pages/dev/GoldenShows")));
+const BlackBoxInspector = lazy(lazyRetry(() => import("./pages/dev/BlackBoxInspector")));
 
 const FXK16Hub = lazy(lazyRetry(() => import("./pages/dev/FXK16Hub")));
 const DevIndex = lazy(lazyRetry(() => import("./pages/dev/DevIndex")));
