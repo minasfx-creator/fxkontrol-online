@@ -49,6 +49,7 @@ import { cn } from '@/lib/utils';
 
 const SkyCanvas2 = lazy(lazyRetry(() => import('@/components/show3d/v2/SkyCanvas2')));
 const SkyCanvasCommandPalette = lazy(() => import('@/components/skycanvas/SkyCanvasCommandPalette'));
+const CatalogImportDialog = lazy(() => import('@/components/editor/CatalogImportDialog'));
 
 // ─────────────────────────────────────────────────────────────────────
 // Helpers
