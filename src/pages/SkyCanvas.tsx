@@ -361,6 +361,19 @@ export default function SkyCanvasPage() {
   const seek = (delta: number) => setCurrentTime(Math.max(0, Math.min(duration, time + delta)));
   const seekAbs = (t: number) => setCurrentTime(t);
 
+  // Drop an effect from the library onto the timeline → CueMarker.
+  const dropEffectAt = (effectId: string, t: number) => {
+    const fx = EFFECT_LIBRARY.find((e) => e.id === effectId);
+    if (!fx) return;
+    useProjectStore.getState().addCueMarker({
+      id: `cue-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`,
+      time: Math.max(0, Math.min(duration, t)),
+      label: `${fx.icon} ${fx.name}`,
+      color: fx.color,
+    });
+  };
+  const dropEffectAtPlayhead = (effectId: string) => dropEffectAt(effectId, time);
+
   return (
     <div className="relative h-[100dvh] w-full bg-[#050810] text-zinc-200 overflow-hidden"
          style={{ paddingTop: 'env(safe-area-inset-top)', paddingBottom: 'env(safe-area-inset-bottom)' }}>
