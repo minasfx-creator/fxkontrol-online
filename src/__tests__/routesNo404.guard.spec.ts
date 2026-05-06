@@ -79,7 +79,8 @@ function parseRedirects(): RedirectDecl[] {
 }
 
 function clean(p: string): string {
-  return p.split('?')[0].split('#')[0];
+  // Strip template-literal interpolations (`/auth${search}` → `/auth`).
+  return p.replace(/\$\{[^}]*\}/g, '').split('?')[0].split('#')[0];
 }
 
 function resolves(
