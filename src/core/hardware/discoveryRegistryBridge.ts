@@ -192,17 +192,42 @@ export function startDiscoveryRegistryBridge(): void {
       }
     }
   });
+
+  // ── FireOne XL4+ (USB-FTDI / RS-485) ───────────────────────────
+  // Wizard publishes verified handshake → singleton bridge → here.
+  _unsubXl4 = subscribeFireOneXL4Bridge((status) => {
+    if (status.verified === _lastXl4Verified) return;
+    _lastXl4Verified = status.verified;
+    if (status.verified) {
+      fireOneXL4Adapter.markHandshakeOk({
+        transport: 'serial_usb',
+        firmware: status.firmware ?? undefined,
+        moduleAddress: status.moduleAddress ?? undefined,
+        baudRate: status.baudRate ?? undefined,
+      });
+      logger.info(
+        `[discoveryBridge] FireOne XL4+ promoted to LIVE READ-ONLY (fw=${status.firmware ?? '?'}, addr=${status.moduleAddress ?? '?'}, baud=${status.baudRate ?? '?'})`,
+      );
+      try { unifiedHardwareRegistry.startPolling(1000); }
+      catch (err) { logger.warn('[discoveryBridge] startPolling failed', err); }
+    } else {
+      fireOneXL4Adapter.markHandshakeLost();
+      logger.info('[discoveryBridge] FireOne XL4+ demoted to NOT_INTEGRATED');
+    }
+  });
 }
 
 /** Stop the bridge — primarily for tests. */
 export function stopDiscoveryRegistryBridge(): void {
   if (_unsubFxk) { _unsubFxk(); _unsubFxk = null; }
   if (_unsubFxk32q) { _unsubFxk32q(); _unsubFxk32q = null; }
+  if (_unsubXl4) { _unsubXl4(); _unsubXl4 = null; }
   if (_unsubArtnet) { _unsubArtnet(); _unsubArtnet = null; }
   if (_unsubSerial) { _unsubSerial(); _unsubSerial = null; }
   _started = false;
   _lastVerified = false;
   _lastFxk32qVerified = false;
+  _lastXl4Verified = false;
   _artnetOnline.clear();
   _dmxSerialOnline.clear();
 }
