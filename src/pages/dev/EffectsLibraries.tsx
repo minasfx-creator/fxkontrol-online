@@ -43,7 +43,7 @@ export default function EffectsLibrariesPage() {
     setImportErr(null);
     try {
       const r = await parseFinalePartsXlsx(file);
-      setImported(r);
+      setImported({ lib: r.library, warnings: r.warnings });
     } catch (e) {
       setImportErr((e as Error).message);
       setImported(null);
