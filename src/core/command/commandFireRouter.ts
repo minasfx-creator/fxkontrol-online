@@ -21,8 +21,8 @@ import { pyroExecutor, type PyroCue } from '@/core/execution/pyroExecutor';
 import { fieldBus } from '@/core/network/fieldBus';
 import { workMode } from '@/core/safety/workMode';
 import { evaluatePyroDispatchVerdict, recordSafetyNote } from '@/core/safety/safetyBlackBox';
-import { showPlanManager } from '@/core/show/showPlanManager';
-import { computeShowPlanHash } from '@/core/safety/showPlanHash';
+import { showPlanManager } from '@/core/showplan/ShowPlanManager';
+import { hashShowPlan } from '@/core/showplan/showPlanHash';
 import type { DiscoveryTransport } from '@/core/discovery/types';
 import { deviceAggregator } from '@/core/discovery/DeviceAggregator';
 
