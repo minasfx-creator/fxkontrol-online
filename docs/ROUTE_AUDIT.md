@@ -146,3 +146,31 @@ Consolidar mounts duplicados de `SkyCanvas2`/`SkyCanvas3D` em `/dev/skycanvas-{s
 - `src/pages/dev/`: **12 → 10** arquivos
 - `src/App.tsx`: −2 lazy roots, +3 redirects
 - Testes: **57/57 verde**
+
+---
+
+## Rodada 7 — Consolidação SkyCanvasMount canônico (executada)
+
+`SkyCanvasMount` virou o **único ponto de montagem** do viewport 3D. Eliminadas 2 lazy roots duplicadas de `SkyCanvas2` e refatorados todos os consumers em produção:
+
+### Mudanças
+
+| Arquivo | Antes | Depois |
+|---|---|---|
+| `components/editor/SkyCanvasMount.tsx` | só auto v2/legacy fallback | `engine='auto'\|'v2'\|'legacy'` + `v2Props` forward + `React.memo` |
+| `pages/SkyCanvas.tsx` | `lazy(SkyCanvas2)` próprio + `Suspense` próprio + `profileBudget(cap)` chamado **4× por render** | `SkyCanvasMount engine="v2"` + `useMemo(profileBudget, [cap])` + `useMemo(v2Props)` |
+| `pages/dev/UE5BridgePage.tsx` | `<SkyCanvas2 showFixtures>` direto (sem boundaries) | `SkyCanvasMount engine="v2" v2Props={memoized}` |
+| `pages/dev/SkyCanvasLab.tsx` | (preservado — é o harness dev de variantes) | inalterado |
+
+### Ganhos
+
+- **−2 lazy roots de `SkyCanvas2`** — único chunk compartilhado entre `pages/SkyCanvas`, `UE5Bridge` e o legacy `SkyCanvasMount` (`pages/VideoEditor`).
+- **profileBudget agora roda 1× por capability change**, não 4× por render frame.
+- **`React.memo(SkyCanvasMountImpl)`** + `v2Props` memoizado pelos callers ⇒ a árvore 3D não re-renderiza em mudanças de UI sem efeito (resize de painéis, troca de tab, hover de tooltips).
+- **Boundaries uniformes**: `StudioErrorBoundary → WebGLErrorBoundary → Suspense` aplicado a UE5BridgePage (antes não tinha).
+
+### Métricas
+
+- Testes: **63/63 verde** (skycanvas guards + smoke + skyCanvas3D + skyCanvas2 + commercial + typography)
+- LOC `pages/SkyCanvas.tsx`: 954 → ~952 (foco foi qualidade, não LOC)
+- API pública nova de `SkyCanvasMount`: `engine`, `v2Props` (props opcionais, retrocompat 100%)

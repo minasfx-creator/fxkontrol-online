@@ -1,81 +1,93 @@
 /**
- * SkyCanvasMount — Unified mount for the SkyCanvas 3D viewport.
+ * SkyCanvasMount — Single canonical mount for the SkyCanvas 3D viewport.
  *
- * Adotado a partir do padrão de /dev/skycanvas-smoke (que provou ser
- * o caminho mais robusto em produção):
+ * Boundary stack (proven in production):
+ *   StudioErrorBoundary → WebGLErrorBoundary → Suspense → <Engine />
  *
- *   StudioErrorBoundary  →  WebGLErrorBoundary  →  Suspense  →  SkyCanvas
+ * Engine selection (Round 7 consolidation):
+ *   - 'auto'   (default): respects the `skycanvas_v2` feature flag, falls
+ *               back to the legacy editor SkyCanvas if v2 throws fatally.
+ *   - 'v2'     : forces SkyCanvas2 (modular Show Plane). Forwards
+ *               SkyCanvas2Props via the optional `v2Props` bag (memoized
+ *               by callers).
+ *   - 'legacy' : forces the heavy `components/editor/SkyCanvas` engine.
  *
- * - StudioErrorBoundary: captura crashes React acima do canvas.
- * - WebGLErrorBoundary:  fallback gracioso (SimplifiedSkyFallback) quando
- *                         a inicialização do WebGL falha; ANTES o editor
- *                         usava um CanvasErrorBoundary local que mostrava
- *                         tela técnica de erro — ruim para o operador.
- * - Suspense:            usa CanvasLoaderWithTimeout (8s) em vez do
- *                         spinner minimalista do smoke, pra evitar trap
- *                         de spinner infinito após HMR/deploy stale.
+ * One lazy chunk per engine, shared across all callers — eliminates the
+ * 3 duplicated SkyCanvas2 lazy roots that lived in `pages/SkyCanvas.tsx`,
+ * `UE5BridgePage.tsx` and the previous version of this file.
  *
- * Drop-in replacement das 3 montagens duplicadas em src/pages/Index.tsx
- * (mobile live, mobile design, desktop) e do mount de SkyCanvasSmoke.
- *
- * Nada de hardware aqui — é só presentation. Não muda contratos do
- * SkyCanvas, do CommandBus, nem da SafetyStateMachine.
+ * Plano: Show/Experience. Nada de CommandBus, FieldBus ou SafetyStateMachine.
  */
-import { lazy, Suspense, useEffect, useState, type ReactNode } from 'react';
+import { lazy, memo, Suspense, useEffect, useState, type ReactNode } from 'react';
 import { lazyRetry } from '@/lib/lazyRetry';
 import { WebGLErrorBoundary } from '@/components/editor/skycanvas/sharedState';
 import StudioErrorBoundary from '@/components/errors/StudioErrorBoundary';
 import CanvasLoaderWithTimeout from '@/components/editor/CanvasLoaderWithTimeout';
 import { isSkycanvasV2Enabled } from '@/lib/featureFlags';
+import type { SkyCanvas2Props } from '@/components/show3d/v2/types';
 
-// SkyCanvas deferido com lazyRetry — chunk stale após deploy/HMR é
-// retentado uma vez antes de bubbling para o LazyChunkBoundary global.
-const SkyCanvas = lazy(lazyRetry(() => import('@/components/editor/SkyCanvas')));
-
-// SkyCanvas 2.0 — engine leve atrás de feature flag (`fxk.flag.skycanvas_v2`).
-// Lazy também: zero impacto no bundle quando desabilitado.
+// Single lazy roots — every consumer shares these chunks.
+const SkyCanvasLegacy = lazy(lazyRetry(() => import('@/components/editor/SkyCanvas')));
 const SkyCanvas2 = lazy(lazyRetry(() => import('@/components/show3d/v2/SkyCanvas2')));
 
+export type SkyCanvasEngine = 'auto' | 'v2' | 'legacy';
+
 export interface SkyCanvasMountProps {
-  /** Distinguishing key: 'desktop', 'mobile', 'mobile-live', 'smoke', etc. */
+  /** Distinguishing key for unmount/remount cycles. */
   instanceKey?: string;
   /** Boundary area label for diagnostics. Default: '3D viewport'. */
   area?: string;
   /** Suspense timeout (ms). Default: 8000. */
   loaderTimeoutMs?: number;
-  /** Suspense loader label. Default: 'Loading 3D Engine...'. */
+  /** Suspense loader label. Default: 'Loading 3D Engine…'. */
   loaderLabel?: string;
+  /** Engine selection. Default: 'auto' (flag-driven, with legacy fallback). */
+  engine?: SkyCanvasEngine;
+  /** Props forwarded to SkyCanvas2 when engine resolves to v2. Memoize at
+   *  the call site to avoid spurious re-renders of the heavy canvas tree. */
+  v2Props?: SkyCanvas2Props;
   /** Optional siblings rendered alongside the canvas (overlays etc). */
   children?: ReactNode;
 }
 
-export default function SkyCanvasMount({
+function SkyCanvasMountImpl({
   instanceKey,
   area = '3D viewport',
   loaderTimeoutMs = 8000,
-  loaderLabel = 'Loading 3D Engine...',
+  loaderLabel = 'Loading 3D Engine…',
+  engine = 'auto',
+  v2Props,
   children,
 }: SkyCanvasMountProps) {
-  // Read the flag once per mount; if v2 throws, we flip back to legacy in
-  // local state — no full page reload, no risk to the operator.
-  const [useV2, setUseV2] = useState<boolean>(() => isSkycanvasV2Enabled());
-  useEffect(() => { setUseV2(isSkycanvasV2Enabled()); }, [instanceKey]);
+  // Resolve which engine actually mounts. In 'auto', we honour the flag
+  // and let a fatal SkyCanvas2 error demote us to the legacy engine
+  // without a page reload (operator-friendly).
+  const [resolved, setResolved] = useState<'v2' | 'legacy'>(() => {
+    if (engine === 'v2') return 'v2';
+    if (engine === 'legacy') return 'legacy';
+    return isSkycanvasV2Enabled() ? 'v2' : 'legacy';
+  });
+
+  useEffect(() => {
+    if (engine === 'v2') setResolved('v2');
+    else if (engine === 'legacy') setResolved('legacy');
+    else setResolved(isSkycanvasV2Enabled() ? 'v2' : 'legacy');
+  }, [engine, instanceKey]);
 
   return (
     <StudioErrorBoundary area={area}>
       <WebGLErrorBoundary>
-        <Suspense
-          fallback={
-            <CanvasLoaderWithTimeout timeoutMs={loaderTimeoutMs} label={loaderLabel} />
-          }
-        >
-          {useV2 ? (
+        <Suspense fallback={<CanvasLoaderWithTimeout timeoutMs={loaderTimeoutMs} label={loaderLabel} />}>
+          {resolved === 'v2' ? (
             <SkyCanvas2
               key={`v2-${instanceKey ?? 'default'}`}
-              onFatalError={() => setUseV2(false)}
+              {...(v2Props ?? {})}
+              onFatalError={() => {
+                if (engine === 'auto') setResolved('legacy');
+              }}
             />
           ) : (
-            <SkyCanvas key={instanceKey} />
+            <SkyCanvasLegacy key={`legacy-${instanceKey ?? 'default'}`} />
           )}
         </Suspense>
       </WebGLErrorBoundary>
@@ -84,3 +96,8 @@ export default function SkyCanvasMount({
   );
 }
 
+// Memoized — protects the heavy 3D tree from parent re-renders that
+// don't change the actual mount inputs. v2Props identity matters: callers
+// MUST useMemo it (documented above).
+const SkyCanvasMount = memo(SkyCanvasMountImpl);
+export default SkyCanvasMount;

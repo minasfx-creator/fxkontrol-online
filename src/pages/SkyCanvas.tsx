@@ -57,7 +57,11 @@ import { useWorkMode } from '@/core/safety/workMode';
 import { useSkyCanvasShowPersistence, clearPersistedSkyCanvasShow } from '@/hooks/useSkyCanvasShowPersistence';
 import { cn } from '@/lib/utils';
 
-const SkyCanvas2 = lazy(lazyRetry(() => import('@/components/show3d/v2/SkyCanvas2')));
+// Round 7: SkyCanvas2 viewport now mounts via the canonical SkyCanvasMount
+// (engine='v2'). One lazy chunk shared with the rest of the platform; the
+// mount itself is React.memo'd so the heavy 3D tree no longer re-renders
+// when this page's state changes (e.g. tab switches, panel resizes).
+import SkyCanvasMount from '@/components/editor/SkyCanvasMount';
 const SkyCanvasCommandPalette = lazy(() => import('@/components/skycanvas/SkyCanvasCommandPalette'));
 const CatalogImportDialog = lazy(() => import('@/components/editor/CatalogImportDialog'));
 
@@ -447,6 +451,18 @@ export default function SkyCanvasPage() {
   }, []);
 
   const cap = useMemo(() => detectSkyCapability(), []);
+  const budget = useMemo(() => profileBudget(cap), [cap]);
+  // Memoized so the memoized SkyCanvasMount doesn't re-render the canvas tree
+  // on unrelated parent state changes (panel toggles, tab switches, etc).
+  const v2Props = useMemo(
+    () => ({
+      hideStage: !budget.showStage,
+      showFixtures: budget.showFixtures,
+      hideStars: !budget.showStars,
+      dpr: budget.dpr,
+    }),
+    [budget],
+  );
   const workMode = useWorkMode();
   const workModeLabel = workMode === 'design' ? 'DESIGN' : workMode === 'simulation' ? 'SIM' : 'REAL OP';
   const session = useActiveDemoSession();
@@ -874,14 +890,13 @@ export default function SkyCanvasPage() {
             }}
           >
             {cap.renderer === 'webgl2' ? (
-              <Suspense fallback={<ViewportLoader />}>
-                <SkyCanvas2
-                  hideStage={!profileBudget(cap).showStage}
-                  showFixtures={profileBudget(cap).showFixtures}
-                  hideStars={!profileBudget(cap).showStars}
-                  dpr={profileBudget(cap).dpr}
-                />
-              </Suspense>
+              <SkyCanvasMount
+                instanceKey="skycanvas-page"
+                engine="v2"
+                area="SkyCanvas · Viewport"
+                loaderLabel="Booting SkyCanvas…"
+                v2Props={v2Props}
+              />
             ) : (
               <SkyFallback2D reason={cap.reasons[0]} />
             )}
