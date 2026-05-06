@@ -182,7 +182,8 @@ function FloatingPanelImpl({ id, title, state, bottomStrip, className, variant =
         aria-expanded={false}
         onClick={() => dockStore.toggleCollapsed(id)}
         className={cn(
-          'glass-pane glass-pill absolute z-40 px-3 inline-flex items-center gap-2',
+          variant === 'v2' ? 'glass-pane-v2' : 'glass-pane',
+          'glass-pill absolute z-40 px-3 inline-flex items-center gap-2 rounded-full',
           'text-cyan-200/90 ds-mono text-[11px] tracking-wider uppercase',
           'hover:text-cyan-100 transition-colors duration-300',
           reducedMotion ? '' : 'animate-in fade-in zoom-in-95',
