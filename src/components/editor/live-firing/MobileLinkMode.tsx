@@ -151,8 +151,8 @@ export default function MobileLinkMode({ fs, fireChannel, channels, artNetConnec
   const [modules, setModules] = useState<FieldModule[]>(() => {
     try {
       const saved = localStorage.getItem(MODULES_KEY);
-      return saved ? JSON.parse(saved) : createDefaultModules();
-    } catch { return createDefaultModules(); }
+      return saved ? JSON.parse(saved) : loadEmptyModules();
+    } catch { return loadEmptyModules(); }
   });
 
   // ─── Semi-Auto state ───
