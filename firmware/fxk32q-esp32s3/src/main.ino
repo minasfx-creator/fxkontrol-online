@@ -149,6 +149,7 @@ void loop() {
   // Art-Net / sACN
   fxk32q::artnetService();
 
-  // Auto-open de pulsos expirados
+  // Auto-open de pulsos expirados + auto-disarm por inatividade
   fxk32q::serviceTimers();
+  fxk32q::armServiceTimeout();
 }
