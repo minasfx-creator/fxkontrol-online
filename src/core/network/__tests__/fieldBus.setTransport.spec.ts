@@ -28,10 +28,11 @@ describe('FieldBus.setTransport (real wiring)', () => {
   });
 
   it('revoking via stub disables sending without faking alive', () => {
-    fieldBus.setTransport('rs485', { isAlive: () => true, send: () => true });
-    fieldBus.heartbeat('rs485');
+    // wifi is the default active transport (idx 0)
+    fieldBus.setTransport('wifi', { isAlive: () => true, send: () => true });
+    fieldBus.heartbeat('wifi');
     expect(fieldBus.send({ type: 'pyro', payload: {} })).toBe(true);
-    fieldBus.setTransport('rs485', { isAlive: () => false, send: () => false });
+    fieldBus.setTransport('wifi', { isAlive: () => false, send: () => false });
     expect(fieldBus.send({ type: 'pyro', payload: {} })).toBe(false);
   });
 });
