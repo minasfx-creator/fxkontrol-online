@@ -651,7 +651,7 @@ export default function SkyCanvasPage() {
         )}
       </Suspense>
 
-      {/* MOBILE TRANSPORT */}
+      {/* MOBILE TRANSPORT + PANEL SWITCHER */}
       <MobileTransportFab
         playing={playing}
         onTogglePlay={togglePlay}
@@ -659,6 +659,7 @@ export default function SkyCanvasPage() {
         time={time}
         duration={duration}
       />
+      <MobilePanelSwitcher active={mobileActive} onChange={setMobileActive} />
 
       {/* MASTER MENU PALETTE */}
       <Suspense fallback={null}>
