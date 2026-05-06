@@ -72,6 +72,7 @@ const PerfBenchPage = lazy(lazyRetry(() => import("./pages/dev/PerfBench")));
 const EffectsLibrariesPage = lazy(lazyRetry(() => import("./pages/dev/EffectsLibraries")));
 
 const FXK16Hub = lazy(lazyRetry(() => import("./pages/dev/FXK16Hub")));
+const FXK32QHub = lazy(lazyRetry(() => import("./pages/dev/FXK32QHub")));
 const DevIndex = lazy(lazyRetry(() => import("./pages/dev/DevIndex")));
 
 // Office — consolidated productivity area (Etapa 1 do refactor 3-áreas)
