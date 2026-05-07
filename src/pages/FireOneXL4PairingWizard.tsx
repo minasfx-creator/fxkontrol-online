@@ -40,6 +40,7 @@ import {
 import { recordPairing } from '@/lib/pairingAuditLog';
 import { detectPlatformCapabilities } from '@/lib/platformCapabilities';
 import { portRegistry } from '@/core/discovery/portRegistry';
+import { notifyHandshakeOk as notifyXL4HandshakeOk } from '@/hooks/useFireOneXL4Bridge';
 import { logger } from '@/lib/logger';
 
 type Step = 'welcome' | 'cable' | 'baud' | 'handshake' | 'success';
