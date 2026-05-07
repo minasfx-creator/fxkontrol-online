@@ -154,6 +154,20 @@ export default function FireOneXL4PairingWizard() {
         logger.warn('[FireOneXL4PairingWizard] portRegistry.upsert failed', err);
       }
 
+      // Promote adapter to LIVE READ-ONLY via discovery bridge.
+      try {
+        notifyXL4HandshakeOk({
+          firmware: hs.firmware,
+          moduleAddress: hs.moduleAddress,
+          baudRate: hs.baudRate,
+        });
+        logger.info(
+          `[FireOneXL4PairingWizard] handshake ok — fw=${hs.firmware} addr=${hs.moduleAddress} baud=${hs.baudRate} latency=${hs.latencyMs}ms`,
+        );
+      } catch (err) {
+        logger.warn('[FireOneXL4PairingWizard] notifyHandshakeOk failed', err);
+      }
+
       try {
         recordPairing({
           transport: 'webserial',
