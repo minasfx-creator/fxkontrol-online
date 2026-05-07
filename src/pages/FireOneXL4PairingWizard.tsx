@@ -40,6 +40,7 @@ import {
 import { recordPairing } from '@/lib/pairingAuditLog';
 import { detectPlatformCapabilities } from '@/lib/platformCapabilities';
 import { portRegistry } from '@/core/discovery/portRegistry';
+import { notifyHandshakeOk as notifyXL4HandshakeOk } from '@/hooks/useFireOneXL4Bridge';
 import { logger } from '@/lib/logger';
 
 type Step = 'welcome' | 'cable' | 'baud' | 'handshake' | 'success';
@@ -151,6 +152,20 @@ export default function FireOneXL4PairingWizard() {
         });
       } catch (err) {
         logger.warn('[FireOneXL4PairingWizard] portRegistry.upsert failed', err);
+      }
+
+      // Promote adapter to LIVE READ-ONLY via discovery bridge.
+      try {
+        notifyXL4HandshakeOk({
+          firmware: hs.firmware,
+          moduleAddress: hs.moduleAddress,
+          baudRate: hs.baudRate,
+        });
+        logger.info(
+          `[FireOneXL4PairingWizard] handshake ok — fw=${hs.firmware} addr=${hs.moduleAddress} baud=${hs.baudRate} latency=${hs.latencyMs}ms`,
+        );
+      } catch (err) {
+        logger.warn('[FireOneXL4PairingWizard] notifyHandshakeOk failed', err);
       }
 
       try {

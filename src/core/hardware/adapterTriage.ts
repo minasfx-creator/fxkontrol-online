@@ -120,6 +120,19 @@ export const ADAPTER_TRIAGE: ReadonlyArray<AdapterTriageEntry> = [
     requiredForSync: false,
   },
   {
+    id: 'fireone-xl4',
+    class: 'AWAITING_HANDSHAKE',
+    transport: 'serial_usb',
+    rationale:
+      'FireOne XL4+/XLII+/XL4-3 master controller (32ch). Aguarda IDENTIFY válido via USB-FTDI/RS-485 e firmware ≥ 5.00 no wizard de pareamento.',
+    nextAction: {
+      kind: 'route',
+      path: '/pairing/xl4',
+      label: 'Parear FireOne XL4+',
+    },
+    requiredForSync: false,
+  },
+  {
     id: 'fxk16-esp32s3',
     class: 'AWAITING_HANDSHAKE',
     transport: 'serial_usb',
