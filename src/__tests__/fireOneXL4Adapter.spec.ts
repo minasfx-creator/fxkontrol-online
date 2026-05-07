@@ -24,11 +24,13 @@ describe('FireOneXL4Adapter', () => {
     expect(snap.metrics.baud).toBe(0);
   });
 
-  it('exposes safety-locked capabilities (canWrite false, canSimulate false)', () => {
+  it('exposes safety-locked capabilities (canWrite false, canSimulate gated by flag)', () => {
     const caps = fireOneXL4Adapter.getCapabilities();
     expect(caps.canRead).toBe(true);
     expect(caps.canWrite).toBe(false);
-    expect(caps.canSimulate).toBe(false);
+    // canSimulate=true matches FXK16/FXK32Q parity; pollTelemetry is
+    // gated at runtime by isHardwareSimulatorEnabled() (default OFF).
+    expect(caps.canSimulate).toBe(true);
     expect(caps.supportsTelemetry).toBe(true);
     expect(caps.supportsContinuity).toBe(true);
     expect(caps.maxChannels).toBe(32);
