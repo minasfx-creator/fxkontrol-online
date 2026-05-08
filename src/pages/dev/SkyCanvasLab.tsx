@@ -15,7 +15,6 @@
 import { Suspense, lazy, useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { lazyRetry } from '@/lib/lazyRetry';
-import SkyCanvasMount from '@/components/editor/SkyCanvasMount';
 import SkyCanvasViewportShell from '@/components/skycanvas/SkyCanvasViewportShell';
 import { useProjectStore } from '@/store/useProjectStore';
 import { EFFECT_LIBRARY } from '@/data/effectLibrary';
