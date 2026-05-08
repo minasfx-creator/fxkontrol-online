@@ -110,7 +110,10 @@ export default function ShowEngineHost({
 
 
   return (
-    <div ref={containerRef} className={`relative w-full h-full bg-[#050810] ${className ?? ''}`}>
+    <div
+      ref={containerRef}
+      className={`relative w-full h-full ${transparentHost ? '' : 'bg-[#050810]'} ${className ?? ''}`}
+    >
       {state === 'booting' && <ViewportBootingOverlay />}
       {state === 'empty' && <EmptySceneOverlay onGenerate={onRequestGenerate} />}
       {state === 'error' && (
