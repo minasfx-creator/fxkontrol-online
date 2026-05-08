@@ -25,6 +25,7 @@ import SkyCanvasMount from '@/components/editor/SkyCanvasMount';
 import GlassTimelineDock from '@/components/skycanvas/GlassTimelineDock';
 import SkyCanvasDiagnosticsPanel from '@/components/editor/SkyCanvasDiagnosticsPanel';
 import CueInspectorPanel from '@/components/skycanvas/CueInspectorPanel';
+import SkyCanvasCueOverlay from '@/components/skycanvas/SkyCanvasCueOverlay';
 import { decodeAudioPeaks } from '@/lib/skycanvasAudioPeaks';
 import { useProjectStore } from '@/store/useProjectStore';
 import { Badge } from '@/components/ui/badge';
