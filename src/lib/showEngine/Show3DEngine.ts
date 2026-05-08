@@ -31,6 +31,14 @@ import { validateSceneGraph, validateViewportRenderable } from './validateSceneG
 
 export interface Show3DEngineOptions {
   diagnostics?: EngineDiagnosticsBus;
+  /** When true the renderer clears with alpha 0 so the engine can be
+   *  overlaid on top of another canvas (e.g. SkyCanvas). Default false. */
+  transparent?: boolean;
+  /** When true do not draw the helper grid/axes (use as overlay). */
+  hideHelpers?: boolean;
+  /** When true do not build the static layer (footprint/markers/lights)
+   *  so the overlay only renders cue effects on top of the host scene. */
+  hideStaticLayer?: boolean;
 }
 
 /**
