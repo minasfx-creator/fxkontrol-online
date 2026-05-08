@@ -694,6 +694,16 @@ export default function SkyCanvasPage() {
   const isMobile = useSmallViewport(900);
   const [mobileActive, setMobileActive] = useState<MobilePanelKey>('library');
 
+  // Legacy 9-Apr chrome (visual-only). Toggle via ?legacyChrome=0/1 or flag.
+  const legacyChrome = useMemo(() => isEditorLegacyChrome2604Enabled(), []);
+  const [legacyTopSegment, setLegacyTopSegment] = useState<TopSegment>('pyro');
+  const [laserPanelOpen, setLaserPanelOpen] = useState(true);
+  const [transportRate, setTransportRate] = useState(1);
+  const setRate = useCallback((r: number) => {
+    setTransportRate(r);
+    const el = audioElRef.current; if (el) el.playbackRate = r;
+  }, []);
+
   // Effective layout: on mobile, only one rail/timeline visible at a time.
   const effectiveLayout = useMemo(() => {
     if (!isMobile) {
