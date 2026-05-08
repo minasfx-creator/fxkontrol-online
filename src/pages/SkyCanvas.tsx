@@ -694,6 +694,16 @@ export default function SkyCanvasPage() {
   const isMobile = useSmallViewport(900);
   const [mobileActive, setMobileActive] = useState<MobilePanelKey>('library');
 
+  // Legacy 9-Apr chrome (visual-only). Toggle via ?legacyChrome=0/1 or flag.
+  const legacyChrome = useMemo(() => isEditorLegacyChrome2604Enabled(), []);
+  const [legacyTopSegment, setLegacyTopSegment] = useState<TopSegment>('pyro');
+  const [laserPanelOpen, setLaserPanelOpen] = useState(true);
+  const [transportRate, setTransportRate] = useState(1);
+  const setRate = useCallback((r: number) => {
+    setTransportRate(r);
+    const el = audioElRef.current; if (el) el.playbackRate = r;
+  }, []);
+
   // Effective layout: on mobile, only one rail/timeline visible at a time.
   const effectiveLayout = useMemo(() => {
     if (!isMobile) {
@@ -750,40 +760,54 @@ export default function SkyCanvasPage() {
       <EditorShell
         layout={effectiveLayout}
         topbar={
-          <GlassTopbar
-            cap={cap}
-            playing={playing}
-            onTogglePlay={togglePlay}
-            onStop={stop}
-            onSeek={seek}
-            time={time}
-            duration={duration}
-            onPickAudio={onPickAudio}
-            audioName={audioName}
-            onOpenMaster={() => setPaletteOpen(true)}
-            onEStop={() => navigate('/command')}
-            workModeLabel={workModeLabel}
-            sessionMeta={session}
-            layoutControls={{
-              leftCollapsed: layout.leftCollapsed,
-              rightCollapsed: layout.rightCollapsed,
-              timelineCollapsed: layout.timelineCollapsed,
-              toggleLeft: layout.toggleLeft,
-              toggleRight: layout.toggleRight,
-              toggleTimeline: layout.toggleTimeline,
-              reset: layout.reset,
-            }}
-          />
+          legacyChrome ? (
+            <EditorTopBarLegacy
+              time={time}
+              onOpenMaster={() => setPaletteOpen(true)}
+              onOpenImport={() => setImportOpen(true)}
+              onExport={exportShowJson}
+              onResetShow={resetShow}
+              segment={legacyTopSegment}
+              onSegmentChange={setLegacyTopSegment}
+            />
+          ) : (
+            <GlassTopbar
+              cap={cap}
+              playing={playing}
+              onTogglePlay={togglePlay}
+              onStop={stop}
+              onSeek={seek}
+              time={time}
+              duration={duration}
+              onPickAudio={onPickAudio}
+              audioName={audioName}
+              onOpenMaster={() => setPaletteOpen(true)}
+              onEStop={() => navigate('/command')}
+              workModeLabel={workModeLabel}
+              sessionMeta={session}
+              layoutControls={{
+                leftCollapsed: layout.leftCollapsed,
+                rightCollapsed: layout.rightCollapsed,
+                timelineCollapsed: layout.timelineCollapsed,
+                toggleLeft: layout.toggleLeft,
+                toggleRight: layout.toggleRight,
+                toggleTimeline: layout.toggleTimeline,
+                reset: layout.reset,
+              }}
+            />
+          )
         }
         tabs={
-          <div className="h-full glass-pane mx-3 my-1 rounded-xl flex items-center px-ds-4">
-            <DsSegmentTabs
-              items={SEGMENTS}
-              activeId={activeSegment}
-              onChange={setActiveSegment}
-              colorPerSegment
-            />
-          </div>
+          legacyChrome ? null : (
+            <div className="h-full glass-pane mx-3 my-1 rounded-xl flex items-center px-ds-4">
+              <DsSegmentTabs
+                items={SEGMENTS}
+                activeId={activeSegment}
+                onChange={setActiveSegment}
+                colorPerSegment
+              />
+            </div>
+          )
         }
         left={
           <StudioErrorBoundary area="SkyCanvas · Library">
@@ -834,15 +858,31 @@ export default function SkyCanvasPage() {
               className="h-full flex flex-col outline-none"
               data-panel-id="timeline"
             >
-              <TimelineCuesProvider value={{ time, duration, onSeekAbs: seekAbs, onDropEffect: dropEffectAt, peaks }}>
-                <TabbedDockPanel
-                  defaultValue="cues"
-                  dense
-                  value={layout.activeTabs?.timeline ?? 'cues'}
-                  onValueChange={(v) => layout.setActiveTab('timeline', v)}
-                  tabs={TIMELINE_TABS}
-                />
-              </TimelineCuesProvider>
+              {legacyChrome ? (
+                <div className="h-full flex flex-col bg-zinc-950/80">
+                  <TransportBarLegacy
+                    playing={playing}
+                    onTogglePlay={togglePlay}
+                    onStop={stop}
+                    onSeek={(d) => (d === -Infinity ? seekAbs(0) : seek(d))}
+                    time={time}
+                    duration={duration}
+                    rate={transportRate}
+                    onRateChange={setRate}
+                  />
+                  <FiringLanesTimelineLegacy duration={duration} time={time} />
+                </div>
+              ) : (
+                <TimelineCuesProvider value={{ time, duration, onSeekAbs: seekAbs, onDropEffect: dropEffectAt, peaks }}>
+                  <TabbedDockPanel
+                    defaultValue="cues"
+                    dense
+                    value={layout.activeTabs?.timeline ?? 'cues'}
+                    onValueChange={(v) => layout.setActiveTab('timeline', v)}
+                    tabs={TIMELINE_TABS}
+                  />
+                </TimelineCuesProvider>
+              )}
             </section>
           </StudioErrorBoundary>
         }
@@ -879,6 +919,23 @@ export default function SkyCanvasPage() {
 
             {/* Round 8 — viewport HUD overlays consolidated. */}
             <ViewportOverlays />
+
+            {/* Legacy 9-Apr chrome overlays */}
+            {legacyChrome && (
+              <>
+                <LeftToolRailLegacy />
+                <RightIconRailLegacy
+                  activeRightTab={layout.activeTabs?.right ?? 'cue'}
+                  onSelectRightTab={(v) => layout.setActiveTab('right', v)}
+                  onOpenPalette={() => setPaletteOpen(true)}
+                />
+                <LaserControlFloatingPanel
+                  open={laserPanelOpen}
+                  onClose={() => setLaserPanelOpen(false)}
+                />
+                <JoiAvatarFab onClick={() => setPaletteOpen(true)} />
+              </>
+            )}
           </div>
         </StudioErrorBoundary>
       </EditorShell>
