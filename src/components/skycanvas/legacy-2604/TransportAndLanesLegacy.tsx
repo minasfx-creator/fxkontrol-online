@@ -200,7 +200,7 @@ function Lane({ label, color, cues, duration, onDropEffect }:
         }}
       >
         {cues.map((c) => {
-          const sel = useProjectStore.getState().selectedCueMarkerId === c.id;
+          const sel = selectedId === c.id;
           return (
             <button
               key={c.id}
