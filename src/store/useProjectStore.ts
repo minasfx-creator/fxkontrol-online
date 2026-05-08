@@ -738,11 +738,15 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
   ...createDroneFormationSlice(set as any, get as any),
 
   addCueMarker: (marker) => set((s) => ({ cueMarkers: [...s.cueMarkers, marker].sort((a, b) => a.time - b.time) })),
-  removeCueMarker: (id) => set((s) => ({ cueMarkers: s.cueMarkers.filter((c) => c.id !== id) })),
+  removeCueMarker: (id) => set((s) => ({
+    cueMarkers: s.cueMarkers.filter((c) => c.id !== id),
+    selectedCueMarkerId: s.selectedCueMarkerId === id ? null : s.selectedCueMarkerId,
+  })),
   updateCueMarker: (id, updates) => set((s) => ({
     cueMarkers: s.cueMarkers.map((c) => c.id === id ? { ...c, ...updates } : c),
   })),
-  clearCueMarkers: () => set({ cueMarkers: [] }),
+  clearCueMarkers: () => set({ cueMarkers: [], selectedCueMarkerId: null }),
+  selectCueMarker: (id) => set({ selectedCueMarkerId: id }),
   setVideoChoreoResult: (result) => set({ videoChoreoResult: result }),
   setDepthLayers: (layers) => set({ depthLayers: layers }),
 }));
