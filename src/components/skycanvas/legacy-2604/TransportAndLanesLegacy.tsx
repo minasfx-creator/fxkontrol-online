@@ -84,7 +84,15 @@ export function TransportBarLegacy({
   );
 }
 
-export function FiringLanesTimelineLegacy({ duration, time }: { duration: number; time: number }) {
+const FXK_EFFECT_DRAG_TYPE = 'application/x-fxk-effect';
+
+export function FiringLanesTimelineLegacy({
+  duration, time, onDropEffect,
+}: {
+  duration: number;
+  time: number;
+  onDropEffect?: (effectId: string, t: number, lane: 'pyro' | 'drone') => void;
+}) {
   const cues = useProjectStore((s) => s.cueMarkers);
   const { pyro, drone } = useMemo(() => {
     const p: typeof cues = [];
