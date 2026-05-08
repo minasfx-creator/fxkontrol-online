@@ -78,7 +78,7 @@ export default function ShowEngineHost({
 
   useEffect(() => {
     if (!containerRef.current) return;
-    const engine = new Show3DEngine();
+    const engine = new Show3DEngine(engineOptions);
     engineRef.current = engine;
     const unsubVp = engine.viewport.subscribe(setState);
     const unsubDiag = engineDiagnostics.subscribe((d) => setErrMsg(d.lastError));
