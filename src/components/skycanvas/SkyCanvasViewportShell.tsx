@@ -239,6 +239,14 @@ export default function SkyCanvasViewportShell({
         </div>
       )}
 
+      {/* Cue Inspector — floating glass dock (right) when a cue is selected */}
+      <div
+        className="absolute right-3 z-30 pointer-events-none"
+        style={{ top: diagOpen ? 'calc(20rem + 24px)' : '5rem' }}
+      >
+        <CueInspectorPanel />
+      </div>
+
       {/* Glass timeline dock — bottom */}
       <div
         className="absolute inset-x-0 bottom-0 z-20 pointer-events-auto transition-[height] duration-200 ease-out"
