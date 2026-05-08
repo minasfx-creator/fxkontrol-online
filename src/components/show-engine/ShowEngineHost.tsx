@@ -61,6 +61,8 @@ export default function ShowEngineHost({
   autoPlay = true,
   hideTransport = false,
   externalClock = false,
+  engineOptions,
+  transparentHost = false,
 }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const engineRef = useRef<Show3DEngine | null>(null);
