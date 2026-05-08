@@ -120,7 +120,7 @@ export default function SkyCanvasLab() {
       </div>
 
       {variant === 'smoke' && (
-        <SkyCanvasMount instanceKey="lab-smoke" area="3D viewport (lab/smoke)" loaderLabel="Booting SkyCanvas…" />
+        <SkyCanvasViewportShell variant="dev" />
       )}
       {variant === 'r3f' && (
         <Suspense fallback={<div className="grid h-full place-items-center text-xs">Booting R3F…</div>}>
