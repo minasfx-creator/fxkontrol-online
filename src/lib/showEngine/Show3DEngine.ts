@@ -97,8 +97,15 @@ export class Show3DEngine {
   private frameAcc = 0;
   private frameCount = 0;
 
+  private readonly _opts: Required<Pick<Show3DEngineOptions, 'transparent' | 'hideHelpers' | 'hideStaticLayer'>>;
+
   constructor(opts: Show3DEngineOptions = {}) {
     this.diagnostics = opts.diagnostics ?? engineDiagnostics;
+    this._opts = {
+      transparent: opts.transparent ?? false,
+      hideHelpers: opts.hideHelpers ?? false,
+      hideStaticLayer: opts.hideStaticLayer ?? false,
+    };
     this.staticLayer.name = 'staticLayer';
     this.dynamicLayer.name = 'dynamicLayer';
     this.effectsLayer.name = 'effectsLayer';
