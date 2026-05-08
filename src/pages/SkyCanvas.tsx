@@ -858,15 +858,31 @@ export default function SkyCanvasPage() {
               className="h-full flex flex-col outline-none"
               data-panel-id="timeline"
             >
-              <TimelineCuesProvider value={{ time, duration, onSeekAbs: seekAbs, onDropEffect: dropEffectAt, peaks }}>
-                <TabbedDockPanel
-                  defaultValue="cues"
-                  dense
-                  value={layout.activeTabs?.timeline ?? 'cues'}
-                  onValueChange={(v) => layout.setActiveTab('timeline', v)}
-                  tabs={TIMELINE_TABS}
-                />
-              </TimelineCuesProvider>
+              {legacyChrome ? (
+                <div className="h-full flex flex-col bg-zinc-950/80">
+                  <TransportBarLegacy
+                    playing={playing}
+                    onTogglePlay={togglePlay}
+                    onStop={stop}
+                    onSeek={(d) => (d === -Infinity ? seekAbs(0) : seek(d))}
+                    time={time}
+                    duration={duration}
+                    rate={transportRate}
+                    onRateChange={setRate}
+                  />
+                  <FiringLanesTimelineLegacy duration={duration} time={time} />
+                </div>
+              ) : (
+                <TimelineCuesProvider value={{ time, duration, onSeekAbs: seekAbs, onDropEffect: dropEffectAt, peaks }}>
+                  <TabbedDockPanel
+                    defaultValue="cues"
+                    dense
+                    value={layout.activeTabs?.timeline ?? 'cues'}
+                    onValueChange={(v) => layout.setActiveTab('timeline', v)}
+                    tabs={TIMELINE_TABS}
+                  />
+                </TimelineCuesProvider>
+              )}
             </section>
           </StudioErrorBoundary>
         }
