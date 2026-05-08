@@ -61,6 +61,12 @@ export default function SkyCanvas2({
   showPerfHud = false,
   onFatalError,
 }: SkyCanvas2Props & SkyCanvas2ExtraProps) {
+  // Auto-tier: low-end hosts (SwiftShader, coarse pointer + small viewport,
+  // saveData) get a lighter scene unless caller explicitly overrode.
+  // Caller's explicit `false` for hide flags is preserved (no force).
+  const lowTier = _CAP?.tier === 'low';
+  const effHideStars = hideStars || (lowTier && _CAP?.software === true);
+  const effStageVariant: 'arch' | 'minimal' = lowTier && stageVariant === 'arch' ? 'minimal' : stageVariant;
   const [contextLost, setContextLost] = useState(false);
   const [minDpr, maxDpr] = Array.isArray(dpr) ? dpr : [dpr, dpr];
   // Mobile high-DPI (>2.5) starts at minDpr to avoid first-frame jank;
