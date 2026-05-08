@@ -17,10 +17,11 @@ import { logger } from '@/lib/logger';
 const UsbPairingWizard = lazy(() => import('./UsbPairingWizard'));
 const BlePairingWizard = lazy(() => import('./BlePairingWizard'));
 const FireOneXL4PairingWizard = lazy(() => import('./FireOneXL4PairingWizard'));
+const ShowvenM1PairingWizard = lazy(() => import('./ShowvenM1PairingWizard'));
 
-export type PairingTransportParam = 'usb' | 'ble' | 'xl4';
+export type PairingTransportParam = 'usb' | 'ble' | 'xl4' | 'm1';
 
-const SUPPORTED: PairingTransportParam[] = ['usb', 'ble', 'xl4'];
+const SUPPORTED: PairingTransportParam[] = ['usb', 'ble', 'xl4', 'm1'];
 
 function isSupported(t: string | undefined): t is PairingTransportParam {
   return !!t && (SUPPORTED as string[]).includes(t);
@@ -44,11 +45,13 @@ export default function PairingWizard() {
 
   return (
     <Suspense fallback={<Fallback />}>
-      {transport === 'xl4'
-        ? <FireOneXL4PairingWizard />
-        : transport === 'ble'
-          ? <BlePairingWizard />
-          : <UsbPairingWizard />}
+      {transport === 'm1'
+        ? <ShowvenM1PairingWizard />
+        : transport === 'xl4'
+          ? <FireOneXL4PairingWizard />
+          : transport === 'ble'
+            ? <BlePairingWizard />
+            : <UsbPairingWizard />}
     </Suspense>
   );
 }
