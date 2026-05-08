@@ -200,6 +200,8 @@ export interface ProjectState {
   removeCueMarker: (id: string) => void;
   updateCueMarker: (id: string, updates: Partial<Omit<CueMarker, 'id'>>) => void;
   clearCueMarkers: () => void;
+  selectedCueMarkerId: string | null;
+  selectCueMarker: (id: string | null) => void;
   setVideoChoreoResult: (result: VideoChoreoResult | null) => void;
   setDepthLayers: (layers: DepthLayer[]) => void;
 }
