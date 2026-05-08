@@ -24,6 +24,7 @@ import { logger } from '@/lib/logger';
 import { fxk16ModuleAdapter } from './adapters/FXK16ModuleAdapter';
 import { fxk32qModuleAdapter } from './adapters/FXK32QModuleAdapter';
 import { fireOneXL4Adapter } from './adapters/FireOneXL4Adapter';
+import { showvenM1Adapter } from './adapters/ShowvenM1Adapter';
 import { artNetNodeAdapter } from './adapters/ArtNetNodeAdapter';
 import { dmxUniverseAdapter } from './adapters/DMXUniverseAdapter';
 import { batteryMonitorAdapter } from './adapters/BatteryMonitorAdapter';
@@ -33,6 +34,7 @@ import { unifiedHardwareRegistry } from './UnifiedHardwareRegistry';
 import { subscribeFXK16Bridge } from '@/hooks/useFXK16Bridge';
 import { subscribeFXK32QBridge } from '@/hooks/useFXK32QBridge';
 import { subscribeFireOneXL4Bridge } from '@/hooks/useFireOneXL4Bridge';
+import { subscribeShowvenM1Bridge } from '@/hooks/useShowvenM1Bridge';
 import { isFxk32q } from '@/lib/fxk32q/pinmap';
 import { mdnsArtnetDiscoverer } from '@/core/discovery/MdnsArtnetDiscoverer';
 import { webSerialDiscoverer } from '@/core/discovery/WebSerialDiscoverer';
@@ -42,11 +44,13 @@ let _started = false;
 let _unsubFxk: (() => void) | null = null;
 let _unsubFxk32q: (() => void) | null = null;
 let _unsubXl4: (() => void) | null = null;
+let _unsubM1: (() => void) | null = null;
 let _unsubArtnet: (() => void) | null = null;
 let _unsubSerial: (() => void) | null = null;
 let _lastVerified = false;
 let _lastFxk32qVerified = false;
 let _lastXl4Verified = false;
+let _lastM1Verified = false;
 /** Track which Art-Net hosts are currently online so we can demote on loss. */
 const _artnetOnline = new Set<string>();
 /** Track DMX-family serial device ids currently online. */
@@ -215,19 +219,43 @@ export function startDiscoveryRegistryBridge(): void {
       logger.info('[discoveryBridge] FireOne XL4+ demoted to NOT_INTEGRATED');
     }
   });
-}
 
-/** Stop the bridge — primarily for tests. */
+  // ── Showven M1 / FXcommander Pro (PBus dual-band via USB-FTDI) ─
+  // Wizard publishes verified PBus STATUS (FW ≥ V1.5) → singleton → here.
+  _unsubM1 = subscribeShowvenM1Bridge((status) => {
+    if (status.verified === _lastM1Verified) return;
+    _lastM1Verified = status.verified;
+    if (status.verified) {
+      showvenM1Adapter.markHandshakeOk({
+        transport: 'serial_usb',
+        firmware: status.firmware ?? undefined,
+        masterAddress: status.masterAddress ?? undefined,
+        baudRate: status.baudRate ?? undefined,
+        slavesOnline: status.slavesOnline,
+      });
+      logger.info(
+        `[discoveryBridge] Showven M1 promoted to LIVE READ-ONLY (fw=${status.firmware ?? '?'}, addr=${status.masterAddress ?? '?'}, baud=${status.baudRate ?? '?'}, slaves=${status.slavesOnline})`,
+      );
+      try { unifiedHardwareRegistry.startPolling(1000); }
+      catch (err) { logger.warn('[discoveryBridge] startPolling failed', err); }
+    } else {
+      showvenM1Adapter.markHandshakeLost();
+      logger.info('[discoveryBridge] Showven M1 demoted to NOT_INTEGRATED');
+    }
+  });
+}
 export function stopDiscoveryRegistryBridge(): void {
   if (_unsubFxk) { _unsubFxk(); _unsubFxk = null; }
   if (_unsubFxk32q) { _unsubFxk32q(); _unsubFxk32q = null; }
   if (_unsubXl4) { _unsubXl4(); _unsubXl4 = null; }
+  if (_unsubM1) { _unsubM1(); _unsubM1 = null; }
   if (_unsubArtnet) { _unsubArtnet(); _unsubArtnet = null; }
   if (_unsubSerial) { _unsubSerial(); _unsubSerial = null; }
   _started = false;
   _lastVerified = false;
   _lastFxk32qVerified = false;
   _lastXl4Verified = false;
+  _lastM1Verified = false;
   _artnetOnline.clear();
   _dmxSerialOnline.clear();
 }

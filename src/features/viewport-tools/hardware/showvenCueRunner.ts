@@ -23,6 +23,7 @@
  */
 
 import { getPBusController, type PBusTransportState } from '@/lib/pbusProtocol';
+import { resolveM1Target, type M1CueOverride } from '@/lib/showvenM1CueMap';
 import type { TimelineItem } from '@/types/projectTypes';
 
 export type ShowvenRunStatus =
@@ -58,6 +59,8 @@ export interface ShowvenQueueOptions {
   defaultDurationMs?: number;
   /** Coalesce same-device cues within this window into FIRE_SEQ. */
   coalesceWindowMs?: number;
+  /** Optional sparse override mapping cueIndex 1..128 → {slave, channel}. */
+  m1CueOverride?: M1CueOverride;
 }
 
 export class ShowvenCueRunner {
@@ -74,6 +77,7 @@ export class ShowvenCueRunner {
     this.opts = {
       defaultDurationMs: opts.defaultDurationMs ?? DEFAULT_DURATION_MS,
       coalesceWindowMs: opts.coalesceWindowMs ?? DEFAULT_COALESCE_MS,
+      m1CueOverride: opts.m1CueOverride ?? {},
     };
   }
 
@@ -88,6 +92,7 @@ export class ShowvenCueRunner {
     this.opts = {
       defaultDurationMs: opts.defaultDurationMs ?? this.opts.defaultDurationMs,
       coalesceWindowMs: opts.coalesceWindowMs ?? this.opts.coalesceWindowMs,
+      m1CueOverride: opts.m1CueOverride ?? this.opts.m1CueOverride,
     };
   }
 
@@ -101,13 +106,27 @@ export class ShowvenCueRunner {
     let skipped = 0;
     const compiled: ScheduledCue[] = [];
     for (const it of items) {
-      const tube = it.tube;
-      const rack = (it as { rack?: number }).rack ?? 1;
-      if (tube === undefined || tube < 1 || tube > 16) { skipped++; continue; }
-      if (rack < 1 || rack > MAX_DEVICE) { skipped++; continue; }
+      // M1 mode: TimelineItem.cueIndex (1..128) takes precedence over rack/tube.
+      const cueIndex = (it as { cueIndex?: number }).cueIndex;
+      let device: number;
+      let channel: number;
+      if (typeof cueIndex === 'number') {
+        try {
+          const t = resolveM1Target(cueIndex, this.opts.m1CueOverride);
+          device = t.slaveAddress;
+          channel = t.channel;
+        } catch { skipped++; continue; }
+      } else {
+        const tube = it.tube;
+        const rack = (it as { rack?: number }).rack ?? 1;
+        if (tube === undefined || tube < 1 || tube > 16) { skipped++; continue; }
+        if (rack < 1 || rack > MAX_DEVICE) { skipped++; continue; }
+        device = rack;
+        channel = tube;
+      }
       compiled.push({
-        device: rack,
-        channel: tube,
+        device,
+        channel,
         fireAtMs: Math.max(0, Math.round(it.startTime * 1000)),
         durationMs: this.opts.defaultDurationMs,
       });

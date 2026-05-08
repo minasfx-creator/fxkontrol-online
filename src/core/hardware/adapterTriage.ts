@@ -193,6 +193,19 @@ export const ADAPTER_TRIAGE: ReadonlyArray<AdapterTriageEntry> = [
     },
     requiredForSync: false,
   },
+  {
+    id: 'showven-m1',
+    class: 'AWAITING_HANDSHAKE',
+    transport: 'serial_usb',
+    rationale:
+      'Showven M1 / FXcommander Pro master controller (128 cues × 4 cenas, dual-band 433M/868M). Aguarda STATUS PBus válido @19200 8N1 e firmware ≥ V1.5 no wizard de pareamento.',
+    nextAction: {
+      kind: 'route',
+      path: '/pairing/m1',
+      label: 'Parear Showven M1',
+    },
+    requiredForSync: false,
+  },
 ];
 
 /** Lookup helper. Returns `undefined` if id not in triage table. */
