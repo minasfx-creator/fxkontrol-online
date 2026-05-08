@@ -27,6 +27,7 @@
 import { commandBus } from './CommandBus';
 import { safetyAuditTrail } from '@/core/safety/SafetyAuditTrail';
 import { blackbox } from '@/core/reliability/blackBoxRecorder';
+import { recordCommandRequested } from '@/core/journal/commandJournal';
 
 export interface CommandSource {
   /** Human-readable origin — e.g. "FieldTestDesktop", "PyroControllerCard". */
