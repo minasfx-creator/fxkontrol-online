@@ -127,6 +127,9 @@ export default function SkyCanvasViewportShell({
           area="3D viewport (shell)"
           loaderLabel="Booting SkyCanvas…"
         />
+        {/* Cue execution overlay — Particle Explosions + Light Points
+            sincronizados pelo audio master clock (currentTime). */}
+        <SkyCanvasCueOverlay />
       </div>
 
       {/* Glass topbar pill — top-center */}
