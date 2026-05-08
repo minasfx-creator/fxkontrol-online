@@ -928,6 +928,10 @@ export default function SkyCanvasPage() {
             {/* Round 8 — viewport HUD overlays consolidated. */}
             <ViewportOverlays />
 
+            {/* SkyCanvas exception inspector — dev/debug overlay (top-right).
+                Self-hides when no entries; never affects safety/command path. */}
+            {import.meta.env.DEV && <SkyCanvasDiagnosticsPanel />}
+
             {/* Legacy 9-Apr chrome overlays */}
             {legacyChrome && (
               <>
