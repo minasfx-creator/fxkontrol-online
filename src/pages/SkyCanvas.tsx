@@ -583,14 +583,20 @@ export default function SkyCanvasPage() {
     audioUrlRef.current = null;
   }, []);
 
-  // Cue drop handlers
-  const dropEffectAt = useCallback((effectId: string, t: number) => {
-    const fx = EFFECT_LIBRARY.find((e) => e.id === effectId);
+  // Cue drop handlers — resolve via canonical lookup (legacy + Finale 3D parts).
+  const dropEffectAt = useCallback((effectId: string, t: number, laneHint?: 'pyro' | 'drone') => {
+    const fx = resolveEffectLedAccurate(effectId) ?? EFFECT_LIBRARY.find((e) => e.id === effectId);
     if (!fx) return;
+    const baseLabel = `${fx.icon ?? '✦'} ${fx.name}`;
+    // If the user dropped on the DRONE lane, tag the label so projection
+    // routes to the drone firing system (FiringLanesTimelineLegacy split).
+    const label = laneHint === 'drone' && !baseLabel.toLowerCase().includes('drone')
+      ? `${baseLabel} · drone`
+      : baseLabel;
     useProjectStore.getState().addCueMarker({
       id: `cue-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`,
       time: Math.max(0, Math.min(duration, t)),
-      label: `${fx.icon} ${fx.name}`,
+      label,
       color: fx.color,
     });
   }, [duration]);
