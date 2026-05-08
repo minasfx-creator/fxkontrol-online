@@ -157,6 +157,7 @@ function Lane({ label, color, cues, duration, onDropEffect }:
   const [hoverPct, setHoverPct] = useState<number | null>(null);
   const [isOver, setIsOver] = useState(false);
   const trackRef = useRef<HTMLDivElement | null>(null);
+  const selectedId = useProjectStore((s) => s.selectedCueMarkerId);
 
   const pctFromEvent = (e: React.DragEvent<HTMLDivElement>) => {
     const r = trackRef.current?.getBoundingClientRect();
