@@ -64,13 +64,22 @@ export default function GlassTimelineDock({
     setCurrentTime(Math.max(0, Math.min(duration, t)));
   }, [duration, setCurrentTime]);
 
-  const dropEffect = useCallback((effectId: string, t: number, laneHint?: 'pyro' | 'drone') => {
+  /** Auto-classify lane from the resolved effect when no explicit hint
+   *  comes from the lane drop target (e.g. drop on the cue ruler). */
+  const dropEffect = useCallback((effectId: string, t: number, laneHint?: 'pyro' | 'drone' | 'formation') => {
     const fx = resolveEffectLedAccurate(effectId) ?? EFFECT_LIBRARY.find((e) => e.id === effectId);
     if (!fx) return;
+    // Auto lane: partType==='formation' → formation; type==='drone' → drone; else → pyro.
+    const auto: 'pyro' | 'drone' | 'formation' =
+      // @ts-expect-error - partType is part of the legacy library schema
+      (fx.partType === 'formation') ? 'formation'
+        : (fx.type === 'drone' || fx.type === 'light') ? 'drone'
+          : 'pyro';
+    const lane = laneHint ?? auto;
     const baseLabel = `${fx.icon ?? '✦'} ${fx.name}`;
-    const label = laneHint === 'drone' && !baseLabel.toLowerCase().includes('drone')
-      ? `${baseLabel} · drone`
-      : baseLabel;
+    // Tag label so classifyCueLane() in FiringLanesTimelineLegacy routes to the
+    // correct lane on subsequent renders. Pyro is the default → no tag needed.
+    const label = lane === 'pyro' ? baseLabel : `${baseLabel} · ${lane}`;
     useProjectStore.getState().addCueMarker({
       id: `cue-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`,
       time: Math.max(0, Math.min(duration, t)),
@@ -82,6 +91,7 @@ export default function GlassTimelineDock({
   const stripProps = useMemo(() => ({
     time, duration, peaks,
     onSeekAbs: seekAbs,
+    // Drop on the cue ruler → no lane hint, auto-classifies via effect type.
     onDropEffect: (id: string, t: number) => dropEffect(id, t),
   }), [time, duration, peaks, seekAbs, dropEffect]);
 
