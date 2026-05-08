@@ -106,42 +106,70 @@ export interface BurstSpec {
 export function useBurstSpecs(): BurstSpec[] {
   const positions = useProjectStore((s) => s.positions);
   const timelineItems = useProjectStore((s) => s.timelineItems);
+  const cueMarkers = useProjectStore((s) => s.cueMarkers);
 
   return useMemo(() => {
-    if (timelineItems.length === 0) return [];
-
-    const positionMap = new Map<string, { x: number; y: number; z: number }>();
-    for (const p of positions) positionMap.set(p.id, { x: p.x, y: p.y, z: p.z });
-
     const list: BurstSpec[] = [];
-    for (const item of timelineItems) {
-      const eff = getEffect(item.effectId);
-      if (!eff || eff.type !== 'firework') continue;
 
-      const burstStart = item.startTime + (eff.prefire ?? 0);
-      const life = item.durationOverride ?? eff.duration ?? 2.5;
-      const burstEnd = burstStart + life;
+    if (timelineItems.length > 0) {
+      const positionMap = new Map<string, { x: number; y: number; z: number }>();
+      for (const p of positions) positionMap.set(p.id, { x: p.x, y: p.y, z: p.z });
 
-      const pos = item.positionId ? positionMap.get(item.positionId) : undefined;
-      const height = eff.heightMeters ?? 60;
-      const origin: Vec3 = [
-        pos?.x ?? item.position?.x ?? 0,
-        (pos?.y ?? item.position?.y ?? 0) + height,
-        pos?.z ?? item.position?.z ?? 0,
-      ];
+      for (const item of timelineItems) {
+        const eff = getEffect(item.effectId);
+        if (!eff || eff.type !== 'firework') continue;
 
+        const burstStart = item.startTime + (eff.prefire ?? 0);
+        const life = item.durationOverride ?? eff.duration ?? 2.5;
+        const burstEnd = burstStart + life;
+
+        const pos = item.positionId ? positionMap.get(item.positionId) : undefined;
+        const height = eff.heightMeters ?? 60;
+        const origin: Vec3 = [
+          pos?.x ?? item.position?.x ?? 0,
+          (pos?.y ?? item.position?.y ?? 0) + height,
+          pos?.z ?? item.position?.z ?? 0,
+        ];
+
+        list.push({
+          id: item.id,
+          origin,
+          color: item.colorOverride
+            ? ledAccurateColor(item.colorOverride)
+            : (eff.color || '#FFD700'),
+          burstStart,
+          burstEnd,
+          life,
+          height,
+        });
+      }
+    }
+
+    // Cue markers from the legacy timeline (drag-drop). Each cue produces
+    // one synthesized firework burst at a deterministic sky origin so the
+    // operator gets visible feedback when Play crosses its time.
+    for (const cue of cueMarkers) {
+      // Deterministic hash → spread bursts over a 60×60m area around origin.
+      let h = 2166136261 >>> 0;
+      for (let i = 0; i < cue.id.length; i++) {
+        h ^= cue.id.charCodeAt(i);
+        h = Math.imul(h, 16777619) >>> 0;
+      }
+      const angle = (h & 0xffff) / 0xffff * Math.PI * 2;
+      const radius = 5 + ((h >>> 16) & 0xff) / 255 * 25;
+      const height = 55 + ((h >>> 8) & 0x1f);
+      const life = 2.5;
       list.push({
-        id: item.id,
-        origin,
-        color: item.colorOverride
-          ? ledAccurateColor(item.colorOverride)
-          : (eff.color || '#FFD700'),
-        burstStart,
-        burstEnd,
+        id: `cue-${cue.id}`,
+        origin: [Math.cos(angle) * radius, height, Math.sin(angle) * radius],
+        color: ledAccurateColor(cue.color || '#FFD700'),
+        burstStart: cue.time,
+        burstEnd: cue.time + life,
         life,
         height,
       });
     }
+
     return list;
-  }, [positions, timelineItems]);
+  }, [positions, timelineItems, cueMarkers]);
 }
