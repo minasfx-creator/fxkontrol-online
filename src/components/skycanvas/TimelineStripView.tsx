@@ -26,6 +26,8 @@ export default function TimelineStripView({
   const [dragOver, setDragOver] = useState(false);
   const cueMarkers = useProjectStore((s) => s.cueMarkers);
   const removeCueMarker = useProjectStore((s) => s.removeCueMarker);
+  const selectCueMarker = useProjectStore((s) => s.selectCueMarker);
+  const selectedCueMarkerId = useProjectStore((s) => s.selectedCueMarkerId);
 
   const xToTime = (clientX: number) => {
     const el = ref.current; if (!el) return 0;
@@ -86,18 +88,31 @@ export default function TimelineStripView({
 
         {cueMarkers.map((c) => {
           const left = duration > 0 ? (c.time / duration) * 100 : 0;
+          const isSel = selectedCueMarkerId === c.id;
           return (
             <button
               key={c.id}
-              onClick={(e) => { e.stopPropagation(); onSeekAbs(c.time); }}
+              onClick={(e) => { e.stopPropagation(); selectCueMarker(c.id); onSeekAbs(c.time); }}
               onDoubleClick={(e) => { e.stopPropagation(); removeCueMarker(c.id); }}
-              className="group absolute top-5 bottom-0 w-[3px] -translate-x-1/2 cursor-pointer hover:w-[4px]"
-              style={{ left: `${left}%`, background: c.color }}
-              title={`${c.label} @ ${fmtTime(c.time)} — duplo clique para remover`}
+              className={cn(
+                'group absolute top-5 bottom-0 -translate-x-1/2 cursor-pointer transition-all',
+                isSel ? 'w-[5px] z-10' : 'w-[3px] hover:w-[4px]',
+              )}
+              style={{
+                left: `${left}%`,
+                background: c.color,
+                boxShadow: isSel ? `0 0 8px ${c.color}, 0 0 2px hsl(189 94% 70%)` : undefined,
+                outline: isSel ? '1px solid hsl(189 94% 70%)' : undefined,
+              }}
+              title={`${c.label} @ ${fmtTime(c.time)} — clique para inspecionar, duplo clique para remover`}
               aria-label={`Cue ${c.label} aos ${fmtTime(c.time)}`}
+              aria-pressed={isSel}
             >
               <span
-                className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-full whitespace-nowrap rounded px-1 py-px text-[9px] ds-mono opacity-0 group-hover:opacity-100 transition"
+                className={cn(
+                  'absolute top-0 left-1/2 -translate-x-1/2 -translate-y-full whitespace-nowrap rounded px-1 py-px text-[9px] ds-mono transition',
+                  isSel ? 'opacity-100' : 'opacity-0 group-hover:opacity-100',
+                )}
                 style={{ background: c.color, color: '#050810' }}
               >
                 {c.label}

@@ -200,6 +200,8 @@ export interface ProjectState {
   removeCueMarker: (id: string) => void;
   updateCueMarker: (id: string, updates: Partial<Omit<CueMarker, 'id'>>) => void;
   clearCueMarkers: () => void;
+  selectedCueMarkerId: string | null;
+  selectCueMarker: (id: string | null) => void;
   setVideoChoreoResult: (result: VideoChoreoResult | null) => void;
   setDepthLayers: (layers: DepthLayer[]) => void;
 }
@@ -257,6 +259,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
   selectedTrajectoryIds: [],
   showFormations: true,
   cueMarkers: [],
+  selectedCueMarkerId: null,
   videoChoreoResult: null,
   depthLayers: [],
   gpsOrigin: { lat: -23.5505, lng: -46.6333, heading: 0, altitude: 0 },
@@ -735,11 +738,15 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
   ...createDroneFormationSlice(set as any, get as any),
 
   addCueMarker: (marker) => set((s) => ({ cueMarkers: [...s.cueMarkers, marker].sort((a, b) => a.time - b.time) })),
-  removeCueMarker: (id) => set((s) => ({ cueMarkers: s.cueMarkers.filter((c) => c.id !== id) })),
+  removeCueMarker: (id) => set((s) => ({
+    cueMarkers: s.cueMarkers.filter((c) => c.id !== id),
+    selectedCueMarkerId: s.selectedCueMarkerId === id ? null : s.selectedCueMarkerId,
+  })),
   updateCueMarker: (id, updates) => set((s) => ({
     cueMarkers: s.cueMarkers.map((c) => c.id === id ? { ...c, ...updates } : c),
   })),
-  clearCueMarkers: () => set({ cueMarkers: [] }),
+  clearCueMarkers: () => set({ cueMarkers: [], selectedCueMarkerId: null }),
+  selectCueMarker: (id) => set({ selectedCueMarkerId: id }),
   setVideoChoreoResult: (result) => set({ videoChoreoResult: result }),
   setDepthLayers: (layers) => set({ depthLayers: layers }),
 }));

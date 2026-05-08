@@ -24,6 +24,7 @@ import { cn } from '@/lib/utils';
 import SkyCanvasMount from '@/components/editor/SkyCanvasMount';
 import GlassTimelineDock from '@/components/skycanvas/GlassTimelineDock';
 import SkyCanvasDiagnosticsPanel from '@/components/editor/SkyCanvasDiagnosticsPanel';
+import CueInspectorPanel from '@/components/skycanvas/CueInspectorPanel';
 import { decodeAudioPeaks } from '@/lib/skycanvasAudioPeaks';
 import { useProjectStore } from '@/store/useProjectStore';
 import { Badge } from '@/components/ui/badge';
@@ -237,6 +238,14 @@ export default function SkyCanvasViewportShell({
           <SkyCanvasDiagnosticsPanel />
         </div>
       )}
+
+      {/* Cue Inspector — floating glass dock (right) when a cue is selected */}
+      <div
+        className="absolute right-3 z-30 pointer-events-none"
+        style={{ top: diagOpen ? 'calc(20rem + 24px)' : '5rem' }}
+      >
+        <CueInspectorPanel />
+      </div>
 
       {/* Glass timeline dock — bottom */}
       <div

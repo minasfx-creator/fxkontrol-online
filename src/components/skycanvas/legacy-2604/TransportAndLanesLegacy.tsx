@@ -157,6 +157,7 @@ function Lane({ label, color, cues, duration, onDropEffect }:
   const [hoverPct, setHoverPct] = useState<number | null>(null);
   const [isOver, setIsOver] = useState(false);
   const trackRef = useRef<HTMLDivElement | null>(null);
+  const selectedId = useProjectStore((s) => s.selectedCueMarkerId);
 
   const pctFromEvent = (e: React.DragEvent<HTMLDivElement>) => {
     const r = trackRef.current?.getBoundingClientRect();
@@ -198,11 +199,30 @@ function Lane({ label, color, cues, duration, onDropEffect }:
           setHoverPct(null);
         }}
       >
-        {cues.map((c) => (
-          <div key={c.id} title={`${c.label} · ${fmtTime(c.time)}`}
-            className="absolute top-0 bottom-0 w-1 rounded-sm transition-opacity"
-            style={{ left: `${(c.time / duration) * 100}%`, background: color, boxShadow: `0 0 4px ${color}` }} />
-        ))}
+        {cues.map((c) => {
+          const sel = selectedId === c.id;
+          return (
+            <button
+              key={c.id}
+              type="button"
+              title={`${c.label} · ${fmtTime(c.time)} — clique para inspecionar`}
+              onClick={(e) => {
+                e.stopPropagation();
+                useProjectStore.getState().selectCueMarker(c.id);
+                useProjectStore.getState().setCurrentTime(c.time);
+              }}
+              className="absolute top-0 bottom-0 w-1.5 rounded-sm transition-opacity hover:w-2 cursor-pointer"
+              style={{
+                left: `${(c.time / duration) * 100}%`,
+                background: color,
+                boxShadow: sel
+                  ? `0 0 8px ${color}, 0 0 2px hsl(189 94% 70%)`
+                  : `0 0 4px ${color}`,
+                outline: sel ? '1px solid hsl(189 94% 70%)' : undefined,
+              }}
+            />
+          );
+        })}
         {hoverPct !== null && (
           <div className="absolute top-0 bottom-0 w-px bg-cyan-300 pointer-events-none"
                style={{ left: `${hoverPct * 100}%` }} />
