@@ -877,7 +877,7 @@ export default function SkyCanvasPage() {
                     rate={transportRate}
                     onRateChange={setRate}
                   />
-                  <FiringLanesTimelineLegacy duration={duration} time={time} />
+                  <FiringLanesTimelineLegacy duration={duration} time={time} onDropEffect={dropEffectAt} />
                 </div>
               ) : (
                 <TimelineCuesProvider value={{ time, duration, onSeekAbs: seekAbs, onDropEffect: dropEffectAt, peaks }}>
