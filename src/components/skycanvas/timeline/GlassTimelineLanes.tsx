@@ -3,7 +3,6 @@
  * adaptado pro contexto glassmorphism (transparente, sem fundo opaco).
  * Pure presentation. Reutiliza split pyro/drone do legacy.
  */
-import FiringLanes from '@/components/skycanvas/legacy-2604/TransportAndLanesLegacy';
 // Re-export named para clareza
 import { FiringLanesTimelineLegacy } from '@/components/skycanvas/legacy-2604/TransportAndLanesLegacy';
 
@@ -23,4 +22,3 @@ export default function GlassTimelineLanes(props: GlassTimelineLanesProps) {
 }
 
 // Silence unused side-effect import (default of barrel).
-void FiringLanes;

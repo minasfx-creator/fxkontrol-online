@@ -70,7 +70,7 @@ export default function SkyCanvasViewportShell({
   const isPlaying = useProjectStore((s) => s.isPlaying);
   const time = useProjectStore((s) => s.currentTime);
   const duration = useProjectStore((s) => s.duration);
-  const setIsPlaying = useProjectStore((s) => s.setIsPlaying);
+  const setPlaying = useProjectStore((s) => s.setPlaying);
   const setCurrentTime = useProjectStore((s) => s.setCurrentTime);
   const setDuration = useProjectStore((s) => s.setDuration);
 
@@ -82,12 +82,12 @@ export default function SkyCanvasViewportShell({
       setAudioName(file.name);
       setDuration(result.durationSec);
       setCurrentTime(0);
-      setIsPlaying(false);
+      setPlaying(false);
       toast.success(`Áudio carregado · ${result.durationSec.toFixed(1)}s`, { id: tid });
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Falha ao decodificar áudio', { id: tid });
     }
-  }, [setDuration, setCurrentTime, setIsPlaying]);
+  }, [setDuration, setCurrentTime, setPlaying]);
 
   // Ctrl+Shift+D toggles diagnostics
   useEffect(() => {
@@ -104,15 +104,15 @@ export default function SkyCanvasViewportShell({
         setCollapsed((c) => !c);
       } else if (e.code === 'Space') {
         e.preventDefault();
-        setIsPlaying(!useProjectStore.getState().isPlaying);
+        setPlaying(!useProjectStore.getState().isPlaying);
       }
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [setIsPlaying]);
+  }, [setPlaying]);
 
-  const togglePlay = useCallback(() => setIsPlaying(!isPlaying), [isPlaying, setIsPlaying]);
-  const stop = useCallback(() => { setIsPlaying(false); setCurrentTime(0); }, [setIsPlaying, setCurrentTime]);
+  const togglePlay = useCallback(() => setPlaying(!isPlaying), [isPlaying, setPlaying]);
+  const stop = useCallback(() => { setPlaying(false); setCurrentTime(0); }, [setPlaying, setCurrentTime]);
 
   const dockHeight = collapsed ? 36 : 200;
 

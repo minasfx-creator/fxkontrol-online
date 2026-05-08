@@ -48,11 +48,11 @@ export default function GlassTimelineDock({
   const isPlaying = useProjectStore((s) => s.isPlaying);
   const speed = useProjectStore((s) => s.playbackSpeed);
   const setCurrentTime = useProjectStore((s) => s.setCurrentTime);
-  const setIsPlaying = useProjectStore((s) => s.setIsPlaying);
+  const setPlaying = useProjectStore((s) => s.setPlaying);
   const setPlaybackSpeed = useProjectStore((s) => s.setPlaybackSpeed);
 
-  const togglePlay = useCallback(() => setIsPlaying(!isPlaying), [isPlaying, setIsPlaying]);
-  const stop = useCallback(() => { setIsPlaying(false); setCurrentTime(0); }, [setIsPlaying, setCurrentTime]);
+  const togglePlay = useCallback(() => setPlaying(!isPlaying), [isPlaying, setPlaying]);
+  const stop = useCallback(() => { setPlaying(false); setCurrentTime(0); }, [setPlaying, setCurrentTime]);
   const seekDelta = useCallback((d: number) => {
     if (!Number.isFinite(d)) {
       setCurrentTime(d > 0 ? duration : 0);
