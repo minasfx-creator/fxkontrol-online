@@ -61,6 +61,7 @@ import { cn } from '@/lib/utils';
 // mount itself is React.memo'd so the heavy 3D tree no longer re-renders
 // when this page's state changes (e.g. tab switches, panel resizes).
 import SkyCanvasMount from '@/components/editor/SkyCanvasMount';
+import SkyCanvasDiagnosticsPanel from '@/components/editor/SkyCanvasDiagnosticsPanel';
 const SkyCanvasCommandPalette = lazy(() => import('@/components/skycanvas/SkyCanvasCommandPalette'));
 const CatalogImportDialog = lazy(() => import('@/components/editor/CatalogImportDialog'));
 
