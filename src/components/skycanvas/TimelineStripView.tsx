@@ -26,6 +26,8 @@ export default function TimelineStripView({
   const [dragOver, setDragOver] = useState(false);
   const cueMarkers = useProjectStore((s) => s.cueMarkers);
   const removeCueMarker = useProjectStore((s) => s.removeCueMarker);
+  const selectCueMarker = useProjectStore((s) => s.selectCueMarker);
+  const selectedCueMarkerId = useProjectStore((s) => s.selectedCueMarkerId);
 
   const xToTime = (clientX: number) => {
     const el = ref.current; if (!el) return 0;
