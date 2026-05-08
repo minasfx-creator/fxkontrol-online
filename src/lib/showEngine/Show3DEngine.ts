@@ -455,16 +455,24 @@ export class Show3DEngine {
     // Always have *something* in the scene so the viewport is never black
     // even before a plan loads.
     this.clearLayer(this.debugLayer);
-    const grid = new THREE.GridHelper(200, 20, 0x224466, 0x112233);
-    this.debugLayer.add(grid);
-    const axes = new THREE.AxesHelper(20);
-    this.debugLayer.add(axes);
+    if (!this._opts.hideHelpers) {
+      const grid = new THREE.GridHelper(200, 20, 0x224466, 0x112233);
+      this.debugLayer.add(grid);
+      const axes = new THREE.AxesHelper(20);
+      this.debugLayer.add(axes);
+    }
     const ambient = new THREE.AmbientLight(0xffffff, 0.6);
     this.staticLayer.add(ambient);
   }
 
   private buildStaticLayer(graph: SceneGraph): void {
     this.clearLayer(this.staticLayer);
+    if (this._opts.hideStaticLayer) {
+      // Overlay mode — only ambient light, no footprint/markers.
+      const ambient = new THREE.AmbientLight(0xffffff, 0.7);
+      this.staticLayer.add(ambient);
+      return;
+    }
     const ambient = new THREE.AmbientLight(0xffffff, 0.6);
     const dir = new THREE.DirectionalLight(0xffffff, 0.8);
     dir.position.set(40, 80, 40);
