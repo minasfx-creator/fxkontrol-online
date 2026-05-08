@@ -84,6 +84,9 @@ export default function GlassTimelineDock({
       time: Math.max(0, Math.min(duration, t)),
       label,
       color: fx.color,
+      effectId: fx.id,
+      lane,
+      intensity: 100,
     });
   }, [duration]);
 
