@@ -91,6 +91,8 @@ export default function ShowEngineHost({
       engine.dispose();
       engineRef.current = null;
     };
+    // engineOptions is captured once at construction; intentional.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Load plan whenever it changes; auto-play once ready (only when the
