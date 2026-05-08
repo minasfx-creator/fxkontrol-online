@@ -35,7 +35,11 @@ import { WebGLContextRecovery } from './WebGLContextRecovery';
 import { AdaptiveDPRController } from './AdaptiveDPRController';
 import { PerfHUDProbe, PerfHUDOverlay } from './PerfHUD';
 import { isSkycanvasV2StageEnabled, isEnabled } from '@/lib/featureFlags';
+import { detectSkyCapability } from '@/lib/skycanvasCapability';
 import type { SkyCanvas2Props } from './types';
+
+// Detect once per session — pure read, no side effects.
+const _CAP = (() => { try { return detectSkyCapability(); } catch { return null; } })();
 
 interface SkyCanvas2ExtraProps {
   /** Show FPS/draw/triangles overlay. Default false. */
@@ -57,6 +61,12 @@ export default function SkyCanvas2({
   showPerfHud = false,
   onFatalError,
 }: SkyCanvas2Props & SkyCanvas2ExtraProps) {
+  // Auto-tier: low-end hosts (SwiftShader, coarse pointer + small viewport,
+  // saveData) get a lighter scene unless caller explicitly overrode.
+  // Caller's explicit `false` for hide flags is preserved (no force).
+  const lowTier = _CAP?.tier === 'low';
+  const effHideStars = hideStars || (lowTier && _CAP?.software === true);
+  const effStageVariant: 'arch' | 'minimal' = lowTier && stageVariant === 'arch' ? 'minimal' : stageVariant;
   const [contextLost, setContextLost] = useState(false);
   const [minDpr, maxDpr] = Array.isArray(dpr) ? dpr : [dpr, dpr];
   // Mobile high-DPI (>2.5) starts at minDpr to avoid first-frame jank;
@@ -104,9 +114,9 @@ export default function SkyCanvas2({
           <WebGLContextRecovery onChange={setContextLost} />
           <AdaptiveDPRController minDpr={minDpr} maxDpr={maxDpr} onChange={handleDpr} />
           <Suspense fallback={null}>
-            <NightSky stars={!hideStars} />
+            <NightSky stars={!effHideStars} />
             <GroundPlane grid={!hideGrid} />
-            {stageEnabled && <StageLayer variant={stageVariant} />}
+            {stageEnabled && <StageLayer variant={effStageVariant} />}
             {fixturesEnabled && <FixturesLayer />}
             {!contextLost && (
               <>

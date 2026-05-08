@@ -61,6 +61,7 @@ import { cn } from '@/lib/utils';
 // mount itself is React.memo'd so the heavy 3D tree no longer re-renders
 // when this page's state changes (e.g. tab switches, panel resizes).
 import SkyCanvasMount from '@/components/editor/SkyCanvasMount';
+import SkyCanvasDiagnosticsPanel from '@/components/editor/SkyCanvasDiagnosticsPanel';
 const SkyCanvasCommandPalette = lazy(() => import('@/components/skycanvas/SkyCanvasCommandPalette'));
 const CatalogImportDialog = lazy(() => import('@/components/editor/CatalogImportDialog'));
 
@@ -926,6 +927,10 @@ export default function SkyCanvasPage() {
 
             {/* Round 8 — viewport HUD overlays consolidated. */}
             <ViewportOverlays />
+
+            {/* SkyCanvas exception inspector — dev/debug overlay (top-right).
+                Self-hides when no entries; never affects safety/command path. */}
+            {import.meta.env.DEV && <SkyCanvasDiagnosticsPanel />}
 
             {/* Legacy 9-Apr chrome overlays */}
             {legacyChrome && (
