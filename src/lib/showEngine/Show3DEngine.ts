@@ -145,11 +145,16 @@ export class Show3DEngine {
       const renderer = new THREE.WebGLRenderer({
         canvas,
         antialias: true,
-        alpha: false,
+        alpha: this._opts.transparent,
+        premultipliedAlpha: !this._opts.transparent,
         powerPreference: 'high-performance',
       });
       renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
-      renderer.setClearColor(new THREE.Color(0x050810), 1);
+      if (this._opts.transparent) {
+        renderer.setClearColor(0x000000, 0);
+      } else {
+        renderer.setClearColor(new THREE.Color(0x050810), 1);
+      }
       this.renderer = renderer;
 
       this.attachContextHandlers(canvas);
