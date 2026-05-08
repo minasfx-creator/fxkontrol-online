@@ -15,9 +15,11 @@
 import {
   parsePBusResponse,
   parseDeviceStatus,
+  buildStatusQuery,
   PBusCmd,
   PBUS_BAUD_RATE,
 } from '@/lib/pbusProtocol';
+import { logger } from '@/lib/logger';
 
 export type ShowvenM1HandshakeFailureCode =
   | 'unsupported'
