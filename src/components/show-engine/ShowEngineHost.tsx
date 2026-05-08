@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Show3DEngine, type PlaybackSnapshot } from '@/lib/showEngine/Show3DEngine';
+import { Show3DEngine, type PlaybackSnapshot, type Show3DEngineOptions } from '@/lib/showEngine/Show3DEngine';
 import type { ShowPlan } from '@/lib/aiShowBuilder/types';
 import { engineDiagnostics } from '@/lib/showEngine/EngineDiagnostics';
 import type { ViewportState } from '@/lib/showEngine/viewportState';
@@ -36,6 +36,10 @@ interface Props {
    * `autoPlay` and the embedded transport overlay are ignored.
    */
   externalClock?: boolean;
+  /** Forwarded to the Show3DEngine constructor (transparent overlay etc). */
+  engineOptions?: Show3DEngineOptions;
+  /** When true, do not paint the host container background (overlay mode). */
+  transparentHost?: boolean;
 }
 
 /**
@@ -57,6 +61,8 @@ export default function ShowEngineHost({
   autoPlay = true,
   hideTransport = false,
   externalClock = false,
+  engineOptions,
+  transparentHost = false,
 }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const engineRef = useRef<Show3DEngine | null>(null);
@@ -72,7 +78,7 @@ export default function ShowEngineHost({
 
   useEffect(() => {
     if (!containerRef.current) return;
-    const engine = new Show3DEngine();
+    const engine = new Show3DEngine(engineOptions);
     engineRef.current = engine;
     const unsubVp = engine.viewport.subscribe(setState);
     const unsubDiag = engineDiagnostics.subscribe((d) => setErrMsg(d.lastError));
@@ -85,6 +91,8 @@ export default function ShowEngineHost({
       engine.dispose();
       engineRef.current = null;
     };
+    // engineOptions is captured once at construction; intentional.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Load plan whenever it changes; auto-play once ready (only when the
@@ -104,7 +112,10 @@ export default function ShowEngineHost({
 
 
   return (
-    <div ref={containerRef} className={`relative w-full h-full bg-[#050810] ${className ?? ''}`}>
+    <div
+      ref={containerRef}
+      className={`relative w-full h-full ${transparentHost ? '' : 'bg-[#050810]'} ${className ?? ''}`}
+    >
       {state === 'booting' && <ViewportBootingOverlay />}
       {state === 'empty' && <EmptySceneOverlay onGenerate={onRequestGenerate} />}
       {state === 'error' && (

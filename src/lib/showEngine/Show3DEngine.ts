@@ -31,6 +31,14 @@ import { validateSceneGraph, validateViewportRenderable } from './validateSceneG
 
 export interface Show3DEngineOptions {
   diagnostics?: EngineDiagnosticsBus;
+  /** When true the renderer clears with alpha 0 so the engine can be
+   *  overlaid on top of another canvas (e.g. SkyCanvas). Default false. */
+  transparent?: boolean;
+  /** When true do not draw the helper grid/axes (use as overlay). */
+  hideHelpers?: boolean;
+  /** When true do not build the static layer (footprint/markers/lights)
+   *  so the overlay only renders cue effects on top of the host scene. */
+  hideStaticLayer?: boolean;
 }
 
 /**
@@ -89,8 +97,15 @@ export class Show3DEngine {
   private frameAcc = 0;
   private frameCount = 0;
 
+  private readonly _opts: Required<Pick<Show3DEngineOptions, 'transparent' | 'hideHelpers' | 'hideStaticLayer'>>;
+
   constructor(opts: Show3DEngineOptions = {}) {
     this.diagnostics = opts.diagnostics ?? engineDiagnostics;
+    this._opts = {
+      transparent: opts.transparent ?? false,
+      hideHelpers: opts.hideHelpers ?? false,
+      hideStaticLayer: opts.hideStaticLayer ?? false,
+    };
     this.staticLayer.name = 'staticLayer';
     this.dynamicLayer.name = 'dynamicLayer';
     this.effectsLayer.name = 'effectsLayer';
@@ -130,11 +145,16 @@ export class Show3DEngine {
       const renderer = new THREE.WebGLRenderer({
         canvas,
         antialias: true,
-        alpha: false,
+        alpha: this._opts.transparent,
+        premultipliedAlpha: !this._opts.transparent,
         powerPreference: 'high-performance',
       });
       renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
-      renderer.setClearColor(new THREE.Color(0x050810), 1);
+      if (this._opts.transparent) {
+        renderer.setClearColor(0x000000, 0);
+      } else {
+        renderer.setClearColor(new THREE.Color(0x050810), 1);
+      }
       this.renderer = renderer;
 
       this.attachContextHandlers(canvas);
@@ -435,16 +455,24 @@ export class Show3DEngine {
     // Always have *something* in the scene so the viewport is never black
     // even before a plan loads.
     this.clearLayer(this.debugLayer);
-    const grid = new THREE.GridHelper(200, 20, 0x224466, 0x112233);
-    this.debugLayer.add(grid);
-    const axes = new THREE.AxesHelper(20);
-    this.debugLayer.add(axes);
+    if (!this._opts.hideHelpers) {
+      const grid = new THREE.GridHelper(200, 20, 0x224466, 0x112233);
+      this.debugLayer.add(grid);
+      const axes = new THREE.AxesHelper(20);
+      this.debugLayer.add(axes);
+    }
     const ambient = new THREE.AmbientLight(0xffffff, 0.6);
     this.staticLayer.add(ambient);
   }
 
   private buildStaticLayer(graph: SceneGraph): void {
     this.clearLayer(this.staticLayer);
+    if (this._opts.hideStaticLayer) {
+      // Overlay mode — only ambient light, no footprint/markers.
+      const ambient = new THREE.AmbientLight(0xffffff, 0.7);
+      this.staticLayer.add(ambient);
+      return;
+    }
     const ambient = new THREE.AmbientLight(0xffffff, 0.6);
     const dir = new THREE.DirectionalLight(0xffffff, 0.8);
     dir.position.set(40, 80, 40);
