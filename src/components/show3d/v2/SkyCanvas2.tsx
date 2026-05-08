@@ -114,9 +114,9 @@ export default function SkyCanvas2({
           <WebGLContextRecovery onChange={setContextLost} />
           <AdaptiveDPRController minDpr={minDpr} maxDpr={maxDpr} onChange={handleDpr} />
           <Suspense fallback={null}>
-            <NightSky stars={!hideStars} />
+            <NightSky stars={!effHideStars} />
             <GroundPlane grid={!hideGrid} />
-            {stageEnabled && <StageLayer variant={stageVariant} />}
+            {stageEnabled && <StageLayer variant={effStageVariant} />}
             {fixturesEnabled && <FixturesLayer />}
             {!contextLost && (
               <>
