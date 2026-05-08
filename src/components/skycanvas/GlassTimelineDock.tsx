@@ -71,8 +71,7 @@ export default function GlassTimelineDock({
     if (!fx) return;
     // Auto lane: partType==='formation' → formation; type==='drone' → drone; else → pyro.
     const auto: 'pyro' | 'drone' | 'formation' =
-      // @ts-expect-error - partType is part of the legacy library schema
-      (fx.partType === 'formation') ? 'formation'
+      ((fx as { partType?: string }).partType === 'formation') ? 'formation'
         : (fx.type === 'drone' || fx.type === 'light') ? 'drone'
           : 'pyro';
     const lane = laneHint ?? auto;
