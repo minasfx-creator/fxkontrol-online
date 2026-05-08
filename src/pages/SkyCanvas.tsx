@@ -919,6 +919,23 @@ export default function SkyCanvasPage() {
 
             {/* Round 8 — viewport HUD overlays consolidated. */}
             <ViewportOverlays />
+
+            {/* Legacy 9-Apr chrome overlays */}
+            {legacyChrome && (
+              <>
+                <LeftToolRailLegacy />
+                <RightIconRailLegacy
+                  activeRightTab={layout.activeTabs?.right ?? 'cue'}
+                  onSelectRightTab={(v) => layout.setActiveTab('right', v)}
+                  onOpenPalette={() => setPaletteOpen(true)}
+                />
+                <LaserControlFloatingPanel
+                  open={laserPanelOpen}
+                  onClose={() => setLaserPanelOpen(false)}
+                />
+                <JoiAvatarFab onClick={() => setPaletteOpen(true)} />
+              </>
+            )}
           </div>
         </StudioErrorBoundary>
       </EditorShell>
