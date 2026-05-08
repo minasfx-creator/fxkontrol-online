@@ -232,7 +232,8 @@ export async function verifyCompiledShow(
     return { ok: false, reason: 'manifest-corrupt' };
   }
   const data = new TextEncoder().encode(stableStringify(compiled.manifest));
-  const sigOk = await subtle.verify(SIGNING_ALGO, publicKey, base64ToBytes(compiled.signature.sig), data);
+  const sigBytes = base64ToBytes(compiled.signature.sig);
+  const sigOk = await subtle.verify(SIGNING_ALGO, publicKey, sigBytes.buffer.slice(sigBytes.byteOffset, sigBytes.byteOffset + sigBytes.byteLength) as ArrayBuffer, data);
   if (!sigOk) return { ok: false, reason: 'bad-signature' };
 
   // 2. Drift check vs current plan (optional).
