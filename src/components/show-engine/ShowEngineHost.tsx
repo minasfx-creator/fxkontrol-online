@@ -36,6 +36,10 @@ interface Props {
    * `autoPlay` and the embedded transport overlay are ignored.
    */
   externalClock?: boolean;
+  /** Forwarded to the Show3DEngine constructor (transparent overlay etc). */
+  engineOptions?: Show3DEngineOptions;
+  /** When true, do not paint the host container background (overlay mode). */
+  transparentHost?: boolean;
 }
 
 /**
