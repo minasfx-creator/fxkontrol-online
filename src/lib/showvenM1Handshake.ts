@@ -15,9 +15,11 @@
 import {
   parsePBusResponse,
   parseDeviceStatus,
+  buildStatusQuery,
   PBusCmd,
   PBUS_BAUD_RATE,
 } from '@/lib/pbusProtocol';
+import { logger } from '@/lib/logger';
 
 export type ShowvenM1HandshakeFailureCode =
   | 'unsupported'
@@ -134,4 +136,176 @@ export function parseM1StatusReply(args: ParseStatusReplyArgs): ShowvenM1Handsha
     masterAddress: parsed.addr,
     slavesOnline: Math.max(0, args.slavesOnline ?? 0),
   };
+}
+
+// ═══════════════════════════════════════════════════════════
+// WebSerial runner — opens port, sends STATUS, validates reply
+// ═══════════════════════════════════════════════════════════
+
+export const M1_DEFAULT_MASTER_ADDR = 1;
+export const SHOWVEN_USB_FILTERS = [
+  { usbVendorId: 0x0403 }, // FTDI
+  { usbVendorId: 0x067B }, // Prolific
+  { usbVendorId: 0x10C4 }, // Silicon Labs
+  { usbVendorId: 0x1A86 }, // WCH (CH340)
+];
+
+export function isWebSerialAvailable(): boolean {
+  return typeof navigator !== 'undefined' && 'serial' in (navigator as any);
+}
+
+export async function requestM1Port(): Promise<any> {
+  if (!isWebSerialAvailable()) {
+    throw new ShowvenM1HandshakeError('unsupported', 'WebSerial não suportado neste navegador.');
+  }
+  try {
+    const nav = navigator as any;
+    return await nav.serial.requestPort({ filters: SHOWVEN_USB_FILTERS });
+  } catch (err: any) {
+    const msg = err?.message ?? 'Cancelado';
+    if (/cancel|user/i.test(msg)) {
+      throw new ShowvenM1HandshakeError('cancelled', 'Pareamento cancelado pelo operador.');
+    }
+    throw new ShowvenM1HandshakeError('unknown', msg);
+  }
+}
+
+export interface ShowvenM1HandshakeOptions {
+  port?: any;
+  masterAddress?: number;
+  timeoutMs?: number;
+  allowOldFirmware?: boolean;
+}
+
+export interface ShowvenM1HandshakeResult extends ShowvenM1Handshake {
+  latencyMs: number;
+  rawHex: string;
+}
+
+function bytesToHex(bytes: Uint8Array, max = 32): string {
+  return Array.from(bytes.subarray(0, max)).map((b) => b.toString(16).padStart(2, '0')).join(' ');
+}
+
+/**
+ * Run the full PBus STATUS handshake on a Showven M1 master.
+ * Read-only: only sends STATUS, never ARM/FIRE.
+ */
+export async function performM1Handshake(
+  opts: ShowvenM1HandshakeOptions = {},
+): Promise<ShowvenM1HandshakeResult> {
+  const masterAddress = opts.masterAddress ?? M1_DEFAULT_MASTER_ADDR;
+  const timeoutMs = opts.timeoutMs ?? 3000;
+  const t0 = (typeof performance !== 'undefined' ? performance.now() : Date.now());
+
+  const port = opts.port ?? (await requestM1Port());
+
+  try {
+    await port.open({
+      baudRate: M1_BAUD,
+      dataBits: 8,
+      stopBits: 1,
+      parity: 'none',
+      bufferSize: 4096,
+    });
+  } catch (err: any) {
+    throw new ShowvenM1HandshakeError('open-failed', err?.message ?? 'Falha ao abrir a porta.', { baudRate: M1_BAUD });
+  }
+
+  let reader: ReadableStreamDefaultReader<Uint8Array> | null = null;
+  let writer: WritableStreamDefaultWriter<Uint8Array> | null = null;
+  let cleanupDone = false;
+
+  const cleanup = async (closePort: boolean) => {
+    if (cleanupDone) return;
+    cleanupDone = true;
+    try {
+      if (reader) {
+        try { await reader.cancel(); } catch { /* noop */ }
+        try { reader.releaseLock(); } catch { /* noop */ }
+      }
+      if (writer) {
+        try { writer.releaseLock(); } catch { /* noop */ }
+      }
+      if (closePort) {
+        try { await port.close?.(); } catch { /* noop */ }
+      }
+    } catch (err) {
+      logger.warn('[showvenM1Handshake] cleanup failed', err);
+    }
+  };
+
+  try {
+    reader = port.readable?.getReader() ?? null;
+    writer = port.writable?.getWriter() ?? null;
+    if (!reader || !writer) {
+      throw new ShowvenM1HandshakeError('open-failed', 'Streams da porta indisponíveis.');
+    }
+
+    try {
+      await writer.write(buildStatusQuery(masterAddress));
+    } catch (err: any) {
+      throw new ShowvenM1HandshakeError('write-failed', err?.message ?? 'Falha ao enviar STATUS.');
+    }
+
+    const buf: number[] = [];
+    let frame: Uint8Array | null = null;
+    const deadline = Date.now() + timeoutMs;
+
+    while (Date.now() < deadline) {
+      const remaining = deadline - Date.now();
+      const readPromise = reader.read();
+      const timer = new Promise<{ value?: Uint8Array; done: true }>((resolve) =>
+        setTimeout(() => resolve({ done: true }), remaining),
+      );
+      const result = await Promise.race([readPromise, timer]);
+      if ((result as any).done) break;
+      const value = (result as any).value as Uint8Array | undefined;
+      if (!value || value.length === 0) continue;
+      for (let i = 0; i < value.length; i++) buf.push(value[i]);
+
+      // Look for PBus frame: PREAMBLE 0xAA … TERMINATOR 0x55
+      for (let start = 0; start < buf.length; start++) {
+        if (buf[start] !== 0xAA) continue;
+        if (buf.length - start < 7) break;
+        const len = buf[start + 3];
+        const end = start + 7 + len - 1;
+        if (end >= buf.length) break;
+        if (buf[end] !== 0x55) continue;
+        const slice = Uint8Array.from(buf.slice(start, end + 1));
+        const parsed = parsePBusResponse(slice);
+        if (parsed && parsed.valid &&
+            (parsed.cmd === PBusCmd.STATUS || parsed.cmd === PBusCmd.DISCOVER)) {
+          frame = slice;
+          break;
+        }
+      }
+      if (frame) break;
+    }
+
+    if (!frame) {
+      if (buf.length === 0) {
+        throw new ShowvenM1HandshakeError('timeout', `Sem resposta em ${timeoutMs}ms a STATUS (addr ${masterAddress}).`, { masterAddress, timeoutMs });
+      }
+      throw new ShowvenM1HandshakeError('bad-frame', 'Bytes recebidos mas nenhum frame STATUS válido.', { received: bytesToHex(Uint8Array.from(buf)) });
+    }
+
+    const hs = parseM1StatusReply({
+      raw: frame,
+      expectedAddress: masterAddress,
+      allowOldFirmware: opts.allowOldFirmware,
+    });
+
+    const latencyMs = Math.max(
+      1,
+      Math.round((typeof performance !== 'undefined' ? performance.now() : Date.now()) - t0),
+    );
+
+    await cleanup(false); // keep port open for caller
+    return { ...hs, latencyMs, rawHex: bytesToHex(frame) };
+  } catch (err) {
+    await cleanup(true);
+    if (err instanceof ShowvenM1HandshakeError) throw err;
+    const msg = (err as Error)?.message ?? 'Erro desconhecido.';
+    throw new ShowvenM1HandshakeError('unknown', msg);
+  }
 }

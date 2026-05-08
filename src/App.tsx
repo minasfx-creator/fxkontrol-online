@@ -50,6 +50,7 @@ const Install = lazy(lazyRetry(() => import("./pages/Install")));
 const UsbPairingWizard = lazy(lazyRetry(() => import("./pages/UsbPairingWizard")));
 const BlePairingWizard = lazy(lazyRetry(() => import("./pages/BlePairingWizard")));
 const FireOneXL4PairingWizard = lazy(lazyRetry(() => import("./pages/FireOneXL4PairingWizard")));
+const ShowvenM1PairingWizard = lazy(lazyRetry(() => import("./pages/ShowvenM1PairingWizard")));
 const PairingWizard = lazy(lazyRetry(() => import("./pages/PairingWizard")));
 const RealDiscoveryProbe = lazy(lazyRetry(() => import("./pages/RealDiscoveryProbe")));
 
@@ -301,6 +302,7 @@ function App() {
                       <Route path="/pairing/usb" element={<UsbPairingWizard />} />
                       <Route path="/pairing/ble" element={<BlePairingWizard />} />
                       <Route path="/pairing/xl4" element={<FireOneXL4PairingWizard />} />
+                      <Route path="/pairing/m1" element={<ShowvenM1PairingWizard />} />
                       <Route path="/field-test" element={isEnabled('module_pairing_mobilelink') ? <Navigate to="/field#field-test" replace /> : <Navigate to="/office" replace />} />
                       <Route path="/fxk16" element={isEnabled('module_pairing_mobilelink') ? <Navigate to="/field#fxk16" replace /> : <Navigate to="/office" replace />} />
 
