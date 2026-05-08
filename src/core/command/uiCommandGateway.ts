@@ -50,6 +50,13 @@ function audit(event: string, src: CommandSource, extra?: Record<string, unknown
   } catch {
     /* never block on audit failure */
   }
+  // Fire-and-forget journal entry — never awaited, never blocks UI.
+  void recordCommandRequested({
+    type: event,
+    source: src.source,
+    detail: src.detail,
+    payload: extra,
+  });
 }
 
 export const uiCommandGateway = {
