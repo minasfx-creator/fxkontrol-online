@@ -2,7 +2,7 @@
  * Legacy-2604 transport bar + firing lanes + JOI FAB.
  * Visual-only. Reads cues from useProjectStore.
  */
-import { useMemo } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { Play, Pause, Square, SkipBack, SkipForward, ZoomIn, ZoomOut } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useProjectStore } from '@/store/useProjectStore';
