@@ -35,7 +35,11 @@ import { WebGLContextRecovery } from './WebGLContextRecovery';
 import { AdaptiveDPRController } from './AdaptiveDPRController';
 import { PerfHUDProbe, PerfHUDOverlay } from './PerfHUD';
 import { isSkycanvasV2StageEnabled, isEnabled } from '@/lib/featureFlags';
+import { detectSkyCapability } from '@/lib/skycanvasCapability';
 import type { SkyCanvas2Props } from './types';
+
+// Detect once per session — pure read, no side effects.
+const _CAP = (() => { try { return detectSkyCapability(); } catch { return null; } })();
 
 interface SkyCanvas2ExtraProps {
   /** Show FPS/draw/triangles overlay. Default false. */
