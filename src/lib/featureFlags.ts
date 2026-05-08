@@ -234,6 +234,27 @@ export function isFireOneXL43RealOpsEnabled(): boolean {
 }
 
 /**
+ * Editor Legacy Chrome 26-04 runtime gate.
+ * URL ?legacyChrome=0/1 → localStorage → static flag.
+ */
+export function isEditorLegacyChrome2604Enabled(): boolean {
+  if (typeof window !== 'undefined') {
+    try {
+      const url = new URL(window.location.href);
+      const q = url.searchParams.get('legacyChrome');
+      if (q === '0' || q === 'false') return false;
+      if (q === '1' || q === 'true') return true;
+    } catch { /* */ }
+    try {
+      const v = window.localStorage.getItem('fxk.flag.editor_legacy_chrome_2604');
+      if (v === '1' || v === 'true') return true;
+      if (v === '0' || v === 'false') return false;
+    } catch { /* */ }
+  }
+  return FLAGS.editor_legacy_chrome_2604;
+}
+
+/**
  * FXK32Q (32ch ESP32-S3 + 2×16-relay) field-ops tab gate. Default OFF.
  * localStorage 'fxk.flag.fxk32q_fieldops' = '1' → reveals tab even when
  * no controller is online (bench preflight). When the adapter is promoted
