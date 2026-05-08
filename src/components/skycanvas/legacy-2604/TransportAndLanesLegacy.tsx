@@ -86,23 +86,38 @@ export function TransportBarLegacy({
 
 const FXK_EFFECT_DRAG_TYPE = 'application/x-fxk-effect';
 
+export type LaneKind = 'pyro' | 'drone' | 'formation';
+
+/** Classify a cue label into one of the 3 firing lanes.
+ *  Labels carry a trailing tag (· drone / · formation) added by the
+ *  drop handler in GlassTimelineDock. Heuristic fallback covers
+ *  legacy cues without tags. */
+export function classifyCueLane(label: string): LaneKind {
+  const l = (label || '').toLowerCase();
+  if (l.includes('· formation') || l.includes('formation') || l.includes('formação') || l.includes('formacao')) return 'formation';
+  if (l.includes('· drone') || l.includes('drone') || l.includes('move')) return 'drone';
+  return 'pyro';
+}
+
 export function FiringLanesTimelineLegacy({
   duration, time, onDropEffect,
 }: {
   duration: number;
   time: number;
-  onDropEffect?: (effectId: string, t: number, lane: 'pyro' | 'drone') => void;
+  onDropEffect?: (effectId: string, t: number, lane: LaneKind) => void;
 }) {
   const cues = useProjectStore((s) => s.cueMarkers);
-  const { pyro, drone } = useMemo(() => {
+  const { pyro, drone, formation } = useMemo(() => {
     const p: typeof cues = [];
     const d: typeof cues = [];
+    const f: typeof cues = [];
     cues.forEach((c) => {
-      const lbl = (c.label || '').toLowerCase();
-      if (lbl.includes('drone') || lbl.includes('move')) d.push(c);
+      const lane = classifyCueLane(c.label || '');
+      if (lane === 'formation') f.push(c);
+      else if (lane === 'drone') d.push(c);
       else p.push(c);
     });
-    return { pyro: p, drone: d };
+    return { pyro: p, drone: d, formation: f };
   }, [cues]);
 
   const ticks = useMemo(() => {
@@ -121,6 +136,8 @@ export function FiringLanesTimelineLegacy({
         onDropEffect={onDropEffect ? (id, t) => onDropEffect(id, t, 'pyro') : undefined} />
       <Lane label="DRONE SYS" color="#22d3ee" cues={drone} duration={duration}
         onDropEffect={onDropEffect ? (id, t) => onDropEffect(id, t, 'drone') : undefined} />
+      <Lane label="FORMATIONS" color="#a78bfa" cues={formation} duration={duration}
+        onDropEffect={onDropEffect ? (id, t) => onDropEffect(id, t, 'formation') : undefined} />
       <div className="relative mt-1.5 h-4 ml-24">
         {ticks.map((t) => (
           <div key={t} className="absolute top-0 ds-mono text-[9px] text-zinc-600 -translate-x-1/2"
