@@ -52,10 +52,12 @@ export function resolveM1Target(
   override?: M1CueOverride,
 ): M1CueTarget {
   if (override && Object.prototype.hasOwnProperty.call(override, cueIndex)) {
-    const t = override[cueIndex];
+    const t = override[cueIndex] as M1CueTarget | undefined;
     if (!isValidTarget(t)) {
+      const sa = (t as { slaveAddress?: number } | undefined)?.slaveAddress;
+      const ch = (t as { channel?: number } | undefined)?.channel;
       throw new RangeError(
-        `override target invalid for cue ${cueIndex}: slave=${t?.slaveAddress} ch=${t?.channel}`,
+        `override target invalid for cue ${cueIndex}: slave=${sa} ch=${ch}`,
       );
     }
     return { slaveAddress: t.slaveAddress, channel: t.channel };
