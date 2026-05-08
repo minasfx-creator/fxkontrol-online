@@ -1,71 +1,104 @@
-## Adoção seletiva dos arquivos anexados
 
-Diagnóstico rápido: dos 10 arquivos anexados, 6 já existem no repo em versão **igual ou superior** (não mexer). 4 são adições reais.
+# Plano — Layout Definitivo do Editor SkyCanvas
 
-### O que NÃO vou tocar (regressão)
-- `SkyCanvasMount.tsx` anexado — versão atual tem engine selectable + memo + fallback v2→legacy. Trocar quebra `pages/SkyCanvas.tsx`, `UE5BridgePage`, `VideoEditor`, `SkyCanvasLab` e a memória `mem://funcionalidades/skycanvas-mount-canonical`.
-- `SkyCanvasLab.tsx` — idêntico ao do repo.
-- `SkyCanvas-2.tsx` — é o legacy `@/components/editor/SkyCanvas` que o Mount já carrega.
-- `SkyCanvas.smoke.test.tsx` — idêntico.
-- `skyCanvasDiagnostics.ts` — idêntico.
-- `skybrushExport.ts` (stub honesto) — permanece como exporter v1 com claim `marketing_hypothesis`.
+Você confirmou: o layout que aparece em **/dev/skycanvas-lab** (variante `smoke` = `SkyCanvasMount` puro, fullscreen, sem chrome pesado) é o layout definitivo do viewport. Vamos promovê-lo para a rota de produção (`/skycanvas` e VideoEditor) com refinamentos cirúrgicos e uma **timeline glassmorphism** unificando tudo que já temos (waveform, cues, lanes pyro/sfx/drone/light/dmx, transport, drag-drop de efeitos).
 
-### O que vou implementar
+Plano: **Show / Experience**. Zero CommandBus / FieldBus / SafetyStateMachine. Real operation continua em `/command`.
 
-**1. `src/lib/skycanvasCapability.ts`** (novo, ~120 linhas, puro)
-- Detecção `WebGPU / WebGL2 / SwiftShader / coarse pointer / reduced-motion / saveData` → `{ renderer, tier: low|mid|high, reasons[] }`.
-- Hook fino `useSkyCapability()` (memoiza resultado por sessão).
-- Plugar em `SkyCanvas2` para auto-tier: `tier=low` força `hideStars+stageVariant='minimal'+perfHud=false`; `tier=high` libera tudo. Override manual via query string preservado.
-- Zero import de CommandBus/FieldBus/SafetyStateMachine (validado pelo guard `skycanvas.safetyImports.guard.spec.ts`).
+## 1. Novo componente canônico — `SkyCanvasViewportShell`
 
-**2. `src/lib/skycanvasAudioPeaks.ts`** (novo, ~70 linhas, puro)
-- `decodeAudioPeaks(file, buckets=1024) → { durationSec, peaks: Float32Array }` via `AudioContext.decodeAudioData`.
-- Wire em `TransportAndLanesLegacy`: input file `<input type="file" accept="audio/*">` no header da timeline → seta `peaks` (já é prop tipada `Float32Array | null`) e `duration` no `useProjectStore`.
-- Cache do último `peaks` em memória (sessão), fora do store (Float32Array não serializa bem).
-- Botão "Limpar áudio" para liberar referência.
+Arquivo novo: `src/components/skycanvas/SkyCanvasViewportShell.tsx`.
 
-**3. `src/lib/exporters/skycExporterV2.ts`** (novo, adaptado do upload de 676 linhas)
-- Adicionar como **segundo exporter** ao lado de `skybrushExport.ts`. Não substituir.
-- **Claim policy: `marketing_hypothesis`** (escolha do usuário "não validei ainda"):
-  - `_FXK_DISCLAIMER.txt` obrigatório no ZIP.
-  - `validation.json` inclui `claim: "marketing_hypothesis"` e `note: "Format mirrors Skybrush conventions; not validated against real importer"`.
-  - `ClaimBadge` no UI marca como `pilot/marketing_hypothesis` (amber).
-- Validações reais ativas (NFPA-style sanity): MAX_DRONES 500, MIN_SPACING 2m, MAX_ALT 120m, MAX_LATERAL 8m/s, MAX_VERTICAL 4m/s.
-- Adapter `ShowPlan → SkycFile` no `src/lib/exporters/showPlanToSkyc.ts`.
-- Botão "Export .skyc (v2 preview)" em `EditorExportMenu` ao lado do exporter v1.
-- Atualizar memória `mem://funcionalidades/round3-pass2-skybrush-smoke` para refletir a coexistência v1/v2 ambos honest.
+Estrutura (tela cheia, fundo Vantablack `#050810`):
 
-**4. Auditoria + montagem do `SkyCanvasDiagnosticsPanel`**
-- `rg` para mapear onde está montado hoje (provavelmente só `editor/SkyCanvas.tsx` legacy).
-- Garantir presença em `pages/SkyCanvas.tsx` (já usa `SkyCanvasMount` v2) — adicionar como overlay opcional via prop `children` do Mount.
-- Sem mudar contratos, só adição.
+```text
+┌──────────────────────────────────────────────────────────────┐
+│  [Glass Topbar pill]  centrado · variante minimal do atual   │  ← 56px, flutuante
+│                                                              │
+│                                                              │
+│              SkyCanvasMount (engine='auto')                  │  ← fill 100%
+│              (mesmo do /dev/skycanvas-lab smoke)             │
+│                                                              │
+│                                                              │
+│  [ViewportBar flutuante topo-centro]                         │  ← já existe
+│                                                              │
+├──────────────────────────────────────────────────────────────┤
+│  [Glass Timeline Dock — 200px, glassmorphism forte]          │  ← novo, colapsável
+│   Transport · Timecode · Waveform · Cue lanes · Drop zone    │
+└──────────────────────────────────────────────────────────────┘
+```
 
-### Testes
-- `skycanvasCapability.test.ts`: jsdom mock de `matchMedia` + `getContext('webgl2')` → cobertura tier low/mid/high.
-- `skycanvasAudioPeaks.test.ts`: smoke (mock `AudioContext`) — `peaks.length === buckets * 2`.
-- `skycExporterV2.test.ts`: validação rejeita drones>500, altitude>120m, spacing<2m. ZIP contém `_FXK_DISCLAIMER.txt` + `show.json` + `validation.json` com `claim: marketing_hypothesis`.
-- Guard `skycanvas.safetyImports.guard.spec.ts` deve continuar verde.
+Princípios:
+- **Sem grid rígido `EditorShell`** no modo lab-like. Painéis Library/Inspector viram **dock flutuante glass colapsado por default** (acessível por tecla ou ícone), liberando o viewport.
+- Topbar fica como **pill flutuante** glass (não barra full-width). Reaproveita `GlassTopbar` de `pages/SkyCanvas.tsx` em variante `compact`.
+- Timeline na base é **glass-pane forte** (não quadrado opaco), bordas arredondadas, recolhível com `⌘3`.
 
-### Arquivos
-**Criar:**
-- `src/lib/skycanvasCapability.ts`
-- `src/hooks/useSkyCapability.ts`
-- `src/lib/skycanvasAudioPeaks.ts`
-- `src/lib/exporters/skycExporterV2.ts`
-- `src/lib/exporters/showPlanToSkyc.ts`
-- `src/__tests__/skycanvasCapability.test.ts`
-- `src/__tests__/skycanvasAudioPeaks.test.ts`
-- `src/__tests__/skycExporterV2.test.ts`
+## 2. Timeline Glassmorphism — `GlassTimelineDock`
 
-**Editar:**
-- `src/components/show3d/v2/SkyCanvas2.tsx` — consumir `useSkyCapability` para defaults adaptativos.
-- `src/components/skycanvas/legacy-2604/TransportAndLanesLegacy.tsx` — input de áudio + wire dos peaks.
-- `src/pages/SkyCanvas.tsx` — montar `SkyCanvasDiagnosticsPanel` como overlay condicional (dev-only ou via flag).
-- `src/components/editor/EditorExportMenu.tsx` (ou equivalente) — botão "Export .skyc v2".
-- `.lovable/memory/funcionalidades/round3-pass2-skybrush-smoke.md` + `mem://index.md` — refletir v1+v2 honest coexistindo.
+Arquivo novo: `src/components/skycanvas/GlassTimelineDock.tsx`.
 
-### Garantias
-- Zero impacto em Safety / CommandBus / FieldBus / workMode.
-- Guard `skycanvas.safetyImports.guard.spec.ts` cobre os novos arquivos automaticamente (estão em `src/lib/`, fora do path vigiado, mas adiciono assertion explícita no teste do exporter v2).
-- Vantablack + cyan-dessat preservados (nada de tema novo).
-- Claim badge `marketing_hypothesis` impede over-promise em vendas.
+Reutiliza 100% de tecnologia existente — zero engine novo:
+
+| Camada | Origem | Função |
+|---|---|---|
+| Background glass | `glass-pane glass-pane-strong` (token DS) | blur + Vantablack 60% |
+| Transport | `TransportBarLegacy` (legacy-2604) | Play/Pause/Stop/seek/timecode |
+| Waveform | `WaveformLayer` + `decodeAudioPeaks` (lib/skycanvasAudioPeaks) | onda audio decodificada |
+| Cue ruler | `TimelineStripView` (já modular) | régua + cue markers + drop `FXK_EFFECT_DRAG_TYPE` |
+| Lanes Pyro/SFX/Drone/Light/DMX | `FiringLanesTimelineLegacy` | 5 lanes coloridas |
+| Sync | `useShow3DEngineSync` + `useProjectStore.currentTime` | clock master = audio (memória `show3d-timeline-audio-sync`) |
+| Selo | DS chip "SIM · ADVISORY" + claim badge | reaproveita `Badge` |
+
+Layout interno (200px alt total):
+- Topo 32px: transport pill + timecode SMPTE 29.97 + speed selector
+- Meio 80px: waveform + cue markers (TimelineStripView mode='ruler')
+- Base 88px: 5 lanes empilhadas (FiringLanesTimelineLegacy compact)
+
+Glass tokens: `bg-[#050810]/55 backdrop-blur-2xl border-t border-cyan-500/10 shadow-[0_-8px_32px_rgba(0,0,0,0.6)]`. Cores cyan-dessat 190° (canônico).
+
+Drop zones: arrastar de `EffectLibrarySidebar` para qualquer lane cria cue na lane correta (já implementado em `TimelineStripView.onDrop`).
+
+## 3. Refinamentos pedidos (sobre o lab atual)
+
+1. **Removidos**: barra de toggle `SMOKE/R3F/V2` no topo-esquerda (era dev-only). Em produção fica só o glass topbar.
+2. **Adicionado**: `SkyCanvasDiagnosticsPanel` como overlay opcional (toggle por `?diag=1` ou tecla `Ctrl+Shift+D`).
+3. **Adicionado**: `ViewportBar` (preset cam/grid/axes/ground) no topo-centro (já existe, só montar).
+4. **Adicionado**: `JoiAvatarFab` no canto inferior-direito (já existe em legacy-2604).
+5. **Mantido**: `AutoControllerLauncher` global (vem do `MainLayout`).
+6. **Layout responsivo**: <md, timeline vira sheet bottom (`MobilePanelSwitcher` já cobre o resto).
+
+## 4. Adoção nas rotas
+
+Editar:
+- `src/pages/SkyCanvas.tsx` — substituir o `EditorShell` por `<SkyCanvasViewportShell>`. Master Menu (⌘K) preservado. Persistência de layout (`useEditorLayout`) reduzida a: `timelineCollapsed`, `diagOpen`, `libraryDrawerOpen`, `inspectorDrawerOpen`. Painéis Library/Inspector continuam acessíveis via drawer glass (ícone lateral) — não somem, só não ocupam grid fixo.
+- `src/pages/dev/SkyCanvasLab.tsx` — variante `smoke` agora monta `<SkyCanvasViewportShell variant="dev">` para WYSIWYG entre dev e prod. Variantes `r3f` e `v2` preservadas.
+- `src/pages/VideoEditor.tsx` — opt-in via flag `editor_shell_v2_lab` (default OFF nesta primeira rodada para evitar regressão).
+
+## 5. Safety / Memory / Tests
+
+- Guard test novo: `src/__tests__/skycanvasViewportShell.guard.spec.ts` — proíbe imports de `@/core/safety/safetyStateMachine`, `@/core/hardware/fieldBus`, `@/core/command/commandBus` dentro de `SkyCanvasViewportShell` e `GlassTimelineDock`.
+- Smoke test: `src/__tests__/glassTimelineDock.smoke.test.tsx` — render com `peaks=null`, com peaks decoded mock, drop de effectId cria cue, click seek atualiza store.
+- Memória nova: `mem://funcionalidades/skycanvas-viewport-shell-canonical` — registra que `SkyCanvasViewportShell + GlassTimelineDock` é o layout canônico do editor (Show plane), reutilização das peças legacy-2604 + TimelineStripView + WaveformLayer + skycanvasAudioPeaks, e que dev/lab e prod são WYSIWYG.
+- Atualiza `mem://funcionalidades/skycanvas-mount-canonical` mencionando o shell wrapper.
+- Vantablack `#050810` + cyan-dessat 190 70% 58% preservados (canônicos).
+
+## 6. Arquivos
+
+**Novos**
+- `src/components/skycanvas/SkyCanvasViewportShell.tsx`
+- `src/components/skycanvas/GlassTimelineDock.tsx`
+- `src/components/skycanvas/timeline/GlassTimelineLanes.tsx` (wrapper compact de `FiringLanesTimelineLegacy`)
+- `src/__tests__/skycanvasViewportShell.guard.spec.ts`
+- `src/__tests__/glassTimelineDock.smoke.test.tsx`
+- `.lovable/memory/funcionalidades/skycanvas-viewport-shell-canonical.md`
+
+**Editados**
+- `src/pages/SkyCanvas.tsx` (troca EditorShell → SkyCanvasViewportShell, mantém Master Menu, atalhos, persistência reduzida)
+- `src/pages/dev/SkyCanvasLab.tsx` (variant smoke usa o shell)
+- `.lovable/memory/funcionalidades/skycanvas-mount-canonical.md` (nota cruzada)
+
+**Não tocados** (regressão garantida)
+- `SkyCanvasMount.tsx`, `SkyCanvas2.tsx`, `SkyCanvas3D.tsx`, `EditorShell.tsx`, qualquer arquivo em `core/safety|hardware|command`, `MainLayout.tsx`, `GlobalEStopButton`.
+
+## 7. Confirma?
+Aprovando, eu implemento na próxima rodada (criação dos 6 arquivos + edição cirúrgica de `pages/SkyCanvas.tsx` e `SkyCanvasLab.tsx`). O viewport `/skycanvas` passa a ter exatamente a sensação fullscreen do `/dev/skycanvas-lab` + a timeline glassmorphism unificada.

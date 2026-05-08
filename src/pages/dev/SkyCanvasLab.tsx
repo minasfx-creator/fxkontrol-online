@@ -15,7 +15,7 @@
 import { Suspense, lazy, useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { lazyRetry } from '@/lib/lazyRetry';
-import SkyCanvasMount from '@/components/editor/SkyCanvasMount';
+import SkyCanvasViewportShell from '@/components/skycanvas/SkyCanvasViewportShell';
 import { useProjectStore } from '@/store/useProjectStore';
 import { EFFECT_LIBRARY } from '@/data/effectLibrary';
 
@@ -119,7 +119,7 @@ export default function SkyCanvasLab() {
       </div>
 
       {variant === 'smoke' && (
-        <SkyCanvasMount instanceKey="lab-smoke" area="3D viewport (lab/smoke)" loaderLabel="Booting SkyCanvas…" />
+        <SkyCanvasViewportShell variant="dev" />
       )}
       {variant === 'r3f' && (
         <Suspense fallback={<div className="grid h-full place-items-center text-xs">Booting R3F…</div>}>
