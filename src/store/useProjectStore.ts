@@ -259,6 +259,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
   selectedTrajectoryIds: [],
   showFormations: true,
   cueMarkers: [],
+  selectedCueMarkerId: null,
   videoChoreoResult: null,
   depthLayers: [],
   gpsOrigin: { lat: -23.5505, lng: -46.6333, heading: 0, altitude: 0 },
