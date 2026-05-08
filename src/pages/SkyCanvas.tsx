@@ -760,40 +760,54 @@ export default function SkyCanvasPage() {
       <EditorShell
         layout={effectiveLayout}
         topbar={
-          <GlassTopbar
-            cap={cap}
-            playing={playing}
-            onTogglePlay={togglePlay}
-            onStop={stop}
-            onSeek={seek}
-            time={time}
-            duration={duration}
-            onPickAudio={onPickAudio}
-            audioName={audioName}
-            onOpenMaster={() => setPaletteOpen(true)}
-            onEStop={() => navigate('/command')}
-            workModeLabel={workModeLabel}
-            sessionMeta={session}
-            layoutControls={{
-              leftCollapsed: layout.leftCollapsed,
-              rightCollapsed: layout.rightCollapsed,
-              timelineCollapsed: layout.timelineCollapsed,
-              toggleLeft: layout.toggleLeft,
-              toggleRight: layout.toggleRight,
-              toggleTimeline: layout.toggleTimeline,
-              reset: layout.reset,
-            }}
-          />
+          legacyChrome ? (
+            <EditorTopBarLegacy
+              time={time}
+              onOpenMaster={() => setPaletteOpen(true)}
+              onOpenImport={() => setImportOpen(true)}
+              onExport={exportShowJson}
+              onResetShow={resetShow}
+              segment={legacyTopSegment}
+              onSegmentChange={setLegacyTopSegment}
+            />
+          ) : (
+            <GlassTopbar
+              cap={cap}
+              playing={playing}
+              onTogglePlay={togglePlay}
+              onStop={stop}
+              onSeek={seek}
+              time={time}
+              duration={duration}
+              onPickAudio={onPickAudio}
+              audioName={audioName}
+              onOpenMaster={() => setPaletteOpen(true)}
+              onEStop={() => navigate('/command')}
+              workModeLabel={workModeLabel}
+              sessionMeta={session}
+              layoutControls={{
+                leftCollapsed: layout.leftCollapsed,
+                rightCollapsed: layout.rightCollapsed,
+                timelineCollapsed: layout.timelineCollapsed,
+                toggleLeft: layout.toggleLeft,
+                toggleRight: layout.toggleRight,
+                toggleTimeline: layout.toggleTimeline,
+                reset: layout.reset,
+              }}
+            />
+          )
         }
         tabs={
-          <div className="h-full glass-pane mx-3 my-1 rounded-xl flex items-center px-ds-4">
-            <DsSegmentTabs
-              items={SEGMENTS}
-              activeId={activeSegment}
-              onChange={setActiveSegment}
-              colorPerSegment
-            />
-          </div>
+          legacyChrome ? null : (
+            <div className="h-full glass-pane mx-3 my-1 rounded-xl flex items-center px-ds-4">
+              <DsSegmentTabs
+                items={SEGMENTS}
+                activeId={activeSegment}
+                onChange={setActiveSegment}
+                colorPerSegment
+              />
+            </div>
+          )
         }
         left={
           <StudioErrorBoundary area="SkyCanvas · Library">
