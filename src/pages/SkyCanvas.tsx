@@ -63,6 +63,14 @@ import SkyCanvasMount from '@/components/editor/SkyCanvasMount';
 const SkyCanvasCommandPalette = lazy(() => import('@/components/skycanvas/SkyCanvasCommandPalette'));
 const CatalogImportDialog = lazy(() => import('@/components/editor/CatalogImportDialog'));
 
+// Legacy 9-Apr chrome (visual-only). Gated by editor_legacy_chrome_2604.
+import { isEditorLegacyChrome2604Enabled } from '@/lib/featureFlags';
+import EditorTopBarLegacy, { type TopSegment } from '@/components/skycanvas/legacy-2604/EditorTopBarLegacy';
+import LeftToolRailLegacy from '@/components/skycanvas/legacy-2604/LeftToolRailLegacy';
+import RightIconRailLegacy from '@/components/skycanvas/legacy-2604/RightIconRailLegacy';
+import LaserControlFloatingPanel from '@/components/skycanvas/legacy-2604/LaserControlFloatingPanel';
+import { TransportBarLegacy, FiringLanesTimelineLegacy, JoiAvatarFab } from '@/components/skycanvas/legacy-2604/TransportAndLanesLegacy';
+
 // ─────────────────────────────────────────────────────────────────────
 // Helpers
 // ─────────────────────────────────────────────────────────────────────
