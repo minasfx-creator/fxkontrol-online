@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Show3DEngine, type PlaybackSnapshot } from '@/lib/showEngine/Show3DEngine';
+import { Show3DEngine, type PlaybackSnapshot, type Show3DEngineOptions } from '@/lib/showEngine/Show3DEngine';
 import type { ShowPlan } from '@/lib/aiShowBuilder/types';
 import { engineDiagnostics } from '@/lib/showEngine/EngineDiagnostics';
 import type { ViewportState } from '@/lib/showEngine/viewportState';
