@@ -31,6 +31,7 @@ import { Badge } from '@/components/ui/badge';
 
 import { useProjectStore } from '@/store/useProjectStore';
 import { EFFECT_LIBRARY } from '@/data/effectLibrary';
+import { resolveEffectLedAccurate } from '@/data/effectsLibraries/resolveEffect';
 import { detectSkyCapability, profileBudget, type SkyCapability } from '@/lib/skycanvasCapability';
 import { FXK_EFFECT_DRAG_TYPE } from '@/components/editor/EffectLibrarySidebar';
 import SkyFallback2D from '@/components/skycanvas/SkyFallback2D';
