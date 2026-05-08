@@ -117,8 +117,10 @@ export function FiringLanesTimelineLegacy({
   return (
     <div className="flex-1 px-3 py-2 bg-zinc-950/60 border-t border-white/[0.05] overflow-hidden">
       <div className="ds-mono text-[10px] uppercase tracking-wider text-cyan-300/80 mb-2">Firing Systems</div>
-      <Lane label="PYRO SYS" color="#FF7700" cues={pyro} duration={duration} />
-      <Lane label="DRONE SYS" color="#22d3ee" cues={drone} duration={duration} />
+      <Lane label="PYRO SYS" color="#FF7700" cues={pyro} duration={duration}
+        onDropEffect={onDropEffect ? (id, t) => onDropEffect(id, t, 'pyro') : undefined} />
+      <Lane label="DRONE SYS" color="#22d3ee" cues={drone} duration={duration}
+        onDropEffect={onDropEffect ? (id, t) => onDropEffect(id, t, 'drone') : undefined} />
       <div className="relative mt-1.5 h-4 ml-24">
         {ticks.map((t) => (
           <div key={t} className="absolute top-0 ds-mono text-[9px] text-zinc-600 -translate-x-1/2"
@@ -132,20 +134,62 @@ export function FiringLanesTimelineLegacy({
   );
 }
 
-function Lane({ label, color, cues, duration }:
-  { label: string; color: string; cues: { id: string; time: number; label: string }[]; duration: number }) {
+function Lane({ label, color, cues, duration, onDropEffect }:
+  { label: string; color: string; cues: { id: string; time: number; label: string }[]; duration: number;
+    onDropEffect?: (effectId: string, t: number) => void }) {
+  const [hoverPct, setHoverPct] = useState<number | null>(null);
+  const [isOver, setIsOver] = useState(false);
+  const trackRef = useRef<HTMLDivElement | null>(null);
+
+  const pctFromEvent = (e: React.DragEvent<HTMLDivElement>) => {
+    const r = trackRef.current?.getBoundingClientRect();
+    if (!r || r.width <= 0) return 0;
+    return Math.max(0, Math.min(1, (e.clientX - r.left) / r.width));
+  };
+
   return (
     <div className="flex items-center gap-2 mb-1">
       <div className="w-24 flex items-center gap-1.5 shrink-0">
         <span className="h-2 w-2 rounded-full" style={{ background: color, boxShadow: `0 0 6px ${color}` }} />
         <span className="ds-mono text-[9px] uppercase text-zinc-400 tracking-wider">{label}</span>
       </div>
-      <div className="flex-1 h-6 relative rounded bg-black/40 border border-white/[0.04] overflow-hidden">
+      <div
+        ref={trackRef}
+        className={cn(
+          'flex-1 h-6 relative rounded bg-black/40 border overflow-hidden transition-colors',
+          isOver ? 'border-cyan-400/60 bg-cyan-500/[0.06]' : 'border-white/[0.04]',
+        )}
+        onDragOver={(e) => {
+          if (!onDropEffect) return;
+          if (!e.dataTransfer.types.includes(FXK_EFFECT_DRAG_TYPE)
+              && !e.dataTransfer.types.includes('text/plain')) return;
+          e.preventDefault();
+          e.dataTransfer.dropEffect = 'copy';
+          setIsOver(true);
+          setHoverPct(pctFromEvent(e));
+        }}
+        onDragLeave={() => { setIsOver(false); setHoverPct(null); }}
+        onDrop={(e) => {
+          if (!onDropEffect) return;
+          const id = e.dataTransfer.getData(FXK_EFFECT_DRAG_TYPE)
+                  || e.dataTransfer.getData('text/plain');
+          if (!id) return;
+          e.preventDefault();
+          const pct = pctFromEvent(e);
+          onDropEffect(id, pct * duration);
+          setIsOver(false);
+          setHoverPct(null);
+        }}
+      >
         {cues.map((c) => (
           <div key={c.id} title={`${c.label} · ${fmtTime(c.time)}`}
             className="absolute top-0 bottom-0 w-1 rounded-sm transition-opacity"
             style={{ left: `${(c.time / duration) * 100}%`, background: color, boxShadow: `0 0 4px ${color}` }} />
         ))}
+        {hoverPct !== null && (
+          <div className="absolute top-0 bottom-0 w-px bg-cyan-300 pointer-events-none"
+               style={{ left: `${hoverPct * 100}%` }} />
+        )}
       </div>
     </div>
   );
