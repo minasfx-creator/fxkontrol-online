@@ -147,6 +147,17 @@ const FLAGS = {
    * 'fxk.flag.ecs_unified_kernel' = '0'. Bench: /dev/perf-bench.
    */
   ecs_unified_kernel: true,
+
+  /**
+   * Editor Legacy Chrome 26-04 — recria o chrome visual do bookmark de 9-abr
+   * sobre o /skycanvas atual (HUD topo PYRO/DRONE/ADD+/SHOWS, tool rails,
+   * painel LASER CONTROL flutuante, transport + lanes PYRO SYS / DRONE SYS,
+   * JOI FAB). Visual-only — zero impacto em safety/hardware/showplan.
+   * Default ON. Override:
+   *   - URL ?legacyChrome=0 (sessão)
+   *   - localStorage 'fxk.flag.editor_legacy_chrome_2604' = '0'
+   */
+  editor_legacy_chrome_2604: true,
 } as const;
 
 export type FeatureFlag = keyof typeof FLAGS;
@@ -220,6 +231,27 @@ export function isFireOneXL43RealOpsEnabled(): boolean {
     } catch { /* fall through */ }
   }
   return false;
+}
+
+/**
+ * Editor Legacy Chrome 26-04 runtime gate.
+ * URL ?legacyChrome=0/1 → localStorage → static flag.
+ */
+export function isEditorLegacyChrome2604Enabled(): boolean {
+  if (typeof window !== 'undefined') {
+    try {
+      const url = new URL(window.location.href);
+      const q = url.searchParams.get('legacyChrome');
+      if (q === '0' || q === 'false') return false;
+      if (q === '1' || q === 'true') return true;
+    } catch { /* */ }
+    try {
+      const v = window.localStorage.getItem('fxk.flag.editor_legacy_chrome_2604');
+      if (v === '1' || v === 'true') return true;
+      if (v === '0' || v === 'false') return false;
+    } catch { /* */ }
+  }
+  return FLAGS.editor_legacy_chrome_2604;
 }
 
 /**
