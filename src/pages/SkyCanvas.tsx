@@ -586,15 +586,19 @@ export default function SkyCanvasPage() {
   }, []);
 
   // Cue drop handlers — resolve via canonical lookup (legacy + Finale 3D parts).
-  const dropEffectAt = useCallback((effectId: string, t: number, laneHint?: 'pyro' | 'drone') => {
+  const dropEffectAt = useCallback((effectId: string, t: number, laneHint?: 'pyro' | 'drone' | 'formation') => {
     const fx = resolveEffectLedAccurate(effectId) ?? EFFECT_LIBRARY.find((e) => e.id === effectId);
     if (!fx) return;
+    // Auto-route by effect schema: partType==='formation' → formation,
+    // type==='drone'|'light' → drone, else → pyro. Explicit lane hint
+    // (from a lane drop target) wins over auto-classification.
+    const auto: 'pyro' | 'drone' | 'formation' =
+      ((fx as { partType?: string }).partType === 'formation') ? 'formation'
+        : (fx.type === 'drone' || fx.type === 'light') ? 'drone'
+          : 'pyro';
+    const lane = laneHint ?? auto;
     const baseLabel = `${fx.icon ?? '✦'} ${fx.name}`;
-    // If the user dropped on the DRONE lane, tag the label so projection
-    // routes to the drone firing system (FiringLanesTimelineLegacy split).
-    const label = laneHint === 'drone' && !baseLabel.toLowerCase().includes('drone')
-      ? `${baseLabel} · drone`
-      : baseLabel;
+    const label = lane === 'pyro' ? baseLabel : `${baseLabel} · ${lane}`;
     useProjectStore.getState().addCueMarker({
       id: `cue-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`,
       time: Math.max(0, Math.min(duration, t)),
