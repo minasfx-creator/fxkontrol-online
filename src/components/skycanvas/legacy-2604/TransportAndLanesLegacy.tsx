@@ -159,24 +159,34 @@ function Lane({ label, color, cues, duration, onDropEffect }:
   const trackRef = useRef<HTMLDivElement | null>(null);
   const selectedId = useProjectStore((s) => s.selectedCueMarkerId);
 
-  const pctFromEvent = (e: React.DragEvent<HTMLDivElement>) => {
+  const pctFromEvent = (e: React.DragEvent<HTMLDivElement> | React.MouseEvent<HTMLDivElement>) => {
     const r = trackRef.current?.getBoundingClientRect();
     if (!r || r.width <= 0) return 0;
     return Math.max(0, Math.min(1, (e.clientX - r.left) / r.width));
   };
 
+  const hoverTime = hoverPct !== null ? hoverPct * duration : null;
+
   return (
-    <div className="flex items-center gap-2 mb-1">
+    <div className="flex items-center gap-2 mb-1 group/lane">
       <div className="w-24 flex items-center gap-1.5 shrink-0">
-        <span className="h-2 w-2 rounded-full" style={{ background: color, boxShadow: `0 0 6px ${color}` }} />
+        <span
+          className="h-2 w-2 rounded-full transition-transform group-hover/lane:scale-125"
+          style={{ background: color, boxShadow: `0 0 8px ${color}` }}
+        />
         <span className="ds-mono text-[9px] uppercase text-zinc-400 tracking-wider">{label}</span>
+        <span className="ds-mono text-[8px] text-zinc-600 ml-auto tabular-nums">{cues.length}</span>
       </div>
       <div
         ref={trackRef}
         className={cn(
-          'flex-1 h-6 relative rounded bg-black/40 border overflow-hidden transition-colors',
-          isOver ? 'border-cyan-400/60 bg-cyan-500/[0.06]' : 'border-white/[0.04]',
+          'relative flex-1 h-6 rounded bg-black/40 border overflow-hidden transition-all',
+          isOver
+            ? 'border-cyan-400/70 bg-cyan-500/[0.08] shadow-[inset_0_0_8px_rgba(34,211,238,0.2)]'
+            : 'border-white/[0.04] hover:border-white/[0.10]',
         )}
+        onMouseMove={(e) => setHoverPct(pctFromEvent(e))}
+        onMouseLeave={() => { if (!isOver) setHoverPct(null); }}
         onDragOver={(e) => {
           if (!onDropEffect) return;
           if (!e.dataTransfer.types.includes(FXK_EFFECT_DRAG_TYPE)
@@ -211,12 +221,12 @@ function Lane({ label, color, cues, duration, onDropEffect }:
                 useProjectStore.getState().selectCueMarker(c.id);
                 useProjectStore.getState().setCurrentTime(c.time);
               }}
-              className="absolute top-0 bottom-0 w-1.5 rounded-sm transition-opacity hover:w-2 cursor-pointer"
+              className="absolute top-0 bottom-0 w-1.5 rounded-sm transition-all hover:w-2.5 cursor-pointer"
               style={{
                 left: `${(c.time / duration) * 100}%`,
                 background: color,
                 boxShadow: sel
-                  ? `0 0 8px ${color}, 0 0 2px hsl(189 94% 70%)`
+                  ? `0 0 10px ${color}, 0 0 3px hsl(189 94% 70%)`
                   : `0 0 4px ${color}`,
                 outline: sel ? '1px solid hsl(189 94% 70%)' : undefined,
               }}
@@ -224,8 +234,23 @@ function Lane({ label, color, cues, duration, onDropEffect }:
           );
         })}
         {hoverPct !== null && (
-          <div className="absolute top-0 bottom-0 w-px bg-cyan-300 pointer-events-none"
-               style={{ left: `${hoverPct * 100}%` }} />
+          <>
+            <div className="absolute top-0 bottom-0 w-px bg-cyan-300/60 pointer-events-none"
+                 style={{ left: `${hoverPct * 100}%` }} />
+            {hoverTime !== null && (
+              <div
+                className="absolute -top-5 -translate-x-1/2 ds-mono text-[8px] tabular-nums px-1 py-px rounded border border-cyan-500/40 bg-[#050810]/95 text-cyan-200 pointer-events-none whitespace-nowrap"
+                style={{ left: `${hoverPct * 100}%` }}
+              >
+                {fmtTime(hoverPct * duration)}
+              </div>
+            )}
+          </>
+        )}
+        {isOver && (
+          <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
+            <span className="ds-mono text-[9px] tracking-wider text-cyan-300/80 uppercase">+ Drop here</span>
+          </div>
         )}
       </div>
     </div>

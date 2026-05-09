@@ -24,6 +24,7 @@ export default function TimelineStripView({
 }: TimelineStripProps) {
   const ref = useRef<HTMLDivElement | null>(null);
   const [dragOver, setDragOver] = useState(false);
+  const [hoverX, setHoverX] = useState<number | null>(null);
   const cueMarkers = useProjectStore((s) => s.cueMarkers);
   const removeCueMarker = useProjectStore((s) => s.removeCueMarker);
   const selectCueMarker = useProjectStore((s) => s.selectCueMarker);
@@ -35,11 +36,23 @@ export default function TimelineStripView({
     return Math.max(0, Math.min(duration, ((clientX - rect.left) / rect.width) * duration));
   };
   const onClick = (e: React.MouseEvent<HTMLDivElement>) => onSeekAbs(xToTime(e.clientX));
+  const onMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    const el = ref.current; if (!el) return;
+    const rect = el.getBoundingClientRect();
+    setHoverX(Math.max(0, Math.min(rect.width, e.clientX - rect.left)));
+  };
+  const onLeave = () => setHoverX(null);
+
   const onDragOver = (e: React.DragEvent<HTMLDivElement>) => {
     if (e.dataTransfer.types.includes(FXK_EFFECT_DRAG_TYPE)) {
       e.preventDefault();
       e.dataTransfer.dropEffect = 'copy';
       setDragOver(true);
+      const el = ref.current;
+      if (el) {
+        const rect = el.getBoundingClientRect();
+        setHoverX(Math.max(0, Math.min(rect.width, e.clientX - rect.left)));
+      }
     }
   };
   const onDrop = (e: React.DragEvent<HTMLDivElement>) => {
@@ -47,10 +60,15 @@ export default function TimelineStripView({
     if (!id) return;
     e.preventDefault();
     setDragOver(false);
+    setHoverX(null);
     onDropEffect(id, xToTime(e.clientX));
   };
 
   const pct = duration > 0 ? (time / duration) * 100 : 0;
+  const hoverTime = hoverX !== null && ref.current
+    ? (hoverX / ref.current.clientWidth) * duration
+    : null;
+
   return (
     <div className="flex h-full flex-col">
       <div className="flex h-7 items-center justify-between px-3 border-b border-white/[0.06]">
@@ -64,8 +82,10 @@ export default function TimelineStripView({
       <div
         ref={ref}
         onClick={onClick}
+        onMouseMove={onMove}
+        onMouseLeave={onLeave}
         onDragOver={onDragOver}
-        onDragLeave={() => setDragOver(false)}
+        onDragLeave={() => { setDragOver(false); setHoverX(null); }}
         onDrop={onDrop}
         className={cn(
           'relative flex-1 cursor-crosshair transition-colors duration-200',
@@ -96,12 +116,14 @@ export default function TimelineStripView({
               onDoubleClick={(e) => { e.stopPropagation(); removeCueMarker(c.id); }}
               className={cn(
                 'group absolute top-5 bottom-0 -translate-x-1/2 cursor-pointer transition-all',
-                isSel ? 'w-[5px] z-10' : 'w-[3px] hover:w-[4px]',
+                isSel ? 'w-[5px] z-10' : 'w-[3px] hover:w-[5px]',
               )}
               style={{
                 left: `${left}%`,
                 background: c.color,
-                boxShadow: isSel ? `0 0 8px ${c.color}, 0 0 2px hsl(189 94% 70%)` : undefined,
+                boxShadow: isSel
+                  ? `0 0 10px ${c.color}, 0 0 3px hsl(189 94% 70%)`
+                  : `0 0 4px ${c.color}`,
                 outline: isSel ? '1px solid hsl(189 94% 70%)' : undefined,
               }}
               title={`${c.label} @ ${fmtTime(c.time)} — clique para inspecionar, duplo clique para remover`}
@@ -110,7 +132,7 @@ export default function TimelineStripView({
             >
               <span
                 className={cn(
-                  'absolute top-0 left-1/2 -translate-x-1/2 -translate-y-full whitespace-nowrap rounded px-1 py-px text-[9px] ds-mono transition',
+                  'absolute top-0 left-1/2 -translate-x-1/2 -translate-y-full whitespace-nowrap rounded px-1 py-px text-[9px] ds-mono transition pointer-events-none',
                   isSel ? 'opacity-100' : 'opacity-0 group-hover:opacity-100',
                 )}
                 style={{ background: c.color, color: '#050810' }}
@@ -120,13 +142,31 @@ export default function TimelineStripView({
             </button>
           );
         })}
+
+        {/* Hover guide line + timestamp tooltip */}
+        {hoverX !== null && hoverTime !== null && (
+          <>
+            <div
+              className="pointer-events-none absolute top-5 bottom-0 w-px bg-cyan-300/40"
+              style={{ left: hoverX }}
+            />
+            <div
+              className="pointer-events-none absolute -translate-x-1/2 ds-mono text-[9px] tabular-nums tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/40 bg-[#050810]/95 text-cyan-200 shadow-lg"
+              style={{ left: hoverX, bottom: 4 }}
+            >
+              {fmtTime(hoverTime)}
+            </div>
+          </>
+        )}
+
+        {/* Playhead — line + diamond head + glow */}
         <div
           className="pointer-events-none absolute top-0 bottom-0 w-px bg-cyan-300"
-          style={{ left: `${pct}%`, filter: 'drop-shadow(0 0 4px hsl(189 94% 55% / 0.6))' }}
+          style={{ left: `${pct}%`, filter: 'drop-shadow(0 0 6px hsl(189 94% 55% / 0.7))' }}
         />
         <div
-          className="pointer-events-none absolute top-0 -translate-x-1/2 size-2 rotate-45 bg-cyan-300"
-          style={{ left: `${pct}%`, filter: 'drop-shadow(0 0 4px hsl(189 94% 55% / 0.6))' }}
+          className="pointer-events-none absolute top-0.5 -translate-x-1/2 size-2.5 rotate-45 bg-cyan-300 border border-cyan-100"
+          style={{ left: `${pct}%`, filter: 'drop-shadow(0 0 6px hsl(189 94% 55% / 0.8))' }}
         />
       </div>
     </div>
