@@ -1,23 +1,23 @@
 /**
- * SkyCanvasViewportShell — Layout canônico do editor SkyCanvas.
+ * SkyCanvasViewportShell — Layout canônico do editor SkyCanvas (refined v2).
  *
- * Promove o look fullscreen de /dev/skycanvas-lab (variante smoke) para
- * o viewport definitivo do editor, com refinamentos:
- *   - Glass topbar pill flutuante (top-center)
- *   - SkyCanvasMount fill 100% (engine='auto', flag-driven)
- *   - GlassTimelineDock na base (colapsável, glassmorphism)
- *   - Audio picker integrado (decodeAudioPeaks)
- *   - SkyCanvasDiagnosticsPanel via ?diag=1 ou Ctrl+Shift+D
+ * Mudanças nesta rodada (UI/UX polish):
+ *  - Topbar com timecode digital grande (HH:MM:SS:FF), agrupamento por seções
+ *    com separadores verticais sutis, badge SIM·ADVISORY com pulso suave,
+ *    tooltips com atalhos.
+ *  - Inspector ANCORADO em rail lateral direito full-height (slide-in),
+ *    não mais flutuante. Botão dedicado no topbar para mostrar/esconder.
+ *  - Atalho `i` toggla Inspector. `,` toggla colapso da timeline.
+ *  - Melhor espaçamento responsivo no pill (gap-1.5).
  *
- * Plano: Show/Experience. ZERO CommandBus/FieldBus/SafetyStateMachine.
+ * Plano: Show / Experience. ZERO CommandBus / FieldBus / SafetyStateMachine.
  * Real operation continua exclusiva em /command via uiCommandGateway.
- *
- * Self-contained: gerencia peaks/audio/playback via useProjectStore.
- * Não depende de EditorShell — viewport livre, painéis ficam como
- * drawer flutuante (futuro) ou em rotas dedicadas.
  */
-import { useCallback, useEffect, useRef, useState } from 'react';
-import { Music, Play, Pause, Square, ChevronDown, ChevronUp, OctagonAlert, Activity } from 'lucide-react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  Music, Play, Pause, Square, ChevronDown, ChevronUp, OctagonAlert, Activity,
+  PanelRightOpen, PanelRightClose, SkipBack, SkipForward,
+} from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
@@ -28,25 +28,23 @@ import CueInspectorPanel from '@/components/skycanvas/CueInspectorPanel';
 import SkyCanvasCueOverlay from '@/components/skycanvas/SkyCanvasCueOverlay';
 import { decodeAudioPeaks } from '@/lib/skycanvasAudioPeaks';
 import { useProjectStore } from '@/store/useProjectStore';
-import { Badge } from '@/components/ui/badge';
 
 export interface SkyCanvasViewportShellProps {
-  /** 'prod' (default) hides dev-only badges; 'dev' shows them. */
   variant?: 'prod' | 'dev';
-  /** Initial collapsed state for the timeline dock. */
   timelineCollapsed?: boolean;
-  /** Initial diagnostics overlay state. */
   diagOpen?: boolean;
-  /** Hide the glass topbar entirely. */
   hideTopbar?: boolean;
   className?: string;
 }
 
-function fmtTime(s: number) {
+/** SMPTE-style timecode HH:MM:SS:FF (fps=30). Compact mm:ss:ff if <1h. */
+function fmtTimecode(s: number, fps = 30): string {
   const a = Math.max(0, s);
-  const mm = Math.floor(a / 60).toString().padStart(2, '0');
+  const hh = Math.floor(a / 3600);
+  const mm = Math.floor((a % 3600) / 60).toString().padStart(2, '0');
   const ss = Math.floor(a % 60).toString().padStart(2, '0');
-  return `${mm}:${ss}`;
+  const ff = Math.floor((a % 1) * fps).toString().padStart(2, '0');
+  return hh > 0 ? `${hh.toString().padStart(2, '0')}:${mm}:${ss}:${ff}` : `${mm}:${ss}:${ff}`;
 }
 
 export default function SkyCanvasViewportShell({
@@ -67,14 +65,22 @@ export default function SkyCanvasViewportShell({
     }
     return false;
   });
+  const [inspectorOpen, setInspectorOpen] = useState(true);
   const fileRef = useRef<HTMLInputElement | null>(null);
 
   const isPlaying = useProjectStore((s) => s.isPlaying);
   const time = useProjectStore((s) => s.currentTime);
   const duration = useProjectStore((s) => s.duration);
+  const cuesCount = useProjectStore((s) => s.cueMarkers.length);
+  const selectedCueId = useProjectStore((s) => s.selectedCueMarkerId);
   const setPlaying = useProjectStore((s) => s.setPlaying);
   const setCurrentTime = useProjectStore((s) => s.setCurrentTime);
   const setDuration = useProjectStore((s) => s.setDuration);
+
+  // Auto-open inspector when a cue is selected
+  useEffect(() => {
+    if (selectedCueId) setInspectorOpen(true);
+  }, [selectedCueId]);
 
   const onPickAudio = useCallback(async (file: File) => {
     const tid = toast.loading(`Decodificando ${file.name}…`);
@@ -91,7 +97,7 @@ export default function SkyCanvasViewportShell({
     }
   }, [setDuration, setCurrentTime, setPlaying]);
 
-  // Ctrl+Shift+D toggles diagnostics
+  // Keyboard shortcuts
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const t = e.target as HTMLElement | null;
@@ -107,6 +113,12 @@ export default function SkyCanvasViewportShell({
       } else if (e.code === 'Space') {
         e.preventDefault();
         setPlaying(!useProjectStore.getState().isPlaying);
+      } else if (e.key === 'i' && !ctrl) {
+        e.preventDefault();
+        setInspectorOpen((o) => !o);
+      } else if (e.key === ',' && !ctrl) {
+        e.preventDefault();
+        setCollapsed((c) => !c);
       }
     };
     window.addEventListener('keydown', onKey);
@@ -115,8 +127,17 @@ export default function SkyCanvasViewportShell({
 
   const togglePlay = useCallback(() => setPlaying(!isPlaying), [isPlaying, setPlaying]);
   const stop = useCallback(() => { setPlaying(false); setCurrentTime(0); }, [setPlaying, setCurrentTime]);
+  const seekStart = useCallback(() => setCurrentTime(0), [setCurrentTime]);
+  const seekEnd = useCallback(() => setCurrentTime(duration), [setCurrentTime, duration]);
 
   const dockHeight = collapsed ? 36 : 200;
+  const inspectorWidth = 320;
+
+  // Right-edge inset for the dock so it doesn't overlap the inspector rail
+  const dockRightInset = inspectorOpen ? inspectorWidth : 0;
+
+  const tc = useMemo(() => fmtTimecode(time), [time]);
+  const tcDur = useMemo(() => fmtTimecode(duration), [duration]);
 
   return (
     <div className={cn('fixed inset-0 bg-[#050810] text-cyan-100 overflow-hidden', className)}>
@@ -127,150 +148,219 @@ export default function SkyCanvasViewportShell({
           area="3D viewport (shell)"
           loaderLabel="Booting SkyCanvas…"
         />
-        {/* Cue execution overlay — Particle Explosions + Light Points
-            sincronizados pelo audio master clock (currentTime). */}
         <SkyCanvasCueOverlay />
       </div>
 
       {/* Glass topbar pill — top-center */}
       {!hideTopbar && (
-        <div className="absolute top-3 left-1/2 -translate-x-1/2 z-30 pointer-events-auto">
+        <div className="absolute top-3 left-1/2 -translate-x-1/2 z-30 pointer-events-auto animate-fade-in">
           <div
-            className="flex items-center gap-2 h-12 px-3 rounded-full border border-cyan-500/15 shadow-[0_8px_32px_rgba(0,0,0,0.6)]"
+            className="flex items-stretch gap-1.5 h-13 px-2 rounded-2xl border border-cyan-500/20 shadow-[0_8px_40px_rgba(0,0,0,0.7)]"
             style={{
-              background: 'rgba(5, 8, 16, 0.65)',
-              backdropFilter: 'blur(18px) saturate(140%)',
-              WebkitBackdropFilter: 'blur(18px) saturate(140%)',
+              height: 52,
+              background: 'linear-gradient(180deg, rgba(8,12,22,0.78) 0%, rgba(5,8,16,0.72) 100%)',
+              backdropFilter: 'blur(22px) saturate(150%)',
+              WebkitBackdropFilter: 'blur(22px) saturate(150%)',
             }}
           >
-            <span className="ds-mono text-[11px] tracking-wider text-cyan-300/90 hidden sm:block px-1">
-              FXKONTROL · SKYCANVAS
-            </span>
-            <Badge variant="outline" className="border-cyan-500/30 text-cyan-300 ds-mono text-[9px]">
-              SIM · ADVISORY
-            </Badge>
-            {variant === 'dev' && (
-              <Badge variant="outline" className="border-amber-500/30 text-amber-300 ds-mono text-[9px]">
-                DEV
-              </Badge>
-            )}
+            {/* Brand + status */}
+            <div className="flex items-center gap-2 pl-2 pr-3">
+              <div className="flex flex-col leading-none">
+                <span className="ds-mono text-[10px] tracking-[0.18em] text-cyan-200/95">FXKONTROL</span>
+                <span className="ds-mono text-[8px] tracking-[0.22em] text-cyan-400/60">SKYCANVAS</span>
+              </div>
+              <div className="flex flex-col gap-0.5">
+                <span
+                  className="inline-flex items-center gap-1 rounded-full border border-cyan-500/30 bg-cyan-500/10 px-1.5 py-0.5 ds-mono text-[8px] tracking-wider text-cyan-300"
+                  title="Modo simulação — nenhum disparo físico"
+                >
+                  <span className="h-1 w-1 rounded-full bg-cyan-300 animate-pulse" />
+                  SIM·ADVISORY
+                </span>
+                {variant === 'dev' && (
+                  <span className="inline-flex items-center rounded-full border border-amber-500/30 bg-amber-500/10 px-1.5 py-0.5 ds-mono text-[8px] tracking-wider text-amber-300">
+                    DEV
+                  </span>
+                )}
+              </div>
+            </div>
 
-            {/* Transport mini */}
-            <div className="flex items-center gap-1 ml-1">
+            <Sep />
+
+            {/* Transport */}
+            <div className="flex items-center gap-0.5 px-1">
+              <IconBtn label="Início" onClick={seekStart} title="Ir ao início (Home)">
+                <SkipBack className="h-3.5 w-3.5" />
+              </IconBtn>
               <button
                 type="button"
                 onClick={togglePlay}
                 aria-label={isPlaying ? 'Pausar' : 'Tocar'}
+                title={isPlaying ? 'Pausar (Space)' : 'Tocar (Space)'}
                 className={cn(
-                  'inline-flex h-8 w-8 items-center justify-center rounded-full border ds-focus transition-colors',
+                  'inline-flex h-9 w-9 items-center justify-center rounded-full border ds-focus transition-all',
+                  'hover:scale-105 active:scale-95',
                   isPlaying
-                    ? 'bg-amber-500/20 text-amber-200 border-amber-500/40'
-                    : 'bg-cyan-500/20 text-cyan-100 border-cyan-500/40',
+                    ? 'bg-amber-500/25 text-amber-200 border-amber-400/50 shadow-[0_0_12px_rgba(245,158,11,0.35)]'
+                    : 'bg-cyan-500/25 text-cyan-100 border-cyan-400/50 shadow-[0_0_12px_rgba(34,211,238,0.35)]',
                 )}
               >
-                {isPlaying ? <Pause className="h-3.5 w-3.5" /> : <Play className="h-3.5 w-3.5" />}
+                {isPlaying ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4 translate-x-px" />}
               </button>
+              <IconBtn label="Parar" onClick={stop} variant="rose" title="Parar e voltar ao início">
+                <Square className="h-3 w-3" />
+              </IconBtn>
+              <IconBtn label="Fim" onClick={seekEnd} title="Ir ao fim (End)">
+                <SkipForward className="h-3.5 w-3.5" />
+              </IconBtn>
+            </div>
+
+            <Sep />
+
+            {/* Timecode digital — destaque máximo */}
+            <div
+              className="flex flex-col items-center justify-center px-3 min-w-[148px]"
+              title="Timecode atual / duração total (SMPTE 30fps)"
+            >
+              <div className="ds-mono text-[16px] leading-none tabular-nums tracking-[0.05em] text-cyan-100">
+                {tc}
+              </div>
+              <div className="flex items-center gap-1 mt-0.5">
+                <span className="ds-mono text-[8px] text-zinc-500 tabular-nums">{tcDur}</span>
+                <span className="ds-mono text-[8px] text-zinc-600">·</span>
+                <span className="ds-mono text-[8px] text-cyan-500/70 tabular-nums">{cuesCount} cue{cuesCount === 1 ? '' : 's'}</span>
+              </div>
+            </div>
+
+            <Sep />
+
+            {/* Audio + tools */}
+            <div className="flex items-center gap-1 px-1">
               <button
                 type="button"
-                onClick={stop}
-                aria-label="Parar"
-                className="inline-flex h-7 w-7 items-center justify-center rounded-full text-zinc-400 hover:text-rose-300 hover:bg-rose-500/10 ds-focus"
+                onClick={() => fileRef.current?.click()}
+                className={cn(
+                  'inline-flex items-center gap-1.5 h-8 px-2.5 rounded-lg ds-mono text-[10px] transition-all',
+                  'border ds-focus',
+                  audioName
+                    ? 'border-cyan-500/30 bg-cyan-500/10 text-cyan-200 hover:bg-cyan-500/15'
+                    : 'border-white/10 text-zinc-400 hover:text-cyan-200 hover:border-cyan-500/30 hover:bg-white/[0.04]',
+                )}
+                title={audioName ?? 'Carregar trilha de áudio'}
               >
-                <Square className="h-3 w-3" />
+                <Music className="h-3 w-3" />
+                <span className="hidden md:inline truncate max-w-[120px]">{audioName ?? 'Áudio'}</span>
               </button>
+              <input
+                ref={fileRef}
+                type="file"
+                accept="audio/*"
+                className="hidden"
+                onChange={(e) => {
+                  const f = e.target.files?.[0];
+                  if (f) void onPickAudio(f);
+                  e.target.value = '';
+                }}
+              />
+
+              <IconBtn
+                label="Inspector"
+                onClick={() => setInspectorOpen((o) => !o)}
+                active={inspectorOpen}
+                title={inspectorOpen ? 'Fechar Inspector (I)' : 'Abrir Inspector (I)'}
+              >
+                {inspectorOpen ? <PanelRightClose className="h-3.5 w-3.5" /> : <PanelRightOpen className="h-3.5 w-3.5" />}
+              </IconBtn>
+
+              <IconBtn
+                label="Diagnostics"
+                onClick={() => setDiagOpen((o) => !o)}
+                active={diagOpen}
+                title="Diagnostics (Ctrl+Shift+D)"
+              >
+                <Activity className="h-3.5 w-3.5" />
+              </IconBtn>
             </div>
 
-            <div className="ds-mono text-[11px] text-cyan-300 tabular-nums px-2 border-l border-white/10">
-              {fmtTime(time)} / {fmtTime(duration)}
-            </div>
+            <Sep />
 
-            {/* Audio picker */}
-            <button
-              type="button"
-              onClick={() => fileRef.current?.click()}
-              className="inline-flex items-center gap-1 h-7 px-2.5 rounded-full ds-mono text-[10px] text-zinc-300 hover:text-cyan-200 hover:bg-white/[0.06] transition-colors ds-focus"
-              title={audioName ?? 'Carregar trilha de áudio'}
-            >
-              <Music className="h-3 w-3" />
-              <span className="hidden md:inline truncate max-w-[120px]">{audioName ?? 'Áudio'}</span>
-            </button>
-            <input
-              ref={fileRef}
-              type="file"
-              accept="audio/*"
-              className="hidden"
-              onChange={(e) => {
-                const f = e.target.files?.[0];
-                if (f) void onPickAudio(f);
-                e.target.value = '';
-              }}
-            />
-
-            {/* Diag toggle */}
-            <button
-              type="button"
-              onClick={() => setDiagOpen((o) => !o)}
-              aria-pressed={diagOpen}
-              title="Diagnostics (Ctrl+Shift+D)"
-              className={cn(
-                'inline-flex h-7 w-7 items-center justify-center rounded-full ds-focus transition-colors',
-                diagOpen
-                  ? 'bg-cyan-500/20 text-cyan-200 border border-cyan-500/40'
-                  : 'text-zinc-400 hover:text-cyan-200 hover:bg-white/[0.06]',
-              )}
-            >
-              <Activity className="h-3.5 w-3.5" />
-            </button>
-
-            {/* E-STOP cosmético → /command */}
+            {/* E-STOP */}
             <button
               type="button"
               onClick={() => navigate('/command')}
               title="Operação real → Centro de Comando"
-              className="inline-flex items-center gap-1 h-7 px-2.5 rounded-full ds-mono text-[10px] uppercase tracking-wider border border-rose-500/40 text-rose-300 hover:bg-rose-500/10 transition-colors ds-focus"
+              className={cn(
+                'inline-flex items-center gap-1.5 h-8 my-auto px-3 rounded-lg ds-mono text-[10px] uppercase tracking-wider',
+                'border border-rose-500/50 bg-rose-500/10 text-rose-300',
+                'hover:bg-rose-500/20 hover:border-rose-400/70 hover:shadow-[0_0_12px_rgba(244,63,94,0.4)]',
+                'transition-all ds-focus',
+              )}
             >
-              <OctagonAlert className="h-3 w-3" />
-              <span className="hidden lg:inline">E-STOP</span>
+              <OctagonAlert className="h-3.5 w-3.5" />
+              <span className="hidden lg:inline font-semibold">E-STOP</span>
             </button>
           </div>
         </div>
       )}
 
-      {/* Diagnostics overlay (DEV-only when ?diag=1 or Ctrl+Shift+D) */}
+      {/* Diagnostics overlay */}
       {diagOpen && (
-        <div className="absolute top-20 right-3 z-30 max-w-sm pointer-events-auto">
+        <div
+          className="absolute top-20 z-30 max-w-sm pointer-events-auto animate-scale-in"
+          style={{ right: (inspectorOpen ? inspectorWidth : 0) + 12 }}
+        >
           <SkyCanvasDiagnosticsPanel />
         </div>
       )}
 
-      {/* Cue Inspector — floating glass dock (right) when a cue is selected */}
-      <div
-        className="absolute right-3 z-30 pointer-events-none"
-        style={{ top: diagOpen ? 'calc(20rem + 24px)' : '5rem' }}
+      {/* Inspector — anchored right rail, slide-in, full height */}
+      <aside
+        className={cn(
+          'absolute top-0 right-0 z-30 transition-transform duration-300 ease-out',
+          'pointer-events-auto',
+          inspectorOpen ? 'translate-x-0' : 'translate-x-full',
+        )}
+        style={{
+          width: inspectorWidth,
+          height: '100%',
+          paddingTop: 76,
+          paddingBottom: dockHeight + 12,
+          paddingRight: 12,
+        }}
+        aria-hidden={!inspectorOpen}
       >
-        <CueInspectorPanel />
-      </div>
+        <CueInspectorPanel docked />
+      </aside>
 
-      {/* Glass timeline dock — bottom */}
+      {/* Glass timeline dock — bottom (insets right when inspector docked) */}
       <div
-        className="absolute inset-x-0 bottom-0 z-20 pointer-events-auto transition-[height] duration-200 ease-out"
-        style={{ height: dockHeight }}
+        className="absolute bottom-0 left-0 z-20 pointer-events-auto transition-[height,right] duration-200 ease-out"
+        style={{ height: dockHeight, right: dockRightInset }}
       >
         {collapsed ? (
           <button
             type="button"
             onClick={() => setCollapsed(false)}
-            className="w-full h-full flex items-center justify-center gap-2 ds-mono text-[10px] text-cyan-300/70 hover:text-cyan-200 border-t border-cyan-500/15 transition-colors"
+            className={cn(
+              'group w-full h-full flex items-center justify-center gap-2',
+              'ds-mono text-[10px] text-cyan-300/70 hover:text-cyan-200',
+              'border-t border-cyan-500/20 transition-colors',
+            )}
             style={{
               background: 'rgba(5, 8, 16, 0.55)',
               backdropFilter: 'blur(18px) saturate(140%)',
               WebkitBackdropFilter: 'blur(18px) saturate(140%)',
             }}
-            title="Expandir timeline (⌘3)"
+            title="Expandir timeline (, ou ⌘3)"
             aria-label="Expandir timeline"
           >
-            <ChevronUp className="h-3 w-3" />
-            <span>TIMELINE · {fmtTime(time)} / {fmtTime(duration)}</span>
+            <ChevronUp className="h-3 w-3 group-hover:-translate-y-0.5 transition-transform" />
+            <span className="tracking-wider">TIMELINE</span>
+            <span className="text-zinc-600">·</span>
+            <span className="tabular-nums">{tc}</span>
+            <span className="text-zinc-600">/</span>
+            <span className="tabular-nums">{tcDur}</span>
+            <span className="text-zinc-600 ml-2">{cuesCount} cues</span>
           </button>
         ) : (
           <div className="relative h-full">
@@ -278,7 +368,7 @@ export default function SkyCanvasViewportShell({
               type="button"
               onClick={() => setCollapsed(true)}
               className="absolute top-1 right-2 z-10 inline-flex items-center gap-1 h-6 px-2 rounded-md ds-mono text-[9px] text-zinc-400 hover:text-cyan-200 hover:bg-white/[0.06] transition-colors ds-focus"
-              title="Recolher timeline (⌘3)"
+              title="Recolher timeline (, ou ⌘3)"
               aria-label="Recolher timeline"
             >
               <ChevronDown className="h-3 w-3" />
@@ -288,5 +378,45 @@ export default function SkyCanvasViewportShell({
         )}
       </div>
     </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// Local UI atoms
+// ─────────────────────────────────────────────────────────────────────
+
+function Sep() {
+  return <div className="w-px self-stretch my-2 bg-gradient-to-b from-transparent via-white/10 to-transparent" />;
+}
+
+function IconBtn({
+  children, onClick, label, title, active, variant = 'cyan',
+}: {
+  children: React.ReactNode;
+  onClick: () => void;
+  label: string;
+  title?: string;
+  active?: boolean;
+  variant?: 'cyan' | 'rose';
+}) {
+  const hover = variant === 'rose'
+    ? 'hover:text-rose-300 hover:bg-rose-500/10'
+    : 'hover:text-cyan-200 hover:bg-cyan-500/10';
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-label={label}
+      aria-pressed={active}
+      title={title ?? label}
+      className={cn(
+        'inline-flex h-8 w-8 items-center justify-center rounded-lg ds-focus transition-all',
+        active
+          ? 'bg-cyan-500/20 text-cyan-200 border border-cyan-500/40 shadow-[0_0_8px_rgba(34,211,238,0.25)]'
+          : `text-zinc-400 ${hover}`,
+      )}
+    >
+      {children}
+    </button>
   );
 }

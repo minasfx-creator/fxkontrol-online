@@ -30,6 +30,8 @@ import type { CueMarker } from '@/types/projectTypes';
 
 export interface CueInspectorPanelProps {
   className?: string;
+  /** When true, fills the parent (full-height rail dock). Default: floating card. */
+  docked?: boolean;
 }
 
 function fmtTime(s: number) {
