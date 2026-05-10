@@ -424,7 +424,7 @@ export default function SkyCanvasViewportShell({
           width: inspectorWidth,
           height: '100%',
           paddingTop: 76,
-          paddingBottom: dockHeight + 12,
+          paddingBottom: 12,
           paddingRight: 12,
         }}
         aria-hidden={!inspectorOpen}
