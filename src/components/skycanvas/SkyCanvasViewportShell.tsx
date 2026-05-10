@@ -191,8 +191,27 @@ export default function SkyCanvasViewportShell({
         const step = e.shiftKey ? 0.5 : 0.05;
         nudgeSelected(sign * step);
       } else if (e.code === 'Space') {
+        // Avoid double-firing when a transport button still has focus
+        if (t && (t.tagName === 'BUTTON' || t.getAttribute('role') === 'button')) {
+          (t as HTMLElement).blur();
+        }
         e.preventDefault();
         setPlaying(!useProjectStore.getState().isPlaying);
+      } else if (e.key === 'Home' && !ctrl) {
+        e.preventDefault();
+        setCurrentTime(0);
+      } else if (e.key === 'End' && !ctrl) {
+        e.preventDefault();
+        setCurrentTime(useProjectStore.getState().duration);
+      } else if (e.key === 'Escape') {
+        const st = useProjectStore.getState();
+        if (st.selectedCueMarkerId) {
+          e.preventDefault();
+          st.selectCueMarker(null);
+        } else if (diagOpen) {
+          e.preventDefault();
+          setDiagOpen(false);
+        }
       } else if (e.key === 'i' && !ctrl) {
         e.preventDefault();
         setInspectorOpen((o) => !o);
@@ -203,7 +222,7 @@ export default function SkyCanvasViewportShell({
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [setPlaying, duplicateSelected, copySelected, pasteAtPlayhead, deleteSelected, nudgeSelected]);
+  }, [setPlaying, setCurrentTime, diagOpen, duplicateSelected, copySelected, pasteAtPlayhead, deleteSelected, nudgeSelected]);
 
 
   const togglePlay = useCallback(() => setPlaying(!isPlaying), [isPlaying, setPlaying]);
