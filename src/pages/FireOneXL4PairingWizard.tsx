@@ -39,7 +39,8 @@ import {
 } from '@/lib/fireoneXL4Handshake';
 import { recordPairing } from '@/lib/pairingAuditLog';
 import { detectPlatformCapabilities } from '@/lib/platformCapabilities';
-import { portRegistry } from '@/core/discovery/portRegistry';
+import { portRegistry, keyFor } from '@/core/discovery/portRegistry';
+import { markDeviceClassified } from '@/core/discovery/controllerRegistry';
 import { notifyHandshakeOk as notifyXL4HandshakeOk } from '@/hooks/useFireOneXL4Bridge';
 import { logger } from '@/lib/logger';
 
