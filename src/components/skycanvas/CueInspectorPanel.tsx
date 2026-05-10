@@ -178,7 +178,7 @@ export default function CueInspectorPanel({ className, docked = false }: CueInsp
     : lane === 'drone' ? 'border-cyan-500/40 text-cyan-300 bg-cyan-500/10'
     : 'border-violet-500/40 text-violet-300 bg-violet-500/10';
 
-  const snapToPlayhead = () => patch('time', currentTime);
+  const snapToPlayhead = () => patch('time', useProjectStore.getState().currentTime);
   const duplicate = () => {
     addCueMarker({
       ...cue,
