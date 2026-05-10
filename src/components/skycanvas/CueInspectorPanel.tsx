@@ -261,12 +261,13 @@ export default function CueInspectorPanel({ className, docked = false }: CueInsp
         className="px-3 py-1.5 border-b border-white/[0.04] ds-mono text-[8.5px] text-zinc-500 tracking-wider flex flex-wrap gap-x-2 gap-y-0.5"
         aria-label="Atalhos do cue selecionado"
       >
-        <span><kbd className="kbd-mini">⌘D</kbd> dup</span>
-        <span><kbd className="kbd-mini">⌘C</kbd>/<kbd className="kbd-mini">⌘X</kbd>/<kbd className="kbd-mini">⌘V</kbd></span>
-        <span><kbd className="kbd-mini">⌫</kbd> del</span>
-        <span><kbd className="kbd-mini">←</kbd>/<kbd className="kbd-mini">→</kbd> ±0.05s</span>
-        <span><kbd className="kbd-mini">⇧+←/→</kbd> ±0.5s</span>
+        <span><Kbd>⌘D</Kbd> dup</span>
+        <span><Kbd>⌘C</Kbd>/<Kbd>⌘X</Kbd>/<Kbd>⌘V</Kbd></span>
+        <span><Kbd>⌫</Kbd> del</span>
+        <span><Kbd>←</Kbd>/<Kbd>→</Kbd> ±0.05s</span>
+        <span><Kbd>⇧+←/→</Kbd> ±0.5s</span>
       </div>
+
 
 
       <div className={cn(
