@@ -107,7 +107,6 @@ export default function CueInspectorPanel({ className, docked = false }: CueInsp
       : null,
   );
   const duration = useProjectStore((s) => s.duration);
-  const currentTime = useProjectStore((s) => s.currentTime);
   const updateCueMarker = useProjectStore((s) => s.updateCueMarker);
   const removeCueMarker = useProjectStore((s) => s.removeCueMarker);
   const selectCueMarker = useProjectStore((s) => s.selectCueMarker);
@@ -179,7 +178,7 @@ export default function CueInspectorPanel({ className, docked = false }: CueInsp
     : lane === 'drone' ? 'border-cyan-500/40 text-cyan-300 bg-cyan-500/10'
     : 'border-violet-500/40 text-violet-300 bg-violet-500/10';
 
-  const snapToPlayhead = () => patch('time', currentTime);
+  const snapToPlayhead = () => patch('time', useProjectStore.getState().currentTime);
   const duplicate = () => {
     addCueMarker({
       ...cue,
@@ -244,7 +243,7 @@ export default function CueInspectorPanel({ className, docked = false }: CueInsp
           type="button"
           onClick={snapToPlayhead}
           className="flex-1 h-7 rounded-md ds-mono text-[9px] tracking-wider uppercase border border-white/10 text-zinc-300 hover:text-cyan-200 hover:border-cyan-500/40 hover:bg-cyan-500/10 transition-all ds-focus"
-          title={`Mover para o playhead (${fmtTime(currentTime)})`}
+          title="Mover este cue para a posição atual do playhead"
         >
           ⇥ Snap Playhead
         </button>

@@ -191,8 +191,27 @@ export default function SkyCanvasViewportShell({
         const step = e.shiftKey ? 0.5 : 0.05;
         nudgeSelected(sign * step);
       } else if (e.code === 'Space') {
+        // Avoid double-firing when a transport button still has focus
+        if (t && (t.tagName === 'BUTTON' || t.getAttribute('role') === 'button')) {
+          (t as HTMLElement).blur();
+        }
         e.preventDefault();
         setPlaying(!useProjectStore.getState().isPlaying);
+      } else if (e.key === 'Home' && !ctrl) {
+        e.preventDefault();
+        setCurrentTime(0);
+      } else if (e.key === 'End' && !ctrl) {
+        e.preventDefault();
+        setCurrentTime(useProjectStore.getState().duration);
+      } else if (e.key === 'Escape') {
+        const st = useProjectStore.getState();
+        if (st.selectedCueMarkerId) {
+          e.preventDefault();
+          st.selectCueMarker(null);
+        } else if (diagOpen) {
+          e.preventDefault();
+          setDiagOpen(false);
+        }
       } else if (e.key === 'i' && !ctrl) {
         e.preventDefault();
         setInspectorOpen((o) => !o);
@@ -203,7 +222,7 @@ export default function SkyCanvasViewportShell({
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [setPlaying, duplicateSelected, copySelected, pasteAtPlayhead, deleteSelected, nudgeSelected]);
+  }, [setPlaying, setCurrentTime, diagOpen, duplicateSelected, copySelected, pasteAtPlayhead, deleteSelected, nudgeSelected]);
 
 
   const togglePlay = useCallback(() => setPlaying(!isPlaying), [isPlaying, setPlaying]);
@@ -236,7 +255,7 @@ export default function SkyCanvasViewportShell({
       {!hideTopbar && (
         <div className="absolute top-3 left-1/2 -translate-x-1/2 z-30 pointer-events-auto animate-fade-in">
           <div
-            className="flex items-stretch gap-1.5 h-13 px-2 rounded-2xl border border-cyan-500/20 shadow-[0_8px_40px_rgba(0,0,0,0.7)]"
+            className="flex items-stretch gap-1.5 px-2 rounded-2xl border border-cyan-500/20 shadow-[0_8px_40px_rgba(0,0,0,0.7)]"
             style={{
               height: 52,
               background: 'linear-gradient(180deg, rgba(8,12,22,0.78) 0%, rgba(5,8,16,0.72) 100%)',
@@ -405,7 +424,7 @@ export default function SkyCanvasViewportShell({
           width: inspectorWidth,
           height: '100%',
           paddingTop: 76,
-          paddingBottom: dockHeight + 12,
+          paddingBottom: 12,
           paddingRight: 12,
         }}
         aria-hidden={!inspectorOpen}
