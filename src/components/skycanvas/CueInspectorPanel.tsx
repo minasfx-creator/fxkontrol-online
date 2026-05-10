@@ -335,3 +335,11 @@ function Section({ title, children }: { title: string; children: React.ReactNode
     </div>
   );
 }
+
+function Kbd({ children }: { children: React.ReactNode }) {
+  return (
+    <kbd className="inline-flex items-center justify-center rounded border border-white/15 bg-black/40 px-1 py-px ds-mono text-[8.5px] text-cyan-200 leading-none">
+      {children}
+    </kbd>
+  );
+}
