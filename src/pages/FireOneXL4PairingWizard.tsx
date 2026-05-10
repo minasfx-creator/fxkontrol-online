@@ -128,6 +128,17 @@ export default function FireOneXL4PairingWizard() {
       const port = await requestXL4Port();
       const hs = await performXL4Handshake({ port, baudRate, timeoutMs: 3000 });
 
+      // Derive canonical webserial deviceId from the SerialPort we paired with.
+      let deviceId: string | undefined;
+      try {
+        const info = typeof port?.getInfo === 'function' ? port.getInfo() : null;
+        if (info && info.usbVendorId != null && info.usbProductId != null) {
+          deviceId = `webserial:${keyFor({ vendorId: info.usbVendorId, productId: info.usbProductId })}`;
+        }
+      } catch (err) {
+        logger.warn('[FireOneXL4PairingWizard] port.getInfo failed', err);
+      }
+
       dispatch({
         type: 'ATTEMPT_UPDATE',
         id,
@@ -146,7 +157,7 @@ export default function FireOneXL4PairingWizard() {
         const key = `fireone-xl4:addr-${hs.moduleAddress}:baud-${hs.baudRate}`;
         portRegistry.upsert({
           key,
-          aliases: [key],
+          aliases: deviceId ? [key, deviceId] : [key],
           lastLabel: `FireOne XL4+ (FW ${hs.firmware})`,
           operatorConfirmedGeneric: false,
           profileId: 'fireone-xl4',
@@ -155,15 +166,26 @@ export default function FireOneXL4PairingWizard() {
         logger.warn('[FireOneXL4PairingWizard] portRegistry.upsert failed', err);
       }
 
+      // Promote in the controller classification cache so DeviceAggregator
+      // resolves this VID/PID to the FireOne profile on the very next scan.
+      if (deviceId) {
+        try {
+          markDeviceClassified(deviceId, 'fireone');
+        } catch (err) {
+          logger.warn('[FireOneXL4PairingWizard] markDeviceClassified failed', err);
+        }
+      }
+
       // Promote adapter to LIVE READ-ONLY via discovery bridge.
       try {
         notifyXL4HandshakeOk({
           firmware: hs.firmware,
           moduleAddress: hs.moduleAddress,
           baudRate: hs.baudRate,
+          deviceId,
         });
         logger.info(
-          `[FireOneXL4PairingWizard] handshake ok — fw=${hs.firmware} addr=${hs.moduleAddress} baud=${hs.baudRate} latency=${hs.latencyMs}ms`,
+          `[FireOneXL4PairingWizard] handshake ok — fw=${hs.firmware} addr=${hs.moduleAddress} baud=${hs.baudRate} latency=${hs.latencyMs}ms id=${deviceId ?? 'n/a'}`,
         );
       } catch (err) {
         logger.warn('[FireOneXL4PairingWizard] notifyHandshakeOk failed', err);
