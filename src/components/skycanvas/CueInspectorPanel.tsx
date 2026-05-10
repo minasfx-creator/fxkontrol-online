@@ -252,11 +252,23 @@ export default function CueInspectorPanel({ className, docked = false }: CueInsp
           type="button"
           onClick={duplicate}
           className="flex-1 h-7 rounded-md ds-mono text-[9px] tracking-wider uppercase border border-white/10 text-zinc-300 hover:text-cyan-200 hover:border-cyan-500/40 hover:bg-cyan-500/10 transition-all ds-focus"
-          title="Duplicar cue (+0.5s)"
+          title="Duplicar cue (Ctrl/Cmd+D · +0.5s)"
         >
           ⧉ Duplicate
         </button>
       </div>
+      <div
+        className="px-3 py-1.5 border-b border-white/[0.04] ds-mono text-[8.5px] text-zinc-500 tracking-wider flex flex-wrap gap-x-2 gap-y-0.5"
+        aria-label="Atalhos do cue selecionado"
+      >
+        <span><Kbd>⌘D</Kbd> dup</span>
+        <span><Kbd>⌘C</Kbd>/<Kbd>⌘X</Kbd>/<Kbd>⌘V</Kbd></span>
+        <span><Kbd>⌫</Kbd> del</span>
+        <span><Kbd>←</Kbd>/<Kbd>→</Kbd> ±0.05s</span>
+        <span><Kbd>⇧+←/→</Kbd> ±0.5s</span>
+      </div>
+
+
 
       <div className={cn(
         'flex flex-col gap-3 p-3 overflow-y-auto',
@@ -321,5 +333,13 @@ function Section({ title, children }: { title: string; children: React.ReactNode
       </div>
       {children}
     </div>
+  );
+}
+
+function Kbd({ children }: { children: React.ReactNode }) {
+  return (
+    <kbd className="inline-flex items-center justify-center rounded border border-white/15 bg-black/40 px-1 py-px ds-mono text-[8.5px] text-cyan-200 leading-none">
+      {children}
+    </kbd>
   );
 }

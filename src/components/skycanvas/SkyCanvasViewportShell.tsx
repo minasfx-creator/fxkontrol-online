@@ -97,6 +97,61 @@ export default function SkyCanvasViewportShell({
     }
   }, [setDuration, setCurrentTime, setPlaying]);
 
+  // Session-scoped cue clipboard (intentionally outside React to survive re-renders).
+  const clipboardRef = useRef<import('@/types/projectTypes').CueMarker | null>(null);
+
+  const newCueId = () => `cue-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`;
+
+  const duplicateSelected = useCallback(() => {
+    const st = useProjectStore.getState();
+    const cue = st.cueMarkers.find((c) => c.id === st.selectedCueMarkerId);
+    if (!cue) return;
+    const next = { ...cue, id: newCueId(), time: Math.min(st.duration, cue.time + 0.5) };
+    st.addCueMarker(next);
+    st.selectCueMarker(next.id);
+    toast.success(`Cue duplicado · ${fmtTimecode(next.time)}`);
+  }, []);
+
+  const copySelected = useCallback((cut: boolean) => {
+    const st = useProjectStore.getState();
+    const cue = st.cueMarkers.find((c) => c.id === st.selectedCueMarkerId);
+    if (!cue) return;
+    clipboardRef.current = { ...cue };
+    if (cut) {
+      st.removeCueMarker(cue.id);
+      toast.success(`Cue cortado · ${cue.label}`);
+    } else {
+      toast.success(`Cue copiado · ${cue.label}`);
+    }
+  }, []);
+
+  const pasteAtPlayhead = useCallback(() => {
+    const src = clipboardRef.current;
+    if (!src) { toast.error('Clipboard vazio'); return; }
+    const st = useProjectStore.getState();
+    const next = { ...src, id: newCueId(), time: Math.min(st.duration, Math.max(0, st.currentTime)) };
+    st.addCueMarker(next);
+    st.selectCueMarker(next.id);
+    toast.success(`Cue colado · ${fmtTimecode(next.time)}`);
+  }, []);
+
+  const deleteSelected = useCallback(() => {
+    const st = useProjectStore.getState();
+    const cue = st.cueMarkers.find((c) => c.id === st.selectedCueMarkerId);
+    if (!cue) return;
+    st.removeCueMarker(cue.id);
+    toast.success(`Cue removido · ${cue.label}`);
+  }, []);
+
+  const nudgeSelected = useCallback((deltaSec: number) => {
+    const st = useProjectStore.getState();
+    const cue = st.cueMarkers.find((c) => c.id === st.selectedCueMarkerId);
+    if (!cue) return;
+    const t = Math.max(0, Math.min(st.duration, cue.time + deltaSec));
+    if (t === cue.time) return;
+    st.updateCueMarker(cue.id, { time: t });
+  }, []);
+
   // Keyboard shortcuts
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -104,12 +159,37 @@ export default function SkyCanvasViewportShell({
       const inField = !!t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable);
       if (inField) return;
       const ctrl = e.metaKey || e.ctrlKey;
-      if (ctrl && e.shiftKey && e.key.toLowerCase() === 'd') {
+      const k = e.key.toLowerCase();
+      if (ctrl && e.shiftKey && k === 'd') {
         e.preventDefault();
         setDiagOpen((o) => !o);
       } else if (ctrl && e.key === '3') {
         e.preventDefault();
         setCollapsed((c) => !c);
+      } else if (ctrl && k === 'd') {
+        e.preventDefault();
+        duplicateSelected();
+      } else if (ctrl && k === 'c') {
+        e.preventDefault();
+        copySelected(false);
+      } else if (ctrl && k === 'x') {
+        e.preventDefault();
+        copySelected(true);
+      } else if (ctrl && k === 'v') {
+        e.preventDefault();
+        pasteAtPlayhead();
+      } else if (!ctrl && (e.key === 'Delete' || e.key === 'Backspace')) {
+        // Only intercept when a cue is selected to avoid stealing nav keys.
+        if (useProjectStore.getState().selectedCueMarkerId) {
+          e.preventDefault();
+          deleteSelected();
+        }
+      } else if (!ctrl && (e.key === 'ArrowLeft' || e.key === 'ArrowRight')) {
+        if (!useProjectStore.getState().selectedCueMarkerId) return;
+        e.preventDefault();
+        const sign = e.key === 'ArrowRight' ? 1 : -1;
+        const step = e.shiftKey ? 0.5 : 0.05;
+        nudgeSelected(sign * step);
       } else if (e.code === 'Space') {
         e.preventDefault();
         setPlaying(!useProjectStore.getState().isPlaying);
@@ -123,7 +203,8 @@ export default function SkyCanvasViewportShell({
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [setPlaying]);
+  }, [setPlaying, duplicateSelected, copySelected, pasteAtPlayhead, deleteSelected, nudgeSelected]);
+
 
   const togglePlay = useCallback(() => setPlaying(!isPlaying), [isPlaying, setPlaying]);
   const stop = useCallback(() => { setPlaying(false); setCurrentTime(0); }, [setPlaying, setCurrentTime]);
