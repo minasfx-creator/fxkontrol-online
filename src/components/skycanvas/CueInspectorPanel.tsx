@@ -243,7 +243,7 @@ export default function CueInspectorPanel({ className, docked = false }: CueInsp
           type="button"
           onClick={snapToPlayhead}
           className="flex-1 h-7 rounded-md ds-mono text-[9px] tracking-wider uppercase border border-white/10 text-zinc-300 hover:text-cyan-200 hover:border-cyan-500/40 hover:bg-cyan-500/10 transition-all ds-focus"
-          title={`Mover para o playhead (${fmtTime(currentTime)})`}
+          title="Mover este cue para a posição atual do playhead"
         >
           ⇥ Snap Playhead
         </button>
