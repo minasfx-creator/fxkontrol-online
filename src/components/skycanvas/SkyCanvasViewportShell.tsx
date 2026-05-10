@@ -255,7 +255,7 @@ export default function SkyCanvasViewportShell({
       {!hideTopbar && (
         <div className="absolute top-3 left-1/2 -translate-x-1/2 z-30 pointer-events-auto animate-fade-in">
           <div
-            className="flex items-stretch gap-1.5 h-13 px-2 rounded-2xl border border-cyan-500/20 shadow-[0_8px_40px_rgba(0,0,0,0.7)]"
+            className="flex items-stretch gap-1.5 px-2 rounded-2xl border border-cyan-500/20 shadow-[0_8px_40px_rgba(0,0,0,0.7)]"
             style={{
               height: 52,
               background: 'linear-gradient(180deg, rgba(8,12,22,0.78) 0%, rgba(5,8,16,0.72) 100%)',
