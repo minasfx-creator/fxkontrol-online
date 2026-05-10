@@ -107,7 +107,6 @@ export default function CueInspectorPanel({ className, docked = false }: CueInsp
       : null,
   );
   const duration = useProjectStore((s) => s.duration);
-  const currentTime = useProjectStore((s) => s.currentTime);
   const updateCueMarker = useProjectStore((s) => s.updateCueMarker);
   const removeCueMarker = useProjectStore((s) => s.removeCueMarker);
   const selectCueMarker = useProjectStore((s) => s.selectCueMarker);
