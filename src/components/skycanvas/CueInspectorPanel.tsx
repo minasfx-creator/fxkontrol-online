@@ -252,11 +252,22 @@ export default function CueInspectorPanel({ className, docked = false }: CueInsp
           type="button"
           onClick={duplicate}
           className="flex-1 h-7 rounded-md ds-mono text-[9px] tracking-wider uppercase border border-white/10 text-zinc-300 hover:text-cyan-200 hover:border-cyan-500/40 hover:bg-cyan-500/10 transition-all ds-focus"
-          title="Duplicar cue (+0.5s)"
+          title="Duplicar cue (Ctrl/Cmd+D · +0.5s)"
         >
           ⧉ Duplicate
         </button>
       </div>
+      <div
+        className="px-3 py-1.5 border-b border-white/[0.04] ds-mono text-[8.5px] text-zinc-500 tracking-wider flex flex-wrap gap-x-2 gap-y-0.5"
+        aria-label="Atalhos do cue selecionado"
+      >
+        <span><kbd className="kbd-mini">⌘D</kbd> dup</span>
+        <span><kbd className="kbd-mini">⌘C</kbd>/<kbd className="kbd-mini">⌘X</kbd>/<kbd className="kbd-mini">⌘V</kbd></span>
+        <span><kbd className="kbd-mini">⌫</kbd> del</span>
+        <span><kbd className="kbd-mini">←</kbd>/<kbd className="kbd-mini">→</kbd> ±0.05s</span>
+        <span><kbd className="kbd-mini">⇧+←/→</kbd> ±0.5s</span>
+      </div>
+
 
       <div className={cn(
         'flex flex-col gap-3 p-3 overflow-y-auto',
