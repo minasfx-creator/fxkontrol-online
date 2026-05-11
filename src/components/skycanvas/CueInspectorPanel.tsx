@@ -173,6 +173,18 @@ export default function CueInspectorPanel({ className, docked = false }: CueInsp
   const pitch = cue.pitch ?? 0;
   const pos = cue.position ?? { x: 0, y: 0, z: 0 };
 
+  // ── Validation ──
+  const hasDuration = duration > 0;
+  const timeInvalid = !Number.isFinite(cue.time) || cue.time < 0 || (hasDuration && cue.time > duration);
+  const effectMissing = !!cue.effectId && !fx;
+  const intensityInvalid = intensity < 0 || intensity > 100;
+  const issues: Array<{ key: string; msg: string }> = [];
+  if (timeInvalid) issues.push({ key: 'time', msg: hasDuration
+    ? `Tempo ${fmtTime(cue.time)} fora do intervalo 0–${fmtTime(duration)}.`
+    : 'Carregue áudio para validar o tempo deste cue.' });
+  if (effectMissing) issues.push({ key: 'fx', msg: `Efeito "${cue.effectId}" não foi encontrado na biblioteca.` });
+  if (intensityInvalid) issues.push({ key: 'int', msg: `Intensidade ${intensity}% fora de 0–100%.` });
+
   const laneLabel = lane === 'pyro' ? 'PYRO' : lane === 'drone' ? 'DRONE' : 'FORMATION';
   const laneColor = lane === 'pyro' ? 'border-amber-500/40 text-amber-300 bg-amber-500/10'
     : lane === 'drone' ? 'border-cyan-500/40 text-cyan-300 bg-cyan-500/10'
@@ -267,6 +279,32 @@ export default function CueInspectorPanel({ className, docked = false }: CueInsp
         <span><Kbd>⇧+←/→</Kbd> ±0.5s</span>
       </div>
 
+      {issues.length > 0 && (
+        <div
+          className="px-3 py-2 border-b border-rose-500/20 bg-rose-500/[0.06] flex flex-col gap-1"
+          role="alert"
+          aria-label="Problemas de validação do cue"
+        >
+          <div className="ds-mono text-[9px] tracking-[0.18em] text-rose-300 uppercase flex items-center gap-1.5">
+            <span>⚠</span> {issues.length} {issues.length === 1 ? 'problema' : 'problemas'} detectado{issues.length === 1 ? '' : 's'}
+          </div>
+          {issues.map((iss) => (
+            <div key={iss.key} className="ds-mono text-[10px] text-rose-200/90 leading-snug pl-3.5">
+              · {iss.msg}
+              {iss.key === 'time' && hasDuration && (
+                <button
+                  type="button"
+                  onClick={() => patch('time', Math.max(0, Math.min(duration, cue.time)))}
+                  className="ml-2 underline text-rose-100 hover:text-white"
+                  title={`Limitar tempo a 0–${fmtTime(duration)}`}
+                >
+                  corrigir
+                </button>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
 
 
       <div className={cn(
