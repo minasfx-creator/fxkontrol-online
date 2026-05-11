@@ -173,6 +173,18 @@ export default function CueInspectorPanel({ className, docked = false }: CueInsp
   const pitch = cue.pitch ?? 0;
   const pos = cue.position ?? { x: 0, y: 0, z: 0 };
 
+  // ── Validation ──
+  const hasDuration = duration > 0;
+  const timeInvalid = !Number.isFinite(cue.time) || cue.time < 0 || (hasDuration && cue.time > duration);
+  const effectMissing = !!cue.effectId && !fx;
+  const intensityInvalid = intensity < 0 || intensity > 100;
+  const issues: Array<{ key: string; msg: string }> = [];
+  if (timeInvalid) issues.push({ key: 'time', msg: hasDuration
+    ? `Tempo ${fmtTime(cue.time)} fora do intervalo 0–${fmtTime(duration)}.`
+    : 'Carregue áudio para validar o tempo deste cue.' });
+  if (effectMissing) issues.push({ key: 'fx', msg: `Efeito "${cue.effectId}" não foi encontrado na biblioteca.` });
+  if (intensityInvalid) issues.push({ key: 'int', msg: `Intensidade ${intensity}% fora de 0–100%.` });
+
   const laneLabel = lane === 'pyro' ? 'PYRO' : lane === 'drone' ? 'DRONE' : 'FORMATION';
   const laneColor = lane === 'pyro' ? 'border-amber-500/40 text-amber-300 bg-amber-500/10'
     : lane === 'drone' ? 'border-cyan-500/40 text-cyan-300 bg-cyan-500/10'
