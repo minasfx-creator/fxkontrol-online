@@ -119,20 +119,6 @@ export default function TimelineStripView({
         </div>
         <WaveformLayer peaks={peaks} height={80} />
 
-        {cueMarkers.map((c) => {
-          const left = duration > 0 ? (c.time / duration) * 100 : 0;
-          const isSel = selectedCueMarkerId === c.id;
-          return (
-            <button
-              key={c.id}
-              onClick={(e) => { e.stopPropagation(); selectCueMarker(c.id); onSeekAbs(c.time); }}
-              onDoubleClick={(e) => { e.stopPropagation(); removeCueMarker(c.id); }}
-              className={cn(
-                'group absolute top-5 bottom-0 -translate-x-1/2 cursor-pointer transition-all',
-                isSel ? 'w-[5px] z-10' : 'w-[3px] hover:w-[5px]',
-              )}
-        <WaveformLayer peaks={peaks} height={80} />
-
         {/* Empty audio overlay (subtle, non-blocking) */}
         {!hasAudio && (
           <div
