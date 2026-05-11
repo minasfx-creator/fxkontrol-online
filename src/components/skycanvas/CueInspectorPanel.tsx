@@ -279,6 +279,32 @@ export default function CueInspectorPanel({ className, docked = false }: CueInsp
         <span><Kbd>⇧+←/→</Kbd> ±0.5s</span>
       </div>
 
+      {issues.length > 0 && (
+        <div
+          className="px-3 py-2 border-b border-rose-500/20 bg-rose-500/[0.06] flex flex-col gap-1"
+          role="alert"
+          aria-label="Problemas de validação do cue"
+        >
+          <div className="ds-mono text-[9px] tracking-[0.18em] text-rose-300 uppercase flex items-center gap-1.5">
+            <span>⚠</span> {issues.length} {issues.length === 1 ? 'problema' : 'problemas'} detectado{issues.length === 1 ? '' : 's'}
+          </div>
+          {issues.map((iss) => (
+            <div key={iss.key} className="ds-mono text-[10px] text-rose-200/90 leading-snug pl-3.5">
+              · {iss.msg}
+              {iss.key === 'time' && hasDuration && (
+                <button
+                  type="button"
+                  onClick={() => patch('time', Math.max(0, Math.min(duration, cue.time)))}
+                  className="ml-2 underline text-rose-100 hover:text-white"
+                  title={`Limitar tempo a 0–${fmtTime(duration)}`}
+                >
+                  corrigir
+                </button>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
 
 
       <div className={cn(
