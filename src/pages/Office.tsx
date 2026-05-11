@@ -15,8 +15,8 @@
  *   training    → Training (tutoriais)
  *   joi         → JOI Assistant
  */
-import { lazy, Suspense, useMemo } from 'react';
-import { useSearchParams, NavLink } from 'react-router-dom';
+import { lazy, Suspense, useCallback, useEffect, useMemo } from 'react';
+import { useSearchParams, useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard,
   CalendarDays,
@@ -26,6 +26,8 @@ import {
   BarChart3,
   GraduationCap,
   Sparkles,
+  Hammer,
+  ArrowLeft,
 } from 'lucide-react';
 import { useAdminRole } from '@/hooks/useAdminRole';
 
@@ -64,24 +66,47 @@ const TABS: TabDef[] = [
   { key: 'joi', label: 'JOI Assistant', desc: 'Coreografia IA', icon: Sparkles },
 ];
 
-const Loader = () => (
-  <div className="flex items-center justify-center py-24">
+const Loader = ({ label = 'Carregando…' }: { label?: string }) => (
+  <div className="flex flex-col items-center justify-center gap-ds-3 py-24" role="status" aria-live="polite">
     <div className="size-6 rounded-full border-2 border-status-sync border-t-transparent animate-spin" />
+    <span className="ds-caption text-ds-text-secondary">{label}</span>
   </div>
 );
 
-const Placeholder = ({ title, desc }: { title: string; desc: string }) => (
-  <div className="mx-auto max-w-2xl px-ds-6 py-24 text-center">
+const Placeholder = ({
+  title,
+  desc,
+  onBack,
+}: {
+  title: string;
+  desc: string;
+  onBack?: () => void;
+}) => (
+  <div className="mx-auto max-w-2xl px-ds-6 py-24 text-center animate-fade-in">
+    <div className="mx-auto mb-ds-4 grid size-12 place-items-center rounded-full border border-ds-border-subtle bg-ds-surface-elevated text-status-sync">
+      <Hammer className="size-5" />
+    </div>
+    <span className="inline-flex items-center gap-1.5 rounded-full border border-status-warn/30 bg-status-warn/10 px-2.5 py-1 text-[10px] font-mono uppercase tracking-[0.2em] text-status-warn mb-ds-3">
+      Em construção
+    </span>
     <h2 className="text-[24px] font-semibold text-ds-text-primary mb-ds-2">{title}</h2>
-    <p className="text-[14px] text-ds-text-secondary">{desc}</p>
-    <p className="mt-ds-6 text-[10px] font-mono uppercase tracking-[0.2em] text-ds-text-muted">
-      Em desenvolvimento — próxima etapa do refactor
-    </p>
+    <p className="text-[14px] text-ds-text-secondary leading-relaxed">{desc}</p>
+    {onBack && (
+      <button
+        type="button"
+        onClick={onBack}
+        className="mt-ds-6 inline-flex items-center gap-2 rounded-ds-md border border-ds-border-default bg-ds-surface-elevated px-3 py-2 text-[12px] text-ds-text-primary hover:bg-status-sync/10 hover:border-status-sync/40 transition-colors ds-focus"
+      >
+        <ArrowLeft className="size-3.5" />
+        Voltar para Visão Geral
+      </button>
+    )}
   </div>
 );
 
 export default function Office() {
   const [params, setParams] = useSearchParams();
+  const navigate = useNavigate();
   const { isAdmin } = useAdminRole();
   const activeTab = (params.get('tab') as TabKey) || 'overview';
 
@@ -90,11 +115,49 @@ export default function Office() {
     [isAdmin]
   );
 
-  const setTab = (key: TabKey) => {
+  const setTab = useCallback((key: TabKey) => {
     const next = new URLSearchParams(params);
     next.set('tab', key);
     setParams(next, { replace: false });
-  };
+  }, [params, setParams]);
+
+  const goOverview = useCallback(() => setTab('overview'), [setTab]);
+
+  // ── Keyboard shortcuts ──
+  // ⌘1..⌘9 (or Alt+1..9) jump directly to a visible tab.
+  // Ctrl/Cmd + ← / → cycle through tabs.
+  // Ignored when typing in inputs/textareas/contenteditable.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const tgt = e.target as HTMLElement | null;
+      const tag = tgt?.tagName?.toLowerCase();
+      if (tag === 'input' || tag === 'textarea' || tag === 'select' || tgt?.isContentEditable) return;
+
+      const mod = e.metaKey || e.ctrlKey || e.altKey;
+      if (!mod) return;
+
+      // Direct jump: Cmd/Ctrl/Alt + 1..9
+      if (/^[1-9]$/.test(e.key)) {
+        const idx = Number(e.key) - 1;
+        if (idx < visibleTabs.length) {
+          e.preventDefault();
+          setTab(visibleTabs[idx].key);
+        }
+        return;
+      }
+
+      // Cycle: Cmd/Ctrl + ← / →
+      if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
+        e.preventDefault();
+        const cur = visibleTabs.findIndex((t) => t.key === activeTab);
+        const dir = e.key === 'ArrowRight' ? 1 : -1;
+        const next = (cur + dir + visibleTabs.length) % visibleTabs.length;
+        setTab(visibleTabs[next].key);
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [visibleTabs, activeTab, setTab]);
 
   const renderContent = () => {
     switch (activeTab) {
@@ -105,6 +168,7 @@ export default function Office() {
           <Placeholder
             title="Agenda"
             desc="Eventos & datas — em consolidação na próxima etapa do refactor."
+            onBack={goOverview}
           />
         );
       case 'tasks':
@@ -112,6 +176,7 @@ export default function Office() {
           <Placeholder
             title="Tasks & Checklists"
             desc="Kanban estilo ClickUp + checklists por evento. Será entregue na Etapa 3 do refactor (após Studio AI-First)."
+            onBack={goOverview}
           />
         );
       case 'documents':
@@ -121,23 +186,50 @@ export default function Office() {
           <Placeholder
             title="Compliance / Admin"
             desc="Painel de administração unificado — em consolidação na próxima etapa do refactor."
+            onBack={goOverview}
           />
         ) : (
-          <Placeholder title="Compliance" desc="Acesso restrito a administradores." />
+          <Placeholder
+            title="Compliance"
+            desc="Acesso restrito a administradores. Solicite permissão ao administrador da conta."
+            onBack={goOverview}
+          />
         );
       case 'reports':
         return (
           <Placeholder
             title="Reports Executivos"
             desc="Relatórios consolidados (executive_reports) com export PDF. Próxima etapa."
+            onBack={goOverview}
           />
         );
       case 'training':
         return (
-          <Placeholder
-            title="Training"
-            desc="Acesse o Training Center completo em /training/center."
-          />
+          <div className="mx-auto max-w-2xl px-ds-6 py-24 text-center animate-fade-in">
+            <div className="mx-auto mb-ds-4 grid size-12 place-items-center rounded-full border border-ds-border-subtle bg-ds-surface-elevated text-status-sync">
+              <GraduationCap className="size-5" />
+            </div>
+            <h2 className="text-[24px] font-semibold text-ds-text-primary mb-ds-2">Training Center</h2>
+            <p className="text-[14px] text-ds-text-secondary leading-relaxed">
+              Tutoriais interativos e simulação guiada estão disponíveis no Training Center completo.
+            </p>
+            <div className="mt-ds-6 flex items-center justify-center gap-2">
+              <button
+                type="button"
+                onClick={() => navigate('/training/center')}
+                className="inline-flex items-center gap-2 rounded-ds-md border border-status-sync/40 bg-status-sync/10 px-4 py-2 text-[12px] font-medium text-status-sync hover:bg-status-sync/20 transition-colors ds-focus"
+              >
+                Abrir Training Center →
+              </button>
+              <button
+                type="button"
+                onClick={goOverview}
+                className="inline-flex items-center gap-2 rounded-ds-md border border-ds-border-default bg-ds-surface-elevated px-3 py-2 text-[12px] text-ds-text-primary hover:bg-status-sync/10 hover:border-status-sync/40 transition-colors ds-focus"
+              >
+                <ArrowLeft className="size-3.5" /> Voltar
+              </button>
+            </div>
+          </div>
         );
       case 'joi':
         return <JoiPanel />;
@@ -145,6 +237,8 @@ export default function Office() {
         return <Dashboard />;
     }
   };
+
+  const activeIndex = visibleTabs.findIndex((t) => t.key === activeTab);
 
   return (
     <div className="flex flex-col min-h-[calc(100dvh-3rem)] w-full bg-ds-background text-ds-text-primary">
@@ -159,33 +253,58 @@ export default function Office() {
       {/* Tab strip — horizontal, scrollable on mobile (DS tokens) */}
       <nav
         role="tablist"
-        className="flex items-center gap-ds-1 overflow-x-auto px-ds-3 py-ds-2 border-b border-ds-border-default bg-ds-surface-deep/60 backdrop-blur scrollbar-thin shrink-0"
+        aria-label="Seções do Office"
+        className="sticky top-0 z-20 flex items-center gap-ds-1 overflow-x-auto px-ds-3 py-ds-2 border-b border-ds-border-default bg-ds-surface-deep/80 backdrop-blur scrollbar-thin shrink-0"
       >
-        {visibleTabs.map((tab) => {
+        {visibleTabs.map((tab, idx) => {
           const Icon = tab.icon;
           const active = activeTab === tab.key;
+          const shortcut = idx < 9 ? `⌘${idx + 1}` : '';
           return (
             <button
               key={tab.key}
               role="tab"
               aria-selected={active}
+              aria-controls={`office-panel-${tab.key}`}
+              id={`office-tab-${tab.key}`}
+              tabIndex={active ? 0 : -1}
               onClick={() => setTab(tab.key)}
-              className={`inline-flex items-center gap-ds-2 shrink-0 rounded-ds-md px-ds-3 py-ds-2 text-[12px] font-medium transition-colors ds-focus ${
+              title={`${tab.label} — ${tab.desc}${shortcut ? ` (${shortcut})` : ''}`}
+              className={`group relative inline-flex items-center gap-ds-2 shrink-0 rounded-ds-md px-ds-3 py-ds-2 text-[12px] font-medium transition-all ds-focus ${
                 active
                   ? 'bg-status-sync/10 text-status-sync ds-active-border border'
                   : 'border border-transparent text-ds-text-secondary hover:text-ds-text-primary hover:bg-ds-surface-elevated'
               }`}
             >
-              <Icon className="size-3.5 shrink-0" />
+              <Icon className={`size-3.5 shrink-0 transition-transform ${active ? 'scale-110' : 'group-hover:scale-105'}`} />
               <span className="whitespace-nowrap">{tab.label}</span>
+              {tab.adminOnly && (
+                <span className="ds-mono text-[8px] tracking-widest text-status-warn/80 uppercase rounded border border-status-warn/30 bg-status-warn/10 px-1 py-px leading-none">
+                  ADM
+                </span>
+              )}
             </button>
           );
         })}
+        <span
+          className="hidden md:inline ml-auto pl-ds-3 ds-mono text-[10px] text-ds-text-muted/70 tracking-wider whitespace-nowrap"
+          aria-hidden
+        >
+          ⌘1–{Math.min(9, visibleTabs.length)} · ⌘← / ⌘→
+        </span>
       </nav>
 
       {/* Tab content — each lazy-loaded page renders inside */}
-      <div className="flex-1 min-h-0">
-        <Suspense fallback={<Loader />}>{renderContent()}</Suspense>
+      <div
+        className="flex-1 min-h-0"
+        role="tabpanel"
+        id={`office-panel-${activeTab}`}
+        aria-labelledby={`office-tab-${activeTab}`}
+        key={activeTab /* fade-in on tab change */}
+      >
+        <Suspense fallback={<Loader label={`Carregando ${visibleTabs[activeIndex]?.label ?? 'painel'}…`} />}>
+          <div className="animate-fade-in">{renderContent()}</div>
+        </Suspense>
       </div>
     </div>
   );
