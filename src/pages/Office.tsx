@@ -15,8 +15,8 @@
  *   training    → Training (tutoriais)
  *   joi         → JOI Assistant
  */
-import { lazy, Suspense, useMemo } from 'react';
-import { useSearchParams, NavLink } from 'react-router-dom';
+import { lazy, Suspense, useCallback, useEffect, useMemo } from 'react';
+import { useSearchParams, useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard,
   CalendarDays,
@@ -26,6 +26,8 @@ import {
   BarChart3,
   GraduationCap,
   Sparkles,
+  Hammer,
+  ArrowLeft,
 } from 'lucide-react';
 import { useAdminRole } from '@/hooks/useAdminRole';
 
@@ -64,19 +66,41 @@ const TABS: TabDef[] = [
   { key: 'joi', label: 'JOI Assistant', desc: 'Coreografia IA', icon: Sparkles },
 ];
 
-const Loader = () => (
-  <div className="flex items-center justify-center py-24">
+const Loader = ({ label = 'Carregando…' }: { label?: string }) => (
+  <div className="flex flex-col items-center justify-center gap-ds-3 py-24" role="status" aria-live="polite">
     <div className="size-6 rounded-full border-2 border-status-sync border-t-transparent animate-spin" />
+    <span className="ds-caption text-ds-text-secondary">{label}</span>
   </div>
 );
 
-const Placeholder = ({ title, desc }: { title: string; desc: string }) => (
-  <div className="mx-auto max-w-2xl px-ds-6 py-24 text-center">
+const Placeholder = ({
+  title,
+  desc,
+  onBack,
+}: {
+  title: string;
+  desc: string;
+  onBack?: () => void;
+}) => (
+  <div className="mx-auto max-w-2xl px-ds-6 py-24 text-center animate-fade-in">
+    <div className="mx-auto mb-ds-4 grid size-12 place-items-center rounded-full border border-ds-border-subtle bg-ds-surface-elevated text-status-sync">
+      <Hammer className="size-5" />
+    </div>
+    <span className="inline-flex items-center gap-1.5 rounded-full border border-status-warn/30 bg-status-warn/10 px-2.5 py-1 text-[10px] font-mono uppercase tracking-[0.2em] text-status-warn mb-ds-3">
+      Em construção
+    </span>
     <h2 className="text-[24px] font-semibold text-ds-text-primary mb-ds-2">{title}</h2>
-    <p className="text-[14px] text-ds-text-secondary">{desc}</p>
-    <p className="mt-ds-6 text-[10px] font-mono uppercase tracking-[0.2em] text-ds-text-muted">
-      Em desenvolvimento — próxima etapa do refactor
-    </p>
+    <p className="text-[14px] text-ds-text-secondary leading-relaxed">{desc}</p>
+    {onBack && (
+      <button
+        type="button"
+        onClick={onBack}
+        className="mt-ds-6 inline-flex items-center gap-2 rounded-ds-md border border-ds-border-default bg-ds-surface-elevated px-3 py-2 text-[12px] text-ds-text-primary hover:bg-status-sync/10 hover:border-status-sync/40 transition-colors ds-focus"
+      >
+        <ArrowLeft className="size-3.5" />
+        Voltar para Visão Geral
+      </button>
+    )}
   </div>
 );
 
