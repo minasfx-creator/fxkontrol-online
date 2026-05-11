@@ -65,18 +65,31 @@ export default function TimelineStripView({
   };
 
   const pct = duration > 0 ? (time / duration) * 100 : 0;
-  const hoverTime = hoverX !== null && ref.current
+  const hoverTime = hoverX !== null && ref.current && duration > 0
     ? (hoverX / ref.current.clientWidth) * duration
     : null;
+  const hasAudio = !!peaks && peaks.length > 0;
+  const hasDuration = duration > 0;
+  const hasCues = cueMarkers.length > 0;
 
   return (
     <div className="flex h-full flex-col">
-      <div className="flex h-7 items-center justify-between px-3 border-b border-white/[0.06]">
-        <span className="ds-mono text-[10px] tracking-wider text-cyan-300/80">
+      <div className="flex h-7 items-center justify-between px-3 border-b border-white/[0.06] gap-2">
+        <span className="ds-mono text-[10px] tracking-wider text-cyan-300/80 truncate">
           TIMELINE · {cueMarkers.length} cue{cueMarkers.length === 1 ? '' : 's'}
+          {!hasAudio && (
+            <span
+              className="ml-2 inline-flex items-center gap-1 rounded border border-amber-500/30 bg-amber-500/10 px-1.5 py-px text-amber-300 text-[9px] tracking-wider"
+              title="Carregue um arquivo MP3/WAV para visualizar a waveform e ancorar cues à música."
+            >
+              ⚠ SEM ÁUDIO
+            </span>
+          )}
         </span>
-        <span className="ds-mono text-[10px] text-zinc-500 hidden sm:inline">
-          FPS 30 · SMPTE 29.97 · arraste efeitos aqui
+        <span className="ds-mono text-[10px] text-zinc-500 hidden sm:inline truncate">
+          {hasDuration
+            ? 'FPS 30 · SMPTE 29.97 · arraste efeitos aqui'
+            : 'Carregue áudio para definir a duração da timeline'}
         </span>
       </div>
       <div
