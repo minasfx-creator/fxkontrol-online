@@ -131,16 +131,52 @@ export default function TimelineStripView({
                 'group absolute top-5 bottom-0 -translate-x-1/2 cursor-pointer transition-all',
                 isSel ? 'w-[5px] z-10' : 'w-[3px] hover:w-[5px]',
               )}
+        <WaveformLayer peaks={peaks} height={80} />
+
+        {/* Empty audio overlay (subtle, non-blocking) */}
+        {!hasAudio && (
+          <div
+            className="pointer-events-none absolute inset-x-0 top-5 bottom-0 flex items-center justify-center"
+            aria-hidden
+          >
+            <div className="ds-mono text-[10px] text-zinc-600 tracking-wider text-center px-4 leading-relaxed">
+              <div className="text-zinc-500">Nenhum áudio carregado</div>
+              <div className="text-[9px] text-zinc-700 mt-0.5">
+                arraste um MP3/WAV ou use o botão de upload da waveform
+              </div>
+            </div>
+          </div>
+        )}
+
+        {cueMarkers.map((c) => {
+          const left = hasDuration ? (c.time / duration) * 100 : 0;
+          const isSel = selectedCueMarkerId === c.id;
+          const outOfRange = hasDuration && (c.time < 0 || c.time > duration);
+          const invalid = outOfRange || !Number.isFinite(c.time);
+          const tooltip = invalid
+            ? `⚠ ${c.label} @ ${fmtTime(c.time)} — fora do intervalo da timeline (0–${fmtTime(duration)})`
+            : `${c.label} @ ${fmtTime(c.time)} — clique para inspecionar, duplo clique para remover`;
+          return (
+            <button
+              key={c.id}
+              onClick={(e) => { e.stopPropagation(); selectCueMarker(c.id); if (!invalid) onSeekAbs(c.time); }}
+              onDoubleClick={(e) => { e.stopPropagation(); removeCueMarker(c.id); }}
+              className={cn(
+                'group absolute top-5 bottom-0 -translate-x-1/2 cursor-pointer transition-all',
+                isSel ? 'w-[5px] z-10' : 'w-[3px] hover:w-[5px]',
+                invalid && 'animate-pulse',
+              )}
               style={{
-                left: `${left}%`,
-                background: c.color,
+                left: `${Math.max(0, Math.min(100, left))}%`,
+                background: invalid ? 'hsl(0 84% 60%)' : c.color,
                 boxShadow: isSel
-                  ? `0 0 10px ${c.color}, 0 0 3px hsl(189 94% 70%)`
-                  : `0 0 4px ${c.color}`,
-                outline: isSel ? '1px solid hsl(189 94% 70%)' : undefined,
+                  ? `0 0 10px ${invalid ? 'hsl(0 84% 60%)' : c.color}, 0 0 3px hsl(189 94% 70%)`
+                  : `0 0 4px ${invalid ? 'hsl(0 84% 60%)' : c.color}`,
+                outline: isSel ? '1px solid hsl(189 94% 70%)' : invalid ? '1px solid hsl(0 84% 60%)' : undefined,
               }}
-              title={`${c.label} @ ${fmtTime(c.time)} — clique para inspecionar, duplo clique para remover`}
-              aria-label={`Cue ${c.label} aos ${fmtTime(c.time)}`}
+              title={tooltip}
+              aria-label={tooltip}
+              aria-invalid={invalid || undefined}
               aria-pressed={isSel}
             >
               <span
@@ -148,9 +184,9 @@ export default function TimelineStripView({
                   'absolute top-0 left-1/2 -translate-x-1/2 -translate-y-full whitespace-nowrap rounded px-1 py-px text-[9px] ds-mono transition pointer-events-none',
                   isSel ? 'opacity-100' : 'opacity-0 group-hover:opacity-100',
                 )}
-                style={{ background: c.color, color: '#050810' }}
+                style={{ background: invalid ? 'hsl(0 84% 60%)' : c.color, color: '#050810' }}
               >
-                {c.label}
+                {invalid ? '⚠ ' : ''}{c.label}
               </span>
             </button>
           );
@@ -172,15 +208,19 @@ export default function TimelineStripView({
           </>
         )}
 
-        {/* Playhead — line + diamond head + glow */}
-        <div
-          className="pointer-events-none absolute top-0 bottom-0 w-px bg-cyan-300"
-          style={{ left: `${pct}%`, filter: 'drop-shadow(0 0 6px hsl(189 94% 55% / 0.7))' }}
-        />
-        <div
-          className="pointer-events-none absolute top-0.5 -translate-x-1/2 size-2.5 rotate-45 bg-cyan-300 border border-cyan-100"
-          style={{ left: `${pct}%`, filter: 'drop-shadow(0 0 6px hsl(189 94% 55% / 0.8))' }}
-        />
+        {/* Playhead — only when timeline has duration */}
+        {hasDuration && (
+          <>
+            <div
+              className="pointer-events-none absolute top-0 bottom-0 w-px bg-cyan-300"
+              style={{ left: `${pct}%`, filter: 'drop-shadow(0 0 6px hsl(189 94% 55% / 0.7))' }}
+            />
+            <div
+              className="pointer-events-none absolute top-0.5 -translate-x-1/2 size-2.5 rotate-45 bg-cyan-300 border border-cyan-100"
+              style={{ left: `${pct}%`, filter: 'drop-shadow(0 0 6px hsl(189 94% 55% / 0.8))' }}
+            />
+          </>
+        )}
       </div>
     </div>
   );
