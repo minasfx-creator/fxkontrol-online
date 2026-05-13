@@ -117,7 +117,7 @@ describe('resolveShellPresetId — VDL/effect-name mapping', () => {
     expect(resolveShellPresetId('Peony')).toBe('peony');
     expect(resolveShellPresetId('peony with pistil')).toBe('peony-pistil');
     expect(resolveShellPresetId('Wave')).toBe('wave');
-    expect(resolveShellPresetId('Ring shell')).toBe('wave');
+    expect(resolveShellPresetId('Ring shell')).toBe('ring');
     expect(resolveShellPresetId('Chrysanthemum gold')).toBe('chrysanthemum');
     expect(resolveShellPresetId('Brocade kamuro')).toBe('chrysanthemum');
     expect(resolveShellPresetId('Dahlia pink')).toBe('dahlia');
