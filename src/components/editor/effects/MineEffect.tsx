@@ -206,7 +206,7 @@ export default function MineEffect({
     }
 
     return { velocities: v, lifetimes: l, sparkleSeeds: s, particleSizes: ps, smokeSeeds: ss };
-  }, [count, caliber, columnEnd, sprayEnd, pattern]);
+  }, [count, caliber, columnEnd, sprayEnd, pattern, silhouette]);
 
   // Smoke initial velocities (radial expansion)
   const smokeVelocities = useMemo(() => {
