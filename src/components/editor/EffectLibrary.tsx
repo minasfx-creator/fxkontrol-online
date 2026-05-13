@@ -447,6 +447,38 @@ export default function EffectLibrary() {
   const currentTime = useProjectStore(s => s.currentTime);
   const positions = useProjectStore(s => s.positions);
   const searchInputRef = useRef<HTMLInputElement>(null);
+  const fweInputRef = useRef<HTMLInputElement>(null);
+  const importedFweEffects = useImportedFweStore(s => s.effects);
+  const addImportedFwe = useImportedFweStore(s => s.addOrReplace);
+
+  const handleFweUpload = useCallback(async (files: FileList | null) => {
+    if (!files || files.length === 0) return;
+    let okCount = 0;
+    let failCount = 0;
+    for (const file of Array.from(files)) {
+      if (!/\.fwe$/i.test(file.name)) {
+        failCount++;
+        continue;
+      }
+      try {
+        const xml = await file.text();
+        const result = parseFweXml(xml, file.name);
+        if (result.ok && result.effect) {
+          addImportedFwe(result.effect);
+          okCount++;
+        } else {
+          failCount++;
+          if (result.errors[0]) toast.error(`${file.name}: ${result.errors[0]}`);
+        }
+      } catch (e) {
+        failCount++;
+        toast.error(`${file.name}: ${(e as Error).message}`);
+      }
+    }
+    if (okCount > 0) toast.success(`Imported ${okCount} .fwe effect${okCount > 1 ? 's' : ''}`);
+    if (failCount > 0 && okCount === 0) toast.error(`Failed to import ${failCount} file(s)`);
+    if (fweInputRef.current) fweInputRef.current.value = '';
+  }, [addImportedFwe]);
 
   // C-key quick search (Finale 3D behavior)
   useEffect(() => {
