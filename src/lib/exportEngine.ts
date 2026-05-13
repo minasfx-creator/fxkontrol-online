@@ -242,7 +242,7 @@ export function exportVVIZ(
     performances.push({
       id: performanceId++,
       agentDescription: { homeX, homeY, homeZ, homeH, agentTraversal: buildTraversal(keyframes) },
-      payloadDescription: buildVdlPayloads(lp),
+      payloadDescription: buildVdlPayloads(lp, [item.effectId, effect.name, item.notes]),
     });
   }
 
