@@ -1640,6 +1640,7 @@ export function TimelineEffects() {
             hasPistil={vdlHasPistil}
             pistilColor={vdlPistilColor}
             niagaraProfile={effect.niagaraProfile}
+            presetId={shellPresetId}
           />
         );
         return <LightPoint key={item.id} position={pos} color={effect.color} />;
