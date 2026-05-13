@@ -1,0 +1,73 @@
+<?xml version="1.0"?>
+<FireworkEffect xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+  <Children>
+    <BaseEffectNode xsi:type="Shell">
+      <Children>
+        <BaseEffectNode xsi:type="BurstingCharge">
+          <Children>
+            <BaseEffectNode xsi:type="Stars">
+              <Children>
+                <BaseEffectNode xsi:type="StarTails">
+                  <Children />
+                  <Color>
+                    <CustomR>0</CustomR>
+                    <CustomG>0</CustomG>
+                    <CustomB>0</CustomB>
+                    <Color>Gold</Color>
+                  </Color>
+                  <Width>2.1</Width>
+                  <Density>23</Density>
+                  <EmitStart>0.16</EmitStart>
+                  <EmitEnd>0.97</EmitEnd>
+                  <Life>5.21</Life>
+                </BaseEffectNode>
+              </Children>
+              <Type>Normal</Type>
+              <Distribution xsi:type="SphericalDistribution">
+                <Speed>0.51</Speed>
+                <Sigma>0.0569999963</Sigma>
+              </Distribution>
+              <Color>
+                <CustomR>0</CustomR>
+                <CustomG>0</CustomG>
+                <CustomB>0</CustomB>
+                <Color>Red</Color>
+              </Color>
+              <Count>140</Count>
+              <MinimumLifetime>4.3</MinimumLifetime>
+              <MaximumLifetime>5.5</MaximumLifetime>
+              <Strobe>false</Strobe>
+              <StrobeFreqMean>14</StrobeFreqMean>
+            </BaseEffectNode>
+          </Children>
+          <Energy>40</Energy>
+          <Delay>1.5</Delay>
+        </BaseEffectNode>
+        <BaseEffectNode xsi:type="AscentEffect">
+          <Children />
+          <Color>
+            <CustomR>0</CustomR>
+            <CustomG>0</CustomG>
+            <CustomB>0</CustomB>
+            <Color>Spark</Color>
+          </Color>
+          <Width>3.3</Width>
+          <Density>80</Density>
+          <EmitStart>0.03</EmitStart>
+          <EmitEnd>0.7</EmitEnd>
+          <Life>3.1</Life>
+        </BaseEffectNode>
+      </Children>
+      <Diameter>0.15</Diameter>
+      <LiftingCharge>110</LiftingCharge>
+    </BaseEffectNode>
+  </Children>
+  <Identifier>
+    <Name>Waterfall 150mm red/golden</Name>
+    <Author>LT</Author>
+  </Identifier>
+  <AuthorSoftwareVersion>
+    <Major>0</Major>
+    <Minor>6</Minor>
+  </AuthorSoftwareVersion>
+</FireworkEffect>

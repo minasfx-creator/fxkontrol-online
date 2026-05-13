@@ -1,0 +1,31 @@
+<?xml version="1.0"?>
+<FireworkEffect xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+  <Children>
+    <BaseEffectNode xsi:type="Rocket">
+      <Children>
+        <BaseEffectNode xsi:type="AscentEffect">
+          <Children />
+          <Color>
+            <CustomR>0</CustomR>
+            <CustomG>0</CustomG>
+            <CustomB>0</CustomB>
+            <Color>Spark</Color>
+          </Color>
+          <Width>1</Width>
+          <Density>45</Density>
+          <EmitStart>0.1</EmitStart>
+          <EmitEnd>0.93</EmitEnd>
+          <Life>2.04</Life>
+        </BaseEffectNode>
+      </Children>
+    </BaseEffectNode>
+  </Children>
+  <Identifier>
+    <Name>Rocket, empty, white tail</Name>
+    <Author>LT</Author>
+  </Identifier>
+  <AuthorSoftwareVersion>
+    <Major>0</Major>
+    <Minor>6</Minor>
+  </AuthorSoftwareVersion>
+</FireworkEffect>

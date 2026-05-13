@@ -1,0 +1,92 @@
+<?xml version="1.0"?>
+<FireworkEffect xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+  <Children>
+    <BaseEffectNode xsi:type="Shell">
+      <Children>
+        <BaseEffectNode xsi:type="BurstingCharge">
+          <Children>
+            <BaseEffectNode xsi:type="Stars">
+              <Children>
+                <BaseEffectNode xsi:type="StarTails">
+                  <Children />
+                  <Color>
+                    <CustomR>251</CustomR>
+                    <CustomG>193</CustomG>
+                    <CustomB>106</CustomB>
+                    <Color>Custom</Color>
+                  </Color>
+                  <Width>1</Width>
+                  <Density>168</Density>
+                  <EmitStart>0.05</EmitStart>
+                  <EmitEnd>0.8</EmitEnd>
+                  <Life>0.4</Life>
+                </BaseEffectNode>
+                <BaseEffectNode xsi:type="StarTails">
+                  <Children />
+                  <Color>
+                    <CustomR>0</CustomR>
+                    <CustomG>0</CustomG>
+                    <CustomB>0</CustomB>
+                    <Color>Purple</Color>
+                  </Color>
+                  <Width>1.4</Width>
+                  <Density>250</Density>
+                  <EmitStart>0.37</EmitStart>
+                  <EmitEnd>0.73</EmitEnd>
+                  <Life>0.49</Life>
+                </BaseEffectNode>
+              </Children>
+              <Type>Normal</Type>
+              <Distribution xsi:type="SphericalDistribution">
+                <Speed>1</Speed>
+                <Sigma>0.14</Sigma>
+              </Distribution>
+              <Color>
+                <CustomR>0</CustomR>
+                <CustomG>0</CustomG>
+                <CustomB>0</CustomB>
+                <Color>Spark</Color>
+              </Color>
+              <Count>11</Count>
+              <MinimumLifetime>1.3</MinimumLifetime>
+              <MaximumLifetime>2.9</MaximumLifetime>
+              <Strobe>true</Strobe>
+              <StrobeFreqMean>44.1</StrobeFreqMean>
+            </BaseEffectNode>
+            <BaseEffectNode xsi:type="Stars">
+              <Children />
+              <Type>Normal</Type>
+              <Distribution xsi:type="SphericalDistribution">
+                <Speed>0.43</Speed>
+                <Sigma>0.04</Sigma>
+              </Distribution>
+              <Color>
+                <CustomR>128</CustomR>
+                <CustomG>128</CustomG>
+                <CustomB>255</CustomB>
+                <Color>Custom</Color>
+              </Color>
+              <Count>9</Count>
+              <MinimumLifetime>1.5</MinimumLifetime>
+              <MaximumLifetime>2.4</MaximumLifetime>
+              <Strobe>false</Strobe>
+              <StrobeFreqMean>14</StrobeFreqMean>
+            </BaseEffectNode>
+          </Children>
+          <Energy>48</Energy>
+          <Delay>1.9</Delay>
+        </BaseEffectNode>
+      </Children>
+      <Diameter>0.23</Diameter>
+      <LiftingCharge>151</LiftingCharge>
+    </BaseEffectNode>
+  </Children>
+  <Identifier>
+    <Name>Mr.Universe-blue</Name>
+    <Author>maximus</Author>
+  </Identifier>
+  <AuthorSoftwareVersion>
+    <Major>1</Major>
+    <Minor>0</Minor>
+  </AuthorSoftwareVersion>
+</FireworkEffect>

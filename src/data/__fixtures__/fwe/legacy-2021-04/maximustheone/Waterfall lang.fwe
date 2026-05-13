@@ -1,0 +1,58 @@
+<?xml version="1.0"?>
+<FireworkEffect xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+  <Children>
+    <BaseEffectNode xsi:type="Shell">
+      <Children>
+        <BaseEffectNode xsi:type="BurstingCharge">
+          <Children>
+            <BaseEffectNode xsi:type="Stars">
+              <Children>
+                <BaseEffectNode xsi:type="StarTails">
+                  <Children />
+                  <Color>
+                    <CustomR>0</CustomR>
+                    <CustomG>0</CustomG>
+                    <CustomB>0</CustomB>
+                    <Color>Gold</Color>
+                  </Color>
+                  <Width>1.5</Width>
+                  <EmitStart>0.05</EmitStart>
+                  <EmitEnd>0.86</EmitEnd>
+                  <Density>50</Density>
+                </BaseEffectNode>
+              </Children>
+              <Type>Normal</Type>
+              <Distribution xsi:type="SphericalDistribution">
+                <Speed>1</Speed>
+                <Sigma>0.04</Sigma>
+              </Distribution>
+              <Color>
+                <CustomR>0</CustomR>
+                <CustomG>0</CustomG>
+                <CustomB>0</CustomB>
+                <Color>Invisible</Color>
+              </Color>
+              <Count>40</Count>
+              <MinimumLifetime>5</MinimumLifetime>
+              <MaximumLifetime>7</MaximumLifetime>
+              <Strobe>false</Strobe>
+              <StrobeFreqMean>14</StrobeFreqMean>
+            </BaseEffectNode>
+          </Children>
+          <Energy>8</Energy>
+          <Delay>2.2608</Delay>
+        </BaseEffectNode>
+      </Children>
+      <Diameter>0.305</Diameter>
+      <LiftingCharge>236.04</LiftingCharge>
+    </BaseEffectNode>
+  </Children>
+  <Identifier>
+    <Name>Waterfall lang</Name>
+    <Author>maximus</Author>
+  </Identifier>
+  <AuthorSoftwareVersion>
+    <Major>0</Major>
+    <Minor>5</Minor>
+  </AuthorSoftwareVersion>
+</FireworkEffect>
