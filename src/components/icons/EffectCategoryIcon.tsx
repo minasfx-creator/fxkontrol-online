@@ -58,7 +58,7 @@ function familyFromEffect(e: Effect): Family | null {
   if (part === 'comet') return 'comet';
   if (part === 'rocket') return 'rocket';
   if (part === 'candle') return 'roman_candle';
-  if (part === 'gerb' || part === 'fountain' || part === 'flame' || part === 'waterfall') return 'flame';
+  if (part === 'gerb' || part === 'flame' || part === 'waterfall') return 'flame';
   if (e.category === 'cakes_batteries') return 'cake';
   if (e.category === 'mines') return 'mine';
   if (e.category === 'roman_candles') return 'roman_candle';
