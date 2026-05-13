@@ -1316,10 +1316,12 @@ export function listAllPresetIds(): {
   shells: string[];
   mines: string[];
   cakes: string[];
+  tails: string[];
 } {
   return {
     shells: listShellPresetIds(),
     mines: listMinePresetIds(),
     cakes: listCakeShotPresetIds(),
+    tails: listTailComponentPresetIds(),
   };
 }
