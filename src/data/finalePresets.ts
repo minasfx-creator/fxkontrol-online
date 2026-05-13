@@ -783,3 +783,80 @@ export function resolveShellPresetProps(presetId: string): ResolvedShellProps | 
 export function listShellPresetIds(): string[] {
   return Object.keys(FINALE_SHELL_PRESETS);
 }
+
+// ────────────────────────────────────────────────────────────────────
+// rev5 — Mine / Cake-shot adapters + unified listing
+// ────────────────────────────────────────────────────────────────────
+
+export interface ResolvedMineProps {
+  /** Body color (HEX). */
+  color: string;
+  /** Trail color of the canonical primary tail. */
+  trailColor: string;
+  /** Strobe rate of the primary tail (Hz), 0 = no strobe. */
+  strobeHz: number;
+  /** Speed (m/s) inherited from MineDistribution. */
+  speedMS: number;
+  /** Sigma (rad). */
+  sigmaRad: number;
+  /** True when this preset is a single-head comet (count=1, Large). */
+  isSingleHead: boolean;
+}
+
+export function resolveMinePresetProps(presetId: string): ResolvedMineProps | undefined {
+  const p = FINALE_MINE_PRESETS[presetId];
+  if (!p) return undefined;
+  const t0 = p.tails[0];
+  return {
+    color: p.colorHex,
+    trailColor: t0?.colorHex ?? p.colorHex,
+    strobeHz: t0?.strobeHz ?? 0,
+    speedMS: p.speedMS,
+    sigmaRad: p.sigmaRad,
+    isSingleHead: p.count === 1 && p.starType === 'Large',
+  };
+}
+
+export interface ResolvedCakeShotProps {
+  wrappedKind: 'shell' | 'mine';
+  innerColor: string;
+  innerCount: number;
+  innerSpeedMS: number;
+  trailColor?: string;
+  trailDensityHz?: number;
+}
+
+export function resolveCakeShotPresetProps(
+  presetId: string
+): ResolvedCakeShotProps | undefined {
+  const p = FINALE_CAKE_SHOT_PRESETS[presetId];
+  if (!p) return undefined;
+  return {
+    wrappedKind: p.wrappedKind,
+    innerColor: p.inner.colorHex,
+    innerCount: p.inner.count,
+    innerSpeedMS: p.inner.speedMS,
+    trailColor: p.tail?.colorHex,
+    trailDensityHz: p.tail?.densityHz,
+  };
+}
+
+export function listMinePresetIds(): string[] {
+  return Object.keys(FINALE_MINE_PRESETS);
+}
+
+export function listCakeShotPresetIds(): string[] {
+  return Object.keys(FINALE_CAKE_SHOT_PRESETS);
+}
+
+export function listAllPresetIds(): {
+  shells: string[];
+  mines: string[];
+  cakes: string[];
+} {
+  return {
+    shells: listShellPresetIds(),
+    mines: listMinePresetIds(),
+    cakes: listCakeShotPresetIds(),
+  };
+}
