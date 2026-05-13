@@ -42,6 +42,13 @@ interface VVIZPyroPayload {
   partNumber: string;
   tilt?: number;
   pan?: number;
+  /**
+   * rev9: Mine/Cake-shot canonical Finale preset wiring.
+   * Optional — present when the source effect resolves to a known preset.
+   * Consumers (Finale 3D plugin, Skybrush bridge, FXKONTROL replay) read
+   * this block to render the LED-accurate body/trail and strobe.
+   */
+  presetMetadata?: CuePresetMetadata;
 }
 
 type VVIZPayload = VVIZLightPayload | VVIZPyroPayload;
