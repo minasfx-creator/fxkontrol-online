@@ -469,8 +469,7 @@ const Pin = forwardRef<THREE.Group, { position: Position; terrainY: number; onRi
         )}
       </group>
 
-      {/* Always-on direction line — Finale 3D style */}
-      <DirectionLine position={position} color={color} isSelected={isSelected} isHovered={isHovered} hasEffects={linkedEffects > 0} />
+      {/* Direction line removed — orientation is shown by the rotated mortar tube + PyroLaunchAngle gizmo when selected */}
 
       {/* Selection ring */}
       {isSelected && (
