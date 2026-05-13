@@ -215,7 +215,8 @@ export class TwoWireTransport {
         lastCounter: (a) => this.lastSeenCounters.get(a) ?? 0,
       });
       if (!decoded.ok) {
-        if (decoded.error === 'crc' || decoded.error === 'hmac') {
+        const err = decoded.error;
+        if (err === 'crc' || err === 'hmac') {
           this.crcErrorTimestamps.push(Date.now());
           this.recomputeCrcRate();
         }
