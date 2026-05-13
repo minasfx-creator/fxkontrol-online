@@ -1,6 +1,415 @@
 [
   {
-    "id": "fin-11-horsetail",
+    "file": "01_Peony.fwe",
+    "name": "01 Peony",
+    "author": "Marcus Athmer (Effekt-Vorschau)",
+    "rootType": "Shell",
+    "subTypes": [
+      "BurstingCharge",
+      "SphericalDistribution",
+      "Stars"
+    ],
+    "caliberM": 0.15,
+    "caliberIn": 5.9,
+    "starCount": 150,
+    "shotCount": null,
+    "colors": [
+      {
+        "name": "Orange",
+        "hex": "#FF8A00"
+      },
+      {
+        "name": "PastelRed",
+        "hex": "#FF6B6B"
+      },
+      {
+        "name": "Spark",
+        "hex": "#FFE2AE"
+      }
+    ]
+  },
+  {
+    "file": "02_Peony_w_Pistil.fwe",
+    "name": "02 Peony w/ Pistil",
+    "author": "Marcus Athmer (Effekt-Vorschau)",
+    "rootType": "Shell",
+    "subTypes": [
+      "BurstingCharge",
+      "SphericalDistribution",
+      "Stars"
+    ],
+    "caliberM": 0.15,
+    "caliberIn": 5.9,
+    "starCount": 190,
+    "shotCount": null,
+    "colors": [
+      {
+        "name": "Red",
+        "hex": "#FF1A1A"
+      },
+      {
+        "name": "PastelRed",
+        "hex": "#FF6B6B"
+      },
+      {
+        "name": "DarkGreen",
+        "hex": null
+      },
+      {
+        "name": "Spark",
+        "hex": "#FFE2AE"
+      }
+    ]
+  },
+  {
+    "file": "03_Chrysanthemum.fwe",
+    "name": "Gold (short, thin)",
+    "author": "Marcus Athmer",
+    "rootType": "Shell",
+    "subTypes": [
+      "BurstingCharge",
+      "CustomTailsLink",
+      "SphericalDistribution",
+      "StarTails",
+      "Stars"
+    ],
+    "caliberM": 0.15,
+    "caliberIn": 5.9,
+    "starCount": 95,
+    "shotCount": null,
+    "colors": [
+      {
+        "name": "Spark",
+        "hex": "#FFE2AE"
+      },
+      {
+        "name": "Custom",
+        "hex": "#FFE2AE"
+      },
+      {
+        "name": "Custom",
+        "hex": "#9F5000"
+      },
+      {
+        "name": "Custom",
+        "hex": "#C68100"
+      },
+      {
+        "name": "Custom",
+        "hex": "#8A4500"
+      },
+      {
+        "name": "Blue",
+        "hex": "#3F7BFF"
+      },
+      {
+        "name": "PastelRed",
+        "hex": "#FF6B6B"
+      }
+    ]
+  },
+  {
+    "file": "04_Waveshell.fwe",
+    "name": "Brocade (short)",
+    "author": "Marcus Athmer",
+    "rootType": "Shell",
+    "subTypes": [
+      "BurstingCharge",
+      "CustomTailsLink",
+      "SphericalDistribution",
+      "StarTails",
+      "Stars"
+    ],
+    "caliberM": 0.15,
+    "caliberIn": 5.9,
+    "starCount": 50,
+    "shotCount": null,
+    "colors": [
+      {
+        "name": "Custom",
+        "hex": "#FFE2AE"
+      },
+      {
+        "name": "Custom",
+        "hex": "#623100"
+      },
+      {
+        "name": "Custom",
+        "hex": "#934900"
+      },
+      {
+        "name": "Custom",
+        "hex": "#A65300"
+      },
+      {
+        "name": "DarkGreen",
+        "hex": null
+      },
+      {
+        "name": "PastelRed",
+        "hex": "#FF6B6B"
+      },
+      {
+        "name": "Spark",
+        "hex": "#FFE2AE"
+      }
+    ]
+  },
+  {
+    "file": "05_Palm.fwe",
+    "name": "Silver (thick)",
+    "author": "Marcus Athmer",
+    "rootType": "Shell",
+    "subTypes": [
+      "BurstingCharge",
+      "CustomTailsLink",
+      "SphericalDistribution",
+      "StarTails",
+      "Stars"
+    ],
+    "caliberM": 0.15,
+    "caliberIn": 5.9,
+    "starCount": 12,
+    "shotCount": null,
+    "colors": [
+      {
+        "name": "Spark",
+        "hex": "#FFE2AE"
+      },
+      {
+        "name": "Custom",
+        "hex": "#FFC082"
+      },
+      {
+        "name": "Custom",
+        "hex": "#A85400"
+      },
+      {
+        "name": "Custom",
+        "hex": "#8A4500"
+      },
+      {
+        "name": "PastelRed",
+        "hex": "#FF6B6B"
+      }
+    ]
+  },
+  {
+    "file": "06_Dahlia.fwe",
+    "name": "06 Dahlia",
+    "author": "Marcus Athmer (Effekt-Vorschau)",
+    "rootType": "Shell",
+    "subTypes": [
+      "AscentStar",
+      "BurstingCharge",
+      "FadeInfo",
+      "SphericalDistribution",
+      "Stars"
+    ],
+    "caliberM": 0.15,
+    "caliberIn": 5.9,
+    "starCount": 8,
+    "shotCount": null,
+    "colors": [
+      {
+        "name": "Pink",
+        "hex": "#FF66C4"
+      },
+      {
+        "name": "PastelRed",
+        "hex": "#FF6B6B"
+      },
+      {
+        "name": "Yellow",
+        "hex": "#FFD600"
+      },
+      {
+        "name": "Spark",
+        "hex": "#FFE2AE"
+      },
+      {
+        "name": "Gold",
+        "hex": "#FFD27A"
+      }
+    ]
+  },
+  {
+    "file": "07_Crown.fwe",
+    "name": "Brocade (short, thin)",
+    "author": "Marcus Athmer",
+    "rootType": "Shell",
+    "subTypes": [
+      "BurstingCharge",
+      "CustomTailsLink",
+      "SphericalDistribution",
+      "StarTails",
+      "Stars"
+    ],
+    "caliberM": 0.15,
+    "caliberIn": 5.9,
+    "starCount": 100,
+    "shotCount": null,
+    "colors": [
+      {
+        "name": "Custom",
+        "hex": "#FFE2AE"
+      },
+      {
+        "name": "Custom",
+        "hex": "#623100"
+      },
+      {
+        "name": "Custom",
+        "hex": "#934900"
+      },
+      {
+        "name": "Custom",
+        "hex": "#A65300"
+      },
+      {
+        "name": "PastelRed",
+        "hex": "#FF6B6B"
+      },
+      {
+        "name": "Spark",
+        "hex": "#FFE2AE"
+      }
+    ]
+  },
+  {
+    "file": "08_Crown_Rain.fwe",
+    "name": "Gold (short, thin)",
+    "author": "Marcus Athmer",
+    "rootType": "Shell",
+    "subTypes": [
+      "BurstingCharge",
+      "CustomTailsLink",
+      "SphericalDistribution",
+      "StarTails",
+      "Stars"
+    ],
+    "caliberM": 0.15,
+    "caliberIn": 5.9,
+    "starCount": 100,
+    "shotCount": null,
+    "colors": [
+      {
+        "name": "Spark",
+        "hex": "#FFE2AE"
+      },
+      {
+        "name": "Custom",
+        "hex": "#FFE2AE"
+      },
+      {
+        "name": "Custom",
+        "hex": "#9F5000"
+      },
+      {
+        "name": "Custom",
+        "hex": "#C68100"
+      },
+      {
+        "name": "Custom",
+        "hex": "#8A4500"
+      },
+      {
+        "name": "Red",
+        "hex": "#FF1A1A"
+      },
+      {
+        "name": "PastelRed",
+        "hex": "#FF6B6B"
+      }
+    ]
+  },
+  {
+    "file": "09_Willow.fwe",
+    "name": "Brocade",
+    "author": "Marcus Athmer",
+    "rootType": "Shell",
+    "subTypes": [
+      "BurstingCharge",
+      "CustomTailsLink",
+      "SphericalDistribution",
+      "StarTails",
+      "Stars"
+    ],
+    "caliberM": 0.15,
+    "caliberIn": 5.9,
+    "starCount": 20,
+    "shotCount": null,
+    "colors": [
+      {
+        "name": "Custom",
+        "hex": "#FFE2AE"
+      },
+      {
+        "name": "Custom",
+        "hex": "#623100"
+      },
+      {
+        "name": "Custom",
+        "hex": "#934900"
+      },
+      {
+        "name": "Custom",
+        "hex": "#A65300"
+      },
+      {
+        "name": "PastelRed",
+        "hex": "#FF6B6B"
+      },
+      {
+        "name": "Spark",
+        "hex": "#FFE2AE"
+      }
+    ]
+  },
+  {
+    "file": "10_Waterfall.fwe",
+    "name": "Brocade",
+    "author": "Marcus Athmer",
+    "rootType": "Shell",
+    "subTypes": [
+      "BurstingCharge",
+      "CustomTailsLink",
+      "HemisphereDistribution",
+      "StarTails",
+      "Stars"
+    ],
+    "caliberM": 0.15,
+    "caliberIn": 5.9,
+    "starCount": 20,
+    "shotCount": null,
+    "colors": [
+      {
+        "name": "Custom",
+        "hex": "#FFE2AE"
+      },
+      {
+        "name": "Custom",
+        "hex": "#623100"
+      },
+      {
+        "name": "Custom",
+        "hex": "#934900"
+      },
+      {
+        "name": "Custom",
+        "hex": "#A65300"
+      },
+      {
+        "name": "PastelRed",
+        "hex": "#FF6B6B"
+      },
+      {
+        "name": "Spark",
+        "hex": "#FFE2AE"
+      }
+    ]
+  },
+  {
     "file": "11_Horsetail.fwe",
     "name": "Gold (short, thin)",
     "author": "Marcus Athmer",
@@ -13,22 +422,37 @@
       "Stars"
     ],
     "caliberM": 0.15,
-    "caliberIn": 6,
+    "caliberIn": 5.9,
     "starCount": 20,
     "shotCount": null,
-    "primaryColor": "#FFE2AE",
-    "secondaryColor": "#FFE2AE",
-    "palette": [
-      "#FFE2AE",
-      "#FFE2AE",
-      "#9F5000",
-      "#C68100",
-      "#8A4500",
-      "#FF6B6B"
+    "colors": [
+      {
+        "name": "Spark",
+        "hex": "#FFE2AE"
+      },
+      {
+        "name": "Custom",
+        "hex": "#FFE2AE"
+      },
+      {
+        "name": "Custom",
+        "hex": "#9F5000"
+      },
+      {
+        "name": "Custom",
+        "hex": "#C68100"
+      },
+      {
+        "name": "Custom",
+        "hex": "#8A4500"
+      },
+      {
+        "name": "PastelRed",
+        "hex": "#FF6B6B"
+      }
     ]
   },
   {
-    "id": "fin-12-sky-mine",
     "file": "12_Sky_Mine.fwe",
     "name": "Silver (short, thin)",
     "author": "Marcus Athmer",
@@ -41,22 +465,37 @@
       "Stars"
     ],
     "caliberM": 0.15,
-    "caliberIn": 6,
+    "caliberIn": 5.9,
     "starCount": 16,
     "shotCount": null,
-    "primaryColor": "#FFE2AE",
-    "secondaryColor": "#FFC082",
-    "palette": [
-      "#FFE2AE",
-      "#FFC082",
-      "#A85400",
-      "#8A4500",
-      "#FF1A1A",
-      "#FF6B6B"
+    "colors": [
+      {
+        "name": "Spark",
+        "hex": "#FFE2AE"
+      },
+      {
+        "name": "Custom",
+        "hex": "#FFC082"
+      },
+      {
+        "name": "Custom",
+        "hex": "#A85400"
+      },
+      {
+        "name": "Custom",
+        "hex": "#8A4500"
+      },
+      {
+        "name": "Red",
+        "hex": "#FF1A1A"
+      },
+      {
+        "name": "PastelRed",
+        "hex": "#FF6B6B"
+      }
     ]
   },
   {
-    "id": "fin-13-falling-leaves",
     "file": "13_Falling_Leaves.fwe",
     "name": "13 Falling Leaves",
     "author": "Marcus Athmer (Effekt-Vorschau)",
@@ -67,19 +506,25 @@
       "Stars"
     ],
     "caliberM": 0.15,
-    "caliberIn": 6,
+    "caliberIn": 5.9,
     "starCount": 27,
     "shotCount": null,
-    "primaryColor": "#3F7BFF",
-    "secondaryColor": "#FF6B6B",
-    "palette": [
-      "#3F7BFF",
-      "#FF6B6B",
-      "#FFE2AE"
+    "colors": [
+      {
+        "name": "Blue",
+        "hex": "#3F7BFF"
+      },
+      {
+        "name": "PastelRed",
+        "hex": "#FF6B6B"
+      },
+      {
+        "name": "Spark",
+        "hex": "#FFE2AE"
+      }
     ]
   },
   {
-    "id": "fin-14-titanium-salut",
     "file": "14_Titanium_Salut.fwe",
     "name": "Silver (short, wide)",
     "author": "Marcus Athmer",
@@ -92,21 +537,33 @@
       "Stars"
     ],
     "caliberM": 0.15,
-    "caliberIn": 6,
+    "caliberIn": 5.9,
     "starCount": 150,
     "shotCount": null,
-    "primaryColor": "#FFE2AE",
-    "secondaryColor": "#FFC082",
-    "palette": [
-      "#FFE2AE",
-      "#FFC082",
-      "#A85400",
-      "#8A4500",
-      "#FF6B6B"
+    "colors": [
+      {
+        "name": "Spark",
+        "hex": "#FFE2AE"
+      },
+      {
+        "name": "Custom",
+        "hex": "#FFC082"
+      },
+      {
+        "name": "Custom",
+        "hex": "#A85400"
+      },
+      {
+        "name": "Custom",
+        "hex": "#8A4500"
+      },
+      {
+        "name": "PastelRed",
+        "hex": "#FF6B6B"
+      }
     ]
   },
   {
-    "id": "fin-15-pattern-half-half",
     "file": "15_Pattern_Shell_Half_Half.fwe",
     "name": "15 Pattern Shell: Half & Half",
     "author": "Marcus Athmer (Effekt-Vorschau)",
@@ -117,20 +574,532 @@
       "Stars"
     ],
     "caliberM": 0.15,
-    "caliberIn": 6,
+    "caliberIn": 5.9,
     "starCount": 100,
     "shotCount": null,
-    "primaryColor": "#7CFFB0",
-    "secondaryColor": "#FF6B6B",
-    "palette": [
-      "#7CFFB0",
-      "#FF6B6B",
-      "#FF66C4",
-      "#FFE2AE"
+    "colors": [
+      {
+        "name": "PastelGreen",
+        "hex": "#7CFFB0"
+      },
+      {
+        "name": "PastelRed",
+        "hex": "#FF6B6B"
+      },
+      {
+        "name": "Pink",
+        "hex": "#FF66C4"
+      },
+      {
+        "name": "Spark",
+        "hex": "#FFE2AE"
+      }
     ]
   },
   {
-    "id": "fin-27-multibreak",
+    "file": "15_Pattern_Shell_Half_and_Half.fwe",
+    "name": "15 Pattern Shell: Half & Half",
+    "author": "Marcus Athmer (Effekt-Vorschau)",
+    "rootType": "Shell",
+    "subTypes": [
+      "BurstingCharge",
+      "HemisphereDistribution",
+      "Stars"
+    ],
+    "caliberM": 0.15,
+    "caliberIn": 5.9,
+    "starCount": 100,
+    "shotCount": null,
+    "colors": [
+      {
+        "name": "PastelGreen",
+        "hex": "#7CFFB0"
+      },
+      {
+        "name": "PastelRed",
+        "hex": "#FF6B6B"
+      },
+      {
+        "name": "Pink",
+        "hex": "#FF66C4"
+      },
+      {
+        "name": "Spark",
+        "hex": "#FFE2AE"
+      }
+    ]
+  },
+  {
+    "file": "16_Pattern_Shell_Ring.fwe",
+    "name": "16 Pattern Shell: Ring",
+    "author": "Marcus Athmer (Effekt-Vorschau)",
+    "rootType": "Shell",
+    "subTypes": [
+      "BurstingCharge",
+      "RingDistribution",
+      "Stars"
+    ],
+    "caliberM": 0.15,
+    "caliberIn": 5.9,
+    "starCount": 50,
+    "shotCount": null,
+    "colors": [
+      {
+        "name": "Yellow",
+        "hex": "#FFD600"
+      },
+      {
+        "name": "PastelRed",
+        "hex": "#FF6B6B"
+      },
+      {
+        "name": "Spark",
+        "hex": "#FFE2AE"
+      }
+    ]
+  },
+  {
+    "file": "17_Pattern_Shell_Heart.fwe",
+    "name": "17 Pattern Shell: Heart",
+    "author": "Marcus Athmer (Effekt-Vorschau)",
+    "rootType": "Shell",
+    "subTypes": [
+      "BurstingCharge",
+      "HeartDistribution",
+      "Stars"
+    ],
+    "caliberM": 0.15,
+    "caliberIn": 5.9,
+    "starCount": 64,
+    "shotCount": null,
+    "colors": [
+      {
+        "name": "Red",
+        "hex": "#FF1A1A"
+      },
+      {
+        "name": "PastelRed",
+        "hex": "#FF6B6B"
+      },
+      {
+        "name": "Spark",
+        "hex": "#FFE2AE"
+      }
+    ]
+  },
+  {
+    "file": "18_Pattern_Shell_Saturn_Ring.fwe",
+    "name": "Brocade (short)",
+    "author": "Marcus Athmer",
+    "rootType": "Shell",
+    "subTypes": [
+      "BurstingCharge",
+      "CustomTailsLink",
+      "RingDistribution",
+      "SphericalDistribution",
+      "StarTails",
+      "Stars"
+    ],
+    "caliberM": 0.15,
+    "caliberIn": 5.9,
+    "starCount": 70,
+    "shotCount": null,
+    "colors": [
+      {
+        "name": "Custom",
+        "hex": "#FFE2AE"
+      },
+      {
+        "name": "Custom",
+        "hex": "#623100"
+      },
+      {
+        "name": "Custom",
+        "hex": "#934900"
+      },
+      {
+        "name": "Custom",
+        "hex": "#A65300"
+      },
+      {
+        "name": "PastelRed",
+        "hex": "#FF6B6B"
+      },
+      {
+        "name": "DarkGreen",
+        "hex": null
+      },
+      {
+        "name": "Spark",
+        "hex": "#FFE2AE"
+      }
+    ]
+  },
+  {
+    "file": "19_Pattern_Shell_Jellyfish.fwe",
+    "name": "Silver Cocout/ Silver (short, dense)",
+    "author": "Marcus Athmer",
+    "rootType": "Shell",
+    "subTypes": [
+      "BurstingCharge",
+      "CustomTailsLink",
+      "HemisphereDistribution",
+      "MineDistribution",
+      "RingDistribution",
+      "StarTails",
+      "Stars"
+    ],
+    "caliberM": 0.15,
+    "caliberIn": 5.9,
+    "starCount": 100,
+    "shotCount": null,
+    "colors": [
+      {
+        "name": "Spark",
+        "hex": "#FFE2AE"
+      },
+      {
+        "name": "Custom",
+        "hex": "#FFC082"
+      },
+      {
+        "name": "Custom",
+        "hex": "#A85400"
+      },
+      {
+        "name": "Custom",
+        "hex": "#8A4500"
+      },
+      {
+        "name": "White",
+        "hex": "#FFFFFF"
+      },
+      {
+        "name": "PastelRed",
+        "hex": "#FF6B6B"
+      }
+    ]
+  },
+  {
+    "file": "20_Pattern_Shell_Bow_Tie.fwe",
+    "name": "Brocade (short)",
+    "author": "Marcus Athmer",
+    "rootType": "Shell",
+    "subTypes": [
+      "BurstingCharge",
+      "CustomTailsLink",
+      "MineDistribution",
+      "RingDistribution",
+      "StarTails",
+      "Stars"
+    ],
+    "caliberM": 0.15,
+    "caliberIn": 5.9,
+    "starCount": 25,
+    "shotCount": null,
+    "colors": [
+      {
+        "name": "Custom",
+        "hex": "#FFE2AE"
+      },
+      {
+        "name": "Custom",
+        "hex": "#623100"
+      },
+      {
+        "name": "Custom",
+        "hex": "#934900"
+      },
+      {
+        "name": "Custom",
+        "hex": "#A65300"
+      },
+      {
+        "name": "PastelRed",
+        "hex": "#FF6B6B"
+      },
+      {
+        "name": "Blue",
+        "hex": "#3F7BFF"
+      },
+      {
+        "name": "Spark",
+        "hex": "#FFE2AE"
+      }
+    ]
+  },
+  {
+    "file": "21_Pattern_Shell_Cluster.fwe",
+    "name": "Brocade (short)",
+    "author": "Marcus Athmer",
+    "rootType": "Shell",
+    "subTypes": [
+      "BurstingCharge",
+      "CustomTailsLink",
+      "MineDistribution",
+      "StarTails",
+      "Stars"
+    ],
+    "caliberM": 0.15,
+    "caliberIn": 5.9,
+    "starCount": 20,
+    "shotCount": null,
+    "colors": [
+      {
+        "name": "Custom",
+        "hex": "#FFE2AE"
+      },
+      {
+        "name": "Custom",
+        "hex": "#623100"
+      },
+      {
+        "name": "Custom",
+        "hex": "#934900"
+      },
+      {
+        "name": "Custom",
+        "hex": "#A65300"
+      },
+      {
+        "name": "PastelRed",
+        "hex": "#FF6B6B"
+      },
+      {
+        "name": "Spark",
+        "hex": "#FFE2AE"
+      }
+    ]
+  },
+  {
+    "file": "22_Canister_Shell_Crossette_Stars.fwe",
+    "name": "22 Canister Shell: Crossette Stars",
+    "author": "Marcus Athmer (Effekt-Vorschau)",
+    "rootType": "Shell",
+    "subTypes": [
+      "BurstingCharge",
+      "Crossette",
+      "SphericalDistribution",
+      "Stars"
+    ],
+    "caliberM": 0.15,
+    "caliberIn": 5.9,
+    "starCount": 72,
+    "shotCount": null,
+    "colors": [
+      {
+        "name": "Red",
+        "hex": "#FF1A1A"
+      },
+      {
+        "name": "PastelRed",
+        "hex": "#FF6B6B"
+      },
+      {
+        "name": "Spark",
+        "hex": "#FFE2AE"
+      }
+    ]
+  },
+  {
+    "file": "23_Canister_Shell_Kaleidoscope.fwe",
+    "name": "23 Canister Shell: Kaleidoscope",
+    "author": "Marcus Athmer (Effekt-Vorschau)",
+    "rootType": "Shell",
+    "subTypes": [
+      "AscentStar",
+      "BurstingCharge",
+      "FadeInfo",
+      "SphericalDistribution",
+      "Stars",
+      "SubShells"
+    ],
+    "caliberM": 0.15,
+    "caliberIn": 5.9,
+    "starCount": 20,
+    "shotCount": null,
+    "colors": [
+      {
+        "name": "DarkGreen",
+        "hex": null
+      },
+      {
+        "name": "PastelRed",
+        "hex": "#FF6B6B"
+      },
+      {
+        "name": "Gold",
+        "hex": "#FFD27A"
+      },
+      {
+        "name": "Spark",
+        "hex": "#FFE2AE"
+      }
+    ]
+  },
+  {
+    "file": "24_Canister_Shell_Stutata.fwe",
+    "name": "Brocade",
+    "author": "Marcus Athmer",
+    "rootType": "Shell",
+    "subTypes": [
+      "BurstingCharge",
+      "CustomTailsLink",
+      "HemisphereDistribution",
+      "SphericalDistribution",
+      "StarTails",
+      "Stars",
+      "SubShells"
+    ],
+    "caliberM": 0.15,
+    "caliberIn": 5.9,
+    "starCount": 50,
+    "shotCount": null,
+    "colors": [
+      {
+        "name": "Red",
+        "hex": "#FF1A1A"
+      },
+      {
+        "name": "PastelRed",
+        "hex": "#FF6B6B"
+      },
+      {
+        "name": "Custom",
+        "hex": "#FFE2AE"
+      },
+      {
+        "name": "Custom",
+        "hex": "#623100"
+      },
+      {
+        "name": "Custom",
+        "hex": "#934900"
+      },
+      {
+        "name": "Custom",
+        "hex": "#A65300"
+      },
+      {
+        "name": "Spark",
+        "hex": "#FFE2AE"
+      },
+      {
+        "name": "DarkGreen",
+        "hex": null
+      }
+    ]
+  },
+  {
+    "file": "25_Canister_Shell_Scala.fwe",
+    "name": "Gold (short, thin)",
+    "author": "Marcus Athmer",
+    "rootType": "Shell",
+    "subTypes": [
+      "AscentStar",
+      "BurstingCharge",
+      "CustomTailsLink",
+      "FadeInfo",
+      "SphericalDistribution",
+      "StarTails",
+      "Stars",
+      "SubShells"
+    ],
+    "caliberM": 0.15,
+    "caliberIn": 5.9,
+    "starCount": 75,
+    "shotCount": null,
+    "colors": [
+      {
+        "name": "Blue",
+        "hex": "#3F7BFF"
+      },
+      {
+        "name": "PastelRed",
+        "hex": "#FF6B6B"
+      },
+      {
+        "name": "Spark",
+        "hex": "#FFE2AE"
+      },
+      {
+        "name": "Custom",
+        "hex": "#FFE2AE"
+      },
+      {
+        "name": "Custom",
+        "hex": "#9F5000"
+      },
+      {
+        "name": "Custom",
+        "hex": "#C68100"
+      },
+      {
+        "name": "Custom",
+        "hex": "#8A4500"
+      },
+      {
+        "name": "Gold",
+        "hex": "#FFD27A"
+      }
+    ]
+  },
+  {
+    "file": "26_Canister_Shell_Fermate.fwe",
+    "name": "Silver (short, wide)",
+    "author": "Marcus Athmer",
+    "rootType": "Shell",
+    "subTypes": [
+      "AscentStar",
+      "BurstingCharge",
+      "CustomTailsLink",
+      "FadeInfo",
+      "RingDistribution",
+      "SphericalDistribution",
+      "StarTails",
+      "Stars",
+      "SubShells"
+    ],
+    "caliberM": 0.15,
+    "caliberIn": 5.9,
+    "starCount": 150,
+    "shotCount": null,
+    "colors": [
+      {
+        "name": "Spark",
+        "hex": "#FFE2AE"
+      },
+      {
+        "name": "Custom",
+        "hex": "#FFC082"
+      },
+      {
+        "name": "Custom",
+        "hex": "#A85400"
+      },
+      {
+        "name": "Custom",
+        "hex": "#8A4500"
+      },
+      {
+        "name": "PastelRed",
+        "hex": "#FF6B6B"
+      },
+      {
+        "name": "Blue",
+        "hex": "#3F7BFF"
+      },
+      {
+        "name": "Red",
+        "hex": "#FF1A1A"
+      },
+      {
+        "name": "Gold",
+        "hex": "#FFD27A"
+      }
+    ]
+  },
+  {
     "file": "27_Multibreak_Shell.fwe",
     "name": "Brocade (short)",
     "author": "Marcus Athmer",
@@ -144,22 +1113,45 @@
       "Stars"
     ],
     "caliberM": 0.15,
-    "caliberIn": 6,
+    "caliberIn": 5.9,
     "starCount": 59,
     "shotCount": null,
-    "primaryColor": "#FFE2AE",
-    "secondaryColor": "#623100",
-    "palette": [
-      "#FFE2AE",
-      "#623100",
-      "#934900",
-      "#A65300",
-      "#FF6B6B",
-      "#A24BFF"
+    "colors": [
+      {
+        "name": "Custom",
+        "hex": "#FFE2AE"
+      },
+      {
+        "name": "Custom",
+        "hex": "#623100"
+      },
+      {
+        "name": "Custom",
+        "hex": "#934900"
+      },
+      {
+        "name": "Custom",
+        "hex": "#A65300"
+      },
+      {
+        "name": "PastelRed",
+        "hex": "#FF6B6B"
+      },
+      {
+        "name": "DarkGreen",
+        "hex": null
+      },
+      {
+        "name": "Purple",
+        "hex": "#A24BFF"
+      },
+      {
+        "name": "Spark",
+        "hex": "#FFE2AE"
+      }
     ]
   },
   {
-    "id": "fin-28-dragon-egg",
     "file": "28_Dragon_Egg.fwe",
     "name": "Silver (short, wide)",
     "author": "Marcus Athmer",
@@ -176,22 +1168,37 @@
       "SubShells"
     ],
     "caliberM": 0.15,
-    "caliberIn": 6,
+    "caliberIn": 5.9,
     "starCount": 150,
     "shotCount": null,
-    "primaryColor": "#FFE2AE",
-    "secondaryColor": "#FFC082",
-    "palette": [
-      "#FFE2AE",
-      "#FFC082",
-      "#A85400",
-      "#8A4500",
-      "#FF6B6B",
-      "#FFD27A"
+    "colors": [
+      {
+        "name": "Spark",
+        "hex": "#FFE2AE"
+      },
+      {
+        "name": "Custom",
+        "hex": "#FFC082"
+      },
+      {
+        "name": "Custom",
+        "hex": "#A85400"
+      },
+      {
+        "name": "Custom",
+        "hex": "#8A4500"
+      },
+      {
+        "name": "PastelRed",
+        "hex": "#FF6B6B"
+      },
+      {
+        "name": "Gold",
+        "hex": "#FFD27A"
+      }
     ]
   },
   {
-    "id": "fin-29-shell-of-shells",
     "file": "29_Shell_of_Shells.fwe",
     "name": "29 Shell of Shells",
     "author": "Marcus Athmer (Effekt-Vorschau)",
@@ -205,22 +1212,41 @@
       "SubShells"
     ],
     "caliberM": 0.15,
-    "caliberIn": 6,
+    "caliberIn": 5.9,
     "starCount": 45,
     "shotCount": null,
-    "primaryColor": "#FF1A1A",
-    "secondaryColor": "#FF6B6B",
-    "palette": [
-      "#FF1A1A",
-      "#FF6B6B",
-      "#FFE2AE",
-      "#FFD27A",
-      "#3F7BFF",
-      "#FFFFFF"
+    "colors": [
+      {
+        "name": "Red",
+        "hex": "#FF1A1A"
+      },
+      {
+        "name": "PastelRed",
+        "hex": "#FF6B6B"
+      },
+      {
+        "name": "Spark",
+        "hex": "#FFE2AE"
+      },
+      {
+        "name": "Gold",
+        "hex": "#FFD27A"
+      },
+      {
+        "name": "DarkGreen",
+        "hex": null
+      },
+      {
+        "name": "Blue",
+        "hex": "#3F7BFF"
+      },
+      {
+        "name": "White",
+        "hex": "#FFFFFF"
+      }
     ]
   },
   {
-    "id": "fin-30-warimono",
     "file": "30_Warimono.fwe",
     "name": "30 Warimono",
     "author": "Marcus Athmer (Effekt-Vorschau)",
@@ -231,19 +1257,25 @@
       "Stars"
     ],
     "caliberM": 0.15,
-    "caliberIn": 6,
+    "caliberIn": 5.9,
     "starCount": 450,
     "shotCount": null,
-    "primaryColor": "#FFD600",
-    "secondaryColor": "#A24BFF",
-    "palette": [
-      "#FFD600",
-      "#A24BFF",
-      "#FFE2AE"
+    "colors": [
+      {
+        "name": "Yellow",
+        "hex": "#FFD600"
+      },
+      {
+        "name": "Purple",
+        "hex": "#A24BFF"
+      },
+      {
+        "name": "Spark",
+        "hex": "#FFE2AE"
+      }
     ]
   },
   {
-    "id": "fin-31-hanabi",
     "file": "31_Hanabi.fwe",
     "name": "Silver (short, thin)",
     "author": "Marcus Athmer",
@@ -257,22 +1289,334 @@
       "Stars"
     ],
     "caliberM": 0.208,
-    "caliberIn": 8,
+    "caliberIn": 8.2,
     "starCount": 400,
     "shotCount": null,
-    "primaryColor": "#FFE2AE",
-    "secondaryColor": "#FFC082",
-    "palette": [
-      "#FFE2AE",
-      "#FFC082",
-      "#A85400",
-      "#8A4500",
-      "#7DB6FF",
-      "#A24BFF"
+    "colors": [
+      {
+        "name": "Spark",
+        "hex": "#FFE2AE"
+      },
+      {
+        "name": "Custom",
+        "hex": "#FFC082"
+      },
+      {
+        "name": "Custom",
+        "hex": "#A85400"
+      },
+      {
+        "name": "Custom",
+        "hex": "#8A4500"
+      },
+      {
+        "name": "PastelBlue",
+        "hex": "#7DB6FF"
+      },
+      {
+        "name": "Purple",
+        "hex": "#A24BFF"
+      },
+      {
+        "name": "PastelRed",
+        "hex": "#FF6B6B"
+      },
+      {
+        "name": "White",
+        "hex": "#FFFFFF"
+      }
     ]
   },
   {
-    "id": "fin-40-roman-candle",
+    "file": "32_Whistle.fwe",
+    "name": "32 Whistle",
+    "author": "Marcus Athmer (Effekt-Vorschau)",
+    "rootType": "Shell",
+    "subTypes": [
+      "BurstingCharge",
+      "SphericalDistribution",
+      "Whistle"
+    ],
+    "caliberM": 0.15,
+    "caliberIn": 5.9,
+    "starCount": 20,
+    "shotCount": null,
+    "colors": [
+      {
+        "name": "Spark",
+        "hex": "#FFE2AE"
+      }
+    ]
+  },
+  {
+    "file": "33_Farfalle.fwe",
+    "name": "33 Farfalle ",
+    "author": "Marcus Athmer (Effekt-Vorschau)",
+    "rootType": "Shell",
+    "subTypes": [
+      "BurstingCharge",
+      "Farfalle",
+      "SphericalDistribution",
+      "Stars"
+    ],
+    "caliberM": 0.15,
+    "caliberIn": 5.9,
+    "starCount": 50,
+    "shotCount": null,
+    "colors": [
+      {
+        "name": "Yellow",
+        "hex": "#FFD600"
+      },
+      {
+        "name": "PastelRed",
+        "hex": "#FF6B6B"
+      },
+      {
+        "name": "Spark",
+        "hex": "#FFE2AE"
+      }
+    ]
+  },
+  {
+    "file": "34_Rocket.fwe",
+    "name": "Silver (short, thin)",
+    "author": "Marcus Athmer",
+    "rootType": "Rocket",
+    "subTypes": [
+      "BurstingCharge",
+      "CustomTailsLink",
+      "SphericalDistribution",
+      "StarTails",
+      "Stars"
+    ],
+    "caliberM": null,
+    "caliberIn": null,
+    "starCount": 68,
+    "shotCount": null,
+    "colors": [
+      {
+        "name": "Spark",
+        "hex": "#FFE2AE"
+      },
+      {
+        "name": "Custom",
+        "hex": "#FFC082"
+      },
+      {
+        "name": "Custom",
+        "hex": "#A85400"
+      },
+      {
+        "name": "Custom",
+        "hex": "#8A4500"
+      },
+      {
+        "name": "Pink",
+        "hex": "#FF66C4"
+      },
+      {
+        "name": "PastelRed",
+        "hex": "#FF6B6B"
+      }
+    ]
+  },
+  {
+    "file": "35_Mine.fwe",
+    "name": "Silver (short, thin)",
+    "author": "Marcus Athmer",
+    "rootType": "Mine",
+    "subTypes": [
+      "BurstingCharge",
+      "Crackling",
+      "CustomTailsLink",
+      "MineDistribution",
+      "StarTails",
+      "Stars"
+    ],
+    "caliberM": 0.15,
+    "caliberIn": 5.9,
+    "starCount": 30,
+    "shotCount": null,
+    "colors": [
+      {
+        "name": "Spark",
+        "hex": "#FFE2AE"
+      },
+      {
+        "name": "Custom",
+        "hex": "#FFC082"
+      },
+      {
+        "name": "Custom",
+        "hex": "#A85400"
+      },
+      {
+        "name": "Custom",
+        "hex": "#8A4500"
+      },
+      {
+        "name": "White",
+        "hex": "#FFFFFF"
+      },
+      {
+        "name": "Purple",
+        "hex": "#A24BFF"
+      },
+      {
+        "name": "PastelRed",
+        "hex": "#FF6B6B"
+      }
+    ]
+  },
+  {
+    "file": "36_Comet.fwe",
+    "name": "Brocade",
+    "author": "Marcus Athmer",
+    "rootType": "Mine",
+    "subTypes": [
+      "BurstingCharge",
+      "CustomTailsLink",
+      "MineDistribution",
+      "StarTails",
+      "Stars"
+    ],
+    "caliberM": 0.15,
+    "caliberIn": 5.9,
+    "starCount": 1,
+    "shotCount": null,
+    "colors": [
+      {
+        "name": "Custom",
+        "hex": "#FFE2AE"
+      },
+      {
+        "name": "Custom",
+        "hex": "#623100"
+      },
+      {
+        "name": "Custom",
+        "hex": "#934900"
+      },
+      {
+        "name": "Custom",
+        "hex": "#A65300"
+      },
+      {
+        "name": "PastelGreen",
+        "hex": "#7CFFB0"
+      },
+      {
+        "name": "PastelRed",
+        "hex": "#FF6B6B"
+      },
+      {
+        "name": "Spark",
+        "hex": "#FFE2AE"
+      }
+    ]
+  },
+  {
+    "file": "37_Catherine_Wheel.fwe",
+    "name": "Brocade (short)",
+    "author": "Marcus Athmer",
+    "rootType": "Sun",
+    "subTypes": [
+      "CustomTailsLink",
+      "MineDistribution",
+      "StarTails",
+      "Stars"
+    ],
+    "caliberM": null,
+    "caliberIn": null,
+    "starCount": 500,
+    "shotCount": null,
+    "colors": [
+      {
+        "name": "Custom",
+        "hex": "#FFE2AE"
+      },
+      {
+        "name": "Custom",
+        "hex": "#623100"
+      },
+      {
+        "name": "Custom",
+        "hex": "#934900"
+      },
+      {
+        "name": "Custom",
+        "hex": "#A65300"
+      },
+      {
+        "name": "PastelRed",
+        "hex": "#FF6B6B"
+      }
+    ]
+  },
+  {
+    "file": "38_Fountain_Vulcano.fwe",
+    "name": "38 Fountain/ Vulcano",
+    "author": "Marcus Athmer (Effekt-Vorschau)",
+    "rootType": "Mine",
+    "subTypes": [
+      "Eruption",
+      "MineDistribution",
+      "Stars"
+    ],
+    "caliberM": 0.1,
+    "caliberIn": 3.9,
+    "starCount": 300,
+    "shotCount": null,
+    "colors": [
+      {
+        "name": "Gold",
+        "hex": "#FFD27A"
+      },
+      {
+        "name": "PastelRed",
+        "hex": "#FF6B6B"
+      },
+      {
+        "name": "Custom",
+        "hex": "#B75B00"
+      },
+      {
+        "name": "Custom",
+        "hex": "#FAD289"
+      },
+      {
+        "name": "Custom",
+        "hex": "#804000"
+      },
+      {
+        "name": "Orange",
+        "hex": "#FF8A00"
+      },
+      {
+        "name": "Red",
+        "hex": "#FF1A1A"
+      }
+    ]
+  },
+  {
+    "file": "39_Bengal_Flame.fwe",
+    "name": "39 Bengal Flame",
+    "author": "Marcus Athmer (Effekt-Vorschau)",
+    "rootType": "Bengal",
+    "subTypes": [],
+    "caliberM": null,
+    "caliberIn": null,
+    "starCount": null,
+    "shotCount": null,
+    "colors": [
+      {
+        "name": "Mint",
+        "hex": null
+      }
+    ]
+  },
+  {
     "file": "40_Roman_Candle.fwe",
     "name": "40 Roman Candle",
     "author": "Marcus Athmer (Effekt-Vorschau)",
@@ -285,21 +1629,89 @@
       "Stars"
     ],
     "caliberM": 0.2,
-    "caliberIn": 8,
+    "caliberIn": 7.9,
     "starCount": 1,
-    "shotCount": 3,
-    "primaryColor": "#FF8A00",
-    "secondaryColor": "#FFE2AE",
-    "palette": [
-      "#FF8A00",
-      "#FFE2AE",
-      "#008000",
-      "#FF1A1A",
-      "#FBDEAA"
+    "shotCount": null,
+    "colors": [
+      {
+        "name": "Orange",
+        "hex": "#FF8A00"
+      },
+      {
+        "name": "Spark",
+        "hex": "#FFE2AE"
+      },
+      {
+        "name": "Custom",
+        "hex": "#008000"
+      },
+      {
+        "name": "Red",
+        "hex": "#FF1A1A"
+      },
+      {
+        "name": "Custom",
+        "hex": "#FBDEAA"
+      }
     ]
   },
   {
-    "id": "fin-41-cake-i",
+    "file": "41_Cake_(I-Shape).fwe",
+    "name": "Brocade (short, thin)",
+    "author": "Marcus Athmer",
+    "rootType": "Cake",
+    "subTypes": [
+      "AscentEffect",
+      "AscentStar",
+      "Bengal",
+      "BurstingCharge",
+      "CustomTailsLink",
+      "FadeInfo",
+      "Shell",
+      "SphericalDistribution",
+      "StarTails",
+      "Stars"
+    ],
+    "caliberM": 0.15,
+    "caliberIn": 5.9,
+    "starCount": 80,
+    "shotCount": null,
+    "colors": [
+      {
+        "name": "Spark",
+        "hex": "#FFE2AE"
+      },
+      {
+        "name": "Custom",
+        "hex": "#FFB871"
+      },
+      {
+        "name": "Custom",
+        "hex": "#824100"
+      },
+      {
+        "name": "Red",
+        "hex": "#FF1A1A"
+      },
+      {
+        "name": "Orange",
+        "hex": "#FF8A00"
+      },
+      {
+        "name": "DarkGreen",
+        "hex": null
+      },
+      {
+        "name": "Custom",
+        "hex": "#FFE2AE"
+      },
+      {
+        "name": "Custom",
+        "hex": "#623100"
+      }
+    ]
+  },
+  {
     "file": "41_Cake_I-Shape.fwe",
     "name": "Brocade (short, thin)",
     "author": "Marcus Athmer",
@@ -317,22 +1729,101 @@
       "Stars"
     ],
     "caliberM": 0.15,
-    "caliberIn": 6,
+    "caliberIn": 5.9,
     "starCount": 80,
     "shotCount": null,
-    "primaryColor": "#FFE2AE",
-    "secondaryColor": "#FFB871",
-    "palette": [
-      "#FFE2AE",
-      "#FFB871",
-      "#824100",
-      "#FF1A1A",
-      "#FF8A00",
-      "#FFE2AE"
+    "colors": [
+      {
+        "name": "Spark",
+        "hex": "#FFE2AE"
+      },
+      {
+        "name": "Custom",
+        "hex": "#FFB871"
+      },
+      {
+        "name": "Custom",
+        "hex": "#824100"
+      },
+      {
+        "name": "Red",
+        "hex": "#FF1A1A"
+      },
+      {
+        "name": "Orange",
+        "hex": "#FF8A00"
+      },
+      {
+        "name": "DarkGreen",
+        "hex": null
+      },
+      {
+        "name": "Custom",
+        "hex": "#FFE2AE"
+      },
+      {
+        "name": "Custom",
+        "hex": "#623100"
+      }
     ]
   },
   {
-    "id": "fin-42-cake-zv",
+    "file": "42_Cake_(Z-Shape_V-Shape).fwe",
+    "name": "Brocade (short, thin)",
+    "author": "Marcus Athmer",
+    "rootType": "Cake",
+    "subTypes": [
+      "AscentEffect",
+      "Bengal",
+      "BurstingCharge",
+      "CustomTailsLink",
+      "Mine",
+      "MineDistribution",
+      "Shell",
+      "SphericalDistribution",
+      "StarTails",
+      "Stars"
+    ],
+    "caliberM": 0.2,
+    "caliberIn": 7.9,
+    "starCount": 80,
+    "shotCount": null,
+    "colors": [
+      {
+        "name": "Custom",
+        "hex": "#FFE2AE"
+      },
+      {
+        "name": "Custom",
+        "hex": "#623100"
+      },
+      {
+        "name": "Custom",
+        "hex": "#934900"
+      },
+      {
+        "name": "Custom",
+        "hex": "#A65300"
+      },
+      {
+        "name": "Blue",
+        "hex": "#3F7BFF"
+      },
+      {
+        "name": "Orange",
+        "hex": "#FF8A00"
+      },
+      {
+        "name": "Pink",
+        "hex": "#FF66C4"
+      },
+      {
+        "name": "Spark",
+        "hex": "#FFE2AE"
+      }
+    ]
+  },
+  {
     "file": "42_Cake_Z-Shape_V-Shape.fwe",
     "name": "Brocade (short, thin)",
     "author": "Marcus Athmer",
@@ -350,22 +1841,45 @@
       "Stars"
     ],
     "caliberM": 0.2,
-    "caliberIn": 8,
+    "caliberIn": 7.9,
     "starCount": 80,
-    "shotCount": 3,
-    "primaryColor": "#FFE2AE",
-    "secondaryColor": "#623100",
-    "palette": [
-      "#FFE2AE",
-      "#623100",
-      "#934900",
-      "#A65300",
-      "#3F7BFF",
-      "#FF8A00"
+    "shotCount": null,
+    "colors": [
+      {
+        "name": "Custom",
+        "hex": "#FFE2AE"
+      },
+      {
+        "name": "Custom",
+        "hex": "#623100"
+      },
+      {
+        "name": "Custom",
+        "hex": "#934900"
+      },
+      {
+        "name": "Custom",
+        "hex": "#A65300"
+      },
+      {
+        "name": "Blue",
+        "hex": "#3F7BFF"
+      },
+      {
+        "name": "Orange",
+        "hex": "#FF8A00"
+      },
+      {
+        "name": "Pink",
+        "hex": "#FF66C4"
+      },
+      {
+        "name": "Spark",
+        "hex": "#FFE2AE"
+      }
     ]
   },
   {
-    "id": "fin-43-single-row",
     "file": "43_Single_Row.fwe",
     "name": "Gold",
     "author": "Marcus Athmer",
@@ -379,22 +1893,41 @@
       "Stars"
     ],
     "caliberM": 0.2,
-    "caliberIn": 8,
+    "caliberIn": 7.9,
     "starCount": 60,
-    "shotCount": 1,
-    "primaryColor": "#FFE2AE",
-    "secondaryColor": "#FFE2AE",
-    "palette": [
-      "#FFE2AE",
-      "#FFE2AE",
-      "#9F5000",
-      "#C68100",
-      "#8A4500",
-      "#FF8A00"
+    "shotCount": null,
+    "colors": [
+      {
+        "name": "Spark",
+        "hex": "#FFE2AE"
+      },
+      {
+        "name": "Custom",
+        "hex": "#FFE2AE"
+      },
+      {
+        "name": "Custom",
+        "hex": "#9F5000"
+      },
+      {
+        "name": "Custom",
+        "hex": "#C68100"
+      },
+      {
+        "name": "Custom",
+        "hex": "#8A4500"
+      },
+      {
+        "name": "Orange",
+        "hex": "#FF8A00"
+      },
+      {
+        "name": "PastelRed",
+        "hex": "#FF6B6B"
+      }
     ]
   },
   {
-    "id": "fin-44-lancework",
     "file": "44_Lancework.fwe",
     "name": "Lancework Preset",
     "author": "LT",
@@ -404,8 +1937,6 @@
     "caliberIn": null,
     "starCount": null,
     "shotCount": null,
-    "primaryColor": null,
-    "secondaryColor": null,
-    "palette": []
+    "colors": []
   }
 ]

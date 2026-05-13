@@ -1,9 +1,15 @@
-"""Extract preset metadata from .fwe (Finale 3D / FWsim XML)."""
-import glob, json, os, re
-from xml.etree import ElementTree as ET
-from collections import Counter
+"""Extract preset metadata from .fwe (Finale 3D / FWsim XML).
 
-NS = {'xsi': 'http://www.w3.org/2001/XMLSchema-instance'}
+Outputs a JSON array (one object per .fwe file) with the shape consumed
+by `src/data/fwsimBuiltinPresets.ts`. Run from the repo root:
+
+    python3 scripts/parse-fwe-presets.py > src/data/fwsimBuiltinPresets.json
+"""
+import glob
+import json
+import os
+import re
+from xml.etree import ElementTree as ET
 
 NAMED_COLORS = {
     'PastelRed': '#FF6B6B', 'Red': '#FF1A1A', 'PastelGreen': '#7CFFB0',
@@ -15,90 +21,129 @@ NAMED_COLORS = {
     'Lemon': '#FFF59A', 'Invisible': None,
 }
 
+XSI_TYPE = '{http://www.w3.org/2001/XMLSchema-instance}type'
+
+
 def hex_from(r, g, b):
-    return '#%02X%02X%02X' % (max(0, min(255, int(r))), max(0, min(255, int(g))), max(0, min(255, int(b))))
+    return '#%02X%02X%02X' % (
+        max(0, min(255, int(float(r)))),
+        max(0, min(255, int(float(g)))),
+        max(0, min(255, int(float(b)))),
+    )
+
+
+def slugify(s):
+    s = re.sub(r'\.fwe$', '', s, flags=re.IGNORECASE)
+    s = re.sub(r'[^A-Za-z0-9]+', '-', s).strip('-').lower()
+    return s
+
 
 def parse(path):
     raw = open(path, encoding='utf-8-sig').read()
     root = ET.fromstring(raw)
-    name_el = root.find('.//{*}ComponentID/{*}Name') if False else None
-    # Top-level effect name + author
-    names = [e.text for e in root.iter() if e.tag.endswith('}Name') or e.tag == 'Name']
-    authors = [e.text for e in root.iter() if e.tag.endswith('}Author') or e.tag == 'Author']
-    # Effect type = first BaseEffectNode xsi:type at root.Children
+    name = next(
+        (e.text for e in root.iter() if (e.tag.endswith('}Name') or e.tag == 'Name') and e.text),
+        None,
+    )
+    author = next(
+        (e.text for e in root.iter() if (e.tag.endswith('}Author') or e.tag == 'Author') and e.text),
+        None,
+    )
+
+    # First non-trivial xsi:type at the top of the tree
     root_type = None
-    for child in root.iter():
-        t = child.attrib.get('{http://www.w3.org/2001/XMLSchema-instance}type')
-        if t and child.tag.endswith('BaseEffectNode'):
+    for el in root.iter():
+        t = el.attrib.get(XSI_TYPE)
+        if t and t in ('Cake', 'Shell', 'Mine', 'Lancework', 'RomanCandle', 'Fountain'):
             root_type = t
             break
-    # Collect all xsi:types
-    types = []
-    for el in root.iter():
-        t = el.attrib.get('{http://www.w3.org/2001/XMLSchema-instance}type')
-        if t:
-            types.append(t)
-    # Colors: walk Stars children and capture Color + (CustomR,G,B)
-    colors = []
-    for stars in root.iter():
-        if stars.attrib.get('{http://www.w3.org/2001/XMLSchema-instance}type') in ('Stars', 'AscentStar', 'Bengal'):
-            for star in list(stars) + [stars]:
-                pass
-        # look for Color sibling tags
-    # Simpler: walk tree and group adjacent Color/CustomR/G/B
-    def walk(el):
-        out = []
-        children = list(el)
-        for i, c in enumerate(children):
-            if c.tag.endswith('Color') or c.tag == 'Color':
-                color_name = (c.text or '').strip()
-                # find sibling CustomR/G/B in same parent within nearby
+    if root_type is None:
+        for el in root.iter():
+            t = el.attrib.get(XSI_TYPE)
+            if t:
+                root_type = t
+                break
+
+    # Walk colors (Color text + sibling CustomR/G/B)
+    palette = []
+    for parent in root.iter():
+        children = list(parent)
+        for c in children:
+            if not (c.tag.endswith('Color') or c.tag == 'Color'):
+                continue
+            color_name = (c.text or '').strip()
+            if color_name in ('', 'Invisible', 'true', 'false', 'True', 'False'):
+                continue
+            if color_name == 'Custom':
                 r = g = b = None
                 for sib in children:
-                    if sib.tag.endswith('CustomR') or sib.tag == 'CustomR':
+                    tag = sib.tag.split('}')[-1]
+                    if tag == 'CustomR':
                         r = sib.text
-                    elif sib.tag.endswith('CustomG') or sib.tag == 'CustomG':
+                    elif tag == 'CustomG':
                         g = sib.text
-                    elif sib.tag.endswith('CustomB') or sib.tag == 'CustomB':
+                    elif tag == 'CustomB':
                         b = sib.text
-                if color_name == 'Custom' and r is not None:
-                    out.append({'name': 'Custom', 'hex': hex_from(r, g, b)})
-                elif color_name and color_name not in ('Invisible','true','false','True','False'):
-                    out.append({'name': color_name, 'hex': NAMED_COLORS.get(color_name)})
-            out.extend(walk(c))
-        return out
-    raw_colors = walk(root)
-    # Dedupe colors keeping first occurrence
-    seen = set()
-    unique_colors = []
-    for c in raw_colors:
-        key = (c['name'], c.get('hex'))
-        if key in seen: continue
-        seen.add(key)
-        unique_colors.append(c)
-    # Numeric fields
+                if r is not None and g is not None and b is not None:
+                    hx = hex_from(r, g, b)
+                    if hx not in palette:
+                        palette.append(hx)
+            else:
+                hx = NAMED_COLORS.get(color_name)
+                if hx and hx not in palette:
+                    palette.append(hx)
+            if len(palette) >= 8:
+                break
+        if len(palette) >= 8:
+            break
+
+    # Numerics
     def collect(tag):
-        return [el.text for el in root.iter() if el.tag == tag or el.tag.endswith('}' + tag)]
-    diameters = [float(x) for x in collect('Diameter') if x]
-    counts = [int(float(x)) for x in collect('Count') if x]
-    shot_counts = [int(float(x)) for x in collect('ShotCount') if x]
-    lift_charges = [float(x) for x in collect('LiftCharge') if x]
-    # Caliber heuristic: largest Diameter (meters → inches via /0.0254)
+        return [
+            el.text for el in root.iter()
+            if (el.tag == tag or el.tag.endswith('}' + tag)) and el.text
+        ]
+
+    diameters = [float(x) for x in collect('Diameter')]
+    counts = [int(float(x)) for x in collect('Count')]
+    shot_counts = [int(float(x)) for x in collect('ShotCount')]
     caliber_in = round(max(diameters) / 0.0254, 1) if diameters else None
-    # Star count: take max Count under Stars-typed nodes (approx via biggest count)
-    star_count = max(counts) if counts else None
+
+    file_name = os.path.basename(path)
+    stem = re.sub(r'\.fwe$', '', file_name, flags=re.IGNORECASE)
+    leading_num_match = re.match(r'^(\d{1,3})[ _-]', stem)
+    leading_num = leading_num_match.group(1).zfill(2) if leading_num_match else None
+    fwe_id = 'fin-' + slugify(stem)
+
+    # Thumbnail derived from leading "NN " prefix → public/finale-presets/thumbs/NN.png
+    thumb_url = (
+        '/finale-presets/thumbs/' + leading_num + '.png' if leading_num else None
+    )
+
     return {
-        'file': os.path.basename(path),
-        'name': names[0] if names else None,
-        'author': authors[0] if authors else None,
+        'id': fwe_id,
+        'file': file_name,
+        'leadingNumber': leading_num,
+        'name': name,
+        'author': author,
         'rootType': root_type,
-        'subTypes': sorted(set(types) - {root_type}) if root_type else sorted(set(types)),
         'caliberM': max(diameters) if diameters else None,
         'caliberIn': caliber_in,
-        'starCount': star_count,
+        'starCount': max(counts) if counts else None,
         'shotCount': shot_counts[0] if shot_counts else None,
-        'colors': unique_colors[:8],
+        'primaryColor': palette[0] if palette else None,
+        'secondaryColor': palette[1] if len(palette) >= 2 else None,
+        'palette': palette,
+        'thumbUrl': thumb_url,
     }
 
-results = [parse(f) for f in sorted(glob.glob('public/finale-presets/*.fwe'))]
-print(json.dumps(results, indent=2, ensure_ascii=False))
+
+if __name__ == '__main__':
+    files = sorted(glob.glob('public/finale-presets/*.fwe'))
+    out = []
+    for f in files:
+        try:
+            out.append(parse(f))
+        except Exception as e:  # pylint: disable=broad-except
+            out.append({'file': os.path.basename(f), 'error': str(e)})
+    print(json.dumps(out, indent=2, ensure_ascii=False))

@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg
+   xmlns:dc="http://purl.org/dc/elements/1.1/"
+   xmlns:cc="http://creativecommons.org/ns#"
+   xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+   xmlns:svg="http://www.w3.org/2000/svg"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   width="19.047606"
+   height="11.9048"
+   viewBox="0 0 19.047606 11.9048"
+   version="1.1"
+   id="svg4"
+   sodipodi:docname="cue-camera.svg"
+   style="fill:none"
+   inkscape:version="0.92.4 (5da689c313, 2019-01-14)">
+  <metadata
+     id="metadata10">
+    <rdf:RDF>
+      <cc:Work
+         rdf:about="">
+        <dc:format>image/svg+xml</dc:format>
+        <dc:type
+           rdf:resource="http://purl.org/dc/dcmitype/StillImage" />
+        <dc:title></dc:title>
+      </cc:Work>
+    </rdf:RDF>
+  </metadata>
+  <defs
+     id="defs8" />
+  <sodipodi:namedview
+     pagecolor="#ffffff"
+     bordercolor="#666666"
+     borderopacity="1"
+     objecttolerance="10"
+     gridtolerance="10"
+     guidetolerance="10"
+     inkscape:pageopacity="0"
+     inkscape:pageshadow="2"
+     inkscape:window-width="1920"
+     inkscape:window-height="1137"
+     id="namedview6"
+     showgrid="false"
+     fit-margin-top="0"
+     fit-margin-left="0"
+     fit-margin-right="0"
+     fit-margin-bottom="0"
+     inkscape:zoom="11.8"
+     inkscape:cx="9.285706"
+     inkscape:cy="6.4286"
+     inkscape:window-x="1912"
+     inkscape:window-y="-8"
+     inkscape:window-maximized="1"
+     inkscape:current-layer="svg4" />
+  <path
+     d="M 12.857106,11.9048 H 1.428576 C 0.228572,11.9048 0,11.6667 0,10.4762 V 1.64286 C 0,0.26191 0.247619,0 1.428576,0 h 11.42853 c 1.2,0 1.4286,0.2381 1.4286,1.42858 V 5.7143 l 3.581,-5.33811 c 0.5476,-0.53333 0.9095,-0.51428 1.1809,0.15238 V 10.9191 c -0.2714,0.6666 -0.6333,0.6523 -1.1809,0.119 l -3.581,-4.8476 v 4.2857 c 0,1.2043 -0.2243,1.4286 -1.4286,1.4286 z M 7.224726,5.5372 V 3.34205 h 1.42683 L 6.785706,1.4762 4.919856,3.34205 h 1.42683 V 5.5372 H 4.151556 V 4.11035 L 2.285706,5.9762 4.151556,7.8421 V 6.4152 h 2.19513 v 2.1951 h -1.42683 l 1.86585,1.8659 1.86585,-1.8659 H 7.224726 V 6.4152 h 2.19508 v 1.4269 l 1.8659,-1.8659 -1.8659,-1.86585 V 5.5372 Z"
+     id="path2"
+     inkscape:connector-curvature="0"
+     style="clip-rule:evenodd;fill:#000000;fill-rule:evenodd" />
+</svg>
