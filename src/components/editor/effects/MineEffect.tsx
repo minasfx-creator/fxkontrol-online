@@ -7,6 +7,8 @@ import { useProjectStore } from '@/store/useProjectStore';
 import { readDensityAt, injectDensity, injectVelocity, type FluidGrid } from '@/render_ultra/fireworks/niagaraFluids';
 import { getChemistryForRendering, autoMatchFormulation } from '@/render_ultra/fireworks/particleChemistry';
 import { resolveMinePresetProps } from '@/data/finalePresets';
+import { selectMineSilhouette } from '@/render/silhouettes/mineSilhouettes';
+import { isFlagOn } from '@/lib/featureFlags';
 
 /**
  * Mine Effect — Multi-phase ground burst (PyroJam 2026 reference)
