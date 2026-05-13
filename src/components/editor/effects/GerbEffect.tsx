@@ -82,14 +82,14 @@ export default function GerbEffect({
         burstDelay: 0,
       },
       init: {
-        lifetime: [0.4, 1.1],
+        lifetime: [lifetimeMin, lifetimeMax],
         size: [0.3, 1.0],
         velocity: {
           min: new THREE.Vector3(-spraySpeed * 0.06, spraySpeed * 0.65, -spraySpeed * 0.06),
-          max: new THREE.Vector3(spraySpeed * 0.06, spraySpeed * 1.0, spraySpeed * 0.06),
+          max: new THREE.Vector3(spraySpeed * 0.06, spraySpeed * 1.0 * presetCfg.topBrightnessBoost, spraySpeed * 0.06),
         },
         color: baseColor.clone(),
-        spawnShape: { type: 'cone', radius: 0.08, coneAngle: 8 * Math.PI / 180 },
+        spawnShape: { type: 'cone', radius: 0.08, coneAngle: presetCfg.coneAngleDeg * Math.PI / 180 },
       },
       update: [{
         drag: 0.08,
@@ -132,7 +132,7 @@ export default function GerbEffect({
     return () => {
       niagaraSystemRef.current = null;
     };
-  }, [scaledHeight, SCALED_PARTICLE_COUNT, baseColor]);
+  }, [scaledHeight, SCALED_PARTICLE_COUNT, baseColor, presetCfg]);
 
   useFrame(({ clock }, delta) => {
     if (!pointsRef.current || !niagaraSystemRef.current) return;
