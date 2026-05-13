@@ -105,11 +105,7 @@ export const useImportedFweStore = create<ImportedFweState>((set, get) => ({
       const userId = await getUserId();
       if (!userId) return;
       try {
-        await supabase
-          .from('imported_fwe_effects')
-          .delete()
-          .eq('user_id', userId)
-          .eq('effect_id', id);
+        await fweTable().delete().eq('user_id', userId).eq('effect_id', id);
       } catch {
         /* ignore */
       }
