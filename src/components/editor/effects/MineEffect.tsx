@@ -163,7 +163,7 @@ export default function MineEffect({
     const t = progress * 2.5;
     const GRAV = -9.81;
     const time = clock.getElapsedTime();
-    const envelope = attackReleaseEnvelope(progress, 0.02, 0.85, 2.5);
+    const envelope = attackReleaseEnvelope(progress, 0.015, 0.55, 3.2);
 
     // Wind integration
     const { wind } = useProjectStore.getState();
