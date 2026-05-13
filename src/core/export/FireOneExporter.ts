@@ -70,7 +70,7 @@ export function generateFireOneScript(): FireOneExportResult {
 
 export function downloadFireOneScript(filename = 'fxk_show.csv'): void {
   const result = generateFireOneScript();
-  const blob = new Blob([result.script], { type: 'text/plain' });
+  const blob = new Blob([result.script], { type: 'text/csv;charset=utf-8' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
