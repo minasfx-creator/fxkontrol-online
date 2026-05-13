@@ -395,13 +395,10 @@ export default function MineEffect({
 
   const screenBlend = useMemo(() => getThreeBlending('screen'), []);
 
-  // Compute launch direction quaternion from heading/pitch
-  const launchRotation = useMemo(() => {
-    const headingRad = -(launchHeading || 0) * Math.PI / 180;
-    const pitchRad = (90 - (launchPitch || 85)) * Math.PI / 180;
-    const euler = new THREE.Euler(pitchRad, headingRad, 0, 'YXZ');
-    return euler;
-  }, [launchHeading, launchPitch]);
+  // Mines are omnidirectional — root group is intentionally NOT rotated.
+  // launchHeading/launchPitch are still accepted in the props for future
+  // selective use (e.g. sutil column tilt ≤10°), but never tip the cloud.
+  void launchHeading; void launchPitch;
 
   // Combustion-modulated muzzle flash
   const muzzleFlashOpacity = useMemo(() => 0.7, []);
