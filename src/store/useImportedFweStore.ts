@@ -125,7 +125,7 @@ export const useImportedFweStore = create<ImportedFweState>((set, get) => ({
       const userId = await getUserId();
       if (!userId) return;
       try {
-        await supabase.from('imported_fwe_effects').delete().eq('user_id', userId);
+        await fweTable().delete().eq('user_id', userId);
       } catch {
         /* ignore */
       }
@@ -160,7 +160,7 @@ export const useImportedFweStore = create<ImportedFweState>((set, get) => ({
 
       if (localOnly.length > 0) {
         try {
-          await supabase.from('imported_fwe_effects').upsert(
+          await fweTable().upsert(
             localOnly.map((fx) => ({
               user_id: userId,
               effect_id: fx.id,
@@ -185,7 +185,7 @@ export const useImportedFweStore = create<ImportedFweState>((set, get) => ({
     const items = get().effects;
     if (items.length === 0) return;
     try {
-      await supabase.from('imported_fwe_effects').upsert(
+      await fweTable().upsert(
         items.map((fx) => ({
           user_id: userId,
           effect_id: fx.id,
