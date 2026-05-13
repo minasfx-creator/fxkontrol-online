@@ -41,6 +41,9 @@ export type EffectThumbKey = keyof typeof EFFECT_THUMBS;
 
 /** Resolve the best-matching thumbnail key for an Effect, or null. */
 export function resolveEffectThumbKey(effect: Effect): EffectThumbKey | null {
+  // Only pyro / sfx ground-effect kinds get a raster.
+  if (effect.type !== 'firework' && effect.type !== 'sfx') return null;
+
   const pattern = (effect.pattern ?? '').toLowerCase();
   const part = effect.partType;
   const cat = effect.category;
