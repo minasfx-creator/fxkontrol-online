@@ -87,8 +87,10 @@ const TEXT_ENCODER = new TextEncoder();
 
 export async function hmacSha256Trunc8(psk: Uint8Array, msg: Uint8Array): Promise<Uint8Array> {
   if (typeof crypto !== 'undefined' && crypto.subtle) {
-    const key = await crypto.subtle.importKey('raw', psk, { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
-    const sig = await crypto.subtle.sign('HMAC', key, msg);
+    const pskBuf = psk.buffer.slice(psk.byteOffset, psk.byteOffset + psk.byteLength) as ArrayBuffer;
+    const msgBuf = msg.buffer.slice(msg.byteOffset, msg.byteOffset + msg.byteLength) as ArrayBuffer;
+    const key = await crypto.subtle.importKey('raw', pskBuf, { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
+    const sig = await crypto.subtle.sign('HMAC', key, msgBuf);
     return new Uint8Array(sig).slice(0, 8);
   }
   return hmacSha256TruncSync(psk, msg).slice(0, 8);
