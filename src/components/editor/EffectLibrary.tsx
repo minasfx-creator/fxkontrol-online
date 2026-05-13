@@ -576,12 +576,27 @@ export default function EffectLibrary() {
     return merged;
   }, [importedFweEffects]);
 
-  const filteredEffects = useMemo(() =>
-    fullLibrary.filter((e) => {
+  const filteredEffects = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    return fullLibrary.filter((e) => {
       if (typeFilter !== 'all' && e.type !== typeFilter) return false;
-      if (search && !e.name.toLowerCase().includes(search.toLowerCase())) return false;
+      if (familyFilter.size > 0) {
+        const fam = e.partType ?? e.type;
+        if (!familyFilter.has(fam)) return false;
+      }
+      if (q) {
+        const hay = [
+          e.name,
+          e.category,
+          e.partType ?? '',
+          e.pattern ?? '',
+          FAMILY_LABEL[e.partType ?? ''] ?? '',
+        ].join(' ').toLowerCase();
+        if (!hay.includes(q)) return false;
+      }
       return true;
-    }), [fullLibrary, typeFilter, search]);
+    });
+  }, [fullLibrary, typeFilter, familyFilter, search]);
 
   const categoryCounts = useMemo(() => {
     const counts: Record<string, number> = {};
@@ -590,6 +605,32 @@ export default function EffectLibrary() {
     });
     return counts;
   }, [filteredEffects]);
+
+  /**
+   * Family chip catalog: distinct partTypes present in the library after
+   * type-filter (so chips reflect what's actually selectable). Sorted by
+   * count desc, then label asc. Counts are computed BEFORE familyFilter
+   * so the user can see how many entries each family adds.
+   */
+  const familyChips = useMemo(() => {
+    const counts = new Map<string, number>();
+    fullLibrary.forEach((e) => {
+      if (typeFilter !== 'all' && e.type !== typeFilter) return;
+      const fam = e.partType ?? e.type;
+      counts.set(fam, (counts.get(fam) ?? 0) + 1);
+    });
+    return Array.from(counts.entries())
+      .map(([id, count]) => ({ id, count, label: FAMILY_LABEL[id] ?? id }))
+      .sort((a, b) => b.count - a.count || a.label.localeCompare(b.label));
+  }, [fullLibrary, typeFilter]);
+
+  const toggleFamily = useCallback((id: string) => {
+    setFamilyFilter((prev) => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+  }, []);
 
   const handleVDLSubmit = (e: React.KeyboardEvent) => {
     if (e.key !== 'Enter' || !vdlInput.trim()) return;
