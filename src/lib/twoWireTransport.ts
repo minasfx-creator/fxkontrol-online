@@ -214,8 +214,8 @@ export class TwoWireTransport {
         psk: this.psk,
         lastCounter: (a) => this.lastSeenCounters.get(a) ?? 0,
       });
-      if (!decoded.ok) {
-        const err = decoded.error;
+      if (decoded.ok === false) {
+        const err = (decoded as { ok: false; error: string }).error;
         if (err === 'crc' || err === 'hmac') {
           this.crcErrorTimestamps.push(Date.now());
           this.recomputeCrcRate();
