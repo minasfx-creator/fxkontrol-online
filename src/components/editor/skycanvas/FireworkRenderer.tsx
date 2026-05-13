@@ -465,6 +465,10 @@ export const FireworkBurst = React.forwardRef<THREE.Group, {
           vz = Math.sin(ringAngle + ringJitter) * breakSpeed * (0.92 + Math.random() * 0.08);
           break;
         }
+        case 'salute':
+          // Titanium salute: very high velocity, very short life — bright detonation flash
+          vx = sx * breakSpeed * 1.9 * speedVar; vy = sy * breakSpeed * 1.8 * speedVar + 0.4; vz = sz * breakSpeed * 1.9 * speedVar;
+          life = starLife * (0.25 + Math.random() * 0.12); break;
         case 'dahlia':
           // Dahlia: HIGH velocity, short life — bright detonation flash with fewer large stars
           vx = sx * breakSpeed * 1.7 * speedVar; vy = sy * breakSpeed * 1.6 * speedVar + 0.5; vz = sz * breakSpeed * 1.7 * speedVar;
