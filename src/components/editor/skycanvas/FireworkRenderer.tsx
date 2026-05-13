@@ -913,7 +913,10 @@ export const FireworkBurst = React.forwardRef<THREE.Group, {
       const userFade = 1 - starAge;
       
       let blendR = baseColor.r, blendG = baseColor.g, blendB = baseColor.b;
-      if (secondaryBaseColor && colorTransition) {
+      // Half-Half preset: paint the +X hemisphere with primary, the −X with secondary.
+      if (shellPreset?.id === 'half-half' && secondaryBaseColor && i >= STAR_COUNT / 2) {
+        blendR = secondaryBaseColor.r; blendG = secondaryBaseColor.g; blendB = secondaryBaseColor.b;
+      } else if (secondaryBaseColor && colorTransition) {
         if (colorTransition === 'to') {
           blendR = THREE.MathUtils.lerp(baseColor.r, secondaryBaseColor.r, starAge);
           blendG = THREE.MathUtils.lerp(baseColor.g, secondaryBaseColor.g, starAge);
@@ -928,6 +931,11 @@ export const FireworkBurst = React.forwardRef<THREE.Group, {
             blendR = secondaryBaseColor.r; blendG = secondaryBaseColor.g; blendB = secondaryBaseColor.b;
           }
         }
+      }
+      // Cluster-Diadem: FWsim "Invisible" body — suppress the spherical
+      // placeholder so only the AscentEffect cone reads on screen.
+      if (isClusterDiadem) {
+        blendR = 0; blendG = 0; blendB = 0;
       }
       
       const r = THREE.MathUtils.lerp(blendR * userFade, chemR, 0.7);
