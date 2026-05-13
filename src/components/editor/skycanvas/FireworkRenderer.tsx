@@ -392,6 +392,7 @@ export const FireworkBurst = React.forwardRef<THREE.Group, {
     if (pattern === 'willow' || pattern === 'kamuro') return baseLife * 3.0;
     if (pattern === 'palm' || pattern === 'brocade') return baseLife * 1.6;
     if (pattern === 'chrysanthemum') return baseLife * 1.2;
+    if (pattern === 'salute') return baseLife * 0.45;
     if (pattern === 'dahlia') return baseLife * 0.35;
     if (pattern === 'dragon_egg') return baseLife * 1.8;
     if (pattern === 'multi_break') return baseLife * 1.4;
