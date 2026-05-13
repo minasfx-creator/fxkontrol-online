@@ -1,69 +1,68 @@
-# Plano rev6 — Pattern shells (Ring/Heart/Smiley/Bow Tie/Diadem/Jellyfish/Half-Half)
+## Rev 7 — Silver Crackling Tip mine family
 
-Estende `src/data/finalePresets.ts` com **9 shells de padrão geométrico** extraídos dos novos FWE. Esta rev introduz dois novos `ShellGeometry` (`heart`, `custom-shape`, `hemisphere`) e expande o catálogo para 19 shells totais.
+The 9 uploaded `.fwe` files share an identical Mine body (Silver Crackling, 6 StarTails layers, `MineDistribution{Speed=1.25, Sigma=0.071, Spread≈0.122}`, `Count=14`, lifetime 1.5–2.41 s, `fadeABCD=[0.6434,0.7585,0.9,0.999]`) and differ only by the inner Stars `<Color>` ("tip color"): Aqua, Blue, Green, Mint, Orange, PastelBlue, PastelGreen, PastelPurple, PastelRed.
 
-## Parâmetros canônicos extraídos (FWsim Pro, 1:1)
+### Scope
 
-| ID | Source | Distribution | Count | Speed | Sigma | Star/Mass | Life | FadeABCD | Cor base |
-|---|---|---|---|---|---|---|---|---|---|
-| `ring` | 25_Ring | Ring | 20 | 0.8 | 0 | Small/0.8 | 1.2–1.6 | 0.127, 0.461, 0.814, 0.999 | Red |
-| `double-ring` | 26_Double_Ring | Ring + 2nd Ring rotated | 30 | 0.8 | 0 | Small/0.8 | 1.2–1.6 | 0.127, 0.705, 0.814, 0.999 | Red |
-| `saturn-ring` | 27_Saturn_Ring | Ring + spherical core | 16 | 0.8 | 0 | XSmall/0.5 | 2.3–2.5 | 0.506, 0.698, 0.870, 1 | Orange + Gold Titanium glitter strobe 36.5Hz |
-| `heart` | 28_Heart | **HeartDistribution** | 34 | 0.5 | 0.14 | Small/0.8 | 1.2–1.6 | 0.127, 0.461, 0.814, 0.999 | Red |
-| `smiley` | 29_Smiley | **CustomShapeDistribution** | 150 | 1.0 | 0.02 | XSmall/0.7 | 1.5–2.82 | 0.1, 0.302, 0.796, 1 | Orange |
-| `bow-tie` | 30_Bow_Tie | Mine + Silver #4 tail | 40 | 0.8 | 0.018 | XSmall/0.7 | 1–2 | 0.176, 0.547, 0.897, 0.999 | PastelGreen + Silver tails D250 W0.6 |
-| `cluster-diadem` | 31_Cluster_Diadem | Mine + AscentEffect cluster | 20 | 0.6 | 0.14 | Small/0.8 | 1.5–2.3 | 0.1, 0.302, 0.796, 1 | Invisible body + ascent gold sparks |
-| `jellyfish` | 32_Jellyfish_Mushroom | Mine inverted (X-rot π) | 6 | 0.8 | 0 | Small/0.8 | 1.5–2.3 | 0.1, 0.302, 0.796, 1 | White + Silver tail D500 W0.6 |
-| `half-half` | 33_Half_Half | **HemisphereDistribution** | 50 | 0.8 | 0.02 | XXSmall/0.5 | 1.2–1.5 | 0.1, 0.250, 0.734, 0.968 | Orange (with Red phase) |
+- **Data only.** No safety, workMode, uiCommandGateway, CommandBus, FieldBus, hardware, renderer, or GPGPU change.
+- Strict 1:1 with FWsim XML (parameters extracted from the canonical capture, with the per-file color override).
 
-## Mudanças
+### Files to edit
 
-### 1. `src/data/finalePresets.ts`
+**1. `src/data/finalePresets.ts`**
 
-- Estender `ShellGeometry`:
-  ```ts
-  | 'sphere' | 'ring' | 'palm-semi' | 'crown-asym'
-  | 'quarter-sphere'
-  | 'heart' | 'custom-shape' | 'hemisphere' | 'inverted-hemisphere'
-  ```
-- Adicionar **9 entradas** em `FINALE_SHELL_PRESETS` (`ring`, `double-ring`, `saturn-ring`, `heart`, `smiley`, `bow-tie`, `cluster-diadem`, `jellyfish`, `half-half`).
-- Em `saturn-ring`/`bow-tie`/`jellyfish`: incluir `tails[]` canônicos da `CustomTailsLink` (Gold Titanium 89Hz strobe / Silver #4 / Silver D500).
-- Em `cluster-diadem`: adicionar campo opcional `ascent?: { densityHz, lifeS, colorHex }` para registrar o `AscentEffect` (renderer rev futura consumirá; struct descritiva só).
-- Estender `resolveShellPresetId()` com os novos nomes (`/\bring\b/` → `'ring'`, `/double.?ring/` → `'double-ring'`, `/saturn/` → `'saturn-ring'`, `/heart/` → `'heart'`, `/smiley/` → `'smiley'`, `/bow.?tie/` → `'bow-tie'`, `/diadem|cluster.?diadem/` → `'cluster-diadem'`, `/jellyfish|mushroom/` → `'jellyfish'`, `/half.?half/` → `'half-half'`). Ordem importa: `double-ring` antes de `ring`, `saturn-ring` antes de `ring`.
-- Em `TRAIL_HINT`/`CALIBER_HINT`: hints sensatos por preset.
+Add a shared helper inside `FINALE_MINE_PRESETS` (or as a local builder) that constructs each preset from the canonical Silver-Crackling body + a per-tip color hex. Then add 9 entries:
 
-### 2. `src/data/__tests__/finalePresets.shell.spec.ts`
+```
+mine-silver-crackling-aqua          (#10D7D7)
+mine-silver-crackling-blue          (#2A55FF)
+mine-silver-crackling-green         (#22C24A)
+mine-silver-crackling-mint          (#80FFC8)
+mine-silver-crackling-orange        (#FF7A00)
+mine-silver-crackling-pastel-blue   (#A8C8FF)
+mine-silver-crackling-pastel-green  (#A8FFB0)
+mine-silver-crackling-pastel-purple (#D6A8FF)
+mine-silver-crackling-pastel-red    (#FFA8A8)
+```
 
-- Atualizar a lista canônica para 19 shells.
-- Bloco "rev6 — pattern shells" com 9 testes:
-  - `ring` count 20 RingDistribution
-  - `double-ring` count 30, FadeABCD especial (0.705 no B)
-  - `saturn-ring` tail strobe 36.5 Hz
-  - `heart` geometry='heart', count 34, speed 0.5, sigma 0.14
-  - `smiley` geometry='custom-shape', count 150
-  - `bow-tie` Silver tail D250 + life 0.25
-  - `cluster-diadem` ascent definido
-  - `jellyfish` inverted-hemisphere + Silver D500
-  - `half-half` hemisphere + Orange + XXSmall/0.5
-- 1 bloco "rev6 resolvers" garantindo `resolveShellPresetId` casa cada nome.
+Each entry uses:
+- `speedMS: 1.25`, `sigmaRad: 0.071`, `count: 14`
+- `starType: 'XSmall'`, `mass: 0.5` (matches `MinimumLifetime/MaximumLifetime` 1.5–2.41 + StarSizeFactor band)
+- `lifeMin: 1.5`, `lifeMax: 2.41`
+- `fadeABCD: [0.6433962, 0.75849056, 0.9, 0.999]`
+- `colorHex: <tip>`
+- `tails`: the 6 canonical Silver-Crackling layers from the XML (Spark dense strobe 2.7 Hz body + secondary, plus 2 Crackle layers at `EmitStart 0.25, Life 0.12, sizeFactor 1.4/0.7, Crackle:true`, plus Orange micro-glow at `Life 2.43`, plus a tip-tinted custom-RGB layer that mirrors the per-color fragment `(251,222,170)`-style soft halo — captured per-file).
 
-### 3. Sem mudança em renderer
+Extend `resolveMinePresetId()` with prefix-matched regexes (placed BEFORE the existing `glitter`/`gold` clauses):
 
-`ShellBurstRenderer`/`MineEffect`/`CometEffect` não consomem novos campos nesta rev — apenas o catálogo cresce. Wiring fica para rev7 (junto com `MineEffect`/`CakeEffect` que ainda não consomem `presetId`).
+```ts
+if (/silver.*crackl/.test(s)) {
+  if (/aqua/.test(s))           return 'mine-silver-crackling-aqua';
+  if (/pastel.*blue/.test(s))   return 'mine-silver-crackling-pastel-blue';
+  if (/pastel.*green/.test(s))  return 'mine-silver-crackling-pastel-green';
+  if (/pastel.*purple/.test(s)) return 'mine-silver-crackling-pastel-purple';
+  if (/pastel.*red/.test(s))    return 'mine-silver-crackling-pastel-red';
+  if (/\bblue\b/.test(s))       return 'mine-silver-crackling-blue';
+  if (/\bgreen\b/.test(s))      return 'mine-silver-crackling-green';
+  if (/\bmint\b/.test(s))       return 'mine-silver-crackling-mint';
+  if (/\borange\b/.test(s))     return 'mine-silver-crackling-orange';
+}
+```
 
-## Não muda
+**2. `src/data/__tests__/finalePresets.shell.spec.ts`**
 
-- Safety / workMode / uiCommandGateway / CommandBus / FieldBus
-- WebGPU / GPGPU / hardware (FXK16 / FireOne / DMX)
-- Renderers (`ShellBurstRenderer`, `MineEffect`, `CakeEffect`, `CometEffect`)
-- `pyroPhysics.BurstPattern` (mapeio `heart`→`'peony'` ou `'chrysanthemum'` se BurstPattern não tiver `'heart'`; caso tenha, uso o canônico — vou verificar na implementação)
-- `FINALE_MINE_PRESETS` / `FINALE_CAKE_SHOT_PRESETS` (rev5 intactos)
+- Bump mine-count assertion to `12` (3 existing + 9 new).
+- One parametrised block iterating the 9 ids: asserts shared canonical numbers (`speedMS`, `sigmaRad`, `count`, `lifeMin`, `lifeMax`, `fadeABCD`, tail count) and per-id `colorHex`.
+- Resolver block with the 9 input strings (and a couple of casing/spacing variants) → expected ids; plus negative case `"silver crackling"` alone returns `undefined` (no tip → ambiguous).
 
-## Verificação
+### Out of scope (deferred)
 
-- `bunx vitest run src/data/__tests__/finalePresets.shell.spec.ts` — passa todos os blocos (rev1–rev6).
-- `listAllPresetIds().shells.length === 19`.
-- Type-check verde.
-- Zero alteração visual no preview (renderer não tocado).
+- Any UI surface, library card, or renderer wiring.
+- Cake-shot or shell additions.
+- Touching `EFFECT_LIBRARY`, `resolveEffect`, or `vdlColorPipeline` (Rev 8 once the catalog stabilizes).
 
-Aprovar para implementar?
+### Verification
+
+- `bunx vitest run src/data/__tests__/finalePresets.shell.spec.ts` green.
+- `Object.keys(FINALE_MINE_PRESETS).length === 12`.
+- Type-check passes; zero runtime/visual change in the app.

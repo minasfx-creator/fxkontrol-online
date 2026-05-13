@@ -742,6 +742,57 @@ export const FINALE_MINE_PRESETS: Record<string, MinePreset> = {
     ],
   },
 
+  // ────────────────────────────────────────────────────────────────────
+  // rev7 — "Mine Silver Crackling to <tip> Tip" family (9 presets)
+  // Source: Mine_Silver_Crackling_to_{Aqua,Blue,Green,Mint,Orange,Pastel_Blue,
+  //         Pastel_Green,Pastel_Purple,Pastel_Red}_Tip.fwe
+  // All 9 share the same Mine body (Silver Crackling, 8 StarTails,
+  // MineDistribution speed=1.25 sigma=0.071 spread≈0.122, count=14, life
+  // 1.5–2.41 s, fadeABCD=[0.6433962,0.75849056,0.9,0.999]); only the
+  // inner Stars `<Color>` (the "tip") changes per file.
+  // ────────────────────────────────────────────────────────────────────
+  ...((): Record<string, MinePreset> => {
+    const SILVER_CRACKLING_TAILS: TailLayer[] = [
+      { densityHz: 25, width: 0.6, lifeS: 0.6, lifeSigma: 0.11, sizeFactor: 1.1, colorHex: '#C8C8D0', strobeHz: 2.7,  emitStart: 0.05, emitEnd: 0.7,  fadeABCD: [0, 0, 0.63, 1] },
+      { densityHz: 15, width: 0.7, lifeS: 0.5, lifeSigma: 0.14, sizeFactor: 1.0, colorHex: '#C8C8D0',                emitStart: 0.05, emitEnd: 0.7,  fadeABCD: [0, 0, 0.63, 1] },
+      { densityHz: 13, width: 0.3, lifeS: 1.8, lifeSigma: 0.22, sizeFactor: 0.54, colorHex: '#C8C8D0',               emitStart: 0.05, emitEnd: 0.7,  fadeABCD: [0, 0, 0.63, 1] },
+      { densityHz: 13, width: 0.3, lifeS: 1.8, lifeSigma: 1.04, sizeFactor: 0.7,  colorHex: '#C8C8D0', strobeHz: 3,   emitStart: 0.05, emitEnd: 0.7,  fadeABCD: [0, 0, 0.63, 1] },
+      { densityHz: 4,  width: 0.3, lifeS: 2.43, lifeSigma: 0.4, sizeFactor: 0.5,  colorHex: '#FF7A00',               emitStart: 0.05, emitEnd: 0.7,  fadeABCD: [0, 0, 0.63, 1] },
+      { densityHz: 13, width: 0.3, lifeS: 1.8, lifeSigma: 0.22, sizeFactor: 0.54, colorHex: '#FBDEAA',               emitStart: 0.05, emitEnd: 0.7,  fadeABCD: [0, 0, 0.63, 1] },
+      { densityHz: 8,  width: 8,   lifeS: 0.12, lifeSigma: 0.9, sizeFactor: 1.4,  colorHex: '#C8C8D0',               emitStart: 0.25, emitEnd: 0.7,  fadeABCD: [0, 0, 0.63, 1], crackle: true },
+      { densityHz: 8,  width: 8,   lifeS: 0.12, lifeSigma: 0.9, sizeFactor: 0.7,  colorHex: '#C8C8D0',               emitStart: 0.25, emitEnd: 0.7,  fadeABCD: [0, 0, 0.63, 1] },
+    ];
+    const TIPS: Array<[string, string, string]> = [
+      ['mine-silver-crackling-aqua',          'Aqua',          '#10D7D7'],
+      ['mine-silver-crackling-blue',          'Blue',          '#2A55FF'],
+      ['mine-silver-crackling-green',         'Green',         '#22C24A'],
+      ['mine-silver-crackling-mint',          'Mint',          '#80FFC8'],
+      ['mine-silver-crackling-orange',        'Orange',        '#FF7A00'],
+      ['mine-silver-crackling-pastel-blue',   'Pastel Blue',   '#A8C8FF'],
+      ['mine-silver-crackling-pastel-green',  'Pastel Green',  '#A8FFB0'],
+      ['mine-silver-crackling-pastel-purple', 'Pastel Purple', '#D6A8FF'],
+      ['mine-silver-crackling-pastel-red',    'Pastel Red',    '#FFA8A8'],
+    ];
+    const out: Record<string, MinePreset> = {};
+    for (const [id, label, hex] of TIPS) {
+      out[id] = {
+        id,
+        label: `Mine — Silver Crackling → ${label} Tip`,
+        speedMS: 1.25,
+        sigmaRad: 0.071,
+        count: 14,
+        starType: 'XSmall',
+        mass: 0.5,
+        lifeMin: 1.5,
+        lifeMax: 2.41,
+        fadeABCD: [0.6433962, 0.75849056, 0.9, 0.999],
+        colorHex: hex,
+        tails: SILVER_CRACKLING_TAILS.map((t) => ({ ...t })),
+      };
+    }
+    return out;
+  })(),
+
   // 42_Single_Shot_Comet_Mine.fwe — deep gold (149,74,0), no strobe on primary tail
   'single-comet-mine-gold': {
     id: 'single-comet-mine-gold',
@@ -946,6 +997,19 @@ export function resolveShellPresetId(raw: string | undefined | null): string | u
 export function resolveMinePresetId(raw: string | undefined | null): string | undefined {
   if (!raw) return undefined;
   const s = raw.toLowerCase().trim();
+  // rev7 — Silver Crackling tip family (must precede generic 'silver/comet' rules).
+  if (/silver.*crackl/.test(s)) {
+    if (/aqua/.test(s)) return 'mine-silver-crackling-aqua';
+    if (/pastel.*blue/.test(s)) return 'mine-silver-crackling-pastel-blue';
+    if (/pastel.*green/.test(s)) return 'mine-silver-crackling-pastel-green';
+    if (/pastel.*purple|pastel.*violet/.test(s)) return 'mine-silver-crackling-pastel-purple';
+    if (/pastel.*red|pastel.*pink/.test(s)) return 'mine-silver-crackling-pastel-red';
+    if (/\bblue\b/.test(s)) return 'mine-silver-crackling-blue';
+    if (/\bgreen\b/.test(s)) return 'mine-silver-crackling-green';
+    if (/\bmint\b/.test(s)) return 'mine-silver-crackling-mint';
+    if (/\borange\b/.test(s)) return 'mine-silver-crackling-orange';
+    // bare "silver crackling" (no tip) → ambiguous; fall through.
+  }
   if (/(comet).*(silver|white)|silver.*comet/.test(s)) return 'single-comet-silver-glitter';
   if (/(comet).*(gold|deep)|comet.?mine|comet[-_/ ]mine/.test(s)) return 'single-comet-mine-gold';
   if (/(mine).*(gold|glitter)|gold.*(glitter|mine)|\bglitter\b/.test(s)) return 'single-mine-gold-glitter';

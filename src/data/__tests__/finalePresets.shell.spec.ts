@@ -195,12 +195,21 @@ describe('FINALE_SHELL_PRESETS — rev5 (34/34a/35.fwe)', () => {
 // ────────────────────────────────────────────────────────────────────
 
 describe('FINALE_MINE_PRESETS — canonical FWsim Pro values', () => {
-  it('exposes 3 mine presets', () => {
+  it('exposes 12 mine presets (3 rev5 + 9 rev7 silver-crackling tip family)', () => {
     expect(listMinePresetIds().sort()).toEqual(
       [
         'single-comet-mine-gold',
         'single-comet-silver-glitter',
         'single-mine-gold-glitter',
+        'mine-silver-crackling-aqua',
+        'mine-silver-crackling-blue',
+        'mine-silver-crackling-green',
+        'mine-silver-crackling-mint',
+        'mine-silver-crackling-orange',
+        'mine-silver-crackling-pastel-blue',
+        'mine-silver-crackling-pastel-green',
+        'mine-silver-crackling-pastel-purple',
+        'mine-silver-crackling-pastel-red',
       ].sort(),
     );
   });
@@ -231,6 +240,38 @@ describe('FINALE_MINE_PRESETS — canonical FWsim Pro values', () => {
     expect(p.tails[0].colorHex.toUpperCase()).toBe('#954A00');
     expect(p.tails[0].densityHz).toBe(9);
     expect(p.tails[0].strobeHz).toBeUndefined();
+  });
+
+  // rev7 — Silver Crackling tip family (9 presets, identical body, per-tip color)
+  describe('rev7 — Silver Crackling → <tip> Tip family', () => {
+    const TIPS: Array<[string, string]> = [
+      ['mine-silver-crackling-aqua',          '#10D7D7'],
+      ['mine-silver-crackling-blue',          '#2A55FF'],
+      ['mine-silver-crackling-green',         '#22C24A'],
+      ['mine-silver-crackling-mint',          '#80FFC8'],
+      ['mine-silver-crackling-orange',        '#FF7A00'],
+      ['mine-silver-crackling-pastel-blue',   '#A8C8FF'],
+      ['mine-silver-crackling-pastel-green',  '#A8FFB0'],
+      ['mine-silver-crackling-pastel-purple', '#D6A8FF'],
+      ['mine-silver-crackling-pastel-red',    '#FFA8A8'],
+    ];
+    it.each(TIPS)('%s — canonical body + tip color %s', (id, hex) => {
+      const p = FINALE_MINE_PRESETS[id];
+      expect(p).toBeDefined();
+      expect(p.speedMS).toBe(1.25);
+      expect(p.sigmaRad).toBe(0.071);
+      expect(p.count).toBe(14);
+      expect(p.starType).toBe('XSmall');
+      expect(p.lifeMin).toBe(1.5);
+      expect(p.lifeMax).toBe(2.41);
+      expect(p.fadeABCD).toEqual([0.6433962, 0.75849056, 0.9, 0.999]);
+      expect(p.colorHex.toUpperCase()).toBe(hex);
+      // Canonical Silver-Crackling body has 8 StarTails layers, with the
+      // 7th one carrying the Crackle flag.
+      expect(p.tails).toHaveLength(8);
+      expect(p.tails[0].strobeHz).toBe(2.7);
+      expect(p.tails[6].crackle).toBe(true);
+    });
   });
 });
 
@@ -295,6 +336,20 @@ describe('rev5 resolvers — name → preset id', () => {
     expect(resolveMinePresetId('peony')).toBeUndefined();
   });
 
+  it('rev7 — silver-crackling tip resolver', () => {
+    expect(resolveMinePresetId('Mine Silver Crackling to Aqua Tip')).toBe('mine-silver-crackling-aqua');
+    expect(resolveMinePresetId('mine silver crackling to blue tip')).toBe('mine-silver-crackling-blue');
+    expect(resolveMinePresetId('SILVER CRACKLING GREEN')).toBe('mine-silver-crackling-green');
+    expect(resolveMinePresetId('silver-crackling mint')).toBe('mine-silver-crackling-mint');
+    expect(resolveMinePresetId('silver crackling orange')).toBe('mine-silver-crackling-orange');
+    expect(resolveMinePresetId('silver crackling pastel blue')).toBe('mine-silver-crackling-pastel-blue');
+    expect(resolveMinePresetId('silver crackling pastel green')).toBe('mine-silver-crackling-pastel-green');
+    expect(resolveMinePresetId('silver crackling pastel purple')).toBe('mine-silver-crackling-pastel-purple');
+    expect(resolveMinePresetId('silver crackling pastel red')).toBe('mine-silver-crackling-pastel-red');
+    // Bare "silver crackling" → ambiguous, falls through to undefined.
+    expect(resolveMinePresetId('silver crackling')).toBeUndefined();
+  });
+
   it('cake-shot resolvers', () => {
     expect(resolveCakeShotPresetId('cake silver titanium'))
       .toBe('cake-shell-silver-titanium');
@@ -325,7 +380,7 @@ describe('rev5 adapters — props mapping', () => {
   it('listAllPresetIds aggregates 19 + 3 + 3', () => {
     const all = listAllPresetIds();
     expect(all.shells).toHaveLength(19);
-    expect(all.mines).toHaveLength(3);
+    expect(all.mines).toHaveLength(12);
     expect(all.cakes).toHaveLength(3);
   });
 });
