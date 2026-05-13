@@ -101,12 +101,27 @@ export default function MineEffect({
   const trailPosRef = useMemo(() => new Float32Array(sprayCount * TRAIL_SEGS * 6), [sprayCount]);
   const trailColRef = useMemo(() => new Float32Array(sprayCount * TRAIL_SEGS * 6), [sprayCount]);
 
+  // Silhouette-driven jet allocation (FWsim Mine_01/02/03 vectors).
+  // When enabled, spray particles cluster around N discrete azimuthal jets +
+  // a denser ground crown — matches the FWsim leque reference instead of
+  // a uniform 360° hemisphere.
+  const silhouette = useMemo(
+    () => (isEnabled('r_silhouette_mines') ? selectMineSilhouette({ caliber, numDevices: 1 }) : null),
+    [caliber],
+  );
+
   const { velocities, lifetimes, sparkleSeeds, particleSizes, smokeSeeds } = useMemo(() => {
     const v = new Float32Array(count * 3);
     const l = new Float32Array(count);
     const s = new Float32Array(count);
     const ps = new Float32Array(count);
     const ss = new Float32Array(SMOKE_COUNT);
+
+    const jets = silhouette?.jetAnglesDeg ?? null;
+    const jitterRad = silhouette ? (silhouette.jitterDeg * Math.PI) / 180 : 0;
+    const crownEnd = silhouette
+      ? Math.floor(count * (COLUMN_FRAC + SPRAY_FRAC * silhouette.crownRatio))
+      : -1;
 
     for (let i = 0; i < count; i++) {
       const theta = Math.random() * Math.PI * 2;
@@ -133,15 +148,36 @@ export default function MineEffect({
         // Spray particles: cone width depends on pattern
         // fan/v: tight upward cone ~30°±10° (FWsim look — discrete bright stars rising in a leque)
         // omni:  wide hemisphere 30-80° (legacy ground burst)
-        const upAngle = pattern === 'omni'
-          ? 0.35 + Math.random() * 0.85
-          : 0.30 + Math.random() * 0.35; // ~17–37° from vertical
-        const speed = 10 + Math.random() * 18 + caliber * 4;
-        v[i * 3] = Math.cos(azTheta) * Math.sin(upAngle) * speed;
-        v[i * 3 + 1] = Math.cos(upAngle) * speed + 2;
-        v[i * 3 + 2] = Math.sin(azTheta) * Math.sin(upAngle) * speed;
-        l[i] = (0.4 + Math.random() * 1.0) * (0.6 + Math.random() * 0.8);
-        ps[i] = 0.8 + Math.random() * 1.0;
+        // Silhouette mode: snap to one of N jet azimuths from FWsim vector,
+        // and dedicate first slice to a tight ground crown.
+        if (silhouette && i < crownEnd) {
+          // Crown burst: low + wide, short lifetime
+          const upAngle = 0.95 + Math.random() * 0.45; // ~55–80° from vertical
+          const speed = 6 + Math.random() * 8 + caliber * 2;
+          v[i * 3] = Math.cos(theta) * Math.sin(upAngle) * speed;
+          v[i * 3 + 1] = Math.cos(upAngle) * speed + 1.4;
+          v[i * 3 + 2] = Math.sin(theta) * Math.sin(upAngle) * speed;
+          l[i] = silhouette.crownLifetimeS * (0.7 + Math.random() * 0.6);
+          ps[i] = 0.6 + Math.random() * 0.4;
+        } else {
+          let jetAzRad: number;
+          if (jets && jets.length > 0) {
+            const jetIdx = (i - Math.floor(count * COLUMN_FRAC)) % jets.length;
+            jetAzRad = (jets[jetIdx] * Math.PI) / 180
+                     + (Math.random() - 0.5) * 2 * jitterRad;
+          } else {
+            jetAzRad = azTheta;
+          }
+          const upAngle = pattern === 'omni'
+            ? 0.35 + Math.random() * 0.85
+            : 0.30 + Math.random() * 0.35; // ~17–37° from vertical
+          const speed = 10 + Math.random() * 18 + caliber * 4;
+          v[i * 3] = Math.cos(jetAzRad) * Math.sin(upAngle) * speed;
+          v[i * 3 + 1] = Math.cos(upAngle) * speed + 2;
+          v[i * 3 + 2] = Math.sin(jetAzRad) * Math.sin(upAngle) * speed;
+          l[i] = (0.4 + Math.random() * 1.0) * (0.6 + Math.random() * 0.8);
+          ps[i] = 0.8 + Math.random() * 1.0;
+        }
       } else if (i < Math.floor(count * (COLUMN_FRAC + SPRAY_FRAC + DRIP_FRAC))) {
         // Drip particles: low velocity, high drag, fall back
         const upAngle = 0.1 + Math.random() * 0.5;
