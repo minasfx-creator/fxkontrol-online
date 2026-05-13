@@ -322,10 +322,117 @@ describe('rev5 adapters — props mapping', () => {
     expect(c.trailDensityHz).toBe(250);
   });
 
-  it('listAllPresetIds aggregates 10 + 3 + 3', () => {
+  it('listAllPresetIds aggregates 19 + 3 + 3', () => {
     const all = listAllPresetIds();
-    expect(all.shells).toHaveLength(10);
+    expect(all.shells).toHaveLength(19);
     expect(all.mines).toHaveLength(3);
     expect(all.cakes).toHaveLength(3);
+  });
+});
+
+// ────────────────────────────────────────────────────────────────────
+// rev6 — Pattern shells (Ring/Heart/Smiley/Bow Tie/Diadem/Jellyfish/Half-Half)
+// ────────────────────────────────────────────────────────────────────
+
+describe('FINALE_SHELL_PRESETS — rev6 (25..33.fwe)', () => {
+  it('25 ring — RingDistribution count 20 Small/0.8 Red', () => {
+    const p = FINALE_SHELL_PRESETS['ring'];
+    expect(p.geometry).toBe('ring');
+    expect(p.count).toBe(20);
+    expect(p.speedMS).toBe(0.8);
+    expect(p.sigmaRad).toBe(0);
+    expect(p.starType).toBe('Small');
+    expect(p.fadeABCD).toEqual([0.12703583, 0.46091205, 0.81433225, 0.999]);
+  });
+
+  it('26 double-ring — count 30, FadeRatio B=0.70481926', () => {
+    const p = FINALE_SHELL_PRESETS['double-ring'];
+    expect(p.count).toBe(30);
+    expect(p.fadeABCD[1]).toBeCloseTo(0.70481926, 6);
+  });
+
+  it('27 saturn-ring — Gold Titanium tail strobe 36.5 Hz', () => {
+    const p = FINALE_SHELL_PRESETS['saturn-ring'];
+    expect(p.tails).toHaveLength(1);
+    expect(p.tails![0].strobeHz).toBeCloseTo(36.505306, 6);
+    expect(p.tails![0].colorHex.toUpperCase()).toBe('#FFE2AE');
+    expect(p.tails![0].densityHz).toBe(89);
+  });
+
+  it('28 heart — HeartDistribution, count 34, speed 0.5, sigma 0.14', () => {
+    const p = FINALE_SHELL_PRESETS['heart'];
+    expect(p.geometry).toBe('heart');
+    expect(p.count).toBe(34);
+    expect(p.speedMS).toBe(0.5);
+    expect(p.sigmaRad).toBe(0.14);
+  });
+
+  it('29 smiley — CustomShape, count 150 XSmall/0.7 Orange', () => {
+    const p = FINALE_SHELL_PRESETS['smiley'];
+    expect(p.geometry).toBe('custom-shape');
+    expect(p.count).toBe(150);
+    expect(p.starType).toBe('XSmall');
+    expect(p.lifeMax).toBe(2.82);
+  });
+
+  it('30 bow-tie — Silver tail D250 W0.6 life 0.25', () => {
+    const p = FINALE_SHELL_PRESETS['bow-tie'];
+    expect(p.geometry).toBe('inverted-hemisphere');
+    expect(p.count).toBe(40);
+    expect(p.tails![0].densityHz).toBe(250);
+    expect(p.tails![0].lifeS).toBe(0.25);
+    expect(p.tails![0].colorHex.toUpperCase()).toBe('#C8C8D0');
+  });
+
+  it('31 cluster-diadem — Invisible body + AscentEffect (149,74,0) D5', () => {
+    const p = FINALE_SHELL_PRESETS['cluster-diadem'];
+    expect(p.colorHex).toBe('#000000');
+    expect(p.ascent).toBeDefined();
+    expect(p.ascent!.densityHz).toBe(5);
+    expect(p.ascent!.colorHex.toUpperCase()).toBe('#954A00');
+    expect(p.ascent!.lifeS).toBeCloseTo(0.21, 6);
+  });
+
+  it('32 jellyfish — inverted-hemisphere, count 6 White + Silver D500', () => {
+    const p = FINALE_SHELL_PRESETS['jellyfish'];
+    expect(p.geometry).toBe('inverted-hemisphere');
+    expect(p.count).toBe(6);
+    expect(p.colorHex).toBe('#FFFFFF');
+    expect(p.tails![0].densityHz).toBe(500);
+    expect(p.tails![0].lifeS).toBe(0.7);
+  });
+
+  it('33 half-half — hemisphere, XXSmall/0.5 Orange + Red secondary', () => {
+    const p = FINALE_SHELL_PRESETS['half-half'];
+    expect(p.geometry).toBe('hemisphere');
+    expect(p.count).toBe(50);
+    expect(p.starType).toBe('XXSmall');
+    expect(p.mass).toBe(0.5);
+    expect(p.colorHex.toUpperCase()).toBe('#FF7A00');
+    expect(p.secondaryColorHex?.toUpperCase()).toBe('#FF2A2A');
+    expect(p.fadeABCD).toEqual([0.1, 0.25047082, 0.7344633, 0.9679849]);
+  });
+});
+
+describe('rev6 resolvers — name → preset id', () => {
+  it('matches all rev6 pattern shells', () => {
+    expect(resolveShellPresetId('ring')).toBe('ring');
+    expect(resolveShellPresetId('Double Ring')).toBe('double-ring');
+    expect(resolveShellPresetId('Saturn ring gold')).toBe('saturn-ring');
+    expect(resolveShellPresetId('Heart red')).toBe('heart');
+    expect(resolveShellPresetId('Smiley face')).toBe('smiley');
+    expect(resolveShellPresetId('Bow Tie')).toBe('bow-tie');
+    expect(resolveShellPresetId('cluster diadem')).toBe('cluster-diadem');
+    expect(resolveShellPresetId('Diadem')).toBe('cluster-diadem');
+    expect(resolveShellPresetId('Jellyfish')).toBe('jellyfish');
+    expect(resolveShellPresetId('Mushroom shell')).toBe('jellyfish');
+    expect(resolveShellPresetId('Half Half')).toBe('half-half');
+  });
+
+  it('rev6 props expose canonical color/trail hints', () => {
+    const saturn = resolveShellPresetProps('saturn-ring')!;
+    expect(saturn.trailType).toBe('glitter');
+    const heart = resolveShellPresetProps('heart')!;
+    expect(heart.color).toBe('#FF2A2A');
   });
 });
