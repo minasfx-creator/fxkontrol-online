@@ -1244,15 +1244,26 @@ export const FireworkBurst = React.forwardRef<THREE.Group, {
         </points>
       )}
       
-      {/* Core flash — bright white, 80ms */}
-      {progress < 0.08 && (
+      {/* AscentEffect (rev6) — Cluster Diadem golden flash. */}
+      {shellPreset?.ascent && (
+        <AscentFlash
+          progress={progress}
+          colorHex={shellPreset.ascent.colorHex}
+          width={shellPreset.ascent.width}
+          lifeS={shellPreset.ascent.lifeS}
+          caliber={caliber}
+        />
+      )}
+
+      {/* Core flash — bright white, 80ms (suppressed for invisible-body presets) */}
+      {!isClusterDiadem && progress < 0.08 && (
         <mesh renderOrder={100}>
           <sphereGeometry args={[flashSize * 0.3 * (1 + progress * 15), 8, 8]} />
           <meshBasicMaterial color="#FFFDF0" transparent opacity={0.7 * (1 - progress / 0.08)} blending={THREE.AdditiveBlending} depthWrite={false} depthTest={true} />
         </mesh>
       )}
       {/* Halo — color-synced, 150ms */}
-      {progress < 0.15 && (
+      {!isClusterDiadem && progress < 0.15 && (
         <mesh renderOrder={99}>
           <sphereGeometry args={[flashSize * (1 + progress * 10), 8, 8]} />
           <meshBasicMaterial color={color} transparent opacity={0.35 * Math.pow(1 - progress / 0.15, 2)} blending={THREE.AdditiveBlending} depthWrite={false} depthTest={true} />
