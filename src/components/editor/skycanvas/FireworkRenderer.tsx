@@ -1434,6 +1434,11 @@ export function TimelineEffects() {
 
       if (!effect) return null;
 
+      // Overlay .fwe-derived palette/shotCount + normalize pattern aliases
+      // (multibreak→multi_break, dragonegg→dragon_egg, …) so FireworkBurst
+      // dispatches the correct geometry case at the correct time.
+      effect = enrichEffectFromFwe(effect);
+
       let resolvedPos = item.position;
       let launchHeading = 0;
       let launchPitch = 85;
