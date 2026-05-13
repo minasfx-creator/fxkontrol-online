@@ -516,13 +516,15 @@ export default function EffectLibrary() {
   const fullLibrary = useMemo<Effect[]>(() => {
     const seen = new Set<string>();
     const merged: Effect[] = [];
-    for (const e of [...EFFECT_LIBRARY, ...FINALE_SHELL_PRESET_EFFECTS, ...FWE_UPLOADED_EFFECTS]) {
+    // Imported (runtime) entries last so they override the curated
+    // catalog when ids collide (re-import = update in place).
+    for (const e of [...EFFECT_LIBRARY, ...FINALE_SHELL_PRESET_EFFECTS, ...FWE_UPLOADED_EFFECTS, ...importedFweEffects]) {
       if (seen.has(e.id)) continue;
       seen.add(e.id);
       merged.push(e);
     }
     return merged;
-  }, []);
+  }, [importedFweEffects]);
 
   const filteredEffects = useMemo(() =>
     fullLibrary.filter((e) => {
