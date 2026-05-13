@@ -108,7 +108,12 @@ const FIRE_FRAGMENT = /* glsl */ `
     // ── Flicker ──
     float flick = flicker(uTime, vSeed);
 
-    // ── HDR emissive (peak ×10 for bloom threshold 1.2) ──
+    // ── Cooling color shift in last 25% of life (blackbody cooling: yellow → orange → red) ──
+    vec3 coolTarget = vec3(1.0, 0.45, 0.10);
+    float coolPhase = smoothstep(0.75, 1.0, vLifeRatio);
+    color = mix(color, coolTarget, coolPhase * 0.55);
+
+    // ── HDR emissive (peak ×5.5 — calibrated FWsim: stars stay as discrete bright points, not blobs) ──
     vec3 emissive = color * intensity * flick * uHDRMultiplier;
 
     // ── White-hot core injection (first 20% of life) ──
@@ -135,7 +140,7 @@ export interface CinemaFireConfig {
 }
 
 const DEFAULT_FIRE_CONFIG: CinemaFireConfig = {
-  hdrMultiplier: 7.5,           // recalibrated v3: 10.0 saturava bloom (threshold 1.2) deixando branco-leitoso
+  hdrMultiplier: 5.5,           // FWsim-calibrated: 7.5 ainda virava blob-only; 5.5 mantém estrelas discretas brilhantes
   flickerIntensity: 0.28,       // slightly higher for 7-harmonic richness
   thermalCoupling: 1.5,         // gradual cooling curve
 };

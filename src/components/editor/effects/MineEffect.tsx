@@ -23,6 +23,8 @@ const BOUNCE_FRAC = 0.10; // 90-100% — ground bounce sparks
 
 const SMOKE_COUNT = 40;
 
+export type MinePattern = 'omni' | 'fan' | 'v';
+
 export default function MineEffect({
   position,
   color,
@@ -33,6 +35,7 @@ export default function MineEffect({
   formulationId,
   launchHeading = 0,
   launchPitch = 85,
+  pattern = 'fan',
 }: {
   position: [number, number, number];
   color: string;
@@ -43,6 +46,7 @@ export default function MineEffect({
   formulationId?: string;
   launchHeading?: number;
   launchPitch?: number;
+  pattern?: MinePattern;
 }) {
   const count = useMemo(() => Math.min(600, Math.round(200 + caliber * caliber * 14)), [caliber]);
   const pointsRef = useRef<THREE.Points>(null);
@@ -92,6 +96,15 @@ export default function MineEffect({
     for (let i = 0; i < count; i++) {
       const theta = Math.random() * Math.PI * 2;
 
+      // Pattern-aware azimuth: 'fan' = 360° around vertical (single tight upward cone),
+      // 'v' = two opposite leques (split into 2 lateral cones), 'omni' = original hemisphere.
+      let azTheta = theta;
+      if (pattern === 'v') {
+        // Bias to two opposite arcs ±60° around horizontal axis
+        const side = Math.random() < 0.5 ? -1 : 1;
+        azTheta = side * (Math.PI / 2) + (Math.random() - 0.5) * (Math.PI / 3);
+      }
+
       if (i < Math.floor(count * COLUMN_FRAC)) {
         // Column particles: narrow cone (5-15°), high velocity
         const upAngle = 0.05 + Math.random() * 0.17;
@@ -102,12 +115,16 @@ export default function MineEffect({
         l[i] = 0.18 + Math.random() * 0.25;
         ps[i] = 0.55;
       } else if (i < Math.floor(count * (COLUMN_FRAC + SPRAY_FRAC))) {
-        // Spray particles: wide hemisphere (30-80°), jittered lifetime
-        const upAngle = 0.35 + Math.random() * 0.85;
+        // Spray particles: cone width depends on pattern
+        // fan/v: tight upward cone ~30°±10° (FWsim look — discrete bright stars rising in a leque)
+        // omni:  wide hemisphere 30-80° (legacy ground burst)
+        const upAngle = pattern === 'omni'
+          ? 0.35 + Math.random() * 0.85
+          : 0.30 + Math.random() * 0.35; // ~17–37° from vertical
         const speed = 10 + Math.random() * 18 + caliber * 4;
-        v[i * 3] = Math.cos(theta) * Math.sin(upAngle) * speed;
+        v[i * 3] = Math.cos(azTheta) * Math.sin(upAngle) * speed;
         v[i * 3 + 1] = Math.cos(upAngle) * speed + 2;
-        v[i * 3 + 2] = Math.sin(theta) * Math.sin(upAngle) * speed;
+        v[i * 3 + 2] = Math.sin(azTheta) * Math.sin(upAngle) * speed;
         l[i] = (0.4 + Math.random() * 1.0) * (0.6 + Math.random() * 0.8);
         ps[i] = 0.8 + Math.random() * 1.0;
       } else if (i < Math.floor(count * (COLUMN_FRAC + SPRAY_FRAC + DRIP_FRAC))) {
@@ -138,7 +155,7 @@ export default function MineEffect({
     }
 
     return { velocities: v, lifetimes: l, sparkleSeeds: s, particleSizes: ps, smokeSeeds: ss };
-  }, [count, caliber, columnEnd, sprayEnd]);
+  }, [count, caliber, columnEnd, sprayEnd, pattern]);
 
   // Smoke initial velocities (radial expansion)
   const smokeVelocities = useMemo(() => {
