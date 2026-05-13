@@ -99,8 +99,8 @@ export default function MineEffect({
         v[i * 3] = Math.cos(theta) * Math.sin(upAngle) * speed;
         v[i * 3 + 1] = Math.cos(upAngle) * speed + 3;
         v[i * 3 + 2] = Math.sin(theta) * Math.sin(upAngle) * speed;
-        l[i] = 0.3 + Math.random() * 0.3;
-        ps[i] = 0.6;
+        l[i] = 0.18 + Math.random() * 0.25;
+        ps[i] = 0.55;
       } else if (i < Math.floor(count * (COLUMN_FRAC + SPRAY_FRAC))) {
         // Spray particles: wide hemisphere (30-80°), jittered lifetime
         const upAngle = 0.35 + Math.random() * 0.85;
