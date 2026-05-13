@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 import * as THREE from 'three';
 import { getBreakHeight, getMortarVelocity, GRAVITY, getStarLifetime, getCakeParticlesPerShot, getParticleSize, getBreakSpeed } from '@/lib/pyroPhysics';
 import { getThreeBlending } from '@/lib/niagaraBlenderRules';
+import { resolveCakeShotPresetProps } from '@/data/finalePresets';
 
 // ═══════════════════════════════════════════════════════════════════════
 // Finale 3D Firing Pattern System
