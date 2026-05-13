@@ -915,7 +915,20 @@ export function resolveShellPresetId(raw: string | undefined | null): string | u
   // Order matters: more specific keys first.
   if (/(peony).*(pistil|pist[ií]lo|core)|pistil.*(peony)/.test(s)) return 'peony-pistil';
   if (/\bpeony\b/.test(s)) return 'peony';
-  if (/\b(wave|ring)\b/.test(s)) return 'wave';
+  // rev6 — pattern shells (placed BEFORE the generic ring/wave catch).
+  if (/double.?ring/.test(s)) return 'double-ring';
+  if (/saturn/.test(s)) return 'saturn-ring';
+  if (/\bheart\b/.test(s)) return 'heart';
+  if (/\bsmiley\b/.test(s)) return 'smiley';
+  if (/bow.?tie/.test(s)) return 'bow-tie';
+  if (/diadem|cluster.?diadem/.test(s)) return 'cluster-diadem';
+  if (/jellyfish|mushroom/.test(s)) return 'jellyfish';
+  if (/half.?half/.test(s)) return 'half-half';
+  if (/\b(wave|ring)\b/.test(s)) {
+    // Disambiguate: bare "ring" → 'ring' (rev6 plain), "wave"/"silver wave" → 'wave'.
+    if (/\bwave\b/.test(s)) return 'wave';
+    return 'ring';
+  }
   if (/(chrysanthemum|brocade|kamuro)/.test(s)) return 'chrysanthemum';
   if (/\bdahlia\b/.test(s)) return 'dahlia';
   if (/\bpalm\b/.test(s)) return 'palm';
