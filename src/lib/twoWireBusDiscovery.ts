@@ -83,7 +83,8 @@ export async function scanBus(
 
   try {
     const results: TwoWireDiscoveredModule[] = [];
-    for (const addr of addrs) {
+    for (let i = 0; i < addrs.length; i++) {
+      const addr = addrs[i];
       if (opts.signal?.aborted) break;
       const settled = new Promise<TwoWireDiscoveredModule>((resolve) => {
         pending.set(addr, (m) => { pending.delete(addr); resolve(m); });
@@ -94,15 +95,16 @@ export async function scanBus(
           }
         }, timeoutMs);
       });
+      let m: TwoWireDiscoveredModule;
       try {
         await transport.send({ type: 'IDENTIFY', addr });
+        m = await settled;
       } catch {
         pending.delete(addr);
-        results.push({ addr, status: 'unseen' });
-        continue;
+        m = { addr, status: 'unseen' };
       }
-      const m = await settled;
       results.push(m);
+      opts.onProgress?.({ addr, index: i, total: addrs.length, module: m });
       if (spacingMs > 0) await new Promise((r) => setTimeout(r, spacingMs));
     }
     const finishedAt = Date.now();
