@@ -194,8 +194,7 @@ const MAX_HDR_LUMA = 1.15;
 
 // ── V-Ray / Blender View Transform System ──────────────────────────
 
-export type { ViewTransform } from './niagaraBlenderRules.types';
-import type { ViewTransform } from './niagaraBlenderRules.types';
+export type ViewTransform = 'aces-filmic' | 'agx' | 'standard' | 'pbr-neutral';
 
 export interface ViewTransformConfig {
   maxHDRChannel: number;

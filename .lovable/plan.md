@@ -1,102 +1,101 @@
-## Diagnóstico (refinado)
 
-Firewall arquitetural entre `/skycanvas` (editor 3D) e `/command` (controladores) é parcial. Vazamentos confirmados:
 
-**Vazamento de identidade de pasta**
-- 30+ painéis de comando vivem em `src/components/editor/*` junto com componentes de coreografia. Importes de `/command` e `/skycanvas` cruzam a mesma raiz — qualquer refactor da pasta arrasta as duas superfícies.
+# Camada 11: Render Volumétrico Real — Curl Noise Smoke, ACES Tonemapping, Light Scattering
 
-**Telemetria sintética em controladores (8 pontos)**
-1. `DroneCommandPanel.tsx:58-72` — `setInterval(1500ms)` gera `alt/speed/heading/battery` com `Math.random()` para até 8 drones.
-2. `DroneCommandPanel.tsx:112-123` — `setInterval(2000ms)` gera `windDir/windSpeed/formationLock` com `Math.random()`.
-3. `live-firing/FXKNetPanel.tsx:31` — `TopologyMinimap` gera `signal: 60 + Math.random()*40` para nós de rede + firmware versions falsas (`v1.3.0`, `v1.4.1`).
-4. `MA3ControlPanel.tsx:61` — `oscHost` default `'192.168.1.100'` (IP placeholder em campo "real").
-5. `dmx/DMXMonitorPanel.tsx:138` — campo `source: '192.168.1.100'` hardcoded em pacotes Art-Net que serão exibidos como "vindo da rede".
-6. `CurrentStateMatrix.tsx:96-100` — declara `integrationMode: 'simulated'` para 4 fontes que são internas reais (ShowPlan, VerificationEngine, ExportCoordinator, AuditTrail) — desonestidade reversa.
-7. `dmx/DMXMonitorPanel.tsx:111-145` — popula `dmxValues` com `ch.firing ? ch.intensity : 0` lendo `useFireOneChannelStore` (intent do show plan, não medição real do barramento Art-Net) sem badge de proveniência.
-8. (não-fix nesta entrega) `LiveFiringPanel.tsx:501` — `bridgePhysicalController.simulateHilFire` é dev-only e já gated.
+## Objetivo
 
-**Sem guard test** que impeça regressão (importe cruzado entre as superfícies).
+Upgrade os shaders de render e compute existentes no pipeline WebGPU nativo (`src/render_ultra/gpgpu/`) com: (1) smoke compute dedicado com curl noise divergence-free, (2) fragment shaders cinematográficos com ACES tonemapping, (3) light scattering pass, (4) billboard instanciado via storage buffer read. Tudo incremental sobre a Camada 10 existente.
 
-**O que já está correto** (preservar): `CommandCenter.tsx` não monta `SkyCanvasMount`/`Show3DEngine`; `SkyCanvas.tsx` declara "Zero CommandBus/FieldBus/SafetyStateMachine"; `MainLayout` esconde `GlobalSafetyBar` em `/command`; `GlobalEStopButton` permanece em ambas; `useConsoleProvenance` + `realOnlyGate` já existem.
+---
 
-## Plano
+## Arquivos a Criar
 
-### 1. Domain firewall por re-export (zero arquivo movido)
+### 1. `src/render_ultra/gpgpu/wgsl/smokeCompute.wgsl.ts`
+Exporta string WGSL do compute shader de fumaça com:
+- `SmokeSimParams` uniform (dt, time, wind, turbulence, dissipation, rise_force)
+- `SmokeParticle` struct (pos, vel, density)
+- `curl_noise()`: derivadas cruzadas de 3D value noise → campo divergence-free
+- `cs_smoke_update`: advecção com curl noise, rise force, drag racional, dissipação de densidade
+- Workgroup size 256
 
-Dois novos barrels read-only:
+### 2. `src/render_ultra/gpgpu/wgsl/renderShaders.wgsl.ts`
+Substitui o `RENDER_WGSL` inline no `webgpuLoop.ts`. Exporta shader completo com:
+- **Billboard vertex** com particle read via `var<storage, read>` (instancing nativo, sem vertex buffer layout)
+- **Fire fragment**: núcleo emissivo `exp(-r²*7)` + halo `exp(-r²*1.8)*0.35`, blackbody tint por temperatura, ACES tonemapping no output
+- **Smoke fragment**: Beer-Lambert absorption, densidade variável por `misc.z`, cor base escura com aquecimento por proximidade de fogo
+- **ACES helper**: `fn aces_tonemap(x: vec3<f32>) -> vec3<f32>` — Narkowicz fit
 
-- `src/features/command/index.ts` — re-exporta os ~32 painéis que `CommandCenter.tsx` consome.
-- `src/features/skycanvas/index.ts` — re-exporta os componentes que `SkyCanvas.tsx` consome (`SkyCanvasMount`, `SkyCanvasViewportShell`, `TimelineStripView`, `CueInspectorPanel`, `EffectLibrarySidebar`, `ViewportOverlays`, `SkyCanvasDiagnosticsPanel`, `SkyCanvasCommandPalette`, `CatalogImportDialog`).
+### 3. `src/render_ultra/gpgpu/wgsl/lightScatter.wgsl.ts`
+Exporta WGSL para um fullscreen-triangle pass de light scattering:
+- `LightScatterParams` uniform (intensity, falloff, radius, time, light positions)
+- Fragment shader que amostra radial falloff `1/(1 + k*d²)` de cada fonte de luz
+- Output aditivo baixa intensidade para aquecer bordas de fumaça
 
-`CommandCenter.tsx` e `SkyCanvas.tsx` reescrevem seus `lazy(() => import('@/components/...'))` para passar pelos barrels. Convive com [F5 Features Re-Export] já existente.
+### 4. `src/render_ultra/gpgpu/webgpuLightScatter.ts`
+Pipeline e pass de light scattering:
+- `createLightScatterPipeline(device, format, wgslCode)`: fullscreen triangle, additive blend leve
+- `createLightScatterUniform(device)`: buffer para parâmetros + posições de luz
+- `runLightScatterPass(encoder, view, pipeline, bindGroup)`: draw(3) fullscreen
 
-### 2. Guard test arquitetural
+---
 
-`src/__tests__/commandSkycanvasFirewall.guard.spec.ts` — varredura AST/regex em:
+## Arquivos a Modificar
 
-- **`/command` side** (`src/pages/CommandCenter.tsx` + `src/features/command/**`) → proibido importar:
-  `@/components/editor/SkyCanvasMount`, `@/components/skycanvas/*`, `@/features/skycanvas/*`, `Show3DEngine`, `SkyCanvas2`, `SkyCanvas3D`, qualquer coisa de `@/render_ultra/*`.
-- **`/skycanvas` side** (`src/pages/SkyCanvas.tsx` + `src/features/skycanvas/**`) → proibido importar:
-  `@/core/command/CommandBus`, `@/core/safety/uiCommandGateway`, `@/hardware/transports/*`, `@/features/command/*`, `LiveFiringPanel`, `ShowCommanderPanel`, `FXKNetPanel`, `DroneCommandPanel`, `MA3ControlPanel`.
-- Strings de navegação (`navigate('/command')`, `navigate('/skycanvas')`) continuam permitidas.
+### 5. `src/render_ultra/gpgpu/webgpuLoop.ts`
+- Importar shaders de `wgsl/renderShaders.wgsl.ts` em vez do `RENDER_WGSL` inline
+- Adicionar smoke compute pipeline e bind groups separados
+- Adicionar light scatter pass após smoke render
+- Frame pipeline atualizado:
+  ```
+  Compute Physics → Compute Smoke → Sort → Fire Render → Smoke Render → Light Scatter → Present
+  ```
+- Novo campo `smokeComputePipeline`, `lightScatterPipeline` e bind groups correspondentes
 
-### 3. Real-data only nos controladores
+### 6. `src/render_ultra/gpgpu/webgpuPipelines.ts`
+- Adicionar `createSmokeComputePipeline(device, wgslCode)` com entry `cs_smoke_update`
+- Exportar nova factory
 
-**3a. Empty state canônico** — `src/components/command/_shared/NoLiveHardwareEmptyState.tsx`:
-- Recebe `kinds: ControllerKind[]` + `label`; usa `useConsoleProvenance` + `ProvenanceBadge`; renderiza `NO HARDWARE` com mensagem "Sem link verificado com {kinds.join('/')} — telemetria desabilitada" + CTA "Abrir Pareamento" → `/pairing`.
+### 7. `src/render_ultra/gpgpu/webgpuPasses.ts`
+- Adicionar `runSmokeComputePass(encoder, pipeline, bindGroup, count)`
+- Adicionar `runLightScatterPass(encoder, view, pipeline, bindGroup)`
 
-**3b. DroneCommandPanel** (gap #1 e #2):
-- Cria `src/hooks/useDroneTelemetry.ts` que filtra `deviceAggregator.getDevices()` por `controllerRegistry.kind === 'drone-link'`. Sem device verificado → retorna `{ live: false, samples: [], wind: null }`.
-- Remove os dois `setInterval(Math.random())`. Telemetria/wind passam a vir do hook.
-- Wrapper: enquanto `!live`, renderiza `<NoLiveHardwareEmptyState kinds={['drone-link']} label="FXK-DRONE" />`. Ações ARM/LAUNCH/ABORT continuam (rotas de comando, não dados).
+### 8. `src/render_ultra/gpgpu/webgpuBuffers.ts`
+- Adicionar `createSmokeUniformBuffer(device)` (32 bytes)
+- Adicionar `createLightScatterUniformBuffer(device)` (64 bytes)
+- Exportar constantes `SMOKE_UNIFORM_BYTES`, `LIGHT_SCATTER_UNIFORM_BYTES`
 
-**3c. FXKNetPanel TopologyMinimap** (gap #3):
-- Substitui `nodes` sintéticos por leitura de `deviceAggregator.getDevices().filter(d => d.online)`. Cada nó real expõe `signal` via `LinkHealth.latencyEmaMs` (mapeada para 0-100% com clamp), `fw` via `device.firmware ?? '—'`. Sem devices online → render do bloco trocado por badge `NO NODES DISCOVERED` com link para `/pairing`.
+### 9. `src/render_ultra/gpgpu/webgpuBindGroups.ts`
+- Adicionar `createSmokeComputeBindGroup(device, layout, uniformBuf, smokeBuf)`
+- Adicionar `createLightScatterBindGroup(device, layout, uniformBuf)`
 
-**3d. MA3ControlPanel** (gap #4):
-- Default `oscHost = ''` (não `'192.168.1.100'`); placeholder do input vira `192.168.0.10 (host MA3)`. Botão "Conectar" continua, mas com validação de IP RFC 5952 antes do submit. Sem IP → botão disabled + tooltip honesto.
+### 10. `src/render_ultra/gpgpu/index.ts`
+- Re-exportar novos módulos e types
 
-**3e. DMXMonitorPanel** (gaps #5 e #7):
-- `source` hardcoded `'192.168.1.100'` → `source: 'show-plan-intent'` (ou nome real do nó Art-Net se disponível via `deviceAggregator`). Adiciona `<ProvenanceBadge mode={...} />` no header do painel via `useConsoleProvenance(['dmx-bridge'])` — quando não houver bridge live, o monitor mostra explicitamente "INTENT (ShowPlan) — sem leitura de barramento".
-- IDs de pacote/sessão (`Math.random().toString(36)`) ficam, mas trocados para `crypto.randomUUID()` (correção menor, semântica idêntica).
+---
 
-**3f. CurrentStateMatrix** (gap #6):
-- Linhas internas (ShowPlan, VerificationPass, ExportCoordinator, AuditTrail) viram `integrationMode: 'live_read_only'`, `evidence_level: 'adapter_only'` — refletem a verdade (são fontes reais do app, não sintéticas). Linhas hardware mantêm `useConsoleProvenance` por família.
+## Detalhes Técnicos
 
-### 4. Cosméticos de separação
+```text
+Frame Pipeline Atualizado:
 
-- `MainLayout.tsx` adiciona `data-surface={isEditor ? 'editor' : isCommand ? 'command' : 'app'}` no `<main>` (substrato CSS para isolar superfícies sem mexer em tokens).
-- `CommandCenter.tsx` ganha banner discreto `MODO COMANDO · LIVE-RO/REAL` no topo via `useWorkMode()` — só texto, sem alterar safety.
-- `SkyCanvas.tsx` ganha banner discreto `MODO EDITOR · DESIGN` no topo (mesmo padrão), reforçando que ali ninguém arma nada.
+SimParams ──→ Compute Physics (particles)
+SmokeParams ──→ Compute Smoke (curl noise advection)
+                    ↓
+              Bitonic Sort (transparency ordering)
+                    ↓
+              Fire Render Pass (additive, clear, ACES in fragment)
+                    ↓
+              Smoke Render Pass (alpha blend, load, Beer-Lambert)
+                    ↓
+              Light Scatter Pass (fullscreen, additive low-intensity)
+                    ↓
+              Present
+```
 
-### 5. Fora de escopo (próxima rodada)
+- ACES tonemapping aplicado **dentro** do fire fragment shader (preserva HDR até o último momento)
+- Curl noise é divergence-free por construção (derivadas cruzadas), garantindo turbulência sem explosão de volume
+- Light scatter usa fullscreen triangle (3 vertices, no index buffer) para evitar overhead de quad
+- Smoke compute separado do physics principal para permitir tuning independente de turbulência vs física
+- Todos os novos buffers pré-alocados no constructor, zero GC no hot path
+- CPU fallback path inalterado — todo código novo é WebGPU-only com guard `if (!navigator.gpu)`
 
-- Movimentação física `src/components/editor/* → src/components/command/*` (refactor grande).
-- Adapter de drone real (`useDroneTelemetry` já fica pronto para receber).
-- Refatorar `LiveFiringPanel.simulateHilFire` (já é dev-only gated).
-
-### Arquivos
-
-**Novos (5)**:
-- `src/features/command/index.ts`
-- `src/features/skycanvas/index.ts`
-- `src/components/command/_shared/NoLiveHardwareEmptyState.tsx`
-- `src/hooks/useDroneTelemetry.ts`
-- `src/__tests__/commandSkycanvasFirewall.guard.spec.ts`
-
-**Editados (8)**:
-- `src/pages/CommandCenter.tsx` — imports via barrel + banner.
-- `src/pages/SkyCanvas.tsx` — imports via barrel + banner.
-- `src/components/editor/DroneCommandPanel.tsx` — remove 2 `Math.random()` + adota hook + empty state.
-- `src/components/editor/live-firing/FXKNetPanel.tsx` — TopologyMinimap real ou empty state.
-- `src/components/editor/MA3ControlPanel.tsx` — `oscHost` default vazio + validação.
-- `src/components/editor/dmx/DMXMonitorPanel.tsx` — provenance badge + source honesto + `crypto.randomUUID()`.
-- `src/components/editor/CurrentStateMatrix.tsx` — corrige `integrationMode` das 4 linhas internas.
-- `src/layouts/MainLayout.tsx` — `data-surface` no `<main>`.
-
-### Garantias
-
-- Zero impacto em safety (nenhuma rota nova até `commandBus`/`SSM`/`fieldBus`).
-- Zero mudança em workMode, featureFlags, GlobalEStopButton, Hold-to-Confirm.
-- Compatível com `SkyCanvasMount canonical`, `Honest Hardware Layer`, `Real-Only Mode`, `Round 15 Mocks Erradicated`.
-- Suite ganha 1 guard arquitetural + 2 testes para `useDroneTelemetry`.

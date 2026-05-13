@@ -1,6 +1,6 @@
 import { EffectComposer, Bloom, Vignette, ChromaticAberration, SMAA, Noise, ToneMapping, SSAO, DepthOfField, BrightnessContrast, HueSaturation, SSR } from '@react-three/postprocessing';
 import { KernelSize, BlendFunction, ToneMappingMode, Effect } from 'postprocessing';
-import { Vector2, Uniform, HalfFloatType } from 'three';
+import { Vector2, Uniform } from 'three';
 import { useSceneStore } from '@/store/useSceneStore';
 import type { ViewTransform } from '@/lib/niagaraBlenderRules';
 import { forwardRef, useMemo } from 'react';
@@ -10,8 +10,6 @@ import { HighlightDesaturationEffect } from '@/render_ultra/postprocessing/highl
 import { ACESHuePreserveEffect } from '@/render_ultra/postprocessing/acesHuePreserve';
 import { LuminanceFilmGrainEffect } from '@/render_ultra/postprocessing/luminanceFilmGrain';
 import { AtmosphericDepthEffect } from '@/render_ultra/postprocessing/atmosphericDepth';
-
-type EffectUniformMap = Map<string, Uniform>;
 
 const TONE_MAP: Record<ViewTransform, ToneMappingMode> = {
   'aces-filmic': ToneMappingMode.ACES_FILMIC,
@@ -49,10 +47,6 @@ void mainImage(const in vec4 inputColor, const in vec2 uv, out vec4 outputColor)
 `;
 
 class SharpenEffect extends Effect {
-  private get effectUniforms(): EffectUniformMap {
-    return (this as unknown as { uniforms: EffectUniformMap }).uniforms;
-  }
-
   constructor({ strength = 0.1 }: { strength?: number } = {}) {
     super('SharpenEffect', SHARPEN_FRAGMENT, {
       uniforms: new Map([['strength', new Uniform(strength)]]),
@@ -60,7 +54,7 @@ class SharpenEffect extends Effect {
   }
 
   set strength(value: number) {
-    (this.effectUniforms.get('strength') as Uniform).value = value;
+    (this.uniforms.get('strength') as Uniform).value = value;
   }
 }
 
@@ -121,10 +115,6 @@ void mainImage(const in vec4 inputColor, const in vec2 uv, out vec4 outputColor)
 `;
 
 class HeatDistortionEffect extends Effect {
-  private get effectUniforms(): EffectUniformMap {
-    return (this as unknown as { uniforms: EffectUniformMap }).uniforms;
-  }
-
   constructor({ intensity = 0.5, scale = 1.0 }: { intensity?: number; scale?: number } = {}) {
     super('HeatDistortionEffect', HEAT_DISTORTION_FRAGMENT, {
       uniforms: new Map([
@@ -136,12 +126,12 @@ class HeatDistortionEffect extends Effect {
   }
 
   update(_renderer: any, _inputBuffer: any, deltaTime: number) {
-    const timeUniform = this.effectUniforms.get('time') as Uniform;
+    const timeUniform = this.uniforms.get('time') as Uniform;
     timeUniform.value += deltaTime;
   }
 
   set intensity(value: number) {
-    (this.effectUniforms.get('intensity') as Uniform).value = value;
+    (this.uniforms.get('intensity') as Uniform).value = value;
   }
 }
 
@@ -188,10 +178,6 @@ void mainImage(const in vec4 inputColor, const in vec2 uv, out vec4 outputColor)
 `;
 
 class MotionBlurEffect extends Effect {
-  private get effectUniforms(): EffectUniformMap {
-    return (this as unknown as { uniforms: EffectUniformMap }).uniforms;
-  }
-
   constructor({ intensity = 0.5 }: { intensity?: number } = {}) {
     super('MotionBlurEffect', MOTION_BLUR_FRAGMENT, {
       uniforms: new Map([['intensity', new Uniform(intensity)]]),
@@ -199,7 +185,7 @@ class MotionBlurEffect extends Effect {
   }
 
   set intensity(value: number) {
-    (this.effectUniforms.get('intensity') as Uniform).value = value;
+    (this.uniforms.get('intensity') as Uniform).value = value;
   }
 }
 
@@ -246,10 +232,6 @@ void mainImage(const in vec4 inputColor, const in vec2 uv, out vec4 outputColor)
 `;
 
 class GodRaysEffect extends Effect {
-  private get effectUniforms(): EffectUniformMap {
-    return (this as unknown as { uniforms: EffectUniformMap }).uniforms;
-  }
-
   constructor({ intensity = 0.5 }: { intensity?: number } = {}) {
     super('GodRaysEffect', GOD_RAYS_FRAGMENT, {
       uniforms: new Map<string, Uniform<number | Vector2>>([
@@ -260,7 +242,7 @@ class GodRaysEffect extends Effect {
   }
 
   set intensity(value: number) {
-    (this.effectUniforms.get('intensity') as Uniform).value = value;
+    (this.uniforms.get('intensity') as Uniform).value = value;
   }
 }
 
@@ -422,10 +404,6 @@ const PRESET_INDEX: Record<ColorGradingPreset, number> = {
 };
 
 class ColorGradingEffect extends Effect {
-  private get effectUniforms(): EffectUniformMap {
-    return (this as unknown as { uniforms: EffectUniformMap }).uniforms;
-  }
-
   constructor({ preset = 'neutral', mixAmount = 1.0 }: { preset?: ColorGradingPreset; mixAmount?: number } = {}) {
     super('ColorGradingEffect', COLOR_LUT_FRAGMENT, {
       uniforms: new Map([
@@ -436,11 +414,11 @@ class ColorGradingEffect extends Effect {
   }
 
   set preset(value: ColorGradingPreset) {
-    (this.effectUniforms.get('preset') as Uniform).value = PRESET_INDEX[value] ?? 0;
+    (this.uniforms.get('preset') as Uniform).value = PRESET_INDEX[value] ?? 0;
   }
 
   set mixAmount(value: number) {
-    (this.effectUniforms.get('mix_amount') as Uniform).value = value;
+    (this.uniforms.get('mix_amount') as Uniform).value = value;
   }
 }
 
@@ -473,10 +451,6 @@ void mainImage(const in vec4 inputColor, const in vec2 uv, out vec4 outputColor)
 `;
 
 class DownSampleBlurEffect extends Effect {
-  private get effectUniforms(): EffectUniformMap {
-    return (this as unknown as { uniforms: EffectUniformMap }).uniforms;
-  }
-
   constructor({ intensity = 0.15, radius = 2.0 }: { intensity?: number; radius?: number } = {}) {
     super('DownSampleBlurEffect', DOWNSAMPLE_BLUR_FRAGMENT, {
       uniforms: new Map([
@@ -485,8 +459,8 @@ class DownSampleBlurEffect extends Effect {
       ]),
     });
   }
-  set intensity(value: number) { (this.effectUniforms.get('intensity') as Uniform).value = value; }
-  set radius(value: number) { (this.effectUniforms.get('radius') as Uniform).value = value; }
+  set intensity(value: number) { (this.uniforms.get('intensity') as Uniform).value = value; }
+  set radius(value: number) { (this.uniforms.get('radius') as Uniform).value = value; }
 }
 
 // ═══ Wrapper Components ═══
@@ -617,20 +591,7 @@ export default function PostProcessing({ activeBurstCount = 0 }: { activeBurstCo
   const ssrResScale = s.ssrHalfRes ? 0.5 : 1.0;
 
   return (
-    <EffectComposer
-      multisampling={0}
-      enableNormalPass={s.ssaoEnabled}
-      resolutionScale={s.ssrHalfRes && s.ssrEnabled ? 1.0 : 1.0}
-      // ── BUG-FIX: glBlitFramebuffer depth/stencil conflict ──
-      // Force a separate (non-packed) depth texture and disable stencil on the
-      // composer's render targets. Previously, EffectComposer allocated a packed
-      // DEPTH24_STENCIL8 attachment that ended up bound as both READ (sampled by
-      // SSAO/SSR/DepthOfField) and WRITE (blit target) inside the same pass,
-      // producing GL_INVALID_OPERATION and a horizontal seam on the horizon.
-      depthBuffer={true}
-      stencilBuffer={false}
-      frameBufferType={HalfFloatType}
-    >
+    <EffectComposer multisampling={0} enableNormalPass={s.ssaoEnabled} resolutionScale={s.ssrHalfRes && s.ssrEnabled ? 1.0 : 1.0}>
       <SMAA />
 
       {/* ═══ SSR — DISABLED by default for night scenes (heavy GPU cost) ═══ */}

@@ -10,7 +10,6 @@ export {
   forceRenderAPI,
   unlockRenderAPI,
   reportCrash,
-  resetCrashRecord,
   getCrashRecord,
   isInCooldown,
   watchdogTick,

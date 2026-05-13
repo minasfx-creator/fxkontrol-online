@@ -139,7 +139,7 @@ export default function UE5DMXPrevisImporter({ open, onOpenChange, initialFile }
   const toggleCategory = (cat: string) => {
     setActiveCategories(prev => {
       const next = new Set(prev);
-      if (next.has(cat)) next.delete(cat); else next.add(cat);
+      next.has(cat) ? next.delete(cat) : next.add(cat);
       return next;
     });
   };
@@ -147,7 +147,7 @@ export default function UE5DMXPrevisImporter({ open, onOpenChange, initialFile }
   const toggleUniverse = (u: number) => {
     setActiveUniverses(prev => {
       const next = new Set(prev);
-      if (next.has(u)) next.delete(u); else next.add(u);
+      next.has(u) ? next.delete(u) : next.add(u);
       return next;
     });
   };
@@ -257,7 +257,7 @@ export default function UE5DMXPrevisImporter({ open, onOpenChange, initialFile }
   const toggleFixture = (idx: number) => {
     setSelected(prev => {
       const next = new Set(prev);
-      if (next.has(idx)) next.delete(idx); else next.add(idx);
+      next.has(idx) ? next.delete(idx) : next.add(idx);
       return next;
     });
   };

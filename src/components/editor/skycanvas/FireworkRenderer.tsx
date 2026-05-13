@@ -12,7 +12,6 @@ import { useLiveSfxStore } from '@/store/useLiveSfxStore';
 import { useLOD } from '@/hooks/useLOD';
 import { getLiftTime, getBreakHeight, getBreakSpeed, getTypedPrefire, getTypedDuration, getStarLifetime, type FinalePartType } from '@/lib/pyroPhysics';
 import { useTerrainHeightCache } from '@/hooks/useTerrainHeightCache';
-import { useAuth } from '@/hooks/useAuth';
 import { parseVDL, vdlToEffect } from '@/lib/vdlParser';
 import { temporalFlicker, getFlickerParams, strobeFlicker, getCombustionHdrBoost } from '@/lib/pyroNoise';
 import { updateFrustum, isSphereInFrustum } from '@/lib/frustumCuller';
@@ -457,19 +456,14 @@ export const FireworkBurst = React.forwardRef<THREE.Group, {
   }, [STAR_COUNT, TRAIL_LENGTH]);
 
   const trailVertCount = particleBuffers.trailVertCount;
-  // `_starMaterialVersion` is a module-level invalidation counter (mutable signal).
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   const starMaterial = useMemo(() => _sharedStarMaterial(), [_starMaterialVersion]);
 
   useEffect(() => {
-    // Capture refs at effect-run time so cleanup sees stable instances.
-    const points = pointsRef.current;
-    const trail = trailRef.current;
     return () => {
-      if (points) points.geometry.dispose();
-      if (trail) {
-        trail.geometry.dispose();
-        if (trail.material instanceof THREE.Material) trail.material.dispose();
+      if (pointsRef.current) pointsRef.current.geometry.dispose();
+      if (trailRef.current) {
+        trailRef.current.geometry.dispose();
+        if (trailRef.current.material instanceof THREE.Material) trailRef.current.material.dispose();
       }
     };
   }, []);
@@ -493,18 +487,7 @@ export const FireworkBurst = React.forwardRef<THREE.Group, {
     const trailDt = (pattern === 'willow' || pattern === 'kamuro' || pattern === 'brocade') ? 0.020
       : pattern === 'palm' ? 0.025 : 0.035;
     const w = getWindForce('ember', position[1]);
-    // ── Stable twinkle/swing clock ──────────────────────────────────────
-    // Anti-flicker contract: when the timeline is paused or being scrubbed,
-    // every cosmetic oscillator (twinkle, frond sway, hang drift, blink)
-    // MUST freeze with the rest of the burst. We previously used
-    // `clock.getElapsedTime()` (wall RAF), which kept ticking on pause and
-    // produced visible flicker / dancing stars while the playhead stood
-    // still. Driving `time` from the canonical `currentTime` makes every
-    // oscillator a pure function of (seed, timelineTime) — deterministic
-    // at any scrub position, naturally animated during playback (because
-    // currentTime advances smoothly via audio master / RAF), and perfectly
-    // frozen on pause.
-    const time = useProjectStore.getState().currentTime;
+    const time = clock.getElapsedTime();
     const _adaptiveExposure = getAdaptiveExposure();
     
     // Reduced drag for larger calibers — heavier stars travel further
@@ -1166,14 +1149,8 @@ export function TimelineEffects() {
   const timelineItems = useProjectStore(s => s.timelineItems);
   const currentTime = useProjectStore(s => s.currentTime);
   const positions = useProjectStore(s => s.positions);
-  const projectId = useProjectStore(s => s.projectId);
-  const { user } = useAuth();
   const sceneSettings = useSceneStore(st => st.settings);
-  const persistence = useMemo(
-    () => (projectId && user?.id ? { projectId, userId: user.id } : undefined),
-    [projectId, user?.id],
-  );
-  const { getHeight } = useTerrainHeightCache(positions, sceneSettings.google3DTilesEnabled, persistence);
+  const { getHeight } = useTerrainHeightCache(positions, sceneSettings.google3DTilesEnabled);
   const activeEffects = useMemo(() => {
     const effectScale = sceneSettings.effectScale;
     const weatherDampening = sceneSettings.weather === 'heavy-rain' ? 0.6 :
@@ -1229,29 +1206,6 @@ export function TimelineEffects() {
 
       if (!effect) return null;
 
-      // ── Per-item overrides from PropertiesPanel (color, unit count) ──
-      // These let the operator tune individual cues without forking the library
-      // effect. Duration override is applied below via `durationOverride` on the
-      // item itself (typed-duration computation reads it).
-      if (item.colorOverride || item.flightCount || item.intensity !== undefined || item.caliberOverride || item.prefireOverride !== undefined || item.beamCountOverride) {
-        const intScale = item.intensity !== undefined ? Math.max(0, item.intensity) / 100 : 1;
-        effect = {
-          ...effect,
-          ...(item.colorOverride ? { color: item.colorOverride } : {}),
-          ...(item.flightCount && item.flightCount > 0 ? { shotCount: item.flightCount } : {}),
-          ...(item.caliberOverride ? { caliber: item.caliberOverride } : {}),
-          ...(item.prefireOverride !== undefined ? { prefire: item.prefireOverride } : {}),
-          ...(item.beamCountOverride ? { beamCount: item.beamCountOverride } : {}),
-          ...(item.intensity !== undefined && effect.niagaraProfile ? {
-            niagaraProfile: {
-              ...effect.niagaraProfile,
-              glowIntensity: effect.niagaraProfile.glowIntensity * intScale,
-              starCount: Math.max(8, Math.round(effect.niagaraProfile.starCount * (0.4 + 0.6 * intScale))),
-            },
-          } : {}),
-        } as typeof effect;
-      }
-
       let resolvedPos = item.position;
       let launchHeading = 0;
       let launchPitch = 85;
@@ -1271,9 +1225,7 @@ export function TimelineEffects() {
       const isGroundType = partType === 'gerb' || partType === 'waterfall' || partType === 'flame' || partType === 'fan' || partType === 'ground' || partType === 'sfx' || partType === 'light';
 
       const prefireDuration = getTypedPrefire(partType, caliber, effect.prefire);
-      // Honor per-item duration override from PropertiesPanel
-      const baseDuration = item.durationOverride ?? effect.duration;
-      const typedDuration = getTypedDuration(partType, caliber, baseDuration, effect.shotCount);
+      const typedDuration = getTypedDuration(partType, caliber, effect.duration, effect.shotCount);
       const weatherDuration = typedDuration * weatherDampening * humidityFactor;
       const totalDuration = (isShellType ? prefireDuration : 0) + weatherDuration;
 

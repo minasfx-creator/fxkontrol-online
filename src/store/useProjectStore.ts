@@ -1,8 +1,6 @@
 import { create } from 'zustand';
 import type { VideoChoreoResult } from '@/lib/videoChoreoEngine';
 import { createDroneFormationSlice } from '@/store/slices/droneFormationSlice';
-import { timelineClock } from '@/core/timeline/TimelineClock';
-import { buildDemoTimeline } from '@/lib/demoTimeline';
 
 // ── Effect types & EFFECT_LIBRARY re-exported from src/data for backward compat ──
 export type { Effect, PartType } from '@/data/effectLibrary';
@@ -19,13 +17,9 @@ import type {
   DepthLayer, TimelineItem, Position, PositionType, BezierHandle, Waypoint, Trajectory,
   EditorMode, SelectionMode, DroneFormation, CueMarker, CameraKeyframe, WindSettings,
 } from '@/types/projectTypes';
-import type { SegmentType } from '@/features/viewport-tools/types';
 
 export interface ProjectState {
   projectName: string;
-  /** Active segments enabled for this show (drives the editor topbar). */
-  segments: SegmentType[];
-  setSegments: (segments: SegmentType[]) => void;
   activeLockouts: string[];
   setActiveLockouts: (lockouts: string[]) => void;
   toggleLockout: (riskGroup: string) => void;
@@ -49,42 +43,8 @@ export interface ProjectState {
   drawHeight: number;
   waypointUndoStack: { trajectoryId: string; waypoint: Waypoint }[];
   audioUrl: string | null;
-  /** Show-time offset (seconds) at which the audio file starts playing on the
-   *  timeline. 0 = audio starts at t=0 (default). >0 = audio enters with a
-   *  delay (silence before). Set when the operator drops an audio file on the
-   *  timeline ruler at a non-zero timestamp. Independent of `audioInPoint`,
-   *  which is a non-destructive trim *inside* the file. */
-  audioStartOffset: number;
-  /** Non-destructive trim: start point inside the original audio file (s). */
-  audioInPoint: number;
-  /** Non-destructive trim: end point inside the original audio file (s).
-   *  `null` = use the file's natural end. */
-  audioOutPoint: number | null;
-  /** Decoded length of the original audio file (s). Set by AudioWaveform
-   *  after `decodeAudioData` succeeds; needed to clamp trim handles. */
-  audioOriginalDuration: number | null;
-  /** Single-level undo snapshot for the last applied trim. Stores the trim
-   *  window that was active *before* the apply, plus the timeline items it
-   *  removed (so Reset can restore them). All other entities re-add the
-   *  saved `delta` to their times — no per-entity snapshot needed. */
-  audioTrimHistory: {
-    prevIn: number;
-    prevOut: number | null;
-    delta: number;
-    removedItems: TimelineItem[];
-    timestamp: number;
-  } | null;
   bpm: number | null;
   snapToBeat: boolean;
-  /** Snap-to-grid mode for timeline drag/drop/nudge.
-   *  - `auto` (default): beat if BPM is set, else frame.
-   *  - `beat`: always beat (falls back to frame if no BPM).
-   *  - `frame`: always frame (uses `timecodeProvider.getFPS()`).
-   *  - `off`: no snapping. */
-  snapMode: 'auto' | 'beat' | 'frame' | 'off';
-  /** Time offset (seconds) applied to Alt+drag clones. 0 = clone at original timestamp,
-   *  >0 = nudge clone forward by this amount when user releases without horizontal drag. */
-  cloneDragOffsetSec: number;
   playbackSpeed: number;
   projectId: string | null;
   cameraKeyframes: CameraKeyframe[];
@@ -103,9 +63,6 @@ export interface ProjectState {
   timeZoneOffset: number | null;
   terrainElevation: number | null;
   staticMapUrl: string | null;
-  timelineSource: 'local' | 'external';
-  timelineLastExternalSync: number | null;
-  timelineDriftSec: number;
   setGpsOrigin: (origin: { lat: number; lng: number; heading: number; altitude: number }) => void;
   setGeoIntelligence: (data: {
     locationName?: string | null;
@@ -155,25 +112,10 @@ export interface ProjectState {
   setDrawHeight: (h: number) => void;
   undoLastWaypoint: () => void;
   setAudioUrl: (url: string | null) => void;
-  setAudioStartOffset: (t: number) => void;
-  setAudioOriginalDuration: (d: number | null) => void;
-  setAudioInPoint: (t: number) => void;
-  setAudioOutPoint: (t: number | null) => void;
-  /** Atomically apply a trim window: re-times every timeline item / cue /
-   *  camera keyframe / waypoint by `-delta`, drops items outside the new
-   *  window, updates `duration` and `currentTime`, saves an undo snapshot. */
-  applyAudioTrim: (inT: number, outT: number) => { ok: boolean; error?: string; removedItems?: number; removedCues?: number };
-  /** Restore `in=0, out=null` and revert times. If a trim history snapshot
-   *  exists, removed items are restored too. */
-  resetAudioTrim: () => void;
   setBpm: (bpm: number | null) => void;
   setSnapToBeat: (snap: boolean) => void;
-  setSnapMode: (mode: 'auto' | 'beat' | 'frame' | 'off') => void;
-  setCloneDragOffsetSec: (sec: number) => void;
   setPlaybackSpeed: (speed: number) => void;
   setProjectId: (id: string | null) => void;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  replaceProjectState: (snap: any) => void;
   combineAsChain: (itemIds: string[], gap?: number) => void;
   breakChain: (chainRef: string) => void;
   addCameraKeyframe: (kf: CameraKeyframe) => void;
@@ -200,8 +142,6 @@ export interface ProjectState {
   removeCueMarker: (id: string) => void;
   updateCueMarker: (id: string, updates: Partial<Omit<CueMarker, 'id'>>) => void;
   clearCueMarkers: () => void;
-  selectedCueMarkerId: string | null;
-  selectCueMarker: (id: string | null) => void;
   setVideoChoreoResult: (result: VideoChoreoResult | null) => void;
   setDepthLayers: (layers: DepthLayer[]) => void;
 }
@@ -211,8 +151,6 @@ export { EFFECT_LIBRARY } from '@/data/effectLibrary';
 
 export const useProjectStore = create<ProjectState>((set, get) => ({
   projectName: 'Untitled Show',
-  segments: ['PYRO'],
-  setSegments: (segments) => set({ segments: segments.length > 0 ? segments : ['PYRO'] }),
   isPlaying: false,
   activeLockouts: [],
   setActiveLockouts: (lockouts) => set({ activeLockouts: lockouts }),
@@ -240,15 +178,8 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
   drawHeight: 10,
   waypointUndoStack: [],
   audioUrl: null,
-  audioStartOffset: 0,
-  audioInPoint: 0,
-  audioOutPoint: null,
-  audioOriginalDuration: null,
-  audioTrimHistory: null,
   bpm: null,
   snapToBeat: false,
-  snapMode: 'auto',
-  cloneDragOffsetSec: 0,
   playbackSpeed: 1,
   projectId: null,
   cameraKeyframes: [],
@@ -259,7 +190,6 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
   selectedTrajectoryIds: [],
   showFormations: true,
   cueMarkers: [],
-  selectedCueMarkerId: null,
   videoChoreoResult: null,
   depthLayers: [],
   gpsOrigin: { lat: -23.5505, lng: -46.6333, heading: 0, altitude: 0 },
@@ -268,9 +198,6 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
   timeZoneOffset: null,
   terrainElevation: null,
   staticMapUrl: null,
-  timelineSource: 'local',
-  timelineLastExternalSync: null,
-  timelineDriftSec: 0,
   setGpsOrigin: (origin) => set({ gpsOrigin: origin }),
   setGeoIntelligence: (data) => set({
     ...(data.locationName !== undefined && { locationName: data.locationName }),
@@ -280,57 +207,9 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
     ...(data.staticMapUrl !== undefined && { staticMapUrl: data.staticMapUrl }),
   }),
 
-  setPlaying: (playing) => {
-    if (playing) {
-      // ── Defensive auto-recovery on every Play press ──
-      // Without these guards, Play silently no-ops in three real-world cases
-      // we hit in field testing:
-      //  1) playbackSpeed was persisted as 0 / NaN (legacy projects, external
-      //     sync hold) → tick() multiplies by 0 and the time never advances.
-      //  2) currentTime is at the end of the timeline → first tick clamps to
-      //     duration and pauses again before any frame renders.
-      //  3) The timeline is completely empty → user sees nothing happen and
-      //     concludes "Play is broken". We seed a Fire-All demo so every
-      //     renderer (pyro/drone/sfx/laser/light) lights up immediately.
-      const clockState = timelineClock.getState();
-      if (!Number.isFinite(clockState.speed) || clockState.speed <= 0) {
-        timelineClock.setSpeed(1);
-      }
-      if (clockState.time >= clockState.duration - 0.001) {
-        timelineClock.seek(0);
-      }
-      const s = get();
-      if (s.timelineItems.length === 0) {
-        const demo = buildDemoTimeline();
-        if (demo) {
-          // Merge (do not replace): if user already has demo positions from a
-          // previous Play, keep them; otherwise append everything in one set().
-          set((cur) => ({
-            positions: [
-              ...cur.positions,
-              ...demo.positions.filter((p) => !cur.positions.some((cp) => cp.id === p.id)),
-            ],
-            timelineItems: [
-              ...cur.timelineItems,
-              ...demo.items.filter((i) => !cur.timelineItems.some((ci) => ci.id === i.id)),
-            ],
-          }));
-          if (demo.duration > timelineClock.getState().duration) {
-            timelineClock.setDuration(demo.duration);
-          }
-        }
-      }
-      timelineClock.play();
-    } else {
-      timelineClock.pause();
-    }
-  },
-  setCurrentTime: (time) => {
-    timelineClock.seek(time);
-  },
-  setDuration: (duration) => {
-    timelineClock.setDuration(duration);
-  },
+  setPlaying: (playing) => set({ isPlaying: playing }),
+  setCurrentTime: (time) => set({ currentTime: time }),
+  setDuration: (duration) => set({ duration }),
   addTimelineItem: (item) => set((s) => ({ timelineItems: [...s.timelineItems, item] })),
   removeTimelineItem: (id) => set((s) => {
     const removed = s.timelineItems.find(i => i.id === id);
@@ -508,196 +387,11 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
       ),
     };
   }),
-  setAudioUrl: (url) => set((s) => {
-    // When the audio source changes, the previous trim window no longer
-    // makes sense (it referred to a different file's coordinate system).
-    // Wipe trim state so the operator starts fresh on the new file.
-    // `audioStartOffset` is preserved on purpose: the operator may have set
-    // it via "drop on ruler" specifically to position the *new* file they're
-    // now uploading. If they want it back at 0 they can drop on t=0.
-    if (url !== s.audioUrl) {
-      return {
-        audioUrl: url,
-        audioInPoint: 0,
-        audioOutPoint: null,
-        audioOriginalDuration: null,
-        audioTrimHistory: null,
-      };
-    }
-    return { audioUrl: url };
-  }),
-  setAudioStartOffset: (t) => set({ audioStartOffset: Math.max(0, t) }),
-  setAudioOriginalDuration: (d) => set({ audioOriginalDuration: d }),
-  setAudioInPoint: (t) => set({ audioInPoint: Math.max(0, t) }),
-  setAudioOutPoint: (t) => set({ audioOutPoint: t == null ? null : Math.max(0, t) }),
-  applyAudioTrim: (inT, outT) => {
-    const s = get();
-    // Validate using the pure helper (kept here as inline guards to avoid
-    // an extra import cycle into the store).
-    if (!Number.isFinite(inT) || !Number.isFinite(outT)) {
-      return { ok: false, error: 'Trim points must be finite.' };
-    }
-    if (inT < 0 || outT <= inT || outT - inT < 0.05) {
-      return { ok: false, error: 'Invalid trim window (must be ≥ 50ms, in < out).' };
-    }
-    if (s.audioOriginalDuration != null && outT > s.audioOriginalDuration + 1e-3) {
-      return { ok: false, error: 'Out point exceeds audio length.' };
-    }
-    // `delta` is the shift applied to every show-time entity. The current
-    // store coordinates run from 0..duration relative to `audioInPoint`; the
-    // new ones must run from 0..(outT-inT) relative to `inT`.
-    const delta = inT - s.audioInPoint;
-    const newDuration = outT - inT;
-    const TOL = 0.05;
-
-    // Re-time and filter timeline items.
-    const removedItems: TimelineItem[] = [];
-    const nextItems = s.timelineItems.flatMap<TimelineItem>((item) => {
-      const t = item.startTime - delta;
-      if (t < -TOL || t > newDuration + TOL) {
-        removedItems.push(item);
-        return [];
-      }
-      return [{ ...item, startTime: Math.max(0, Math.min(newDuration, t)) }];
-    });
-
-    // Re-time cues (drop those outside).
-    const nextCues = s.cueMarkers.flatMap<CueMarker>((c) => {
-      const t = c.time - delta;
-      if (t < -TOL || t > newDuration + TOL) return [];
-      return [{ ...c, time: Math.max(0, Math.min(newDuration, t)) }];
-    });
-
-    // Re-time camera keyframes (drop those outside).
-    const nextCam = s.cameraKeyframes.flatMap<CameraKeyframe>((kf) => {
-      const t = kf.time - delta;
-      if (t < -TOL || t > newDuration + TOL) return [];
-      return [{ ...kf, time: Math.max(0, Math.min(newDuration, t)) }];
-    });
-
-    // Re-time waypoints inside trajectories (drop those outside; keep
-    // trajectory itself even if empty so the position is preserved).
-    const nextTraj = s.trajectories.map<Trajectory>((tr) => ({
-      ...tr,
-      waypoints: tr.waypoints.flatMap<Waypoint>((wp) => {
-        const t = wp.time - delta;
-        if (t < -TOL || t > newDuration + TOL) return [];
-        return [{ ...wp, time: Math.max(0, Math.min(newDuration, t)) }];
-      }),
-    }));
-
-    // Re-time drone formations (drop entire formation if startTime falls out).
-    const nextFormations = s.droneFormations.flatMap<DroneFormation>((f) => {
-      const t = f.startTime - delta;
-      if (t < -TOL || t > newDuration + TOL) return [];
-      return [{ ...f, startTime: Math.max(0, Math.min(newDuration, t)) }];
-    });
-
-    const newCurrentTime = Math.max(0, Math.min(newDuration, s.currentTime - delta));
-
-    set({
-      audioInPoint: inT,
-      audioOutPoint: outT,
-      duration: newDuration,
-      timelineItems: nextItems,
-      cueMarkers: nextCues,
-      cameraKeyframes: nextCam,
-      trajectories: nextTraj,
-      droneFormations: nextFormations,
-      audioTrimHistory: {
-        prevIn: s.audioInPoint,
-        prevOut: s.audioOutPoint,
-        delta,
-        removedItems,
-        timestamp: Date.now(),
-      },
-    });
-    timelineClock.setDuration(newDuration);
-    timelineClock.seek(newCurrentTime);
-
-    return { ok: true, removedItems: removedItems.length, removedCues: s.cueMarkers.length - nextCues.length };
-  },
-  resetAudioTrim: () => {
-    const s = get();
-    const origDur = s.audioOriginalDuration;
-    if (origDur == null) {
-      // Nothing to reset to — just clear the points without touching items.
-      set({ audioInPoint: 0, audioOutPoint: null, audioTrimHistory: null });
-      return;
-    }
-    const hist = s.audioTrimHistory;
-    const newDuration = origDur;
-    if (hist) {
-      // Shift everything back by -delta and re-insert removed items at their
-      // original (pre-trim) timestamps.
-      const d = hist.delta;
-      const items = [
-        ...s.timelineItems.map((i) => ({ ...i, startTime: i.startTime + d })),
-        ...hist.removedItems,
-      ];
-      set({
-        audioInPoint: 0,
-        audioOutPoint: null,
-        duration: newDuration,
-        timelineItems: items,
-        cueMarkers: s.cueMarkers.map((c) => ({ ...c, time: c.time + d })),
-        cameraKeyframes: s.cameraKeyframes.map((kf) => ({ ...kf, time: kf.time + d })),
-        trajectories: s.trajectories.map((tr) => ({
-          ...tr,
-          waypoints: tr.waypoints.map((wp) => ({ ...wp, time: wp.time + d })),
-        })),
-        droneFormations: s.droneFormations.map((f) => ({ ...f, startTime: f.startTime + d })),
-        audioTrimHistory: null,
-      });
-    } else {
-      set({ audioInPoint: 0, audioOutPoint: null, duration: newDuration, audioTrimHistory: null });
-    }
-    timelineClock.setDuration(newDuration);
-  },
+  setAudioUrl: (url) => set({ audioUrl: url }),
   setBpm: (bpm) => set({ bpm }),
-  setSnapToBeat: (snap) => set({ snapToBeat: snap, snapMode: snap ? 'auto' : 'off' }),
-  setSnapMode: (mode) => set({ snapMode: mode, snapToBeat: mode !== 'off' }),
-  setCloneDragOffsetSec: (sec) => {
-    // Sanitize: NaN/negative falls back to 0; clamp to a sane upper bound (60s).
-    const safe = Number.isFinite(sec) && sec >= 0 ? Math.min(sec, 60) : 0;
-    set({ cloneDragOffsetSec: safe });
-  },
-  setPlaybackSpeed: (speed) => {
-    // Sanitize: NaN, negative or non-finite values fall back to 1×.
-    // Speed=0 is a valid technical state (external sync hold) and is preserved,
-    // but the operational transport controller will auto-correct it on Play.
-    const safe = Number.isFinite(speed) && speed >= 0 ? speed : 1;
-    timelineClock.setSpeed(safe);
-  },
+  setSnapToBeat: (snap) => set({ snapToBeat: snap }),
+  setPlaybackSpeed: (speed) => set({ playbackSpeed: speed }),
   setProjectId: (id) => set({ projectId: id }),
-  // ── Atomic load: replace ALL persisted slices in one set() call ─────
-  // WHY: loadProject used to call addPosition / addTimelineItem / addTrajectory
-  // in a loop, which APPENDED to whatever was already in the store. Loading
-  // project A then project B left B's data merged with A's — duplicate IDs,
-  // ghost positions, the lot. This single setter wipes the persisted slices
-  // atomically and lets useProjectPersistence stay shallow.
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  replaceProjectState: (snap: any) => set(() => ({
-    projectId: snap.projectId ?? null,
-    projectName: snap.projectName ?? 'Untitled Show',
-    segments: Array.isArray(snap.segments) && snap.segments.length > 0 ? snap.segments : ['PYRO'],
-    duration: snap.duration ?? 120,
-    audioUrl: snap.audioUrl ?? null,
-    bpm: snap.bpm ?? null,
-    playbackSpeed: snap.playbackSpeed ?? 1,
-    positions: Array.isArray(snap.positions) ? snap.positions : [],
-    timelineItems: Array.isArray(snap.timelineItems) ? snap.timelineItems : [],
-    trajectories: Array.isArray(snap.trajectories) ? snap.trajectories : [],
-    cameraKeyframes: Array.isArray(snap.cameraKeyframes) ? snap.cameraKeyframes : [],
-    droneFormations: Array.isArray(snap.droneFormations) ? snap.droneFormations : [],
-    selectedTimelineItemId: null,
-    selectedTimelineItemIds: [],
-    selectedPositionId: null,
-    selectedPositionIds: [],
-    selectedTrajectoryId: null,
-    selectedWaypointId: null,
-    selectedFormationId: null,
-  })),
 
   combineAsChain: (itemIds, gap = 0) => set((s) => {
     if (itemIds.length < 2) return s;
@@ -738,48 +432,14 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
   ...createDroneFormationSlice(set as any, get as any),
 
   addCueMarker: (marker) => set((s) => ({ cueMarkers: [...s.cueMarkers, marker].sort((a, b) => a.time - b.time) })),
-  removeCueMarker: (id) => set((s) => ({
-    cueMarkers: s.cueMarkers.filter((c) => c.id !== id),
-    selectedCueMarkerId: s.selectedCueMarkerId === id ? null : s.selectedCueMarkerId,
-  })),
+  removeCueMarker: (id) => set((s) => ({ cueMarkers: s.cueMarkers.filter((c) => c.id !== id) })),
   updateCueMarker: (id, updates) => set((s) => ({
     cueMarkers: s.cueMarkers.map((c) => c.id === id ? { ...c, ...updates } : c),
   })),
-  clearCueMarkers: () => set({ cueMarkers: [], selectedCueMarkerId: null }),
-  selectCueMarker: (id) => set({ selectedCueMarkerId: id }),
+  clearCueMarkers: () => set({ cueMarkers: [] }),
   setVideoChoreoResult: (result) => set({ videoChoreoResult: result }),
   setDepthLayers: (layers) => set({ depthLayers: layers }),
 }));
-
-timelineClock.setDuration(useProjectStore.getState().duration);
-timelineClock.setSpeed(useProjectStore.getState().playbackSpeed);
-timelineClock.seek(useProjectStore.getState().currentTime);
-
-timelineClock.onChange((state) => {
-  useProjectStore.setState((prev) => {
-    if (
-      prev.currentTime === state.time &&
-      prev.isPlaying === state.playing &&
-      prev.duration === state.duration &&
-      prev.playbackSpeed === state.speed &&
-      prev.timelineSource === state.source &&
-      prev.timelineLastExternalSync === state.lastExternalSync &&
-      prev.timelineDriftSec === state.driftSec
-    ) {
-      return prev;
-    }
-
-    return {
-      currentTime: state.time,
-      isPlaying: state.playing,
-      duration: state.duration,
-      playbackSpeed: state.speed,
-      timelineSource: state.source,
-      timelineLastExternalSync: state.lastExternalSync,
-      timelineDriftSec: state.driftSec,
-    };
-  });
-});
 
 // ── effectWorldOrientation re-exported from src/lib for backward compat ──
 export { effectWorldOrientation } from '@/lib/effectOrientation';

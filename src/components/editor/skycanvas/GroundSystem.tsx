@@ -10,7 +10,6 @@ import { useFrame, useThree } from '@react-three/fiber';
 import { Grid } from '@react-three/drei';
 import * as THREE from 'three';
 import { useSceneStore } from '@/store/useSceneStore';
-import { useProjectStore } from '@/store/useProjectStore';
 import { createVolumetricFogPlane } from '@/render_ultra/environment/volumetricFog';
 import CrowdSystem from './CrowdSystem';
 import StageFlameJets from './StageFlameJets';
@@ -253,9 +252,8 @@ function GrassGround() {
     camPos: { value: new THREE.Vector3() },
   }), []);
 
-  useFrame(({ camera }) => {
-    // Deterministic clock: tied to timeline so terrain shimmer freezes on pause/scrub.
-    uniforms.time.value = useProjectStore.getState().currentTime;
+  useFrame(({ clock, camera }) => {
+    uniforms.time.value = clock.getElapsedTime();
     uniforms.camPos.value.copy(camera.position);
   });
 
@@ -297,9 +295,9 @@ export function AtmosphericParticles() {
     return { positions: pos, sizes: sz, velocities: vel };
   }, []);
 
-  useFrame(({ camera }) => {
+  useFrame(({ clock, camera }) => {
     if (!pointsRef.current) return;
-    const t = useProjectStore.getState().currentTime;
+    const t = clock.getElapsedTime();
     const posAttr = pointsRef.current.geometry.getAttribute('position') as THREE.BufferAttribute;
     const arr = posAttr.array as Float32Array;
     const camX = camera.position.x, camZ = camera.position.z;
@@ -406,8 +404,8 @@ function GroundFog() {
     fogSystem.setIntensity(fogIntensity);
   }, [fogIntensity, fogSystem]);
 
-  useFrame(() => {
-    fogSystem.update(useProjectStore.getState().currentTime);
+  useFrame(({ clock }) => {
+    fogSystem.update(clock.getElapsedTime());
   });
 
   return (
@@ -427,8 +425,8 @@ function FinaleDarkGround({ brightness }: { brightness: number }) {
     camPos: { value: new THREE.Vector3() },
   }), []);
 
-  useFrame(({ camera }) => {
-    uniforms.time.value = useProjectStore.getState().currentTime;
+  useFrame(({ clock, camera }) => {
+    uniforms.time.value = clock.getElapsedTime();
     uniforms.camPos.value.copy(camera.position);
   });
 
@@ -615,8 +613,8 @@ function SyntheticGrassGround({ brightness }: { brightness: number }) {
     uniforms.brightness.value = brightness;
   }, [brightness]);
 
-  useFrame(({ camera }) => {
-    uniforms.time.value = useProjectStore.getState().currentTime;
+  useFrame(({ clock, camera }) => {
+    uniforms.time.value = clock.getElapsedTime();
     uniforms.camPos.value.copy(camera.position);
   });
 
@@ -1196,10 +1194,7 @@ export function StageGround({ satelliteTexture }: { satelliteTexture: string | n
 
       {sc.showScalePoles && [-80, -40, 0, 40, 80].map((x) => (
         <group key={`pole-${x}`} position={[x, 0, -60]}>
-          <mesh position={[0, 50, 0]}>
-            {/* castShadow removed — helper scale poles should not cast shadows
-                (extra shadow casters contribute to WebGL context loss on the
-                desktop /studio viewport). */}
+          <mesh position={[0, 50, 0]} castShadow>
             <cylinderGeometry args={[0.08, 0.1, 100, 8]} />
             <meshStandardMaterial color="#555555" metalness={0.7} roughness={0.25} />
           </mesh>

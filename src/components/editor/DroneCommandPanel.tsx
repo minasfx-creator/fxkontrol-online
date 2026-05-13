@@ -10,12 +10,9 @@ import { Progress } from '@/components/ui/progress';
 import { useProjectStore } from '@/store/useProjectStore';
 import {
   Shield, ShieldAlert, Radio, Signal, Battery, MapPin,
-  Navigation, Activity, Layers, ChevronRight, Crosshair, Sparkles
+  Navigation, Activity, Layers, ChevronRight, Crosshair
 } from 'lucide-react';
-import { Link } from 'react-router-dom';
 import BLEDeviceScanner from '@/components/editor/BLEDeviceScanner';
-import NoLiveHardwareEmptyState from '@/components/command/_shared/NoLiveHardwareEmptyState';
-import { useDroneTelemetry } from '@/hooks/useDroneTelemetry';
 
 interface DroneCommandPanelProps {
   fs?: boolean;
@@ -38,22 +35,13 @@ export default function DroneCommandPanel({ fs = false }: DroneCommandPanelProps
 
   const [launchState, setLaunchState] = useState<LaunchState>('idle');
   const [missionTimer, setMissionTimer] = useState(0);
+  const [telemetry, setTelemetry] = useState<DroneTelemetry[]>([]);
   const svgRef = useRef<SVGSVGElement>(null);
 
-  // ── Real-only telemetry: deviceAggregator → useDroneTelemetry. Sem
-  // device drone verificado, snap.live === false e o painel renderiza
-  // <NoLiveHardwareEmptyState/> abaixo. ZERO Math.random().
-  const snap = useDroneTelemetry();
-  const telemetry: DroneTelemetry[] = snap.samples;
-  const formationLock = snap.wind?.formationLock ?? false;
-  const windDir = snap.wind?.dirDeg ?? 0;
-  const windSpeed = snap.wind?.speedMps ?? 0;
-
   const fleetSize = useMemo(() => {
-    if (snap.live && snap.fleetSize > 0) return snap.fleetSize;
     if (droneFormations.length === 0) return 100;
     return droneFormations[0]?.droneCount ?? 100;
-  }, [snap.live, snap.fleetSize, droneFormations]);
+  }, [droneFormations]);
 
   const currentFormation = useMemo(() => {
     return droneFormations.find(f => f.id === selectedFormationId) ?? droneFormations[0];
@@ -66,13 +54,29 @@ export default function DroneCommandPanel({ fs = false }: DroneCommandPanelProps
     return () => clearInterval(iv);
   }, [launchState]);
 
+  // Simulated telemetry
+  useEffect(() => {
+    const iv = setInterval(() => {
+      setTelemetry(
+        Array.from({ length: Math.min(8, fleetSize) }, (_, i) => ({
+          id: i + 1,
+          alt: 25 + Math.random() * 55,
+          speed: 2 + Math.random() * 8,
+          heading: Math.floor(Math.random() * 360),
+          battery: 75 + Math.random() * 25,
+        }))
+      );
+    }, 1500);
+    return () => clearInterval(iv);
+  }, [fleetSize]);
+
   const preflight = useMemo(() => ({
-    gps: snap.live,
-    battery: snap.live,
-    geofence: snap.live,
+    gps: true,
+    battery: true,
+    geofence: true,
     safety: launchState !== 'idle' || true,
     clearance: launchState === 'armed' || launchState === 'airborne' || launchState === 'launching',
-  }), [launchState, snap.live]);
+  }), [launchState]);
 
   const allClear = Object.values(preflight).every(Boolean);
 
@@ -104,24 +108,23 @@ export default function DroneCommandPanel({ fs = false }: DroneCommandPanelProps
     return `${String(m).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
   };
 
+  // Wind simulation
+  const [windDir, setWindDir] = useState(225);
+  const [windSpeed, setWindSpeed] = useState(4.2);
+  const [formationLock, setFormationLock] = useState(false);
+  useEffect(() => {
+    const iv = setInterval(() => {
+      setWindDir(d => (d + (Math.random() - 0.5) * 10 + 360) % 360);
+      setWindSpeed(s => Math.max(0, Math.min(15, s + (Math.random() - 0.5) * 1.5)));
+      setFormationLock(launchState === 'airborne' && Math.random() > 0.15);
+    }, 2000);
+    return () => clearInterval(iv);
+  }, [launchState]);
+
   const avgAlt = useMemo(() => {
     if (telemetry.length === 0) return 0;
     return Math.round(telemetry.reduce((a, t) => a + t.alt, 0) / telemetry.length);
   }, [telemetry]);
-
-  // Honest Hardware: sem link real, render empty state e nada de UI fake.
-  if (!snap.live) {
-    return (
-      <div className={cn("flex flex-col h-full overflow-hidden", fs ? "p-3" : "p-2")}>
-        <NoLiveHardwareEmptyState
-          kinds={['unknown']}
-          label="FXK-DRONE · SWARM OPS"
-          message="Sem link verificado com swarm de drones. Telemetria, vento e formation-lock desabilitados (Honest Hardware Layer)."
-        />
-      </div>
-    );
-  }
-
 
   return (
     <div
@@ -156,14 +159,6 @@ export default function DroneCommandPanel({ fs = false }: DroneCommandPanelProps
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <Link
-              to="/ai-choreography"
-              title="Gerar Coreografia com Grok (Vision AI)"
-              className="flex items-center gap-1 px-2 py-0.5 rounded text-[7px] font-mono font-bold uppercase tracking-wider border border-fuchsia-500/40 text-fuchsia-300 bg-fuchsia-500/10 hover:bg-fuchsia-500/20 hover:border-fuchsia-400 transition-colors"
-            >
-              <Sparkles className="w-2.5 h-2.5" />
-              Grok Choreographer
-            </Link>
             <Badge variant="outline" className="text-[7px] h-4 px-1.5 font-mono border-teal-500/20 text-teal-400">
               T+ {formatTime(missionTimer)}
             </Badge>

@@ -1,115 +1,20 @@
 import { createRoot } from "react-dom/client";
 import App from "./App.tsx";
 import "./index.css";
-import { installConsoleCapture } from "@/lib/consoleCapture";
-import { initRuntimeMonitor } from "@/lib/runtimeMonitor";
-import { applyGpuTier } from "@/lib/gpuTier";
-import { installInteractionFpsGuard } from "@/lib/interactionFpsGuard";
-import { migrateLegacyStores } from "@/stores/migration";
-import { assertRuntimeEnv } from "@/lib/envGuard";
-import { startSmpteTicker } from "@/store/useSMPTEStore";
-import { installChunkErrorRecovery } from "@/lib/installChunkErrorRecovery";
-
-// Global safety net for stale-chunk failures (Vite HMR / CDN hash rotation).
-// MUST run before React mounts so we catch import() rejections that fire
-// during the very first render — those are the ones that leave the viewport
-// stuck on a black/white screen on desktop after a deploy or dev-server restart.
-installChunkErrorRecovery();
-
-// Fail fast on misconfigured deploys (missing VITE_SUPABASE_URL etc).
-// Throws in prod with a visible banner; warns in dev.
-assertRuntimeEnv();
-
-// Start the singleton SMPTE 30Hz tick loop. Idempotent — safe under HMR.
-startSmpteTicker();
-
-// Heavy / non-blocking modules deferred to idle so the public route
-// (landing/auth/legal) doesn't pay for them in the initial bundle.
-//   - observability  → ~RUM client + web-vitals shipping
-//   - journalBridge  → pulls supabase + safety state machine (>40KB)
-//   - webVitals dev  → console reporter (dev only)
-const scheduleIdle = (fn: () => void) => {
-  if (typeof requestIdleCallback === "function") {
-    requestIdleCallback(fn, { timeout: 2000 });
-  } else {
-    setTimeout(fn, 0);
-  }
-};
-
-// Install console.error/warn + window error capture as early as possible
-// so the Diagnostics panel can replay startup errors.
-installConsoleCapture();
-
-// E2E + manual-QA surface. Exposes window.__fxkRuntimeMonitor with
-// `mark(name)` / `since(name)` / `snapshot()` so test harnesses can
-// assert "no new errors or warnings during scenario X".
-initRuntimeMonitor();
-
-// GPU tier detection — writes <html data-gpu-tier="low|high">. Must run
-// before first paint so reduced-blur fallbacks are active for the splash.
-applyGpuTier();
-
-// Suspends backdrop-filter on heavy chrome during scroll/wheel/drag so
-// the timeline + scroll views stay at 60fps regardless of GPU.
-installInteractionFpsGuard();
-
-// Consolidated-stores migration (idempotent, gated by feature flag).
-// Runs once per session before the first store read in App.
-migrateLegacyStores();
-
-// Persist every SafetyStateMachine transition (ARM/DISARM/FIRE/E_STOP/...)
-// to public.command_journal. Lazy-loaded at idle so supabase + state machine
-// stay out of the initial public-route bundle.
-scheduleIdle(() => {
-  void import("@/core/journal/journalBridge").then(({ installSafetyJournalBridge }) => {
-    installSafetyJournalBridge();
-  });
-});
+import { initWebVitals } from "@/lib/webVitals";
 
 createRoot(document.getElementById("root")!).render(<App />);
 
-// Dev-only Web Vitals console reporter — lazy + dev-only.
-if (import.meta.env.DEV) {
-  scheduleIdle(() => {
-    void import("@/lib/webVitals").then(({ initWebVitals }) => initWebVitals());
-  });
-}
+// Initialize Web Vitals RUM instrumentation
+initWebVitals();
 
-// Production observability (RUM + error capture + Web Vitals shipping).
-// Lazy at idle so the entry chunk stays lean. No-op without VITE_RUM_ENDPOINT.
-scheduleIdle(() => {
-  void import("@/observability").then(({ initObservability }) => initObservability());
-});
-
-// Dismiss splash screen after React mounts. The static HTML splash in index.html
-// covers the viewport at z-index 9999, so if it isn't removed the user sees a
-// black screen with the orange logo even though SkyCanvas is mounting behind it.
-//
-// Defense in depth — three independent removal paths so a single failure
-// (idle callback never firing under R3F load, IIFE not installing __splashDone,
-// the inline animation stuck at 90%) cannot leave the splash on screen forever:
-//   1. requestIdleCallback   — preferred, gives browser breathing room
-//   2. setTimeout 1500ms     — fires regardless of main-thread pressure
-//   3. Direct DOM removal    — bypass __splashDone entirely if it never wired up
-const dismissSplash = () => {
-  try { (window as any).__splashDone?.(); } catch { /* noop */ }
-  // Hard fallback: if the splash element is still in the DOM ~700ms after we
-  // asked for it to fade, force-remove it. This covers the case where the
-  // inline IIFE in index.html never installed __splashDone (e.g. CSP, parse
-  // error) or where the fade transition is wedged.
-  setTimeout(() => {
-    const el = document.getElementById('splash');
-    if (el) {
-      el.style.opacity = '0';
-      el.style.pointerEvents = 'none';
-      el.remove();
-    }
-  }, 700);
-};
+// Dismiss splash screen after React mounts — use idle callback to let browser paint first
+const dismissSplash = () => (window as any).__splashDone?.();
 if (typeof requestIdleCallback === 'function') {
   requestIdleCallback(dismissSplash, { timeout: 1500 });
+} else {
+  setTimeout(dismissSplash, 100);
 }
-setTimeout(dismissSplash, 1500);
 
 // ── PWA Service Worker Registration ──
 // Only register in production and NOT inside iframes/preview hosts
@@ -131,10 +36,9 @@ if (isPreviewHost || isInIframe) {
     registrations.forEach((r) => r.unregister());
   });
 } else {
-  // Production: register PWA service worker with polished update UX
-  // (toast-based "Nova versão disponível" + "Pronto para uso offline").
-  import("@/pwa/registerPwaUpdate").then(({ registerPwaUpdate }) => {
-    void registerPwaUpdate();
+  // Production: register PWA service worker
+  import("virtual:pwa-register").then(({ registerSW }) => {
+    registerSW({ immediate: true });
   }).catch(() => {
     // PWA module not available — silently skip
   });

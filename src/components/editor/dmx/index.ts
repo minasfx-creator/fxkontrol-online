@@ -13,5 +13,4 @@ export { default as DMXMonitorPanel } from './DMXMonitorPanel';
 export { default as DMXMonitorGrid } from './DMXMonitorGrid';
 export { default as DMXOutputPanel } from './DMXOutputPanel';
 export { default as DMXBezierEditor } from './DMXBezierEditor';
-export { default as DMXBroadcastDiagnostics } from './DMXBroadcastDiagnostics';
 export type { BezierPoint, DMXCurve } from './DMXBezierEditor';

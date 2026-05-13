@@ -9,8 +9,6 @@
  * - Bidirectional: Can act as both input and output node simultaneously
  */
 
-import { isHardwareSimulatorEnabled } from '@/lib/featureFlags';
-
 // ═══ Types ═══
 export type MA3NodeMode = 'input' | 'output' | 'bidirectional';
 export type MA3Protocol = 'artnet' | 'sacn';
@@ -424,13 +422,8 @@ export class GrandMA3Node {
     }
   }
 
-  /** Simulate incoming DMX data (for stress testing without hardware).
-   *  Gated by `dev_hardware_simulator` flag — no-op when OFF. */
+  /** Simulate incoming DMX data (for stress testing without hardware) */
   simulateInput(universeIdx: number, channels: Uint8Array): void {
-    if (!isHardwareSimulatorEnabled()) {
-      console.warn('[MA3] simulateInput() blocked: dev_hardware_simulator flag is OFF.');
-      return;
-    }
     const u = this.state.universes[universeIdx];
     if (!u) return;
     u.buffer.set(channels);

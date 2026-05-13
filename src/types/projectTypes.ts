@@ -25,8 +25,6 @@ export interface TimelineItem {
   positionName?: string;
   notes?: string;
   flightCount?: number;
-  /** Per-item color override; if set, replaces the library effect color for this cue only. */
-  colorOverride?: string;
   hazard?: string;
   rack?: number;
   tube?: number;
@@ -38,14 +36,6 @@ export interface TimelineItem {
   positionIds?: string[];
   cueHeading?: number;
   cuePitch?: number;
-  /** Per-item intensity 0-100 (default 100). Scales glow/height/beam brightness live. */
-  intensity?: number;
-  /** Per-item prefire override in seconds (visual lift-time). */
-  prefireOverride?: number;
-  /** Per-item caliber override (inches), affects shell apex height. */
-  caliberOverride?: number;
-  /** Per-item beam count for laser cues. */
-  beamCountOverride?: number;
 }
 
 export type PositionType = 'pyro' | 'drone-pad' | 'light';
@@ -111,24 +101,6 @@ export interface CueMarker {
   time: number;
   label: string;
   color: string;
-  /** Optional effect library reference (set when cue created via drag-drop). */
-  effectId?: string;
-  /** Lane classification — pyro|drone|formation. Derived from label if absent. */
-  lane?: 'pyro' | 'drone' | 'formation';
-  /** Per-cue intensity 0-100 (default 100). */
-  intensity?: number;
-  /** Per-cue quantity (shells, drones, beams). */
-  quantity?: number;
-  /** Per-cue duration override (s). */
-  durationSec?: number;
-  /** Position offset (drones/formations). */
-  position?: { x: number; y: number; z: number };
-  /** Heading degrees 0..360. */
-  heading?: number;
-  /** Pitch degrees -90..+90. */
-  pitch?: number;
-  /** Free-form operator notes. */
-  notes?: string;
 }
 
 export interface CameraKeyframe {

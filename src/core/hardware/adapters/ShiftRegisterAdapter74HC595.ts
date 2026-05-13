@@ -6,13 +6,7 @@
  */
 
 import type { HardwareAdapter, HardwareCapabilities, HardwareStatusSnapshot, DeviceConnectionState, ShiftRegisterState } from '../types';
-import {
-  createSimulatedProvenance,
-  markHandshakeOk as provenanceMarkHandshakeOk,
-  markHandshakeLost as provenanceMarkHandshakeLost,
-  type ProvenanceInfo,
-  type TransportType,
-} from '../provenance';
+import { createSimulatedProvenance, type ProvenanceInfo } from '../provenance';
 
 export class ShiftRegisterAdapter74HC595 implements HardwareAdapter<ShiftRegisterState> {
   readonly deviceId = 'sr-74hc595-chain';
@@ -68,24 +62,11 @@ export class ShiftRegisterAdapter74HC595 implements HardwareAdapter<ShiftRegiste
     this._connected = 'disconnected';
     this._state.comm_state = 'ok';
     this._state.outputs = new Array(32).fill(false);
-    provenanceMarkHandshakeLost(this._provenance);
   }
 
-  /**
-   * Promote to LIVE READ-ONLY. 74HC595 chain state is reported by the
-   * host controller (FXK16/Arduino) — piggy-back promotion by the bridge.
-   * Read-only by construction (canWrite=false).
-   */
-  markHandshakeOk(transport: TransportType = 'serial_usb'): void {
-    this._connected = 'connected';
-    provenanceMarkHandshakeOk(this._provenance, transport);
-  }
-
-  /** Demote when the host link drops. */
-  markHandshakeLost(): void {
-    this._connected = 'disconnected';
-    provenanceMarkHandshakeLost(this._provenance);
-  }
+  simulateConnect(): void { this._connected = 'connected'; this._state.comm_state = 'ok'; }
+  simulateDisconnect(): void { this._connected = 'disconnected'; }
+  simulateFault(): void { this._state.comm_state = 'fault'; this._connected = 'degraded'; }
 }
 
 export const shiftRegisterAdapter = new ShiftRegisterAdapter74HC595();

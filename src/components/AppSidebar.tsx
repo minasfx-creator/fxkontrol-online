@@ -1,7 +1,5 @@
-import { Briefcase, Wand2, Crosshair, LogOut, Volume2, VolumeX, Settings, Shield, Compass, Sparkles } from 'lucide-react';
-
+import { LayoutDashboard, Clapperboard, CalendarDays, LogOut, Gamepad2, Crosshair, Volume2, VolumeX, Cpu, Bluetooth, Rocket, Settings, Shield, Activity } from 'lucide-react';
 import { NavLink } from '@/components/NavLink';
-import { FxkLogo } from '@/components/brand/FxkLogo';
 import { useLocation } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -22,17 +20,18 @@ import {
 } from '@/components/ui/sidebar';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from '@/components/ui/tooltip';
-import { GlassQualityToggle } from '@/components/GlassQualityToggle';
 import minasfxLogo from '@/assets/minasfx-logo-white.png';
 
-// ─── Refactor 3-áreas ────────────────────────────────────────────
-// Consolidação Office | Studio | Command. Rotas antigas ficam acessíveis
-// via redirects em App.tsx (zero quebra para bookmarks).
 const navItems = [
-  { title: 'Office', url: '/office', icon: Briefcase, desc: 'Produtividade & docs' },
-  { title: 'SkyCanvas', url: '/skycanvas', icon: Sparkles, desc: 'Editor 3D canônico' },
+  { title: 'Dashboard', url: '/', icon: LayoutDashboard, desc: 'Visão geral' },
   { title: 'Command', url: '/command', icon: Crosshair, desc: 'Execução ao vivo' },
-  { title: 'Strategy', url: '/strategy', icon: Compass, desc: 'GTM · assets · pilots' },
+  { title: 'Editor 3D', url: '/editor', icon: Clapperboard, desc: 'Design de show' },
+  { title: 'Agenda', url: '/agenda', icon: CalendarDays, desc: 'Eventos' },
+  { title: 'Training', url: '/training', icon: Gamepad2, desc: 'Simulação' },
+  { title: 'Field Test', url: '/field-test', icon: Activity, desc: 'Teste de campo' },
+  { title: 'Show Test', url: '/show-test', icon: Rocket, desc: 'Teste de show' },
+  { title: 'Pairing', url: '/pairing', icon: Bluetooth, desc: 'Pareamento HW' },
+  { title: 'PCB Viewer', url: '/pcb-viewer', icon: Cpu, desc: 'Hardware M1' },
 ];
 
 export function AppSidebar() {
@@ -60,22 +59,22 @@ export function AppSidebar() {
   return (
     <Sidebar collapsible={isMobile ? 'offcanvas' : 'icon'} className={`glass-sidebar ${!showLabels ? 'sidebar-collapsed' : ''}`}>
       <SidebarContent>
-        {/* Brand — 8pt: p-3 inset, gap-2 between logo & title */}
-        <div className={`p-3 ${!showLabels ? 'flex justify-center' : ''} animate-holo-materialize`}>
+        {/* Brand with MinasFX logo */}
+        <div className={`px-3 pt-4 pb-2 ${!showLabels ? 'flex justify-center' : ''} animate-holo-materialize`}>
           {!showLabels ? (
-            <div className="h-8 w-8 rounded-control flex items-center justify-center overflow-hidden" style={{ background: 'hsl(var(--status-sync) / 0.10)' }}>
-              <FxkLogo size={22} priority />
+            <div className="h-8 w-8 rounded-lg flex items-center justify-center overflow-hidden" style={{ background: 'hsl(32 100% 50% / 0.15)' }}>
+              <img src={minasfxLogo} alt="MinasFX" className="h-5 object-contain" />
             </div>
           ) : (
-            <div className="flex items-center gap-2">
-              <FxkLogo size={26} variant="full" tone="sync" priority />
-              <div className="flex items-center gap-1.5 ml-1 pl-2 border-l border-border/30">
-                <img src={minasfxLogo} alt="MinasFX" className="h-3 object-contain opacity-70" />
-                <p className="text-[9px] font-mono-code text-muted-foreground">by MinasFX</p>
+            <div className="flex items-center gap-2.5">
+              <img src={minasfxLogo} alt="MinasFX" className="h-7 object-contain shrink-0" style={{ filter: 'drop-shadow(0 0 6px hsl(32 100% 50% / 0.3))' }} />
+              <div>
+                <p className="text-xs font-bold text-foreground tracking-wide" style={{ textShadow: '0 0 8px hsl(32 100% 50% / 0.2)' }}>FX KONTROL</p>
+                <p className="text-[9px] font-mono-code" style={{ color: 'hsl(32 100% 50% / 0.5)' }}>by MinasFX</p>
               </div>
             </div>
           )}
-          {showLabels && <div className="mt-2 h-px" style={{ background: 'hsl(var(--material-stroke))' }} />}
+          {showLabels && <div className="mt-2 h-[1px]" style={{ background: 'linear-gradient(90deg, hsl(32 100% 50% / 0.2), transparent)' }} />}
         </div>
 
         <SidebarGroup>
@@ -97,9 +96,9 @@ export function AppSidebar() {
                           to={item.url}
                           end={item.url === '/'}
                           onClick={handleNavClick}
-                          className={`dock-item gap-3 rounded-island mx-2 transition-all duration-300 ease-spring ${
-                            isActive
-                              ? 'shadow-[inset_0_0_0_1px_hsl(32_100%_50%/0.15)] bg-white/[0.04]'
+                          className={`dock-item gap-3 rounded-2xl mx-1 transition-all duration-300 ease-spring ${
+                            isActive 
+                              ? 'shadow-[inset_0_0_0_1px_hsl(32_100%_50%/0.15)] bg-white/[0.04]' 
                               : 'text-muted-foreground hover:bg-white/[0.03] hover:text-foreground'
                           }`}
                           style={{
@@ -129,7 +128,7 @@ export function AppSidebar() {
                         <TooltipTrigger asChild>
                           {navContent}
                         </TooltipTrigger>
-                        <TooltipContent side="right" className="glass-hud rounded-panel border-primary/10 text-[10px] font-mono-code px-3 py-2">
+                        <TooltipContent side="right" className="glass-hud border-primary/10 text-[10px] font-mono-code">
                           <p className="font-bold">{item.title}</p>
                           <p className="text-muted-foreground text-[8px]">{item.desc}</p>
                         </TooltipContent>
@@ -165,7 +164,7 @@ export function AppSidebar() {
                         <NavLink
                           to={item.url}
                           onClick={handleNavClick}
-                          className={`dock-item gap-3 rounded-island mx-2 transition-all duration-300 ease-spring ${
+                          className={`dock-item gap-3 rounded-2xl mx-1 transition-all duration-300 ease-spring ${
                             active ? 'shadow-[inset_0_0_0_1px_hsl(32_100%_50%/0.15)] bg-white/[0.04]' : 'text-muted-foreground hover:bg-white/[0.03] hover:text-foreground'
                           }`}
                           style={active ? { background: 'hsl(32 100% 50% / 0.1)', color: 'hsl(32 100% 50%)' } : undefined}
@@ -181,7 +180,7 @@ export function AppSidebar() {
                     return (
                       <Tooltip key={item.title}>
                         <TooltipTrigger asChild>{content}</TooltipTrigger>
-                        <TooltipContent side="right" className="glass-hud rounded-panel border-primary/10 text-[10px] font-mono-code px-3 py-2">
+                        <TooltipContent side="right" className="glass-hud border-primary/10 text-[10px] font-mono-code">
                           <p className="font-bold">{item.title}</p>
                           <p className="text-muted-foreground text-[8px]">{item.desc}</p>
                         </TooltipContent>
@@ -196,24 +195,21 @@ export function AppSidebar() {
         </SidebarGroup>
       </SidebarContent>
 
-      {/* Footer with user + sound control — 8pt: p-3 inset, gap-2 stack */}
-      <SidebarFooter className="p-3 space-y-2">
+      {/* Footer with user + sound control */}
+      <SidebarFooter className="p-2 space-y-1">
         {/* Sound toggle */}
         <Button
           variant="ghost"
           size={!showLabels ? 'icon' : 'sm'}
-          className="w-full justify-start gap-2 rounded-control text-muted-foreground hover:text-foreground text-xs"
+          className="w-full justify-start gap-2 text-muted-foreground hover:text-foreground text-xs"
           onClick={toggleSound}
         >
           {soundMuted ? <VolumeX className="h-3.5 w-3.5 shrink-0" /> : <Volume2 className="h-3.5 w-3.5 shrink-0" />}
           {showLabels && <span className="text-[9px] font-mono-code">{soundMuted ? 'SOM OFF' : 'SOM ON'}</span>}
         </Button>
 
-        {/* Glass Quality cycle: Auto → High → Low */}
-        <GlassQualityToggle collapsed={!showLabels} />
-
         {showLabels && (
-          <div className="flex items-center gap-2 p-2 rounded-island animate-holo-materialize" style={{ background: 'hsl(32 100% 50% / 0.05)', animationDelay: '0.3s' }}>
+          <div className="flex items-center gap-2 px-2 py-1.5 rounded-xl animate-holo-materialize" style={{ background: 'hsl(32 100% 50% / 0.05)', animationDelay: '0.3s' }}>
             <div className="h-7 w-7 rounded-full flex items-center justify-center shrink-0 relative" style={{ background: 'hsl(32 100% 50% / 0.15)' }}>
               <span className="text-[9px] font-bold" style={{ color: 'hsl(32 100% 50%)' }}>{initials}</span>
               {/* Online status dot */}
@@ -228,7 +224,7 @@ export function AppSidebar() {
         <Button
           variant="ghost"
           size={!showLabels ? 'icon' : 'sm'}
-          className="w-full justify-start gap-2 rounded-control text-muted-foreground hover:text-destructive text-xs"
+          className="w-full justify-start gap-2 text-muted-foreground hover:text-destructive text-xs"
           onClick={() => signOut()}
         >
           <LogOut className="h-3.5 w-3.5 shrink-0" />

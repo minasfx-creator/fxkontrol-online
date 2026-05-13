@@ -60,7 +60,7 @@ export default function AuditTrailTab() {
   const toggleFilter = useCallback((ev: EventType) => {
     setActiveFilters(prev => {
       const next = new Set(prev);
-      if (next.has(ev)) next.delete(ev); else next.add(ev);
+      next.has(ev) ? next.delete(ev) : next.add(ev);
       return next;
     });
   }, []);

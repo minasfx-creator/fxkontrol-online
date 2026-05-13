@@ -1,87 +1,90 @@
-/**
- * TemplateMarketplace — REAL data only.
- *
- * Browse tab is wired to `public.effect_packages` via
- * `marketplace-online/registryClient`. Empty state directs users to the
- * Golden Catalog (`/dev/golden-shows`) which contains exportable, verified
- * shows. No more hardcoded sample data.
- */
-import { useEffect, useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
-import { type TemplateCategory, TEMPLATE_CATEGORIES, loadTemplates, saveTemplate } from '@/lib/showTemplates';
-import { Cloud, Upload, Download, Search, X, Sparkles, Loader2 } from 'lucide-react';
+import { useProjectStore } from '@/store/useProjectStore';
+import { type ShowTemplate, type TemplateCategory, TEMPLATE_CATEGORIES, loadTemplates, saveTemplate } from '@/lib/showTemplates';
+import { Cloud, Upload, Download, Search, Star, Users, Clock, X } from 'lucide-react';
 import { toast } from 'sonner';
-import { listPackages, searchPackages } from '@/modules/swarmgpt/marketplace-online/registryClient';
-import { installOnlinePackage } from '@/modules/swarmgpt/marketplace-online';
-import type { OnlinePackageSummary } from '@/modules/swarmgpt/marketplace-online/types';
 
 interface TemplateMarketplaceProps {
   onClose?: () => void;
 }
 
+interface CloudTemplate extends ShowTemplate {
+  author: string;
+  downloads: number;
+  rating: number;
+  isCloud: true;
+}
+
+const SAMPLE_CLOUD_TEMPLATES: CloudTemplate[] = [
+  {
+    id: 'cloud-1', name: 'New Year Countdown 2025', description: 'Spectacular 10-second countdown with number formations transitioning to fireworks burst',
+    category: 'countdown', createdAt: new Date().toISOString(), duration: 120, droneCount: 500,
+    formationCount: 12, formations: [], tags: ['countdown', 'nye', 'numbers'], author: 'DroneShow Pro',
+    downloads: 1247, rating: 4.8, isCloud: true,
+  },
+  {
+    id: 'cloud-2', name: 'Olympic Rings Ceremony', description: 'Five interlocking rings with color transitions and torch relay sequence',
+    category: 'sports', createdAt: new Date().toISOString(), duration: 180, droneCount: 800,
+    formationCount: 8, formations: [], tags: ['olympics', 'rings', 'ceremony'], author: 'SkyArt Studio',
+    downloads: 892, rating: 4.9, isCloud: true,
+  },
+  {
+    id: 'cloud-3', name: 'Aurora Borealis Flow', description: 'Organic flowing wave patterns mimicking northern lights with color shifts',
+    category: 'abstract', createdAt: new Date().toISOString(), duration: 240, droneCount: 400,
+    formationCount: 15, formations: [], tags: ['aurora', 'waves', 'organic'], author: 'NightSky Labs',
+    downloads: 634, rating: 4.6, isCloud: true,
+  },
+  {
+    id: 'cloud-4', name: 'Christmas Tree & Snowflakes', description: 'Animated Christmas tree with falling snowflake formations',
+    category: 'holiday', createdAt: new Date().toISOString(), duration: 150, droneCount: 350,
+    formationCount: 10, formations: [], tags: ['christmas', 'tree', 'snow'], author: 'FestiveDrones',
+    downloads: 2103, rating: 4.7, isCloud: true,
+  },
+  {
+    id: 'cloud-5', name: 'National Flag Wave', description: 'Dynamic waving flag animation with patriotic color sequences',
+    category: 'patriotic', createdAt: new Date().toISOString(), duration: 90, droneCount: 600,
+    formationCount: 6, formations: [], tags: ['flag', 'patriotic', 'wave'], author: 'SkyPatriot',
+    downloads: 1560, rating: 4.5, isCloud: true,
+  },
+];
+
 export default function TemplateMarketplace({ onClose }: TemplateMarketplaceProps) {
-  const navigate = useNavigate();
   const [search, setSearch] = useState('');
   const [category, setCategory] = useState<TemplateCategory | 'all'>('all');
   const [tab, setTab] = useState<'browse' | 'my' | 'publish'>('browse');
-  const [cloudPkgs, setCloudPkgs] = useState<OnlinePackageSummary[] | null>(null);
-  const [loadError, setLoadError] = useState<string | null>(null);
-  const [installing, setInstalling] = useState<string | null>(null);
   const localTemplates = loadTemplates();
 
-  // Real fetch — debounced search against the Supabase-backed registry.
-  useEffect(() => {
-    let cancelled = false;
-    const t = setTimeout(async () => {
-      try {
-        setLoadError(null);
-        const rows = search.trim()
-          ? await searchPackages(search.trim())
-          : await listPackages();
-        if (!cancelled) setCloudPkgs(rows);
-      } catch (err) {
-        if (!cancelled) {
-          setCloudPkgs([]);
-          setLoadError(err instanceof Error ? err.message : 'Falha ao carregar marketplace.');
-        }
-      }
-    }, 300);
-    return () => { cancelled = true; clearTimeout(t); };
-  }, [search]);
+  const filtered = SAMPLE_CLOUD_TEMPLATES.filter(t => {
+    if (category !== 'all' && t.category !== category) return false;
+    if (search && !t.name.toLowerCase().includes(search.toLowerCase()) && !t.tags.some(tag => tag.includes(search.toLowerCase()))) return false;
+    return true;
+  });
 
-  const filtered = useMemo(() => {
-    if (!cloudPkgs) return [];
-    if (category === 'all') return cloudPkgs;
-    return cloudPkgs.filter(p => p.category === category);
-  }, [cloudPkgs, category]);
-
-  const handleDownload = async (pkg: OnlinePackageSummary) => {
-    if (!pkg.latestVersion) {
-      toast.error('Pacote sem versão publicada.');
-      return;
-    }
-    setInstalling(pkg.packageId);
-    try {
-      await installOnlinePackage(pkg.packageId, 'latest');
-      toast.success(`"${pkg.name}" instalado.`);
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : 'Falha na instalação';
-      toast.error(`Instalação falhou: ${msg}`);
-    } finally {
-      setInstalling(null);
-    }
+  const handleDownload = (template: CloudTemplate) => {
+    // Save downloaded template to local "My Templates"
+    saveTemplate({
+      name: template.name,
+      description: template.description,
+      category: template.category,
+      duration: template.duration,
+      droneCount: template.droneCount,
+      formationCount: template.formationCount,
+      formations: template.formations,
+      tags: template.tags,
+    });
+    toast.success(`"${template.name}" added to My Templates`);
   };
 
   const handlePublish = () => {
     if (localTemplates.length === 0) {
-      toast.error('Sem templates locais. Salve um template primeiro.');
+      toast.error('No local templates to publish. Save a template first.');
       return;
     }
-    toast.info('Publicação de templates locais ainda não habilitada — use a Edge Function "marketplace-publish".');
+    toast.success('Template published to marketplace');
   };
 
   return (
@@ -92,12 +95,13 @@ export default function TemplateMarketplace({ onClose }: TemplateMarketplaceProp
           Marketplace
         </h3>
         {onClose && (
-          <button onClick={onClose} className="text-muted-foreground hover:text-foreground" aria-label="Fechar">
+          <button onClick={onClose} className="text-muted-foreground hover:text-foreground">
             <X className="w-3.5 h-3.5" />
           </button>
         )}
       </div>
 
+      {/* Tabs */}
       <div className="flex border-b border-border/40">
         {(['browse', 'my', 'publish'] as const).map(t => (
           <button
@@ -116,16 +120,18 @@ export default function TemplateMarketplace({ onClose }: TemplateMarketplaceProp
         <div className="p-3 space-y-3">
           {tab === 'browse' && (
             <>
+              {/* Search */}
               <div className="relative">
                 <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3 h-3 text-muted-foreground" />
                 <Input
-                  placeholder="Buscar pacotes…"
+                  placeholder="Search templates..."
                   value={search}
                   onChange={e => setSearch(e.target.value)}
                   className="h-6 text-[10px] pl-7"
                 />
               </div>
 
+              {/* Category filter — no emojis */}
               <div className="flex flex-wrap gap-1">
                 <Badge
                   variant={category === 'all' ? 'default' : 'outline'}
@@ -146,89 +152,55 @@ export default function TemplateMarketplace({ onClose }: TemplateMarketplaceProp
                 ))}
               </div>
 
-              {/* Loading */}
-              {cloudPkgs === null && (
-                <div className="flex items-center justify-center py-8 gap-2 text-muted-foreground">
-                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                  <span className="text-[10px] font-mono uppercase tracking-wider">Carregando catálogo…</span>
-                </div>
-              )}
-
-              {/* Error */}
-              {loadError && cloudPkgs?.length === 0 && (
-                <div className="rounded-md border border-destructive/30 bg-destructive/5 p-2 text-[10px] text-destructive">
-                  {loadError}
-                </div>
-              )}
-
-              {/* Empty state — honest */}
-              {cloudPkgs?.length === 0 && !loadError && (
-                <div className="space-y-3 text-center py-6 px-2 border border-dashed border-border/40 rounded-md">
-                  <Cloud className="w-7 h-7 text-muted-foreground/50 mx-auto" />
-                  <p className="text-[10px] text-muted-foreground leading-relaxed">
-                    Nenhum pacote publicado no marketplace ainda.
-                  </p>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="text-[10px] h-7"
-                    onClick={() => navigate('/dev/golden-shows')}
-                  >
-                    <Sparkles className="w-3 h-3 mr-1" /> Abrir Golden Catalog
-                  </Button>
-                </div>
-              )}
-
-              {/* Cards */}
-              {filtered.length > 0 && (
-                <div className="space-y-2">
-                  {filtered.map(p => (
-                    <div key={p.id} className="bg-surface-2/60 rounded-md p-2.5 border border-border/30 space-y-1.5 hover:border-primary/30 transition-colors">
-                      <div className="flex items-start justify-between">
-                        <div className="min-w-0">
-                          <h4 className="text-[11px] font-bold text-foreground truncate">{p.name}</h4>
-                          <p className="text-[9px] text-muted-foreground truncate">{p.author}</p>
-                        </div>
-                        <Badge variant="outline" className="text-[7px] h-3.5 uppercase font-semibold shrink-0">
-                          {p.category}
-                        </Badge>
+              {/* Template cards */}
+              <div className="space-y-2">
+                {filtered.map(t => (
+                  <div key={t.id} className="bg-surface-2/60 rounded-md p-2.5 border border-border/30 space-y-1.5 hover:border-primary/30 transition-colors">
+                    <div className="flex items-start justify-between">
+                      <div>
+                        <h4 className="text-[11px] font-bold text-foreground">{t.name}</h4>
+                        <p className="text-[9px] text-muted-foreground">{t.author}</p>
                       </div>
-
-                      {p.description && (
-                        <p className="text-[9px] text-muted-foreground leading-relaxed line-clamp-2">{p.description}</p>
-                      )}
-
-                      <div className="flex items-center gap-3 text-[8px] text-muted-foreground font-mono">
-                        {p.latestVersion && <span>v{p.latestVersion}</span>}
-                        <span>{new Date(p.updatedAt).toLocaleDateString('pt-BR')}</span>
-                      </div>
-
-                      {p.tags.length > 0 && (
-                        <div className="flex flex-wrap gap-1">
-                          {p.tags.slice(0, 6).map(tag => (
-                            <span key={tag} className="text-[7px] bg-surface-3/60 px-1.5 py-0.5 rounded text-muted-foreground font-mono">
-                              #{tag}
-                            </span>
-                          ))}
-                        </div>
-                      )}
-
-                      <Button
-                        size="sm"
-                        className="w-full h-5 text-[9px] mt-1"
-                        disabled={installing === p.packageId || !p.latestVersion}
-                        onClick={() => handleDownload(p)}
-                      >
-                        {installing === p.packageId ? (
-                          <><Loader2 className="w-3 h-3 mr-1 animate-spin" /> Instalando…</>
-                        ) : (
-                          <><Download className="w-3 h-3 mr-1" /> Instalar</>
-                        )}
-                      </Button>
+                      <Badge variant="outline" className="text-[7px] h-3.5 uppercase font-semibold">
+                        {t.category}
+                      </Badge>
                     </div>
-                  ))}
-                </div>
-              )}
+
+                    <p className="text-[9px] text-muted-foreground leading-relaxed">{t.description}</p>
+
+                    <div className="flex items-center gap-3 text-[8px] text-muted-foreground font-mono">
+                      <span className="flex items-center gap-0.5">
+                        <Star className="w-2.5 h-2.5 text-primary fill-primary" />
+                        {t.rating}
+                      </span>
+                      <span className="flex items-center gap-0.5">
+                        <Download className="w-2.5 h-2.5" />
+                        {t.downloads}
+                      </span>
+                      <span className="flex items-center gap-0.5">
+                        <Users className="w-2.5 h-2.5" />
+                        {t.droneCount}
+                      </span>
+                      <span className="flex items-center gap-0.5">
+                        <Clock className="w-2.5 h-2.5" />
+                        {t.formationCount}
+                      </span>
+                    </div>
+
+                    <div className="flex gap-1">
+                      {t.tags.map(tag => (
+                        <span key={tag} className="text-[7px] bg-surface-3/60 px-1.5 py-0.5 rounded text-muted-foreground font-mono">
+                          #{tag}
+                        </span>
+                      ))}
+                    </div>
+
+                    <Button size="sm" className="w-full h-5 text-[9px] mt-1" onClick={() => handleDownload(t)}>
+                      <Download className="w-3 h-3 mr-1" /> Download to My Templates
+                    </Button>
+                  </div>
+                ))}
+              </div>
             </>
           )}
 
@@ -236,7 +208,7 @@ export default function TemplateMarketplace({ onClose }: TemplateMarketplaceProp
             <div className="space-y-2">
               {localTemplates.length === 0 ? (
                 <p className="text-[10px] text-muted-foreground text-center py-6">
-                  Nenhum template salvo. Crie um a partir do painel de Templates.
+                  No saved templates. Download from Browse or save from Templates panel.
                 </p>
               ) : (
                 localTemplates.map(t => (
@@ -245,7 +217,7 @@ export default function TemplateMarketplace({ onClose }: TemplateMarketplaceProp
                     <p className="text-[9px] text-muted-foreground">{t.description}</p>
                     <div className="flex gap-1 mt-1.5">
                       <Button size="sm" variant="outline" className="flex-1 h-5 text-[9px]" onClick={handlePublish}>
-                        <Upload className="w-3 h-3 mr-1" /> Publicar
+                        <Upload className="w-3 h-3 mr-1" /> Publish
                       </Button>
                     </div>
                   </div>
@@ -257,12 +229,12 @@ export default function TemplateMarketplace({ onClose }: TemplateMarketplaceProp
           {tab === 'publish' && (
             <div className="space-y-3 text-center py-4">
               <Cloud className="w-8 h-8 text-primary mx-auto" />
-              <h4 className="text-[11px] font-bold text-foreground uppercase tracking-wider">Compartilhar templates</h4>
+              <h4 className="text-[11px] font-bold text-foreground uppercase tracking-wider">Share Your Templates</h4>
               <p className="text-[9px] text-muted-foreground leading-relaxed">
-                Publique pacotes assinados via Edge Function <code className="bg-surface-3/60 px-1 rounded">marketplace-publish</code>.
+                Publish your show templates to the marketplace for other designers to use.
               </p>
               <Button size="sm" className="text-[10px] h-6" onClick={handlePublish}>
-                <Upload className="w-3 h-3 mr-1" /> Publicar template local
+                <Upload className="w-3 h-3 mr-1" /> Publish Local Template
               </Button>
             </div>
           )}

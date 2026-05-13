@@ -5,14 +5,12 @@
 import { useMemo, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { showPlanManager } from '@/core/showplan/ShowPlanManager';
-import { useVerificationStore } from '@/core/verification/useVerificationStore';
+import { useVerificationEngine } from '@/core/verification/useVerificationEngine';
 import { useHardwareRegistry } from '@/core/hardware/useHardwareRegistry';
 import { unifiedHardwareRegistry } from '@/core/hardware/UnifiedHardwareRegistry';
 import { getProvenanceBadge, type IntegrationMode, type EvidenceLevel } from '@/core/hardware/provenance';
-import { ProvenanceBadge } from '@/components/safety/ProvenanceBadge';
 import { cn } from '@/lib/utils';
 import { Activity, CheckCircle2, AlertTriangle, MinusCircle, XCircle } from 'lucide-react';
-import { useShallow } from 'zustand/react/shallow';
 
 type MatrixStatus = 'exists' | 'partial' | 'placeholder' | 'absent';
 
@@ -49,7 +47,7 @@ const EVIDENCE_COLORS: Record<EvidenceLevel, string> = {
 
 export default function CurrentStateMatrix() {
   const sp = showPlanManager.current;
-  const level = useVerificationStore((s) => s.level);
+  const { level } = useVerificationEngine();
   const { devices, snapshots, refresh } = useHardwareRegistry();
   const navigate = useNavigate();
 
@@ -93,11 +91,11 @@ export default function CurrentStateMatrix() {
     });
 
     return [
-      { label: 'ShowPlan', status: hasContent ? 'exists' : 'absent', integrationMode: 'live_read_only' as IntegrationMode, evidenceLevel: 'adapter_only' as EvidenceLevel, source: 'ShowPlanManager', detail: hasContent ? `${sp.pyroCues.length}P + ${sp.dmxCues.length}D + ${sp.dronePaths.length}Dr` : 'No content', drillDown: 'show_control' },
-      { label: 'VerificationPass', status: level !== 'BLOCKED' ? 'exists' : hasContent ? 'partial' : 'absent', integrationMode: 'live_read_only' as IntegrationMode, evidenceLevel: 'adapter_only' as EvidenceLevel, source: 'VerificationEngine', detail: level.replace(/_/g, ' '), drillDown: 'verification' },
-      { label: 'ExportCoordinator', status: hasContent ? 'exists' : 'absent', integrationMode: 'live_read_only' as IntegrationMode, evidenceLevel: 'adapter_only' as EvidenceLevel, source: 'ExportCoordinator', detail: hasContent ? 'Pipeline active' : 'No data', drillDown: 'export_readiness' },
+      { label: 'ShowPlan', status: hasContent ? 'exists' : 'absent', integrationMode: 'simulated' as IntegrationMode, evidenceLevel: 'adapter_only' as EvidenceLevel, source: 'ShowPlanManager', detail: hasContent ? `${sp.pyroCues.length}P + ${sp.dmxCues.length}D + ${sp.dronePaths.length}Dr` : 'No content', drillDown: 'show_control' },
+      { label: 'VerificationPass', status: level !== 'BLOCKED' ? 'exists' : hasContent ? 'partial' : 'absent', integrationMode: 'simulated' as IntegrationMode, evidenceLevel: 'adapter_only' as EvidenceLevel, source: 'VerificationEngine', detail: level.replace(/_/g, ' '), drillDown: 'verification' },
+      { label: 'ExportCoordinator', status: hasContent ? 'exists' : 'absent', integrationMode: 'simulated' as IntegrationMode, evidenceLevel: 'adapter_only' as EvidenceLevel, source: 'ExportCoordinator', detail: hasContent ? 'Pipeline active' : 'No data', drillDown: 'export_readiness' },
       ...adapterRows,
-      { label: 'AuditTrail', status: 'exists' as MatrixStatus, integrationMode: 'live_read_only' as IntegrationMode, evidenceLevel: 'adapter_only' as EvidenceLevel, source: 'DeviceEventLog+BlackBox', detail: 'Active — logging events', drillDown: 'audit_blackbox' },
+      { label: 'AuditTrail', status: 'exists' as MatrixStatus, integrationMode: 'simulated' as IntegrationMode, evidenceLevel: 'adapter_only' as EvidenceLevel, source: 'DeviceEventLog+BlackBox', detail: 'Active — logging events', drillDown: 'audit_blackbox' },
       { label: 'Unreal Integration', status: 'placeholder' as MatrixStatus, integrationMode: 'not_integrated' as IntegrationMode, evidenceLevel: 'ui_only' as EvidenceLevel, source: 'none', detail: 'Contract defined, runtime pending', drillDown: 'unreal_status' },
       { label: 'BP_SwarmManager', status: sp.dronePaths.length > 0 ? 'partial' as MatrixStatus : 'placeholder' as MatrixStatus, integrationMode: 'not_integrated' as IntegrationMode, evidenceLevel: 'ui_only' as EvidenceLevel, source: 'none', detail: sp.dronePaths.length > 0 ? `${sp.dronePaths.length} paths` : 'Awaiting Unreal', drillDown: 'swarm_contract' },
     ];
@@ -157,7 +155,7 @@ export default function CurrentStateMatrix() {
                 <span className={cn('text-[7px] font-mono px-1.5 py-0.5 rounded', cfg.bg, cfg.color)}>{cfg.label}</span>
               </div>
               <div className="flex justify-center">
-                <ProvenanceBadge mode={row.integrationMode} compact />
+                <span className={cn('text-[7px] font-mono px-1.5 py-0.5 rounded', MODE_COLORS[row.integrationMode])}>{badge.label}</span>
               </div>
               <div className="flex justify-center">
                 <span className={cn('text-[7px] font-mono', EVIDENCE_COLORS[row.evidenceLevel])}>{row.evidenceLevel.replace(/_/g, ' ')}</span>

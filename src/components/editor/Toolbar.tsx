@@ -6,8 +6,8 @@
 import { useState, useEffect, useCallback, lazy, Suspense } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useIsMobile } from '@/hooks/use-mobile';
-import { Zap, Save, FolderOpen, Undo, Redo, Upload, FileJson, FilePlus, Download, ChevronDown, Wand2, PlusCircle, Cog, Paintbrush, Map, Globe, FileBarChart, Cloud, Eye, Volume2, Film, MapPinned, Atom, Share2, Users, History, MessageSquare, BoxSelect, Gauge, Sparkles, FileCode, FileText, Store, Lightbulb, MonitorSpeaker, FileArchive, Mountain, Building2, Command, Copy, Trash2, SkipBack, Navigation, LogOut, MapPin, Target, MousePointer, Shapes, LayoutGrid, Shield, AlertTriangle, Moon, Sun, Maximize2, Minimize2, Settings2 } from 'lucide-react';
-import { FxkLogo } from '@/components/brand/FxkLogo';
+import { Zap, Save, FolderOpen, Undo, Redo, Upload, FileJson, FilePlus, Download, ChevronDown, Wand2, PlusCircle, Cog, Paintbrush, Map, Globe, FileBarChart, Cloud, Eye, Volume2, Film, MapPinned, Atom, Share2, Users, History, MessageSquare, BoxSelect, Gauge, Sparkles, FileCode, Store, Lightbulb, MonitorSpeaker, FileArchive, Mountain, Building2, Command, Copy, Trash2, SkipBack, Navigation, LogOut, MapPin, Target, MousePointer, Shapes, LayoutGrid, Shield, AlertTriangle, Moon, Sun, Maximize2, Minimize2 } from 'lucide-react';
+import fxkLogo from '@/assets/fxk-logo.png';
 import { Button } from '@/components/ui/button';
 import { useProjectStore } from '@/store/useProjectStore';
 import { usePlaybackState } from '@/hooks/useEditorUI';
@@ -22,16 +22,11 @@ import { secondsToTimecode, formatTimecode } from '@/lib/smpteEngine';
 import { useFireOneHardware } from '@/hooks/useFireOneHardware';
 import { usePBusHardware } from '@/hooks/usePBusHardware';
 import { artnetModuleService } from '@/services/artnetModuleService';
-import { timelineClock } from '@/core/timeline/TimelineClock';
-import { timelineTransport } from '@/core/transport/timelineTransport';
-import TimelineClockPanel from './TimelineClockPanel';
-import UserAvatarFloat from './UserAvatarFloat';
 
 // ── Lazy-loaded modals (only fetched when user opens them) ──
 const lz = (loader: () => Promise<{ default: React.ComponentType<any> }>) => lazy(loader);
 const FormationBuilder = lz(() => import('./FormationBuilder'));
 const CSVImporter = lz(() => import('./CSVImporter'));
-const VDLImportPanel = lz(() => import('./VDLImportPanel'));
 const VVIZImporter = lz(() => import('./VVIZImporter'));
 const UAssetImporter = lz(() => import('./UAssetImporter'));
 const GMA2PatchImporter = lz(() => import('./GMA2PatchImporter'));
@@ -379,7 +374,6 @@ export default function Toolbar({ onOpenPanel, isMaximized, onToggleMaximize }: 
   const { saveProject } = useProjectPersistence();
   const [formationOpen, setFormationOpen] = useState(false);
   const [csvOpen, setCsvOpen] = useState(false);
-  const [vdlOpen, setVdlOpen] = useState(false);
   const [vvizOpen, setVvizOpen] = useState(false);
   const [browserOpen, setBrowserOpen] = useState(false);
   const [catalogOpen, setCatalogOpen] = useState(false);
@@ -464,7 +458,7 @@ export default function Toolbar({ onOpenPanel, isMaximized, onToggleMaximize }: 
       if (ctrl && e.key === 'd' && !isInput) { e.preventDefault(); const store = useProjectStore.getState(); const ids = store.selectedTimelineItemIds.length > 0 ? store.selectedTimelineItemIds : store.selectedTimelineItemId ? [store.selectedTimelineItemId] : []; if (ids.length) store.duplicateTimelineItems(ids); return; }
       if (isInput) return;
       switch (e.key) {
-        case ' ': e.preventDefault(); timelineTransport.toggle(); break;
+        case ' ': e.preventDefault(); { const { isPlaying, setPlaying } = useProjectStore.getState(); setPlaying(!isPlaying); } break;
         case 'c': case 'C': onOpenPanel?.('effects'); window.dispatchEvent(new Event('focus-effect-search')); break;
         case 'v': case 'V': onOpenPanel?.('positions'); break;
         case 'p': case 'P': onOpenPanel?.('addressing'); break;
@@ -474,10 +468,10 @@ export default function Toolbar({ onOpenPanel, isMaximized, onToggleMaximize }: 
         case 'h': case 'H': if (!ctrl) { window.dispatchEvent(new CustomEvent('open-scripting-tool', { detail: 'spread' })); } break;
         case 'd': case 'D': if (!ctrl) { const store = useProjectStore.getState(); const ids = store.selectedTimelineItemIds; if (ids.length) store.duplicateTimelineItems(ids); } break;
         case 'z': case 'Z': if (!ctrl) { onOpenPanel?.('racks'); } break;
-        case 'Home': { e.preventDefault(); timelineClock.seek(0); break; }
-        case 'End': { e.preventDefault(); timelineClock.seek(useProjectStore.getState().duration); break; }
-        case 'ArrowLeft': { e.preventDefault(); const store = useProjectStore.getState(); const sorted = [...store.timelineItems].sort((a, b) => a.startTime - b.startTime); const current = store.currentTime; const prev = sorted.filter(i => i.startTime < current - 0.01).pop(); if (prev) { timelineClock.seek(prev.startTime); store.selectTimelineItem(prev.id); } break; }
-        case 'ArrowRight': { e.preventDefault(); const store = useProjectStore.getState(); const sorted = [...store.timelineItems].sort((a, b) => a.startTime - b.startTime); const current = store.currentTime; const next = sorted.find(i => i.startTime > current + 0.01); if (next) { timelineClock.seek(next.startTime); store.selectTimelineItem(next.id); } break; }
+        case 'Home': { e.preventDefault(); useProjectStore.getState().setCurrentTime(0); break; }
+        case 'End': { e.preventDefault(); useProjectStore.getState().setCurrentTime(useProjectStore.getState().duration); break; }
+        case 'ArrowLeft': { e.preventDefault(); const store = useProjectStore.getState(); const sorted = [...store.timelineItems].sort((a, b) => a.startTime - b.startTime); const current = store.currentTime; const prev = sorted.filter(i => i.startTime < current - 0.01).pop(); if (prev) { store.setCurrentTime(prev.startTime); store.selectTimelineItem(prev.id); } break; }
+        case 'ArrowRight': { e.preventDefault(); const store = useProjectStore.getState(); const sorted = [...store.timelineItems].sort((a, b) => a.startTime - b.startTime); const current = store.currentTime; const next = sorted.find(i => i.startTime > current + 0.01); if (next) { store.setCurrentTime(next.startTime); store.selectTimelineItem(next.id); } break; }
         case 'Delete': case 'Backspace': { const store = useProjectStore.getState(); if (store.selectedTimelineItemIds.length > 0) store.removeMultipleTimelineItems(store.selectedTimelineItemIds); else if (store.selectedTimelineItemId) store.removeTimelineItem(store.selectedTimelineItemId); break; }
         case 'Escape': setEditorMode('select'); break;
       }
@@ -499,8 +493,13 @@ export default function Toolbar({ onOpenPanel, isMaximized, onToggleMaximize }: 
     }}>
       {/* ─── LEFT: Logo ─────────────────────────── */}
       <div className="flex items-center gap-2.5">
-        <FxkLogo size={26} variant="full" tone="sync" />
-        <span className="text-[7px] text-muted-foreground/60 tracking-[0.12em] uppercase">by Minas FX</span>
+        <div className="w-8 h-8 rounded-lg flex items-center justify-center p-0.5 bg-muted/20 border border-border/20">
+          <img src={fxkLogo} alt="FX Kontrol" className="w-full h-full object-contain opacity-90" />
+        </div>
+        <div className="flex flex-col leading-none">
+          <span className="text-[11px] font-bold text-foreground tracking-[0.18em] uppercase">FX KONTROL</span>
+          <span className="text-[7px] text-muted-foreground/60 tracking-[0.12em] uppercase">by Minas FX</span>
+        </div>
       </div>
 
       {/* Separator */}
@@ -533,7 +532,6 @@ export default function Toolbar({ onOpenPanel, isMaximized, onToggleMaximize }: 
       {!isMobile && (
         <div className="flex items-center gap-0.5">
           <DropdownMenu label="Import" icon={Upload} items={[
-            { label: 'VDL Script (Pyro/DMX)', icon: FileText, onClick: () => setVdlOpen(true) },
             { label: 'CSV Positions', icon: Upload, onClick: () => setCsvOpen(true) },
             { label: 'VVIZ (Finale 3D)', icon: FileJson, onClick: () => setVvizOpen(true) },
             { label: 'UE .uasset', icon: FileCode, onClick: () => setUassetOpen(true) },
@@ -578,20 +576,6 @@ export default function Toolbar({ onOpenPanel, isMaximized, onToggleMaximize }: 
             <button onClick={() => setFormationOpen(true)} className="w-7 h-7 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground/80 hover:bg-muted/30 transition-all" title="Formations">
               <Shapes className="h-3.5 w-3.5" />
             </button>
-
-            {/* ── Separator ── */}
-            <div className="w-px h-5 bg-border/20" />
-
-            {/* Unified panel openers — Effects / Scene / Show Settings */}
-            <button onClick={() => onOpenPanel?.('effects')} className="w-7 h-7 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground/80 hover:bg-muted/30 transition-all" title="Efeitos (C)">
-              <Sparkles className="h-3.5 w-3.5" />
-            </button>
-            <button onClick={() => onOpenPanel?.('scene')} className="w-7 h-7 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground/80 hover:bg-muted/30 transition-all" title="Editor de Cena (N)">
-              <Cog className="h-3.5 w-3.5" />
-            </button>
-            <button onClick={() => onOpenPanel?.('showsettings')} className="w-7 h-7 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground/80 hover:bg-muted/30 transition-all" title="Config. Show">
-              <Settings2 className="h-3.5 w-3.5" />
-            </button>
           </div>
         </>
       )}
@@ -612,7 +596,6 @@ export default function Toolbar({ onOpenPanel, isMaximized, onToggleMaximize }: 
       {/* ─── RIGHT: Mission-Critical Controls ──── */}
       <div className="flex items-center gap-1.5">
         <TimecodeDisplay />
-        {!isMobile && <TimelineClockPanel />}
 
         {!isMobile && (
           <>
@@ -663,7 +646,7 @@ export default function Toolbar({ onOpenPanel, isMaximized, onToggleMaximize }: 
             </button>
             <button
               onClick={() => {
-                timelineTransport.pause();
+                useProjectStore.getState().setPlaying(false);
                 toast.error('🔴 EMERGENCY STOP');
               }}
               className="h-9 px-4 flex items-center gap-1.5 rounded-xl bg-red-600 text-red-50 hover:bg-red-500 shadow-[0_0_20px_rgba(220,38,38,0.3)] transition-all text-[11px] font-black uppercase tracking-wider"
@@ -681,7 +664,9 @@ export default function Toolbar({ onOpenPanel, isMaximized, onToggleMaximize }: 
         )}
 
         {!isMobile && (
-          <UserAvatarFloat inline />
+          <button onClick={signOut} className="w-7 h-7 flex items-center justify-center rounded-md text-muted-foreground/60 hover:text-red-400 hover:bg-red-500/5 transition-all" title="Logout">
+            <LogOut className="h-3.5 w-3.5" />
+          </button>
         )}
       </div>
 
@@ -689,7 +674,6 @@ export default function Toolbar({ onOpenPanel, isMaximized, onToggleMaximize }: 
       <Suspense fallback={null}>
         {formationOpen && <FormationBuilder open={formationOpen} onOpenChange={setFormationOpen} />}
         {csvOpen && <CSVImporter open={csvOpen} onOpenChange={(v) => { setCsvOpen(v); if (!v) setDroppedFile(null); }} initialFile={droppedFile?.type === 'csv' ? droppedFile.file : null} />}
-        {vdlOpen && <VDLImportPanel open={vdlOpen} onOpenChange={setVdlOpen} />}
         {vvizOpen && <VVIZImporter open={vvizOpen} onOpenChange={(v) => { setVvizOpen(v); if (!v) setDroppedFile(null); }} initialFile={droppedFile?.type === 'vviz' ? droppedFile.file : null} />}
         {browserOpen && <ProjectBrowser open={browserOpen} onOpenChange={setBrowserOpen} />}
         {catalogOpen && <CatalogImportDialog open={catalogOpen} onOpenChange={setCatalogOpen} />}

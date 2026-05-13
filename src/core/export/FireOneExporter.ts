@@ -28,9 +28,7 @@ export function generateFireOneScript(): FireOneExportResult {
     errors.push(...blocking.map(i => `[BLOCKED] ${i.label}: ${i.detail}`));
   }
 
-  lines.push('; FX KONTROL audit log — NOT for UltraFire import.');
-  lines.push('; To import into UltraFire desktop: use the .csv companion file');
-  lines.push('; (UltraFire ▸ File ▸ Import ▸ CSV File). This file is human-readable audit only.');
+  lines.push('; FX KONTROL — FireOne Export Script');
   lines.push(`; Show: ${sp.metadata.name}`);
   lines.push(`; Venue: ${sp.metadata.venue || 'N/A'}`);
   lines.push(`; Author: ${sp.metadata.author || 'N/A'}`);
@@ -67,9 +65,9 @@ export function generateFireOneScript(): FireOneExportResult {
   return { script: lines.join('\n'), cueCount: sorted.length, errors, verified: canExport };
 }
 
-export function downloadFireOneScript(filename = 'fxk_show_audit.txt'): void {
+export function downloadFireOneScript(filename = 'fxk_show.fir'): void {
   const result = generateFireOneScript();
-  const blob = new Blob([result.script], { type: 'text/plain;charset=utf-8' });
+  const blob = new Blob([result.script], { type: 'text/plain' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;

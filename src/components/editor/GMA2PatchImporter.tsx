@@ -117,7 +117,7 @@ export default function GMA2PatchImporter({ open, onOpenChange }: Props) {
   const toggleFixture = (idx: number) => {
     setSelected(prev => {
       const next = new Set(prev);
-      if (next.has(idx)) next.delete(idx); else next.add(idx);
+      next.has(idx) ? next.delete(idx) : next.add(idx);
       return next;
     });
   };

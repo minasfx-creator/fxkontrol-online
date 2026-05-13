@@ -5,8 +5,7 @@
 import { useProjectStore } from '@/store/useProjectStore';
 import { EFFECT_LIBRARY } from '@/data/effectLibrary';
 import type { Effect } from '@/data/effectLibrary';
-import { timelineClock } from '@/core/timeline/TimelineClock';
-import { timelineTransport } from '@/core/transport/timelineTransport';
+import { timelineEngine } from '@/core/engine/timelineEngine';
 import { toast } from 'sonner';
 import { verificationEngine } from '@/core/verification/VerificationEngine';
 import { readinessEvaluator } from '@/core/hardware/ReadinessEvaluator';
@@ -14,7 +13,6 @@ import { unifiedHardwareRegistry } from '@/core/hardware/UnifiedHardwareRegistry
 import { exportCoordinator } from '@/core/export/ExportCoordinator';
 import { deviceEventLog } from '@/core/hardware/DeviceEventLog';
 import { operationalModeGuard } from '@/core/hardware/OperationalModeGuard';
-import { workMode } from '@/core/safety/workMode';
 import { getProvenanceBadge, type IntegrationMode } from '@/core/hardware/provenance';
 import { showStyleManager } from '@/core/joi/ShowStyleManager';
 import { supabase } from '@/integrations/supabase/client';
@@ -201,34 +199,9 @@ function resolveEffect(params: Record<string, any>): Effect | undefined {
 }
 
 /** Execute a single command, return result */
-/**
- * AI guardrail: actions that touch physical hardware, safety state,
- * armament, firing, energization, or work-mode transitions are
- * NEVER allowed from JOI/AI execution paths. The canonical list lives
- * in src/core/safety/aiGuardrail.ts so SSM and JOI share one source.
- */
-import { evaluate as evaluateAiGuardrail } from '@/core/safety/aiGuardrail';
-
 function executeCommand(cmd: JoiCommand): JoiCommandResult {
   const store = useProjectStore.getState();
   const { action, params } = cmd;
-
-  // Hard block: AI cannot arm, fire, energize, or change work mode.
-  const guard = evaluateAiGuardrail(action, 'agent');
-  if (!guard.allowed) {
-    deviceEventLog.log(
-      'joi-ai',
-      'state_change',
-      `[AI Guardrail] Ação física '${action}' bloqueada — IA não pode armar/disparar/energizar.`,
-      { action, blocked: true, reason: guard.reason },
-    );
-    return {
-      action,
-      success: false,
-      label: `Ação '${action}' bloqueada`,
-      detail: 'IA não pode executar comandos físicos (armar, disparar, energizar, alterar modo de operação). Ação requer operador autorizado via UI.',
-    };
-  }
 
   try {
     switch (action) {
@@ -333,18 +306,21 @@ function executeCommand(cmd: JoiCommand): JoiCommandResult {
       }
 
       case 'play': {
-        timelineTransport.play();
+        store.setPlaying(true);
+        timelineEngine.play();
         return { action, success: true, label: `▶ Playback iniciado` };
       }
 
       case 'pause': {
-        timelineTransport.pause();
+        store.setPlaying(false);
+        timelineEngine.pause();
         return { action, success: true, label: `⏸ Playback pausado` };
       }
 
       case 'seek': {
         const t = params.time ?? 0;
-        timelineTransport.seekTo(t);
+        store.setCurrentTime(t);
+        timelineEngine.seek(t);
         return { action, success: true, label: `⏩ Seek para ${t.toFixed(1)}s` };
       }
 
@@ -520,7 +496,8 @@ function executeCommand(cmd: JoiCommand): JoiCommandResult {
       case 'set_duration': {
         const d = params.duration;
         if (typeof d !== 'number' || d <= 0) return { action, success: false, label: `Duração inválida` };
-        timelineClock.setDuration(d);
+        store.setDuration(d);
+        timelineEngine.setDuration(d);
         return { action, success: true, label: `Duração do show: ${d}s` };
       }
 
@@ -578,19 +555,16 @@ function executeCommand(cmd: JoiCommand): JoiCommandResult {
       }
 
       case 'inspect_exports': {
-        const targets = ['fireone-csv', 'artnet', 'drone'] as const;
-        const sim = !workMode.isRealOperation();
+        const targets = ['fireone', 'artnet', 'drone'] as const;
         const lines = targets.map(t => {
           const last = exportCoordinator.getLastAttempt(t);
-          if (!last) return `${t}: Nunca exportado`;
-          if (last.success) return `${t}: OK (${last.cueCount} cues)`;
-          return `${t}: ${sim ? 'ADVISORY' : 'BLOCKED'}: ${last.issues[0] || '?'}`;
+          return `${t}: ${last ? (last.success ? `OK (${last.cueCount} cues)` : `BLOCKED: ${last.issues[0] || '?'}`) : 'Nunca exportado'}`;
         });
         const readiness = readinessEvaluator.evaluate();
-        const canExport = sim || readiness.allowed_operations.includes('export');
+        const canExport = readiness.allowed_operations.includes('export');
         return {
           action, success: true,
-          label: `Export ${sim ? 'SIM · LIVRE' : canExport ? 'PERMITIDO' : 'BLOQUEADO'} (${readiness.status})`,
+          label: `Export ${canExport ? 'PERMITIDO' : 'BLOQUEADO'} (${readiness.status})`,
           detail: lines.join(' | '),
         };
       }
@@ -605,7 +579,7 @@ function executeCommand(cmd: JoiCommand): JoiCommandResult {
         const rows = [
           `ShowPlan: ${store.positions.length > 0 ? 'ACTIVE' : 'EMPTY'} | evidence: adapter_only | source: ProjectStore`,
           `VerificationPass: ${vResult2.level} | evidence: adapter_only | checks: ${vResult2.summary.passed}/${vResult2.summary.total}`,
-          `ExportCoordinator: ${(!workMode.isRealOperation() || readiness2.allowed_operations.includes('export')) ? 'READY' : 'BLOCKED'} | mode: ${mode} | workMode: ${workMode.get()}`,
+          `ExportCoordinator: ${readiness2.allowed_operations.includes('export') ? 'READY' : 'BLOCKED'} | mode: ${mode}`,
           ...devices2.map(d => {
             const im = (d.metadata?.integration_mode as IntegrationMode) || 'simulated';
             const ev = d.metadata?.evidence_level || 'adapter_only';

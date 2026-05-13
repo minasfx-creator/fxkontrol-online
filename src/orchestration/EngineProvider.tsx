@@ -28,18 +28,11 @@ import { startProfiler, stopProfiler } from '@/core/performance/PerformanceProfi
 import { networkHealthService } from '@/core/network/NetworkHealthService';
 import { clusterHealthService } from '@/core/cluster/ClusterHealthService';
 import { healthPersistenceService } from '@/core/cluster/HealthPersistenceService';
-import { timelineClock } from '@/core/timeline/TimelineClock';
-import { executionBridge } from '@/core/execution/executionBridge';
-import { showPlanManager } from '@/core/showplan/ShowPlanManager';
-import { pyroSchedulerBridge } from '@/hardware/integrations/pyroSchedulerBridge';
 import '@/core/cluster/reporters/SafetyHealthReporter';
 import '@/core/cluster/reporters/PerformanceHealthReporter';
 import '@/core/cluster/reporters/NetworkHealthReporter';
 import { autoRecoveryService } from '@/core/reliability/AutoRecoveryService';
 import { ReplayOverlay } from '@/components/editor/ReplayOverlay';
-import { useProjectStore } from '@/store/useProjectStore';
-import { attachCommandFireRouter } from '@/core/command/commandFireRouter';
-import { attachRealTransports, detachRealTransports } from '@/core/network/realTransports';
 import { toast } from 'sonner';
 
 const FLUSH_INTERVAL_TICKS = 1800; // ~30s at 60Hz
@@ -55,18 +48,11 @@ function safeBoot(label: string, fn: () => void): boolean {
 }
 
 export default function EngineProvider() {
-  const projectId = useProjectStore((s) => s.projectId);
-
   // ── ShowPlan ↔ ProjectStore live sync ──
   useShowPlanSync();
 
   useEffect(() => {
-    healthPersistenceService.setProjectId(projectId);
-  }, [projectId]);
-
-  useEffect(() => {
     let lastFlushTick = 0;
-    let lastShowPlanSignature = '';
 
     // ── Boot: load persisted data ──
     (async () => {
@@ -76,7 +62,9 @@ export default function EngineProvider() {
           indexedDBPersistence.loadCommandLog(),
         ]);
         if (snapshots.length > 0) {
-          snapshotManager.importSnapshots(snapshots);
+          for (const snap of snapshots) {
+            (snapshotManager as any)._snapshots.push(snap);
+          }
           console.log(`[EngineProvider] Restored ${snapshots.length} snapshots from IndexedDB`);
         }
         if (logEntries.length > 0) {
@@ -131,12 +119,6 @@ export default function EngineProvider() {
       continuityCheckService.runFullCheck();
     });
 
-    // ── Register FIRE consumer (UI → safety verdict → pyroExecutor → fieldBus) ──
-    const unsubFire = attachCommandFireRouter();
-
-    // ── Wire real transports into the FieldBus (artnet / fireone-cable / wireless) ──
-    attachRealTransports();
-
     // ── Command processing subsystem (priority 0) ──
     // Safety validator gates commands before they reach handlers
     lockstep.register('commandBus', (_time: number, _dt: number) => {
@@ -173,33 +155,9 @@ export default function EngineProvider() {
     }, 0);
 
     // ── Snapshot subsystem (priority 200) ──
-    lockstep.register('timelineClock', (_time: number, dt: number) => {
-      timelineClock.tick(dt);
-    }, 100);
-
-    // SOLE owner of the 'executionBridge' lockstep system. SkyCanvas used to
-    // register a second one — do not re-introduce that. Keep registration
-    // here so it follows the EngineProvider lifecycle (mount/unmount).
-    lockstep.register('executionBridge', (_time: number, _dt: number) => {
-      const plan = showPlanManager.current;
-      const signature = `${plan.metadata.id}:${plan.metadata.updatedAt}:${plan.pyroCues.length}:${plan.dmxCues.length}:${plan.dronePaths.length}`;
-      if (signature !== lastShowPlanSignature) {
-        executionBridge.loadShowPlan(plan);
-        lastShowPlanSignature = signature;
-      }
-
-      executionBridge.tick(timelineClock.getTime());
-    }, 150);
-
-    lockstep.register('pyroSchedulerBridge', (_time: number, _dt: number) => {
-      pyroSchedulerBridge.tick(timelineClock.getState());
-    }, 160);
-
     lockstep.register('snapshotManager', (_time: number, _dt: number) => {
       snapshotManager.maybeCapture(lockstep.getTickCount());
     }, 200);
-
-    lockstep.setEnabled('timelineClock', true);
 
     // ── IndexedDB flush subsystem (priority 300) ──
     lockstep.register('idbFlush', (_time: number, _dt: number) => {
@@ -217,35 +175,14 @@ export default function EngineProvider() {
       lockstep.tick(delta);
     });
 
-    // ── RAF pump (independent of R3F) ──
-    // Drives deterministicClock even when no <Canvas> is mounted/visible,
-    // so timeline play works on every route and survives WebGL context loss.
-    let rafId = 0;
-    const pump = () => {
-      deterministicClock.tick();
-      rafId = requestAnimationFrame(pump);
-    };
-    rafId = requestAnimationFrame(pump);
-
-    // Pause pump when tab is hidden to save battery; resume on visible.
-    const handleVisibility = () => {
-      if (document.visibilityState === 'hidden') {
-        if (rafId) cancelAnimationFrame(rafId);
-        rafId = 0;
-      } else if (rafId === 0) {
-        rafId = requestAnimationFrame(pump);
-      }
-    };
-    document.addEventListener('visibilitychange', handleVisibility);
-
     // ── Register recoverable services ──
-    const initialProjectId = useProjectStore.getState().projectId;
+    const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID || '';
     const bootFns: Record<string, () => void> = {
       DeterministicClock: () => deterministicClock.start(),
       LockstepEngine: () => lockstep.start(),
       PerformanceProfiler: () => startProfiler(),
       NetworkHealth: () => networkHealthService.start(),
-      HealthPersistence: () => healthPersistenceService.start(initialProjectId),
+      HealthPersistence: () => healthPersistenceService.start(projectId),
     };
     for (const [label, fn] of Object.entries(bootFns)) {
       autoRecoveryService.register(label, fn);
@@ -271,8 +208,6 @@ export default function EngineProvider() {
     return () => {
       handleBeforeUnload();
       window.removeEventListener('beforeunload', handleBeforeUnload);
-      document.removeEventListener('visibilitychange', handleVisibility);
-      if (rafId) cancelAnimationFrame(rafId);
       autoRecoveryService.dispose();
       clusterHealthService.dispose();
       if (bootResults['HealthPersistence']) healthPersistenceService.stop();
@@ -287,16 +222,10 @@ export default function EngineProvider() {
       unsubExport();
       unsubImport();
       unsubContinuity();
-      unsubFire();
-      detachRealTransports();
       lockstep.unregister('commandBus');
-      lockstep.unregister('timelineClock');
-      lockstep.unregister('executionBridge');
-      lockstep.unregister('pyroSchedulerBridge');
       lockstep.unregister('snapshotManager');
       lockstep.unregister('idbFlush');
       commandRelay.stop();
-      pyroSchedulerBridge.reset();
       safetyStateMachine.reset();
       console.log('[EngineProvider] All services stopped');
     };
