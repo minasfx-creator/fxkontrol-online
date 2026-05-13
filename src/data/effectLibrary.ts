@@ -52,6 +52,10 @@ export interface Effect {
   };
   niagaraPresetId?: string;
   formulationId?: string;
+  /** Optional explicit thumbnail URL — overrides the auto resolver. */
+  thumbUrl?: string;
+  /** Optional path to the source Finale 3D `.fwe` preset (in /public). */
+  finalePresetUrl?: string;
 }
 
 export const EFFECT_LIBRARY: Effect[] = [
@@ -248,4 +252,12 @@ export const EFFECT_LIBRARY: Effect[] = [
   { id: 'spw-01', name: 'Spider Web Green 4"', category: 'morteiros', type: 'firework', color: '#00FF7F', duration: 4, cost: 30, icon: '🕸️', partType: 'shell', caliber: 4, heightMeters: 80, prefire: 2.0, pattern: 'spider_web', safetyDistance: 100 },
   { id: 'spw-02', name: 'Spider Web Silver 6"', category: 'morteiros', type: 'firework', color: '#C0C0C0', duration: 5, cost: 50, icon: '🕸️', partType: 'shell', caliber: 6, heightMeters: 120, prefire: 3.0, pattern: 'spider_web', safetyDistance: 175 },
   { id: 'spw-03', name: 'Spider Web Gold 8"', category: 'morteiros', type: 'firework', color: '#FFD700', duration: 6, cost: 78, icon: '🕸️', partType: 'shell', caliber: 8, heightMeters: 160, prefire: 4.0, pattern: 'spider_web', safetyDistance: 210 },
+
+  // ── Finale 3D Presets (.fwe) ───────────────────────────────
+  // Renders provided by author; .fwe sources shipped under /finale-presets/.
+  { id: 'fin-40-roman-candle', name: 'Roman Candle 40s (R/G)', category: 'finale_presets', type: 'firework', color: '#FF3B30', duration: 40, cost: 45, icon: '🕯️', partType: 'candle', caliber: 1, heightMeters: 30, prefire: 0.1, pattern: 'comet', shotCount: 40, safetyDistance: 50, thumbUrl: '/src/assets/effect-thumbs/finale/40_roman_candle.png', finalePresetUrl: '/finale-presets/40_Roman_Candle.fwe' },
+  { id: 'fin-41-cake-i', name: 'Cake — I-Shape (Gold Brocade)', category: 'finale_presets', type: 'firework', color: '#FFD27A', duration: 8, cost: 95, icon: '🎂', partType: 'cake', caliber: 1, heightMeters: 35, prefire: 0.1, pattern: 'kamuro', shotCount: 25, safetyDistance: 60, impliesTrail: true, trailType: 'comet', thumbUrl: '/src/assets/effect-thumbs/finale/41_cake_i_shape.png', finalePresetUrl: '/finale-presets/41_Cake_I-Shape.fwe' },
+  { id: 'fin-42-cake-zv', name: 'Cake — Z/V-Shape (Gold + Magenta)', category: 'finale_presets', type: 'firework', color: '#FF00C8', duration: 12, cost: 140, icon: '🎂', partType: 'cake', caliber: 1, heightMeters: 40, prefire: 0.1, pattern: 'fan', shotCount: 36, safetyDistance: 70, firingPattern: 'z_v_shape', thumbUrl: '/src/assets/effect-thumbs/finale/42_cake_zv_shape.png', finalePresetUrl: '/finale-presets/42_Cake_Z-Shape_V-Shape.fwe' },
+  { id: 'fin-43-single-row', name: 'Single Row — Gold Gerb Fan', category: 'finale_presets', type: 'firework', color: '#FFE2AE', duration: 6, cost: 80, icon: '⛲', partType: 'gerb', caliber: 1, heightMeters: 8, prefire: 0.05, pattern: 'fan', numDevices: 9, safetyDistance: 25, thumbUrl: '/src/assets/effect-thumbs/finale/43_single_row.png', finalePresetUrl: '/finale-presets/43_Single_Row.fwe' },
+  { id: 'fin-44-lancework', name: 'Lancework — "FX SIM"', category: 'finale_presets', type: 'sfx', color: '#FFD700', duration: 20, cost: 60, icon: '🅵', partType: 'set_piece', heightMeters: 6, prefire: 0, pattern: 'lancework', safetyDistance: 15, thumbUrl: '/src/assets/effect-thumbs/finale/44_lancework.png', finalePresetUrl: '/finale-presets/44_Lancework.fwe' },
 ];
