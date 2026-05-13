@@ -604,7 +604,7 @@ export const FireworkBurst = React.forwardRef<THREE.Group, {
     }
 
     return { velocities: v, lifetimes: l, twinklePhases: tp, sparkleSeeds: sparkle };
-  }, [STAR_COUNT, breakSpeed, starLife, pattern]);
+  }, [STAR_COUNT, breakSpeed, starLife, pattern, shellPreset]);
 
   // ── Pistil velocities (25% star count, 40% speed, inner burst) ──
   const PISTIL_COUNT = hasPistil ? Math.max(8, Math.round(STAR_COUNT * 0.25)) : 0;
