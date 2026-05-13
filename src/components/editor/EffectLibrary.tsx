@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { useProjectStore } from '@/store/useProjectStore';
 import { EFFECT_LIBRARY, type Effect } from '@/data/effectLibrary';
+import { FINALE_SHELL_PRESET_EFFECTS } from '@/data/finaleShellPresetEffects';
 import { cn } from '@/lib/utils';
 import { parseVDL, vdlToEffect } from '@/lib/vdlParser';
 import { ScrollArea } from '@/components/ui/scroll-area';
