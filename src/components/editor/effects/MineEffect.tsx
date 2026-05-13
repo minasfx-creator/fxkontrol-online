@@ -278,10 +278,18 @@ export default function MineEffect({
       posArr[i * 3 + 1] = bounced ? Math.abs(rawY) * restitution : rawY;
       posArr[i * 3 + 2] = vz * t * dragH + windZ * t * t * 0.5;
 
-      // Combustion flicker for column particles, temporal for spray/drips
-      const twinkle = isColumn
+      // Combustion flicker for column particles, temporal for spray/drips.
+      // When a Finale Mine preset declares a tail strobeHz (e.g. Gold Glitter
+      // 29.4 Hz), we modulate the spray twinkle by a square-wave at that rate
+      // so the canonical strobe character is visible.
+      let twinkle = isColumn
         ? combustionFlicker(sparkleSeeds[i], time, 1.2)
         : temporalFlicker(sparkleSeeds[i], time, 0.6, 0.34, 0.36);
+      if (!isColumn && tailStrobeHz > 0) {
+        const phase = (time * tailStrobeHz + sparkleSeeds[i] * 0.137) % 1;
+        const strobeGate = phase < 0.5 ? 1 : 0.35;
+        twinkle *= strobeGate;
+      }
 
       const flashIntensity = Math.max(0, 1 - progress * 15);
       const emberPhase = Math.max(0, (progress - 0.35) / 0.65);
