@@ -360,6 +360,7 @@ export default function CakeEffect({
   formulationId,
   launchHeading = 0,
   launchPitch = 85,
+  presetId,
 }: {
   position: [number, number, number];
   color: string;
@@ -372,7 +373,16 @@ export default function CakeEffect({
   formulationId?: string;
   launchHeading?: number;
   launchPitch?: number;
+  /** Canonical Finale Cake-shot preset id (rev5). Overrides per-shot inner color. */
+  presetId?: string;
 }) {
+  // Resolve canonical Finale Cake-shot preset (rev5). Overrides per-shot
+  // inner-burst color. shotCount/pattern remain caller-driven.
+  const preset = useMemo(
+    () => (presetId ? resolveCakeShotPresetProps(presetId) : undefined),
+    [presetId],
+  );
+  const effectiveColor = preset?.innerColor ?? color;
   const shots = useMemo(() => {
     const rows = cakeRows || (shotCount <= 12 ? 1 : Math.max(1, Math.round(Math.sqrt(shotCount))));
     const tubesPerRow = Math.ceil(shotCount / rows);
