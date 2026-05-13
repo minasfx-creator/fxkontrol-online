@@ -28,35 +28,26 @@ export function generateFireOneScript(): FireOneExportResult {
     errors.push(...blocking.map(i => `[BLOCKED] ${i.label}: ${i.detail}`));
   }
 
-  lines.push('; FX KONTROL — FireOne Export Script');
-  lines.push(`; Show: ${sp.metadata.name}`);
-  lines.push(`; Venue: ${sp.metadata.venue || 'N/A'}`);
-  lines.push(`; Author: ${sp.metadata.author || 'N/A'}`);
-  lines.push(`; Duration: ${sp.metadata.duration.toFixed(1)}s`);
-  lines.push(`; Generated: ${new Date().toISOString()}`);
-  lines.push(`; Cues: ${sp.pyroCues.length}`);
-  lines.push(`; Verification: ${vResult.level} (${vResult.summary.passed}/${vResult.summary.total} passed)`);
-  lines.push(';');
-  lines.push('; Module,Channel,Time(ms),FuseDelay(ms),Effect,Caliber(mm),Elevation,Position,Section');
+  // ICET / FireOne firing script — canonical header
+  // Format: CUE,TIMECODE,MODULO,CANAL,ABERTURA
+  // TIMECODE = HH:MM:SS:FF (SMPTE 30 fps non-drop, frames 00-29)
+  lines.push('CUE,TIMECODE,MODULO,CANAL,ABERTURA');
 
   const sorted = [...sp.pyroCues].sort((a, b) => a.time - b.time);
 
   sorted.forEach((cue, idx) => {
     if (cue.module < 0) errors.push(`Cue ${idx + 1}: invalid module ${cue.module}`);
     if (cue.channel < 0 || cue.channel > 31) errors.push(`Cue ${idx + 1}: channel ${cue.channel} out of range 0-31`);
+    if (!Number.isFinite(cue.time) || cue.time < 0) errors.push(`Cue ${idx + 1}: invalid time ${cue.time}`);
 
-    const pos = sp.positions.find(p => p.id === cue.positionId);
-    const timeMs = Math.round(cue.time * 1000);
+    const tc = secondsToSmpte30(cue.time);
+    const abertura = cue.fuseDelay > 0 ? Math.round(cue.fuseDelay).toString() : '';
     lines.push([
+      idx + 1,
+      tc,
       cue.module,
       cue.channel,
-      timeMs,
-      Math.round(cue.fuseDelay),
-      cue.effectId,
-      cue.caliber,
-      cue.elevation.toFixed(1),
-      pos?.name ?? cue.positionId,
-      cue.section ?? '',
+      abertura,
     ].join(','));
   });
 
