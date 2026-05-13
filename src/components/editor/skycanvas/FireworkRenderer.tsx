@@ -1352,13 +1352,16 @@ export function TimelineEffects() {
 
         const effFormulationId = effect.formulationId || autoMatchFormulation(effect.color, pt || 'shell', caliber);
 
-        if (pt === 'mine') return <MineEffect key={item.id} position={pos} color={effect.color} progress={progress} caliber={caliber} angleOffset={vdlAngle} heightMeters={effect.heightMeters} formulationId={effFormulationId} launchHeading={launchHeading} launchPitch={launchPitch} />;
+        const minePresetId = (effect as any).presetId as string | undefined ?? resolveMinePresetId((effect as any).name || effect.id);
+        const cakePresetId = (effect as any).presetId as string | undefined ?? resolveCakeShotPresetId((effect as any).name || effect.id);
+
+        if (pt === 'mine') return <MineEffect key={item.id} position={pos} color={effect.color} progress={progress} caliber={caliber} angleOffset={vdlAngle} heightMeters={effect.heightMeters} formulationId={effFormulationId} launchHeading={launchHeading} launchPitch={launchPitch} presetId={minePresetId} />;
         if (pt === 'candle') return <RomanCandleEffect key={item.id} position={pos} color={effect.color} progress={progress} shotCount={effect.shotCount || 8} caliber={caliber} angleOffset={vdlAngle} formulationId={effFormulationId} launchHeading={launchHeading} launchPitch={launchPitch} />;
         if (pt === 'waterfall') return <WaterfallEffect key={item.id} position={pos} color={effect.color} progress={progress} width={scaledHeight} caliber={caliber} formulationId={effFormulationId} />;
         if (pt === 'gerb') return <GerbEffect key={item.id} position={pos} color={effect.color} progress={progress} height={scaledHeight} caliber={caliber} formulationId={effFormulationId} />;
         if (pt === 'flame') return <FlameEffect key={item.id} position={pos} color={effect.color} progress={progress} height={scaledHeight} />;
         if (pt === 'girandola') return <GirandolaEffect key={item.id} position={pos} color={effect.color} progress={progress} caliber={caliber} />;
-        if (pt === 'cake') return <CakeEffect key={item.id} position={pos} color={effect.color} progress={progress} shotCount={effect.shotCount || 25} pattern={vdlFiringPattern} caliber={caliber} formulationId={effFormulationId} launchHeading={launchHeading} launchPitch={launchPitch} />;
+        if (pt === 'cake') return <CakeEffect key={item.id} position={pos} color={effect.color} progress={progress} shotCount={effect.shotCount || 25} pattern={vdlFiringPattern} caliber={caliber} formulationId={effFormulationId} launchHeading={launchHeading} launchPitch={launchPitch} presetId={cakePresetId} />;
         if (pt === 'laser') return <LaserEffect key={item.id} position={pos} color={effect.color} progress={progress} pattern={effect.laserPattern || 'fan'} beamCount={effect.beamCount || 8} />;
         if (pt === 'light' && effect.beamType) return <MovingHeadEffect key={item.id} position={pos} color={effect.color} progress={progress} beamType={effect.beamType} />;
 
