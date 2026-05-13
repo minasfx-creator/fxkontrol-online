@@ -83,9 +83,9 @@ describe('buildTimelineCSV — Mine/Cake columns', () => {
 
   it('emits resolved Cake metadata for matching cues', () => {
     const csv = buildTimelineCSV([
-      { time: 0.5, x: 0, y: 0, z: 0, effectId: 'cake', notes: 'cake mine-shell gold' },
+      { time: 0.5, x: 0, y: 0, z: 0, effectId: 'cake', notes: 'cake silver titanium' },
     ]);
-    expect(csv.split('\n')[1]).toContain('cake-mine-shell-gold');
+    expect(csv.split('\n')[1]).toContain('cake-shell-silver-titanium');
   });
 
   it('leaves preset columns empty for unrelated cues', () => {
