@@ -915,7 +915,7 @@ function SFXStageEnvironment() {
         })}
       </group>
 
-      <InstancedSFXMarkers stageW={stageW} stageD={stageD} stageHeight={stageHeight} />
+      {/* InstancedSFXMarkers removed — see definition above */}
 
       {/* ═══ Floating Orb Props — BP_Sphere/M_Orb reference ═══ */}
       {[-8, 0, 8].map((x, i) => (
