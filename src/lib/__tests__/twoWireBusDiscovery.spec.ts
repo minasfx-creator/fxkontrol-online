@@ -1,25 +1,24 @@
 import { describe, it, expect, vi } from 'vitest';
 import { scanBus } from '../twoWireBusDiscovery';
-import { TwoWireOpcode } from '../twoWireProtocol';
+import { TwoWireOpcode, type TwoWireCmd } from '../twoWireProtocol';
 
 function mockTransport(replyFor: Set<number>) {
   const frameSubs: Array<(f: { addr: number; opcode: TwoWireOpcode; payload: Uint8Array }) => void> = [];
-  return {
-    send: vi.fn(async (cmd: { type: string; addr: number }) => {
-      if (cmd.type === 'IDENTIFY' && replyFor.has(cmd.addr)) {
-        // Simulate firmware reply on next tick.
-        setTimeout(() => {
-          for (const cb of frameSubs) {
-            cb({ addr: cmd.addr, opcode: TwoWireOpcode.IDENTIFY, payload: new Uint8Array([0x10, 1, 2, 3]) });
-          }
-        }, 1);
-      }
-    }),
-    onFrame: (cb: (f: { addr: number; opcode: TwoWireOpcode; payload: Uint8Array }) => void) => {
-      frameSubs.push(cb);
-      return () => { frameSubs.splice(frameSubs.indexOf(cb), 1); };
-    },
+  const send = vi.fn(async (cmd: TwoWireCmd) => {
+    if (cmd.type === 'IDENTIFY' && replyFor.has(cmd.addr)) {
+      const addr = cmd.addr;
+      setTimeout(() => {
+        for (const cb of frameSubs) {
+          cb({ addr, opcode: TwoWireOpcode.IDENTIFY, payload: new Uint8Array([0x10, 1, 2, 3]) });
+        }
+      }, 1);
+    }
+  });
+  const onFrame = (cb: (f: { addr: number; opcode: TwoWireOpcode; payload: Uint8Array }) => void) => {
+    frameSubs.push(cb);
+    return () => { frameSubs.splice(frameSubs.indexOf(cb), 1); };
   };
+  return { send, onFrame } as const;
 }
 
 describe('twoWireBusDiscovery — scanBus', () => {
