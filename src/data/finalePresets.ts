@@ -43,7 +43,12 @@ export interface TailLayer {
   crackle?: boolean;
 }
 
-export type ShellGeometry = 'sphere' | 'ring' | 'palm-semi' | 'crown-asym';
+export type ShellGeometry =
+  | 'sphere'
+  | 'ring'
+  | 'palm-semi'
+  | 'crown-asym'
+  | 'quarter-sphere';
 
 export type ShellStarType = 'XXSmall' | 'XSmall' | 'Normal' | 'Small' | 'Large';
 
