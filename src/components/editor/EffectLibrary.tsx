@@ -1,6 +1,6 @@
 import { useState, useCallback, useMemo, useRef, useEffect } from 'react';
 import CakeBuilder from './CakeBuilder';
-import { Search, ChevronDown, ChevronRight, Flame, Sparkles, Radio, Shapes, Wand2, Zap, Lightbulb, Droplets, Bomb, CandlestickChart as Candle, Waves, Box, GripVertical, Clock, MapPin, Ruler, List, LayoutGrid, Hash, Plus, RotateCw } from 'lucide-react';
+import { Search, ChevronDown, ChevronRight, Flame, Sparkles, Radio, Shapes, Wand2, Zap, Lightbulb, Droplets, Bomb, CandlestickChart as Candle, Waves, Box, GripVertical, Clock, MapPin, Ruler, List, LayoutGrid, Hash, Plus, RotateCw, Upload } from 'lucide-react';
 import { toast } from 'sonner';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -8,6 +8,8 @@ import { useProjectStore } from '@/store/useProjectStore';
 import { EFFECT_LIBRARY, type Effect } from '@/data/effectLibrary';
 import { FINALE_SHELL_PRESET_EFFECTS } from '@/data/finaleShellPresetEffects';
 import { FWE_UPLOADED_EFFECTS } from '@/data/fweUploadedEffects';
+import { parseFweXml } from '@/data/fweImporter';
+import { useImportedFweStore } from '@/store/useImportedFweStore';
 import { cn } from '@/lib/utils';
 import { parseVDL, vdlToEffect } from '@/lib/vdlParser';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -445,6 +447,38 @@ export default function EffectLibrary() {
   const currentTime = useProjectStore(s => s.currentTime);
   const positions = useProjectStore(s => s.positions);
   const searchInputRef = useRef<HTMLInputElement>(null);
+  const fweInputRef = useRef<HTMLInputElement>(null);
+  const importedFweEffects = useImportedFweStore(s => s.effects);
+  const addImportedFwe = useImportedFweStore(s => s.addOrReplace);
+
+  const handleFweUpload = useCallback(async (files: FileList | null) => {
+    if (!files || files.length === 0) return;
+    let okCount = 0;
+    let failCount = 0;
+    for (const file of Array.from(files)) {
+      if (!/\.fwe$/i.test(file.name)) {
+        failCount++;
+        continue;
+      }
+      try {
+        const xml = await file.text();
+        const result = parseFweXml(xml, file.name);
+        if (result.ok && result.effect) {
+          addImportedFwe(result.effect);
+          okCount++;
+        } else {
+          failCount++;
+          if (result.errors[0]) toast.error(`${file.name}: ${result.errors[0]}`);
+        }
+      } catch (e) {
+        failCount++;
+        toast.error(`${file.name}: ${(e as Error).message}`);
+      }
+    }
+    if (okCount > 0) toast.success(`Imported ${okCount} .fwe effect${okCount > 1 ? 's' : ''}`);
+    if (failCount > 0 && okCount === 0) toast.error(`Failed to import ${failCount} file(s)`);
+    if (fweInputRef.current) fweInputRef.current.value = '';
+  }, [addImportedFwe]);
 
   // C-key quick search (Finale 3D behavior)
   useEffect(() => {
@@ -482,13 +516,15 @@ export default function EffectLibrary() {
   const fullLibrary = useMemo<Effect[]>(() => {
     const seen = new Set<string>();
     const merged: Effect[] = [];
-    for (const e of [...EFFECT_LIBRARY, ...FINALE_SHELL_PRESET_EFFECTS, ...FWE_UPLOADED_EFFECTS]) {
+    // Imported (runtime) entries last so they override the curated
+    // catalog when ids collide (re-import = update in place).
+    for (const e of [...EFFECT_LIBRARY, ...FINALE_SHELL_PRESET_EFFECTS, ...FWE_UPLOADED_EFFECTS, ...importedFweEffects]) {
       if (seen.has(e.id)) continue;
       seen.add(e.id);
       merged.push(e);
     }
     return merged;
-  }, []);
+  }, [importedFweEffects]);
 
   const filteredEffects = useMemo(() =>
     fullLibrary.filter((e) => {
@@ -549,6 +585,21 @@ export default function EffectLibrary() {
             >
               <Plus className="w-3 h-3" />
             </button>
+            <button
+              onClick={() => fweInputRef.current?.click()}
+              className="p-1 rounded-md bg-primary/10 text-primary hover:bg-primary/20 transition-colors"
+              title="Import .fwe (FWsim FireworkEffect)"
+            >
+              <Upload className="w-3 h-3" />
+            </button>
+            <input
+              ref={fweInputRef}
+              type="file"
+              accept=".fwe,application/xml,text/xml"
+              multiple
+              className="hidden"
+              onChange={(e) => handleFweUpload(e.target.files)}
+            />
           </div>
           {/* View toggle — Finale 3D has list/table */}
           <div className="flex gap-0.5 p-0.5 rounded-lg bg-surface-0/50">
