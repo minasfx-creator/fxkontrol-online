@@ -475,12 +475,26 @@ export default function EffectLibrary() {
     });
   };
 
-  const filteredEffects = useMemo(() => 
-    EFFECT_LIBRARY.filter((e) => {
+  // Merge core effects + canonical Finale shell presets (rev1..rev6).
+  // De-duped by id so re-runs stay stable; ids are namespaced
+  // ("finale-shell-<id>") so collisions with EFFECT_LIBRARY can't occur.
+  const fullLibrary = useMemo<Effect[]>(() => {
+    const seen = new Set<string>();
+    const merged: Effect[] = [];
+    for (const e of [...EFFECT_LIBRARY, ...FINALE_SHELL_PRESET_EFFECTS]) {
+      if (seen.has(e.id)) continue;
+      seen.add(e.id);
+      merged.push(e);
+    }
+    return merged;
+  }, []);
+
+  const filteredEffects = useMemo(() =>
+    fullLibrary.filter((e) => {
       if (typeFilter !== 'all' && e.type !== typeFilter) return false;
       if (search && !e.name.toLowerCase().includes(search.toLowerCase())) return false;
       return true;
-    }), [typeFilter, search]);
+    }), [fullLibrary, typeFilter, search]);
 
   const categoryCounts = useMemo(() => {
     const counts: Record<string, number> = {};
