@@ -7,7 +7,13 @@ import { useFrame, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
 import { useProjectStore } from '@/store/useProjectStore';
 import { EFFECT_LIBRARY } from '@/data/effectLibrary';
-import { resolveMinePresetId, resolveCakeShotPresetId } from '@/data/finalePresets';
+import {
+  resolveMinePresetId,
+  resolveCakeShotPresetId,
+  resolveShellPresetId,
+  FINALE_SHELL_PRESETS,
+  type ShellPreset,
+} from '@/data/finalePresets';
 import { useSceneStore } from '@/store/useSceneStore';
 import { useLiveSfxStore } from '@/store/useLiveSfxStore';
 import { useLOD } from '@/hooks/useLOD';
