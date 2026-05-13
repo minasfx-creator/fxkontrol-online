@@ -11,6 +11,7 @@ import { FWE_UPLOADED_EFFECTS } from '@/data/fweUploadedEffects';
 import { parseFweXml } from '@/data/fweImporter';
 import { useImportedFweStore } from '@/store/useImportedFweStore';
 import { cn } from '@/lib/utils';
+import { resolveEffectThumb } from '@/data/effectThumbnails';
 import { parseVDL, vdlToEffect } from '@/lib/vdlParser';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
@@ -138,9 +139,21 @@ function EffectTableRow({ effect, index, usageCount }: { effect: Effect; index: 
       <td className="px-1.5 py-[5px] text-muted-foreground/30 font-mono-code text-right w-8 tabular-nums">
         {index + 1}
       </td>
-      {/* Icon */}
-      <td className="px-1 py-[5px] w-5">
-        <div className="w-3 h-3 rounded-sm" style={{ backgroundColor: effect.color, boxShadow: `0 0 6px ${effect.color}44` }} />
+      {/* Thumbnail */}
+      <td className="px-1 py-[5px] w-6">
+        {(() => {
+          const thumb = resolveEffectThumb(effect);
+          return thumb ? (
+            <div
+              className="w-4 h-4 rounded-sm overflow-hidden ring-1 ring-border/30 bg-black/60"
+              style={{ boxShadow: `0 0 6px ${effect.color}55` }}
+            >
+              <img src={thumb} alt="" className="w-full h-full object-cover" loading="lazy" decoding="async" />
+            </div>
+          ) : (
+            <div className="w-3 h-3 rounded-sm" style={{ backgroundColor: effect.color, boxShadow: `0 0 6px ${effect.color}44` }} />
+          );
+        })()}
       </td>
       {/* Part type badge */}
       <td className="px-1 py-[5px] w-10">
@@ -308,7 +321,19 @@ function EffectCard({ effect }: { effect: Effect }) {
       >
         <div className="absolute left-0 top-1 bottom-1 w-[3px] rounded-full transition-opacity" style={{ backgroundColor: accentColor, opacity: isSelected ? 1 : 0.3 }} />
         <GripVertical className="w-3 h-3 text-muted-foreground/15 flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity ml-1" />
-        <div className="w-3.5 h-3.5 rounded-md flex-shrink-0" style={{ backgroundColor: effect.color, boxShadow: `0 0 8px ${effect.color}33` }} />
+        {(() => {
+          const thumb = resolveEffectThumb(effect);
+          return thumb ? (
+            <div
+              className="w-5 h-5 rounded-md flex-shrink-0 overflow-hidden ring-1 ring-border/30 bg-black/60"
+              style={{ boxShadow: `0 0 8px ${effect.color}55` }}
+            >
+              <img src={thumb} alt="" className="w-full h-full object-cover" loading="lazy" decoding="async" />
+            </div>
+          ) : (
+            <div className="w-3.5 h-3.5 rounded-md flex-shrink-0" style={{ backgroundColor: effect.color, boxShadow: `0 0 8px ${effect.color}33` }} />
+          );
+        })()}
           <div className="flex-1 min-w-0">
           <p className="truncate text-[11px] font-medium leading-tight text-foreground">{effect.name}</p>
           <div className="flex items-center gap-1.5 mt-0.5">
