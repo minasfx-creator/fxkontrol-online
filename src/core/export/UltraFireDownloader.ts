@@ -19,9 +19,9 @@ import {
   clampFireDuration,
   FIREONE_MAX_FIRINGS,
   FIREONE_MAX_EVENTS,
-  crc16Ccitt,
   buildDownloadToModule,
 } from '@/lib/fireoneProtocol';
+import { crc16Ccitt } from '@/lib/twoWireProtocol';
 import { showPlanManager } from '@/core/showplan/ShowPlanManager';
 import type { PyroCue } from '@/core/showplan/ShowPlan';
 import { blackbox } from '@/core/reliability/blackBoxRecorder';
