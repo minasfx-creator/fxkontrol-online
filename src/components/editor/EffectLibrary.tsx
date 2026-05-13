@@ -13,6 +13,7 @@ import { useImportedFweStore } from '@/store/useImportedFweStore';
 import { cn } from '@/lib/utils';
 import { resolveEffectThumb } from '@/data/effectThumbnails';
 import { familyIconsForPart } from '@/data/effectFamilyIcons';
+import EffectPreview3D from './EffectPreview3D';
 import { parseVDL, vdlToEffect } from '@/lib/vdlParser';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
@@ -377,6 +378,15 @@ function EffectCard({ effect }: { effect: Effect }) {
       {/* Expanded VDL Controls */}
       {expanded && isSelected && (
         <div className="mx-2 mb-1 mt-0.5 p-2.5 rounded-xl bg-surface-0/80 border border-border/15 space-y-2 animate-fxk-slide-down">
+          {(effect.finalePresetUrl || effect.type === 'firework' || effect.type === 'sfx') && (
+            <div className="space-y-1">
+              <div className="flex items-center gap-1 text-[9px] text-muted-foreground font-semibold uppercase tracking-wider">
+                <Sparkles className="w-3 h-3" />
+                Pré-visualização 3D · sync c/ tempo
+              </div>
+              <EffectPreview3D effect={effect} height={132} />
+            </div>
+          )}
           {isPyro && (
             <div className="space-y-1">
               <div className="flex items-center gap-1 text-[9px] text-muted-foreground font-semibold uppercase tracking-wider">
