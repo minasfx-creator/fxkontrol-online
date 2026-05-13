@@ -8,7 +8,7 @@ import { readDensityAt, injectDensity, injectVelocity, type FluidGrid } from '@/
 import { getChemistryForRendering, autoMatchFormulation } from '@/render_ultra/fireworks/particleChemistry';
 import { resolveMinePresetProps } from '@/data/finalePresets';
 import { selectMineSilhouette } from '@/render/silhouettes/mineSilhouettes';
-import { isFlagOn } from '@/lib/featureFlags';
+import { isEnabled } from '@/lib/featureFlags';
 
 /**
  * Mine Effect — Multi-phase ground burst (PyroJam 2026 reference)

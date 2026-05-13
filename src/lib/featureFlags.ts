@@ -24,6 +24,16 @@ const FLAGS = {
   turbulence_field: true,
   /** 2× particle budget for ultra-dense displays */
   high_density_particles: false,
+  /** MineEffect uses fan-shape silhouettes from FWsim vectors (Mine_01/02/03) */
+  r_silhouette_mines: true,
+  /** Extend silhouette mode to Comet/Shell/Cake/RomanCandle (opt-in, perf cost) */
+  r_silhouette_all: false,
+  /** Soft particle blend (depth-aware) — fragment fade against scene depth */
+  r_soft_particles: true,
+  /** HDR ember-tail decay uses pow(life,2.4) instead of linear */
+  r_hdr_ember_tail: true,
+  /** Ambient LightProbe driven by top-N luminous bursts */
+  r_lightprobe_from_bursts: false,
 } as const;
 
 export type FeatureFlag = keyof typeof FLAGS;
