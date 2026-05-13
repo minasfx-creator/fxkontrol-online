@@ -7,6 +7,7 @@ import { useFrame, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
 import { useProjectStore } from '@/store/useProjectStore';
 import { EFFECT_LIBRARY } from '@/data/effectLibrary';
+import { enrichEffectFromFwe } from '@/data/finalePresetEnrichment';
 import {
   resolveMinePresetId,
   resolveCakeShotPresetId,
@@ -391,6 +392,7 @@ export const FireworkBurst = React.forwardRef<THREE.Group, {
     if (pattern === 'willow' || pattern === 'kamuro') return baseLife * 3.0;
     if (pattern === 'palm' || pattern === 'brocade') return baseLife * 1.6;
     if (pattern === 'chrysanthemum') return baseLife * 1.2;
+    if (pattern === 'salute') return baseLife * 0.45;
     if (pattern === 'dahlia') return baseLife * 0.35;
     if (pattern === 'dragon_egg') return baseLife * 1.8;
     if (pattern === 'multi_break') return baseLife * 1.4;
@@ -463,6 +465,10 @@ export const FireworkBurst = React.forwardRef<THREE.Group, {
           vz = Math.sin(ringAngle + ringJitter) * breakSpeed * (0.92 + Math.random() * 0.08);
           break;
         }
+        case 'salute':
+          // Titanium salute: very high velocity, very short life — bright detonation flash
+          vx = sx * breakSpeed * 1.9 * speedVar; vy = sy * breakSpeed * 1.8 * speedVar + 0.4; vz = sz * breakSpeed * 1.9 * speedVar;
+          life = starLife * (0.25 + Math.random() * 0.12); break;
         case 'dahlia':
           // Dahlia: HIGH velocity, short life — bright detonation flash with fewer large stars
           vx = sx * breakSpeed * 1.7 * speedVar; vy = sy * breakSpeed * 1.6 * speedVar + 0.5; vz = sz * breakSpeed * 1.7 * speedVar;
@@ -1432,6 +1438,11 @@ export function TimelineEffects() {
       }
 
       if (!effect) return null;
+
+      // Overlay .fwe-derived palette/shotCount + normalize pattern aliases
+      // (multibreak→multi_break, dragonegg→dragon_egg, …) so FireworkBurst
+      // dispatches the correct geometry case at the correct time.
+      effect = enrichEffectFromFwe(effect);
 
       let resolvedPos = item.position;
       let launchHeading = 0;
