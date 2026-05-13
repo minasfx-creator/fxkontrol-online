@@ -87,12 +87,10 @@ export const useImportedFweStore = create<ImportedFweState>((set, get) => ({
       const userId = await getUserId();
       if (!userId) return;
       try {
-        await supabase
-          .from('imported_fwe_effects')
-          .upsert(
-            { user_id: userId, effect_id: fx.id, effect: fx as unknown as Record<string, unknown> },
-            { onConflict: 'user_id,effect_id' },
-          );
+        await fweTable().upsert(
+          { user_id: userId, effect_id: fx.id, effect: fx as unknown as Record<string, unknown> },
+          { onConflict: 'user_id,effect_id' },
+        );
       } catch {
         /* offline — local cache will reconcile on next syncFromCloud */
       }
