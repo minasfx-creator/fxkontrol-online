@@ -488,6 +488,7 @@ export default function EffectLibrary() {
   const [vdlInput, setVdlInput] = useState('');
   const [openCategories, setOpenCategories] = useState<Set<string>>(new Set(['morteiros', 'drones']));
   const [typeFilter, setTypeFilter] = useState<FilterType>('all');
+  const [familyFilter, setFamilyFilter] = useState<Set<string>>(new Set());
   const [viewMode, setViewMode] = useState<ViewMode>('list');
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [createVdl, setCreateVdl] = useState('');
