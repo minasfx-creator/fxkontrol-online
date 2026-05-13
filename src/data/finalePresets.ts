@@ -997,6 +997,19 @@ export function resolveShellPresetId(raw: string | undefined | null): string | u
 export function resolveMinePresetId(raw: string | undefined | null): string | undefined {
   if (!raw) return undefined;
   const s = raw.toLowerCase().trim();
+  // rev7 — Silver Crackling tip family (must precede generic 'silver/comet' rules).
+  if (/silver.*crackl/.test(s)) {
+    if (/aqua/.test(s)) return 'mine-silver-crackling-aqua';
+    if (/pastel.*blue/.test(s)) return 'mine-silver-crackling-pastel-blue';
+    if (/pastel.*green/.test(s)) return 'mine-silver-crackling-pastel-green';
+    if (/pastel.*purple|pastel.*violet/.test(s)) return 'mine-silver-crackling-pastel-purple';
+    if (/pastel.*red|pastel.*pink/.test(s)) return 'mine-silver-crackling-pastel-red';
+    if (/\bblue\b/.test(s)) return 'mine-silver-crackling-blue';
+    if (/\bgreen\b/.test(s)) return 'mine-silver-crackling-green';
+    if (/\bmint\b/.test(s)) return 'mine-silver-crackling-mint';
+    if (/\borange\b/.test(s)) return 'mine-silver-crackling-orange';
+    // bare "silver crackling" (no tip) → ambiguous; fall through.
+  }
   if (/(comet).*(silver|white)|silver.*comet/.test(s)) return 'single-comet-silver-glitter';
   if (/(comet).*(gold|deep)|comet.?mine|comet[-_/ ]mine/.test(s)) return 'single-comet-mine-gold';
   if (/(mine).*(gold|glitter)|gold.*(glitter|mine)|\bglitter\b/.test(s)) return 'single-mine-gold-glitter';
