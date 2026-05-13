@@ -21,6 +21,7 @@ import flameGradient from '@/assets/effect-family-icons/flame-gradient.svg';
 import flameOutline from '@/assets/effect-family-icons/flame-outline.svg';
 import flameSolid from '@/assets/effect-family-icons/flame-solid.svg';
 import mineGradient from '@/assets/effect-family-icons/mine-gradient.svg';
+import rocketSolid from '@/assets/effect-family-icons/rocket-solid.svg';
 import shellGradient from '@/assets/effect-family-icons/shell-gradient.svg';
 import shellOutline from '@/assets/effect-family-icons/shell-outline.svg';
 import shellSolid from '@/assets/effect-family-icons/shell-solid.svg';
@@ -48,6 +49,8 @@ const SHELL_OF_SHELLS: FamilyIconSet = {
 };
 // Mine: only gradient was provided — reuse it for solid/outline.
 const MINE: FamilyIconSet = { solid: mineGradient, gradient: mineGradient, outline: mineGradient };
+// Rocket: only solid was provided — reuse for gradient/outline.
+const ROCKET: FamilyIconSet = { solid: rocketSolid, gradient: rocketSolid, outline: rocketSolid };
 
 /** partType → icon set. Returns null when no custom family icon exists. */
 export function familyIconsForPart(part: string | undefined | null): FamilyIconSet | null {
@@ -55,8 +58,9 @@ export function familyIconsForPart(part: string | undefined | null): FamilyIconS
     case 'cake':
       return CAKE;
     case 'candle':
-    case 'rocket':
       return CANDLE;
+    case 'rocket':
+      return ROCKET;
     case 'comet':
       return COMET;
     case 'mine':
