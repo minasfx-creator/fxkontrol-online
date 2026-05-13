@@ -54,6 +54,18 @@ export interface FireOneTransport {
 // SERIAL TRANSPORT (RS-485 via WebSerial)
 // ═══════════════════════════════════════════════════════════
 
+/**
+ * A minimal interface satisfied by `TwoWireTransport` (and any future
+ * pyro-priority sub-link). We keep it structural to avoid a hard import
+ * cycle with `twoWireTransport.ts`.
+ */
+export interface PyroSubLink {
+  readonly id: string;
+  readonly type: string;
+  send(frame: Uint8Array): Promise<void>;
+  close?: () => Promise<void>;
+}
+
 export class SerialTransport implements FireOneTransport {
   readonly id: string;
   readonly type: TransportType = 'serial';
@@ -71,6 +83,7 @@ export class SerialTransport implements FireOneTransport {
   private receiveCallbacks: TransportReceiveCallback[] = [];
   private stateCallbacks: TransportStateCallback[] = [];
   private baudRate: number;
+  private subLinks = new Map<string, PyroSubLink>();
 
   constructor(id?: string, baudRate = 9600) {
     this.id = id || `serial-${Date.now()}`;
