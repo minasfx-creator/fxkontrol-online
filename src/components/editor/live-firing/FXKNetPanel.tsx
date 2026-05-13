@@ -2,7 +2,7 @@
  * FXKNetPanel — Unified Art-Net Network + Module Control + DMX I/O + Pixel Mapping + Bézier Curves
  * BR2049 holographic aesthetics + network topology + firmware + signal quality
  */
-import { useState, useMemo, lazy, Suspense } from 'react';
+import { useState, useMemo, useEffect, lazy, Suspense } from 'react';
 import { cn } from '@/lib/utils';
 import { isEnabled } from '@/lib/featureFlags';
 import { Globe, Cpu, ArrowLeftRight, Grid3X3, Spline, Radio, Smartphone, Nfc } from 'lucide-react';
