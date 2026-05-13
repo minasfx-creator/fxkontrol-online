@@ -1617,6 +1617,7 @@ export function TimelineEffects() {
                 pattern={effect.pattern || 'peony'} angleOffset={vdlAngle} trailType={vdlTrailType}
                 noTrail={vdlNoTrail} secondaryColor={vdlSecondaryColor} colorTransition={vdlColorTransition}
                 hasPistil={vdlHasPistil} pistilColor={vdlPistilColor} niagaraProfile={effect.niagaraProfile}
+                presetId={shellPresetId}
               />
             )}
           </group>
