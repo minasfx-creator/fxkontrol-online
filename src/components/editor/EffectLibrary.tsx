@@ -751,6 +751,47 @@ export default function EffectLibrary() {
             );
           })}
         </div>
+
+        {/* Family filter chips (partType) — multi-select, derived from data */}
+        {familyChips.length > 0 && (
+          <div className="mt-1.5 flex items-center gap-1">
+            <span className="text-[8px] font-semibold uppercase tracking-wider text-muted-foreground/40 shrink-0">
+              Family
+            </span>
+            <div className="flex-1 overflow-x-auto scrollbar-thin">
+              <div className="flex gap-1 pb-0.5">
+                {familyFilter.size > 0 && (
+                  <button
+                    onClick={() => setFamilyFilter(new Set())}
+                    className="px-1.5 py-0.5 rounded text-[8px] font-bold uppercase tracking-wider bg-destructive/15 text-destructive hover:bg-destructive/25 transition-colors shrink-0"
+                    title="Clear family filter"
+                  >
+                    × {familyFilter.size}
+                  </button>
+                )}
+                {familyChips.map((f) => {
+                  const isActive = familyFilter.has(f.id);
+                  return (
+                    <button
+                      key={f.id}
+                      onClick={() => toggleFamily(f.id)}
+                      className={cn(
+                        "px-1.5 py-0.5 rounded text-[8px] font-semibold uppercase tracking-wider transition-all whitespace-nowrap shrink-0 flex items-center gap-1",
+                        isActive
+                          ? "bg-primary/20 text-primary ring-1 ring-primary/30"
+                          : "bg-surface-0/50 text-muted-foreground/60 hover:text-foreground hover:bg-surface-2/60"
+                      )}
+                      title={`${f.label} (${f.count})`}
+                    >
+                      <span>{f.label}</span>
+                      <span className="font-mono-code text-[7px] opacity-60 tabular-nums">{f.count}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Content */}
