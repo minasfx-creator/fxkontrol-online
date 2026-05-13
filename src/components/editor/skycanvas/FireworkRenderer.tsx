@@ -349,12 +349,27 @@ export const FireworkBurst = React.forwardRef<THREE.Group, {
   const isMobileViewport = typeof window !== 'undefined' && window.innerWidth < 768;
   const { particleDensity, hdrMultiplier, effectBrightness, gpuParticlePhysics, frustumCullingBursts } = useSceneStore(st => st.settings);
 
+  // ── Finale shell-preset (rev6 geometries) ──────────────────────────
+  const shellPreset = useMemo<ShellPreset | undefined>(
+    () => (presetId ? FINALE_SHELL_PRESETS[presetId] : undefined),
+    [presetId],
+  );
+  const isClusterDiadem = shellPreset?.id === 'cluster-diadem';
+
   const STAR_COUNT = useMemo(() => {
     const densityScale = THREE.MathUtils.clamp(particleDensity, 0.5, 2.0);
+    const cap = isMobileViewport ? 200 : 420;
+    if (shellPreset) {
+      // Honour the preset's authored star count; ensure a minimum so even
+      // ultra-low presets (jellyfish=6) still read on screen.
+      const min = shellPreset.geometry === 'sphere' ? 16 : 28;
+      const scaled = Math.round(shellPreset.count * lod.particleMultiplier * densityScale * 1.4);
+      return Math.max(min, Math.min(cap, scaled));
+    }
     const baseCount = (60 + caliber * caliber * 10) * lod.particleMultiplier * densityScale;
-    const cap = isMobileViewport ? 120 : 320;
-    return Math.max(24, Math.min(cap, Math.round(baseCount)));
-  }, [caliber, lod.particleMultiplier, isMobileViewport, particleDensity]);
+    const cap2 = isMobileViewport ? 120 : 320;
+    return Math.max(24, Math.min(cap2, Math.round(baseCount)));
+  }, [caliber, lod.particleMultiplier, isMobileViewport, particleDensity, shellPreset]);
   const TRAIL_LENGTH = useMemo(() => {
     const trailCap = isMobileViewport ? 3 : 6;
     const densityTrail = particleDensity >= 1 ? 1 : 0.8;
