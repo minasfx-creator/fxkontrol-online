@@ -84,6 +84,8 @@ export function resolveEffectThumbKey(effect: Effect): EffectThumbKey | null {
 
 /** Convenience: resolve to URL or null. */
 export function resolveEffectThumb(effect: Effect): string | null {
+  // Explicit per-effect override (e.g. Finale 3D preset renders).
+  if (effect.thumbUrl) return effect.thumbUrl;
   const k = resolveEffectThumbKey(effect);
   return k ? EFFECT_THUMBS[k] : null;
 }
