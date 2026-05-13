@@ -135,7 +135,7 @@ export interface CinemaFireConfig {
 }
 
 const DEFAULT_FIRE_CONFIG: CinemaFireConfig = {
-  hdrMultiplier: 10.0,          // recalibrated: peak ×10 for bloom threshold 1.2
+  hdrMultiplier: 7.5,           // recalibrated v3: 10.0 saturava bloom (threshold 1.2) deixando branco-leitoso
   flickerIntensity: 0.28,       // slightly higher for 7-harmonic richness
   thermalCoupling: 1.5,         // gradual cooling curve
 };
