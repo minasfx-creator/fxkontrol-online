@@ -14,6 +14,8 @@ import {
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import BLEDeviceScanner from '@/components/editor/BLEDeviceScanner';
+import NoLiveHardwareEmptyState from '@/components/command/_shared/NoLiveHardwareEmptyState';
+import { useDroneTelemetry } from '@/hooks/useDroneTelemetry';
 
 interface DroneCommandPanelProps {
   fs?: boolean;
