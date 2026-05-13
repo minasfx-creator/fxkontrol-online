@@ -12,6 +12,7 @@
  */
 
 import type { Effect } from '@/data/effectLibrary';
+import { familyIconsForEffect } from '@/data/effectFamilyIcons';
 
 import bengal from '@/assets/effect-thumbs/bengal.png';
 import cake from '@/assets/effect-thumbs/cake.png';
@@ -87,5 +88,8 @@ export function resolveEffectThumb(effect: Effect): string | null {
   // Explicit per-effect override (e.g. Finale 3D preset renders).
   if (effect.thumbUrl) return effect.thumbUrl;
   const k = resolveEffectThumbKey(effect);
-  return k ? EFFECT_THUMBS[k] : null;
+  if (k) return EFFECT_THUMBS[k];
+  // Family-icon fallback (Cake / Comet / Mine / Flame Projector SVGs).
+  const fam = familyIconsForEffect(effect);
+  return fam ? fam.gradient : null;
 }

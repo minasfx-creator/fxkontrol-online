@@ -12,6 +12,7 @@ import { parseFweXml } from '@/data/fweImporter';
 import { useImportedFweStore } from '@/store/useImportedFweStore';
 import { cn } from '@/lib/utils';
 import { resolveEffectThumb } from '@/data/effectThumbnails';
+import { familyIconsForPart } from '@/data/effectFamilyIcons';
 import { parseVDL, vdlToEffect } from '@/lib/vdlParser';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
@@ -771,6 +772,7 @@ export default function EffectLibrary() {
                 )}
                 {familyChips.map((f) => {
                   const isActive = familyFilter.has(f.id);
+                  const famIcons = familyIconsForPart(f.id);
                   return (
                     <button
                       key={f.id}
@@ -783,6 +785,17 @@ export default function EffectLibrary() {
                       )}
                       title={`${f.label} (${f.count})`}
                     >
+                      {famIcons && (
+                        <img
+                          src={famIcons.solid}
+                          alt=""
+                          aria-hidden
+                          className={cn(
+                            "w-3 h-3 shrink-0 transition-opacity",
+                            isActive ? "opacity-100" : "opacity-60"
+                          )}
+                        />
+                      )}
                       <span>{f.label}</span>
                       <span className="font-mono-code text-[7px] opacity-60 tabular-nums">{f.count}</span>
                     </button>
