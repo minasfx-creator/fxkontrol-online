@@ -183,7 +183,7 @@ export default function MineEffect({
     const fluidDensity = fluidGrid ? readDensityAt(fluidGrid, position[0], position[2]) : 0;
     const smokeBoost = 1 + fluidDensity * 0.3;
 
-    const basePointSize = 0.22 + caliber * 0.05;
+    const basePointSize = 0.18 + caliber * 0.04;
 
     for (let i = 0; i < count; i++) {
       const vx = velocities[i * 3];
