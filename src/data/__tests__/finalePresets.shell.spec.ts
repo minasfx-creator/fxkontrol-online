@@ -21,18 +21,27 @@ import {
  * exactly what we forbid.
  */
 describe('FINALE_SHELL_PRESETS — canonical FWsim Pro values', () => {
-  it('exposes 7 base + 3 rev5 shells (total 10)', () => {
+  it('exposes 7 base + 3 rev5 + 9 rev6 shells (total 19)', () => {
     expect(listShellPresetIds().sort()).toEqual(
       [
+        'bow-tie',
         'chrysanthemum',
+        'cluster-diadem',
         'crown',
         'dahlia',
+        'double-ring',
         'ghost-shell',
+        'half-half',
+        'heart',
         'hybrid-special',
+        'jellyfish',
         'palm',
         'peony',
         'peony-pistil',
         'quarter-4-4',
+        'ring',
+        'saturn-ring',
+        'smiley',
         'wave',
       ].sort(),
     );
