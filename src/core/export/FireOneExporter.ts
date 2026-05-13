@@ -9,6 +9,18 @@ import { showPlanManager } from '@/core/showplan/ShowPlanManager';
 import { verificationEngine } from '@/core/verification/VerificationEngine';
 import { blackbox } from '@/core/reliability/blackBoxRecorder';
 
+/** Convert seconds → SMPTE HH:MM:SS:FF at 30 fps non-drop. */
+export function secondsToSmpte30(seconds: number, fps = 30): string {
+  const s = Math.max(0, Number.isFinite(seconds) ? seconds : 0);
+  const totalFrames = Math.round(s * fps);
+  const hh = Math.floor(totalFrames / (3600 * fps));
+  const mm = Math.floor((totalFrames % (3600 * fps)) / (60 * fps));
+  const ss = Math.floor((totalFrames % (60 * fps)) / fps);
+  const ff = totalFrames % fps;
+  const pad = (n: number) => n.toString().padStart(2, '0');
+  return `${pad(hh)}:${pad(mm)}:${pad(ss)}:${pad(ff)}`;
+}
+
 export interface FireOneExportResult {
   script: string;
   cueCount: number;
