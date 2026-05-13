@@ -139,9 +139,21 @@ function EffectTableRow({ effect, index, usageCount }: { effect: Effect; index: 
       <td className="px-1.5 py-[5px] text-muted-foreground/30 font-mono-code text-right w-8 tabular-nums">
         {index + 1}
       </td>
-      {/* Icon */}
-      <td className="px-1 py-[5px] w-5">
-        <div className="w-3 h-3 rounded-sm" style={{ backgroundColor: effect.color, boxShadow: `0 0 6px ${effect.color}44` }} />
+      {/* Thumbnail */}
+      <td className="px-1 py-[5px] w-6">
+        {(() => {
+          const thumb = resolveEffectThumb(effect);
+          return thumb ? (
+            <div
+              className="w-4 h-4 rounded-sm overflow-hidden ring-1 ring-border/30 bg-black/60"
+              style={{ boxShadow: `0 0 6px ${effect.color}55` }}
+            >
+              <img src={thumb} alt="" className="w-full h-full object-cover" loading="lazy" decoding="async" />
+            </div>
+          ) : (
+            <div className="w-3 h-3 rounded-sm" style={{ backgroundColor: effect.color, boxShadow: `0 0 6px ${effect.color}44` }} />
+          );
+        })()}
       </td>
       {/* Part type badge */}
       <td className="px-1 py-[5px] w-10">
