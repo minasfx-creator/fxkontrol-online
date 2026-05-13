@@ -988,6 +988,16 @@ const TRAIL_HINT: Record<string, ResolvedShellProps['trailType']> = {
   dahlia: 'none',
   palm: 'charcoal',
   crown: 'charcoal',
+  // rev6
+  ring: 'none',
+  'double-ring': 'none',
+  'saturn-ring': 'glitter',
+  heart: 'none',
+  smiley: 'none',
+  'bow-tie': 'glitter',
+  'cluster-diadem': 'charcoal',
+  jellyfish: 'glitter',
+  'half-half': 'none',
 };
 
 const CALIBER_HINT: Record<string, number> = {
@@ -998,6 +1008,16 @@ const CALIBER_HINT: Record<string, number> = {
   dahlia: 4,
   palm: 8,
   crown: 8,
+  // rev6
+  ring: 4,
+  'double-ring': 5,
+  'saturn-ring': 6,
+  heart: 5,
+  smiley: 6,
+  'bow-tie': 5,
+  'cluster-diadem': 8,
+  jellyfish: 6,
+  'half-half': 4,
 };
 
 export function resolveShellPresetProps(presetId: string): ResolvedShellProps | undefined {
