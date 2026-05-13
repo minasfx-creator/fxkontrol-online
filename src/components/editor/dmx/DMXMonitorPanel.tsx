@@ -134,8 +134,8 @@ export default function DMXMonitorPanel({ fs = false }: { fs?: boolean }) {
       totalPacketsRef.current++;
       autoSaveCountRef.current++;
       setPacketLog(prev => [{
-        id: `pkt-${Date.now()}-${Math.random()}`,
-        timestamp: Date.now(), source: '192.168.1.100', protocol: 'Art-Net',
+        id: `pkt-${Date.now()}-${(crypto as Crypto).randomUUID?.().slice(0, 8) ?? Math.random().toString(36).slice(2, 10)}`,
+        timestamp: Date.now(), source: 'show-plan-intent', protocol: 'Art-Net',
         universe, channels: changed,
       }, ...prev].slice(0, 200));
       if (changedClearTimer.current) clearTimeout(changedClearTimer.current);

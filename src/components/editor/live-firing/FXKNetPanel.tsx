@@ -2,7 +2,7 @@
  * FXKNetPanel — Unified Art-Net Network + Module Control + DMX I/O + Pixel Mapping + Bézier Curves
  * BR2049 holographic aesthetics + network topology + firmware + signal quality
  */
-import { useState, useMemo, lazy, Suspense } from 'react';
+import { useState, useMemo, useEffect, lazy, Suspense } from 'react';
 import { cn } from '@/lib/utils';
 import { isEnabled } from '@/lib/featureFlags';
 import { Globe, Cpu, ArrowLeftRight, Grid3X3, Spline, Radio, Smartphone, Nfc } from 'lucide-react';
@@ -21,22 +21,62 @@ interface FXKNetPanelProps {
   fs?: boolean;
 }
 
-/* Simple network topology mini-map */
-function TopologyMinimap({ moduleCount }: { moduleCount: number }) {
-  const nodes = useMemo(() => {
-    return Array.from({ length: Math.min(moduleCount || 4, 8) }, (_, i) => ({
-      id: i,
-      x: 20 + (i % 4) * 30,
-      y: i < 4 ? 15 : 40,
-      signal: 60 + Math.random() * 40,
-      fw: `1.${3 + (i % 3)}.${i}`,
-    }));
-  }, [moduleCount]);
+/* Real-only network topology mini-map (lê deviceAggregator). */
+function TopologyMinimap({ moduleCount: _ }: { moduleCount: number }) {
+  const [nodes, setNodes] = useState<Array<{ id: number; x: number; y: number; signal: number; fw: string; label: string }>>([]);
+
+  useEffect(() => {
+    let mounted = true;
+    const recompute = async () => {
+      const { deviceAggregator } = await import('@/core/discovery/DeviceAggregator');
+      const compute = () => {
+        const live = deviceAggregator.getDevices().filter(d => d.online).slice(0, 8);
+        const built = live.map((d, i) => {
+          // Latência → score 0-100 (≤20ms = 100, ≥250ms = 0).
+          let signal = 0;
+          let fw = '—';
+          for (const link of Object.values(d.links)) {
+            if (!link) continue;
+            const meta = link.metadata as Record<string, unknown> | undefined;
+            const ema = typeof meta?.latencyEmaMs === 'number' ? (meta.latencyEmaMs as number) : null;
+            if (ema !== null) signal = Math.max(0, Math.min(100, 100 - (ema - 20) * (100 / 230)));
+            const v = typeof meta?.firmware === 'string' ? (meta.firmware as string) : null;
+            if (v) fw = v;
+          }
+          return {
+            id: i,
+            x: 20 + (i % 4) * 30,
+            y: i < 4 ? 15 : 40,
+            signal: Math.round(signal),
+            fw,
+            label: d.label || `M${i + 1}`,
+          };
+        });
+        if (mounted) setNodes(built);
+      };
+      compute();
+      const off = deviceAggregator.watch(compute);
+      return off;
+    };
+    let off: (() => void) | undefined;
+    void recompute().then(fn => { off = fn; });
+    return () => { mounted = false; try { off?.(); } catch { /* noop */ } };
+  }, []);
+
+  if (nodes.length === 0) {
+    return (
+      <div className="shrink-0 px-3 py-3 border-b flex items-center gap-3" style={{ borderColor: 'hsl(270 60% 50% / 0.08)', background: 'hsl(220 12% 4%)' }}>
+        <span className="text-[7px] font-mono font-bold tracking-[0.2em]" style={{ color: 'hsl(270 60% 55%)' }}>NETWORK TOPOLOGY</span>
+        <span className="text-[8px] font-mono uppercase tracking-wider px-2 py-0.5 rounded ds-status-fail">NO NODES</span>
+        <a href="/pairing" className="text-[8px] font-mono uppercase tracking-wider underline opacity-70 hover:opacity-100">Abrir pareamento</a>
+      </div>
+    );
+  }
 
   return (
     <div className="shrink-0 px-3 py-2 border-b" style={{ borderColor: 'hsl(270 60% 50% / 0.08)', background: 'hsl(220 12% 4%)' }}>
       <div className="flex items-center justify-between mb-1.5">
-        <span className="text-[7px] font-mono font-bold tracking-[0.2em]" style={{ color: 'hsl(270 60% 55%)' }}>NETWORK TOPOLOGY</span>
+        <span className="text-[7px] font-mono font-bold tracking-[0.2em]" style={{ color: 'hsl(270 60% 55%)' }}>NETWORK TOPOLOGY · LIVE</span>
         <div className="flex items-center gap-2">
           <span className="text-[6px] font-mono text-muted-foreground/25">{nodes.length} NODES</span>
         </div>
@@ -66,7 +106,7 @@ function TopologyMinimap({ moduleCount }: { moduleCount: number }) {
                 ))}
               </div>
               <span className="text-[5px] font-mono" style={{ color: 'hsl(270 40% 40%)' }}>v{n.fw}</span>
-              <span className="text-[5px] font-mono" style={{ color: n.signal > 80 ? 'hsl(120 70% 45%)' : 'hsl(32 100% 50%)' }}>{Math.round(n.signal)}%</span>
+              <span className="text-[5px] font-mono" style={{ color: n.signal > 80 ? 'hsl(120 70% 45%)' : 'hsl(32 100% 50%)' }}>{n.signal}%</span>
             </div>
           ))}
         </div>

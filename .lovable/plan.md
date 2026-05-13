@@ -1,104 +1,102 @@
+## Diagnóstico (refinado)
 
-# Plano — Layout Definitivo do Editor SkyCanvas
+Firewall arquitetural entre `/skycanvas` (editor 3D) e `/command` (controladores) é parcial. Vazamentos confirmados:
 
-Você confirmou: o layout que aparece em **/dev/skycanvas-lab** (variante `smoke` = `SkyCanvasMount` puro, fullscreen, sem chrome pesado) é o layout definitivo do viewport. Vamos promovê-lo para a rota de produção (`/skycanvas` e VideoEditor) com refinamentos cirúrgicos e uma **timeline glassmorphism** unificando tudo que já temos (waveform, cues, lanes pyro/sfx/drone/light/dmx, transport, drag-drop de efeitos).
+**Vazamento de identidade de pasta**
+- 30+ painéis de comando vivem em `src/components/editor/*` junto com componentes de coreografia. Importes de `/command` e `/skycanvas` cruzam a mesma raiz — qualquer refactor da pasta arrasta as duas superfícies.
 
-Plano: **Show / Experience**. Zero CommandBus / FieldBus / SafetyStateMachine. Real operation continua em `/command`.
+**Telemetria sintética em controladores (8 pontos)**
+1. `DroneCommandPanel.tsx:58-72` — `setInterval(1500ms)` gera `alt/speed/heading/battery` com `Math.random()` para até 8 drones.
+2. `DroneCommandPanel.tsx:112-123` — `setInterval(2000ms)` gera `windDir/windSpeed/formationLock` com `Math.random()`.
+3. `live-firing/FXKNetPanel.tsx:31` — `TopologyMinimap` gera `signal: 60 + Math.random()*40` para nós de rede + firmware versions falsas (`v1.3.0`, `v1.4.1`).
+4. `MA3ControlPanel.tsx:61` — `oscHost` default `'192.168.1.100'` (IP placeholder em campo "real").
+5. `dmx/DMXMonitorPanel.tsx:138` — campo `source: '192.168.1.100'` hardcoded em pacotes Art-Net que serão exibidos como "vindo da rede".
+6. `CurrentStateMatrix.tsx:96-100` — declara `integrationMode: 'simulated'` para 4 fontes que são internas reais (ShowPlan, VerificationEngine, ExportCoordinator, AuditTrail) — desonestidade reversa.
+7. `dmx/DMXMonitorPanel.tsx:111-145` — popula `dmxValues` com `ch.firing ? ch.intensity : 0` lendo `useFireOneChannelStore` (intent do show plan, não medição real do barramento Art-Net) sem badge de proveniência.
+8. (não-fix nesta entrega) `LiveFiringPanel.tsx:501` — `bridgePhysicalController.simulateHilFire` é dev-only e já gated.
 
-## 1. Novo componente canônico — `SkyCanvasViewportShell`
+**Sem guard test** que impeça regressão (importe cruzado entre as superfícies).
 
-Arquivo novo: `src/components/skycanvas/SkyCanvasViewportShell.tsx`.
+**O que já está correto** (preservar): `CommandCenter.tsx` não monta `SkyCanvasMount`/`Show3DEngine`; `SkyCanvas.tsx` declara "Zero CommandBus/FieldBus/SafetyStateMachine"; `MainLayout` esconde `GlobalSafetyBar` em `/command`; `GlobalEStopButton` permanece em ambas; `useConsoleProvenance` + `realOnlyGate` já existem.
 
-Estrutura (tela cheia, fundo Vantablack `#050810`):
+## Plano
 
-```text
-┌──────────────────────────────────────────────────────────────┐
-│  [Glass Topbar pill]  centrado · variante minimal do atual   │  ← 56px, flutuante
-│                                                              │
-│                                                              │
-│              SkyCanvasMount (engine='auto')                  │  ← fill 100%
-│              (mesmo do /dev/skycanvas-lab smoke)             │
-│                                                              │
-│                                                              │
-│  [ViewportBar flutuante topo-centro]                         │  ← já existe
-│                                                              │
-├──────────────────────────────────────────────────────────────┤
-│  [Glass Timeline Dock — 200px, glassmorphism forte]          │  ← novo, colapsável
-│   Transport · Timecode · Waveform · Cue lanes · Drop zone    │
-└──────────────────────────────────────────────────────────────┘
-```
+### 1. Domain firewall por re-export (zero arquivo movido)
 
-Princípios:
-- **Sem grid rígido `EditorShell`** no modo lab-like. Painéis Library/Inspector viram **dock flutuante glass colapsado por default** (acessível por tecla ou ícone), liberando o viewport.
-- Topbar fica como **pill flutuante** glass (não barra full-width). Reaproveita `GlassTopbar` de `pages/SkyCanvas.tsx` em variante `compact`.
-- Timeline na base é **glass-pane forte** (não quadrado opaco), bordas arredondadas, recolhível com `⌘3`.
+Dois novos barrels read-only:
 
-## 2. Timeline Glassmorphism — `GlassTimelineDock`
+- `src/features/command/index.ts` — re-exporta os ~32 painéis que `CommandCenter.tsx` consome.
+- `src/features/skycanvas/index.ts` — re-exporta os componentes que `SkyCanvas.tsx` consome (`SkyCanvasMount`, `SkyCanvasViewportShell`, `TimelineStripView`, `CueInspectorPanel`, `EffectLibrarySidebar`, `ViewportOverlays`, `SkyCanvasDiagnosticsPanel`, `SkyCanvasCommandPalette`, `CatalogImportDialog`).
 
-Arquivo novo: `src/components/skycanvas/GlassTimelineDock.tsx`.
+`CommandCenter.tsx` e `SkyCanvas.tsx` reescrevem seus `lazy(() => import('@/components/...'))` para passar pelos barrels. Convive com [F5 Features Re-Export] já existente.
 
-Reutiliza 100% de tecnologia existente — zero engine novo:
+### 2. Guard test arquitetural
 
-| Camada | Origem | Função |
-|---|---|---|
-| Background glass | `glass-pane glass-pane-strong` (token DS) | blur + Vantablack 60% |
-| Transport | `TransportBarLegacy` (legacy-2604) | Play/Pause/Stop/seek/timecode |
-| Waveform | `WaveformLayer` + `decodeAudioPeaks` (lib/skycanvasAudioPeaks) | onda audio decodificada |
-| Cue ruler | `TimelineStripView` (já modular) | régua + cue markers + drop `FXK_EFFECT_DRAG_TYPE` |
-| Lanes Pyro/SFX/Drone/Light/DMX | `FiringLanesTimelineLegacy` | 5 lanes coloridas |
-| Sync | `useShow3DEngineSync` + `useProjectStore.currentTime` | clock master = audio (memória `show3d-timeline-audio-sync`) |
-| Selo | DS chip "SIM · ADVISORY" + claim badge | reaproveita `Badge` |
+`src/__tests__/commandSkycanvasFirewall.guard.spec.ts` — varredura AST/regex em:
 
-Layout interno (200px alt total):
-- Topo 32px: transport pill + timecode SMPTE 29.97 + speed selector
-- Meio 80px: waveform + cue markers (TimelineStripView mode='ruler')
-- Base 88px: 5 lanes empilhadas (FiringLanesTimelineLegacy compact)
+- **`/command` side** (`src/pages/CommandCenter.tsx` + `src/features/command/**`) → proibido importar:
+  `@/components/editor/SkyCanvasMount`, `@/components/skycanvas/*`, `@/features/skycanvas/*`, `Show3DEngine`, `SkyCanvas2`, `SkyCanvas3D`, qualquer coisa de `@/render_ultra/*`.
+- **`/skycanvas` side** (`src/pages/SkyCanvas.tsx` + `src/features/skycanvas/**`) → proibido importar:
+  `@/core/command/CommandBus`, `@/core/safety/uiCommandGateway`, `@/hardware/transports/*`, `@/features/command/*`, `LiveFiringPanel`, `ShowCommanderPanel`, `FXKNetPanel`, `DroneCommandPanel`, `MA3ControlPanel`.
+- Strings de navegação (`navigate('/command')`, `navigate('/skycanvas')`) continuam permitidas.
 
-Glass tokens: `bg-[#050810]/55 backdrop-blur-2xl border-t border-cyan-500/10 shadow-[0_-8px_32px_rgba(0,0,0,0.6)]`. Cores cyan-dessat 190° (canônico).
+### 3. Real-data only nos controladores
 
-Drop zones: arrastar de `EffectLibrarySidebar` para qualquer lane cria cue na lane correta (já implementado em `TimelineStripView.onDrop`).
+**3a. Empty state canônico** — `src/components/command/_shared/NoLiveHardwareEmptyState.tsx`:
+- Recebe `kinds: ControllerKind[]` + `label`; usa `useConsoleProvenance` + `ProvenanceBadge`; renderiza `NO HARDWARE` com mensagem "Sem link verificado com {kinds.join('/')} — telemetria desabilitada" + CTA "Abrir Pareamento" → `/pairing`.
 
-## 3. Refinamentos pedidos (sobre o lab atual)
+**3b. DroneCommandPanel** (gap #1 e #2):
+- Cria `src/hooks/useDroneTelemetry.ts` que filtra `deviceAggregator.getDevices()` por `controllerRegistry.kind === 'drone-link'`. Sem device verificado → retorna `{ live: false, samples: [], wind: null }`.
+- Remove os dois `setInterval(Math.random())`. Telemetria/wind passam a vir do hook.
+- Wrapper: enquanto `!live`, renderiza `<NoLiveHardwareEmptyState kinds={['drone-link']} label="FXK-DRONE" />`. Ações ARM/LAUNCH/ABORT continuam (rotas de comando, não dados).
 
-1. **Removidos**: barra de toggle `SMOKE/R3F/V2` no topo-esquerda (era dev-only). Em produção fica só o glass topbar.
-2. **Adicionado**: `SkyCanvasDiagnosticsPanel` como overlay opcional (toggle por `?diag=1` ou tecla `Ctrl+Shift+D`).
-3. **Adicionado**: `ViewportBar` (preset cam/grid/axes/ground) no topo-centro (já existe, só montar).
-4. **Adicionado**: `JoiAvatarFab` no canto inferior-direito (já existe em legacy-2604).
-5. **Mantido**: `AutoControllerLauncher` global (vem do `MainLayout`).
-6. **Layout responsivo**: <md, timeline vira sheet bottom (`MobilePanelSwitcher` já cobre o resto).
+**3c. FXKNetPanel TopologyMinimap** (gap #3):
+- Substitui `nodes` sintéticos por leitura de `deviceAggregator.getDevices().filter(d => d.online)`. Cada nó real expõe `signal` via `LinkHealth.latencyEmaMs` (mapeada para 0-100% com clamp), `fw` via `device.firmware ?? '—'`. Sem devices online → render do bloco trocado por badge `NO NODES DISCOVERED` com link para `/pairing`.
 
-## 4. Adoção nas rotas
+**3d. MA3ControlPanel** (gap #4):
+- Default `oscHost = ''` (não `'192.168.1.100'`); placeholder do input vira `192.168.0.10 (host MA3)`. Botão "Conectar" continua, mas com validação de IP RFC 5952 antes do submit. Sem IP → botão disabled + tooltip honesto.
 
-Editar:
-- `src/pages/SkyCanvas.tsx` — substituir o `EditorShell` por `<SkyCanvasViewportShell>`. Master Menu (⌘K) preservado. Persistência de layout (`useEditorLayout`) reduzida a: `timelineCollapsed`, `diagOpen`, `libraryDrawerOpen`, `inspectorDrawerOpen`. Painéis Library/Inspector continuam acessíveis via drawer glass (ícone lateral) — não somem, só não ocupam grid fixo.
-- `src/pages/dev/SkyCanvasLab.tsx` — variante `smoke` agora monta `<SkyCanvasViewportShell variant="dev">` para WYSIWYG entre dev e prod. Variantes `r3f` e `v2` preservadas.
-- `src/pages/VideoEditor.tsx` — opt-in via flag `editor_shell_v2_lab` (default OFF nesta primeira rodada para evitar regressão).
+**3e. DMXMonitorPanel** (gaps #5 e #7):
+- `source` hardcoded `'192.168.1.100'` → `source: 'show-plan-intent'` (ou nome real do nó Art-Net se disponível via `deviceAggregator`). Adiciona `<ProvenanceBadge mode={...} />` no header do painel via `useConsoleProvenance(['dmx-bridge'])` — quando não houver bridge live, o monitor mostra explicitamente "INTENT (ShowPlan) — sem leitura de barramento".
+- IDs de pacote/sessão (`Math.random().toString(36)`) ficam, mas trocados para `crypto.randomUUID()` (correção menor, semântica idêntica).
 
-## 5. Safety / Memory / Tests
+**3f. CurrentStateMatrix** (gap #6):
+- Linhas internas (ShowPlan, VerificationPass, ExportCoordinator, AuditTrail) viram `integrationMode: 'live_read_only'`, `evidence_level: 'adapter_only'` — refletem a verdade (são fontes reais do app, não sintéticas). Linhas hardware mantêm `useConsoleProvenance` por família.
 
-- Guard test novo: `src/__tests__/skycanvasViewportShell.guard.spec.ts` — proíbe imports de `@/core/safety/safetyStateMachine`, `@/core/hardware/fieldBus`, `@/core/command/commandBus` dentro de `SkyCanvasViewportShell` e `GlassTimelineDock`.
-- Smoke test: `src/__tests__/glassTimelineDock.smoke.test.tsx` — render com `peaks=null`, com peaks decoded mock, drop de effectId cria cue, click seek atualiza store.
-- Memória nova: `mem://funcionalidades/skycanvas-viewport-shell-canonical` — registra que `SkyCanvasViewportShell + GlassTimelineDock` é o layout canônico do editor (Show plane), reutilização das peças legacy-2604 + TimelineStripView + WaveformLayer + skycanvasAudioPeaks, e que dev/lab e prod são WYSIWYG.
-- Atualiza `mem://funcionalidades/skycanvas-mount-canonical` mencionando o shell wrapper.
-- Vantablack `#050810` + cyan-dessat 190 70% 58% preservados (canônicos).
+### 4. Cosméticos de separação
 
-## 6. Arquivos
+- `MainLayout.tsx` adiciona `data-surface={isEditor ? 'editor' : isCommand ? 'command' : 'app'}` no `<main>` (substrato CSS para isolar superfícies sem mexer em tokens).
+- `CommandCenter.tsx` ganha banner discreto `MODO COMANDO · LIVE-RO/REAL` no topo via `useWorkMode()` — só texto, sem alterar safety.
+- `SkyCanvas.tsx` ganha banner discreto `MODO EDITOR · DESIGN` no topo (mesmo padrão), reforçando que ali ninguém arma nada.
 
-**Novos**
-- `src/components/skycanvas/SkyCanvasViewportShell.tsx`
-- `src/components/skycanvas/GlassTimelineDock.tsx`
-- `src/components/skycanvas/timeline/GlassTimelineLanes.tsx` (wrapper compact de `FiringLanesTimelineLegacy`)
-- `src/__tests__/skycanvasViewportShell.guard.spec.ts`
-- `src/__tests__/glassTimelineDock.smoke.test.tsx`
-- `.lovable/memory/funcionalidades/skycanvas-viewport-shell-canonical.md`
+### 5. Fora de escopo (próxima rodada)
 
-**Editados**
-- `src/pages/SkyCanvas.tsx` (troca EditorShell → SkyCanvasViewportShell, mantém Master Menu, atalhos, persistência reduzida)
-- `src/pages/dev/SkyCanvasLab.tsx` (variant smoke usa o shell)
-- `.lovable/memory/funcionalidades/skycanvas-mount-canonical.md` (nota cruzada)
+- Movimentação física `src/components/editor/* → src/components/command/*` (refactor grande).
+- Adapter de drone real (`useDroneTelemetry` já fica pronto para receber).
+- Refatorar `LiveFiringPanel.simulateHilFire` (já é dev-only gated).
 
-**Não tocados** (regressão garantida)
-- `SkyCanvasMount.tsx`, `SkyCanvas2.tsx`, `SkyCanvas3D.tsx`, `EditorShell.tsx`, qualquer arquivo em `core/safety|hardware|command`, `MainLayout.tsx`, `GlobalEStopButton`.
+### Arquivos
 
-## 7. Confirma?
-Aprovando, eu implemento na próxima rodada (criação dos 6 arquivos + edição cirúrgica de `pages/SkyCanvas.tsx` e `SkyCanvasLab.tsx`). O viewport `/skycanvas` passa a ter exatamente a sensação fullscreen do `/dev/skycanvas-lab` + a timeline glassmorphism unificada.
+**Novos (5)**:
+- `src/features/command/index.ts`
+- `src/features/skycanvas/index.ts`
+- `src/components/command/_shared/NoLiveHardwareEmptyState.tsx`
+- `src/hooks/useDroneTelemetry.ts`
+- `src/__tests__/commandSkycanvasFirewall.guard.spec.ts`
+
+**Editados (8)**:
+- `src/pages/CommandCenter.tsx` — imports via barrel + banner.
+- `src/pages/SkyCanvas.tsx` — imports via barrel + banner.
+- `src/components/editor/DroneCommandPanel.tsx` — remove 2 `Math.random()` + adota hook + empty state.
+- `src/components/editor/live-firing/FXKNetPanel.tsx` — TopologyMinimap real ou empty state.
+- `src/components/editor/MA3ControlPanel.tsx` — `oscHost` default vazio + validação.
+- `src/components/editor/dmx/DMXMonitorPanel.tsx` — provenance badge + source honesto + `crypto.randomUUID()`.
+- `src/components/editor/CurrentStateMatrix.tsx` — corrige `integrationMode` das 4 linhas internas.
+- `src/layouts/MainLayout.tsx` — `data-surface` no `<main>`.
+
+### Garantias
+
+- Zero impacto em safety (nenhuma rota nova até `commandBus`/`SSM`/`fieldBus`).
+- Zero mudança em workMode, featureFlags, GlobalEStopButton, Hold-to-Confirm.
+- Compatível com `SkyCanvasMount canonical`, `Honest Hardware Layer`, `Real-Only Mode`, `Round 15 Mocks Erradicated`.
+- Suite ganha 1 guard arquitetural + 2 testes para `useDroneTelemetry`.

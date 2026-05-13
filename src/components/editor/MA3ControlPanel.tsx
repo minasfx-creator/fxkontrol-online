@@ -58,7 +58,7 @@ interface CueListEntry {
 export default function MA3ControlPanel({ fs = false, onClose }: MA3ControlPanelProps) {
   // OSC
   const [oscState, setOscState] = useState<OSCConnectionState>('disconnected');
-  const [oscHost, setOscHost] = useState('192.168.1.100');
+  const [oscHost, setOscHost] = useState(''); // Honest: sem default falso. Operador informa o IP real do MA3.
   const [oscPort, setOscPort] = useState('8000');
   const [oscBridgeUrl, setOscBridgeUrl] = useState('ws://localhost:9002');
   const [oscMessages, setOscMessages] = useState<{ dir: 'tx' | 'rx'; addr: string; args: string; time: number }[]>([]);
