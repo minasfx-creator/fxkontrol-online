@@ -195,12 +195,21 @@ describe('FINALE_SHELL_PRESETS — rev5 (34/34a/35.fwe)', () => {
 // ────────────────────────────────────────────────────────────────────
 
 describe('FINALE_MINE_PRESETS — canonical FWsim Pro values', () => {
-  it('exposes 3 mine presets', () => {
+  it('exposes 12 mine presets (3 rev5 + 9 rev7 silver-crackling tip family)', () => {
     expect(listMinePresetIds().sort()).toEqual(
       [
         'single-comet-mine-gold',
         'single-comet-silver-glitter',
         'single-mine-gold-glitter',
+        'mine-silver-crackling-aqua',
+        'mine-silver-crackling-blue',
+        'mine-silver-crackling-green',
+        'mine-silver-crackling-mint',
+        'mine-silver-crackling-orange',
+        'mine-silver-crackling-pastel-blue',
+        'mine-silver-crackling-pastel-green',
+        'mine-silver-crackling-pastel-purple',
+        'mine-silver-crackling-pastel-red',
       ].sort(),
     );
   });
