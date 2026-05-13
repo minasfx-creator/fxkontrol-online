@@ -1,0 +1,103 @@
+<?xml version="1.0"?>
+<FireworkEffect xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+  <Children>
+    <BaseEffectNode xsi:type="Shell">
+      <Children>
+        <BaseEffectNode xsi:type="BurstingCharge">
+          <Children>
+            <BaseEffectNode xsi:type="Stars">
+              <Children>
+                <BaseEffectNode xsi:type="Crossette">
+                  <Children />
+                  <Type>Normal</Type>
+                  <Distribution xsi:type="SphericalDistribution">
+                    <Speed>1</Speed>
+                    <Sigma>0.04</Sigma>
+                  </Distribution>
+                  <Color>
+                    <CustomR>0</CustomR>
+                    <CustomG>0</CustomG>
+                    <CustomB>0</CustomB>
+                    <Color>Blue</Color>
+                  </Color>
+                  <Count>144</Count>
+                  <MinimumLifetime>1.5</MinimumLifetime>
+                  <MaximumLifetime>2.1</MaximumLifetime>
+                  <Strobe>false</Strobe>
+                  <StrobeFreqMean>14</StrobeFreqMean>
+                </BaseEffectNode>
+              </Children>
+              <Type>Normal</Type>
+              <Distribution xsi:type="SphericalDistribution">
+                <Speed>0.54</Speed>
+                <Sigma>0.14</Sigma>
+              </Distribution>
+              <Color>
+                <CustomR>0</CustomR>
+                <CustomG>0</CustomG>
+                <CustomB>0</CustomB>
+                <Color>Blue</Color>
+              </Color>
+              <Count>36</Count>
+              <MinimumLifetime>1.5</MinimumLifetime>
+              <MaximumLifetime>2.1</MaximumLifetime>
+              <Strobe>false</Strobe>
+              <StrobeFreqMean>14</StrobeFreqMean>
+            </BaseEffectNode>
+            <BaseEffectNode xsi:type="Stars">
+              <Children>
+                <BaseEffectNode xsi:type="Crossette">
+                  <Children />
+                  <Type>Normal</Type>
+                  <Distribution xsi:type="SphericalDistribution">
+                    <Speed>1</Speed>
+                    <Sigma>0.14</Sigma>
+                  </Distribution>
+                  <Color>
+                    <CustomR>255</CustomR>
+                    <CustomG>0</CustomG>
+                    <CustomB>128</CustomB>
+                    <Color>Custom</Color>
+                  </Color>
+                  <Count>144</Count>
+                  <MinimumLifetime>1.5</MinimumLifetime>
+                  <MaximumLifetime>2.1</MaximumLifetime>
+                  <Strobe>false</Strobe>
+                  <StrobeFreqMean>14</StrobeFreqMean>
+                </BaseEffectNode>
+              </Children>
+              <Type>Normal</Type>
+              <Distribution xsi:type="SphericalDistribution">
+                <Speed>1</Speed>
+                <Sigma>0.04</Sigma>
+              </Distribution>
+              <Color>
+                <CustomR>255</CustomR>
+                <CustomG>0</CustomG>
+                <CustomB>128</CustomB>
+                <Color>Custom</Color>
+              </Color>
+              <Count>36</Count>
+              <MinimumLifetime>1.5</MinimumLifetime>
+              <MaximumLifetime>2.1</MaximumLifetime>
+              <Strobe>false</Strobe>
+              <StrobeFreqMean>14</StrobeFreqMean>
+            </BaseEffectNode>
+          </Children>
+          <Energy>170</Energy>
+          <Delay>2.3</Delay>
+        </BaseEffectNode>
+      </Children>
+      <Diameter>0.199</Diameter>
+      <LiftingCharge>150</LiftingCharge>
+    </BaseEffectNode>
+  </Children>
+  <Identifier>
+    <Name>Fische multicolored big</Name>
+    <Author>maximus</Author>
+  </Identifier>
+  <AuthorSoftwareVersion>
+    <Major>1</Major>
+    <Minor>0</Minor>
+  </AuthorSoftwareVersion>
+</FireworkEffect>

@@ -1,0 +1,47 @@
+<?xml version="1.0"?>
+<FireworkEffect xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+  <Children>
+    <BaseEffectNode xsi:type="Shell">
+      <Children>
+        <BaseEffectNode xsi:type="BurstingCharge">
+          <Children>
+            <BaseEffectNode xsi:type="Stars">
+              <Children>
+                <BaseEffectNode xsi:type="StarTails">
+                  <Children />
+                  <Color>
+                    <Color>Gold</Color>
+                  </Color>
+                  <Width>1.37099993</Width>
+                  <EmitStart>0.625</EmitStart>
+                  <EmitEnd>1</EmitEnd>
+                  <Density>16</Density>
+                </BaseEffectNode>
+              </Children>
+              <Type>Normal</Type>
+              <Distribution xsi:type="SphericalDistribution">
+                <Speed>1</Speed>
+                <Sigma>0.021434</Sigma>
+              </Distribution>
+              <Color>
+                <Color>Invisible</Color>
+              </Color>
+              <Count>93</Count>
+              <MinimumLifetime>3.227</MinimumLifetime>
+              <MaximumLifetime>5.4089</MaximumLifetime>
+              <Strobe>false</Strobe>
+            </BaseEffectNode>
+          </Children>
+          <Energy>107.52</Energy>
+          <Delay>2.7528</Delay>
+        </BaseEffectNode>
+      </Children>
+      <Diameter>0.179626</Diameter>
+      <LiftingCharge>164.46</LiftingCharge>
+    </BaseEffectNode>
+  </Children>
+  <Identifier>
+    <Name>pHys Favourite Effect</Name>
+    <Author>LT</Author>
+  </Identifier>
+</FireworkEffect>

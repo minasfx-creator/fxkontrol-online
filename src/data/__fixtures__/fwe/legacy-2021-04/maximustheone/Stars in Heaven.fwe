@@ -1,0 +1,120 @@
+<?xml version="1.0"?>
+<FireworkEffect xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+  <Children>
+    <BaseEffectNode xsi:type="Shell">
+      <Children>
+        <BaseEffectNode xsi:type="BurstingCharge">
+          <Children>
+            <BaseEffectNode xsi:type="Stars">
+              <Children>
+                <BaseEffectNode xsi:type="StarTails">
+                  <Children />
+                  <Color>
+                    <Color>Spark</Color>
+                  </Color>
+                  <Width>0.3075</Width>
+                  <EmitStart>0.05</EmitStart>
+                  <EmitEnd>0.75</EmitEnd>
+                  <Density>26</Density>
+                </BaseEffectNode>
+                <BaseEffectNode xsi:type="Crackling">
+                  <Children />
+                </BaseEffectNode>
+              </Children>
+              <Type>Normal</Type>
+              <Distribution xsi:type="MineDistribution">
+                <Speed>0.7553</Speed>
+                <Sigma>0.14</Sigma>
+              </Distribution>
+              <Color>
+                <Color>Red</Color>
+              </Color>
+              <Count>1</Count>
+              <MinimumLifetime>1.5</MinimumLifetime>
+              <MaximumLifetime>3.5924</MaximumLifetime>
+              <Strobe>true</Strobe>
+            </BaseEffectNode>
+          </Children>
+          <Energy>169.295</Energy>
+          <Delay>0.4344</Delay>
+        </BaseEffectNode>
+        <BaseEffectNode xsi:type="BurstingCharge">
+          <Children>
+            <BaseEffectNode xsi:type="Stars">
+              <Children>
+                <BaseEffectNode xsi:type="StarTails">
+                  <Children />
+                  <Color>
+                    <Color>Spark</Color>
+                  </Color>
+                  <Width>0.3075</Width>
+                  <EmitStart>0.05</EmitStart>
+                  <EmitEnd>0.7424</EmitEnd>
+                  <Density>26</Density>
+                </BaseEffectNode>
+                <BaseEffectNode xsi:type="Crackling">
+                  <Children />
+                </BaseEffectNode>
+              </Children>
+              <Type>Normal</Type>
+              <Distribution xsi:type="MineDistribution">
+                <Speed>1</Speed>
+                <Sigma>0.13279</Sigma>
+              </Distribution>
+              <Color>
+                <Color>Purple</Color>
+              </Color>
+              <Count>1</Count>
+              <MinimumLifetime>1.5</MinimumLifetime>
+              <MaximumLifetime>3.5924</MaximumLifetime>
+              <Strobe>true</Strobe>
+            </BaseEffectNode>
+          </Children>
+          <Energy>165.48</Energy>
+          <Delay>0.3912</Delay>
+        </BaseEffectNode>
+        <BaseEffectNode xsi:type="BurstingCharge">
+          <Children>
+            <BaseEffectNode xsi:type="Stars">
+              <Children>
+                <BaseEffectNode xsi:type="StarTails">
+                  <Children />
+                  <Color>
+                    <Color>Spark</Color>
+                  </Color>
+                  <Width>0.384</Width>
+                  <EmitStart>0.05</EmitStart>
+                  <EmitEnd>0.7576</EmitEnd>
+                  <Density>36</Density>
+                </BaseEffectNode>
+                <BaseEffectNode xsi:type="Crackling">
+                  <Children />
+                </BaseEffectNode>
+              </Children>
+              <Type>Normal</Type>
+              <Distribution xsi:type="MineDistribution">
+                <Speed>0.6702</Speed>
+                <Sigma>0.1</Sigma>
+              </Distribution>
+              <Color>
+                <Color>Blue</Color>
+              </Color>
+              <Count>1</Count>
+              <MinimumLifetime>1.5</MinimumLifetime>
+              <MaximumLifetime>4.2371</MaximumLifetime>
+              <Strobe>true</Strobe>
+            </BaseEffectNode>
+          </Children>
+          <Energy>165.48</Energy>
+          <Delay>0.4344</Delay>
+        </BaseEffectNode>
+      </Children>
+      <Diameter>0.0325980037</Diameter>
+      <LiftingCharge>0</LiftingCharge>
+    </BaseEffectNode>
+  </Children>
+  <Identifier>
+    <Name>Stars in Heaven</Name>
+    <Author>maximus</Author>
+  </Identifier>
+</FireworkEffect>
