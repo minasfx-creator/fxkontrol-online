@@ -45,6 +45,30 @@ const FILTER_CHIPS: { key: FilterType; label: string; icon: typeof Flame }[] = [
 
 const CALIBER_OPTIONS = [2, 3, 4, 5, 6, 8, 10, 12];
 
+/** Display label for a partType (Finale/FWsim canonical names). */
+const FAMILY_LABEL: Record<string, string> = {
+  shell: 'Shell',
+  mine: 'Mine',
+  cake: 'Cake',
+  comet: 'Comet',
+  candle: 'Roman Candle',
+  fan: 'Fan',
+  gerb: 'Gerb',
+  flame: 'Flame',
+  rocket: 'Rocket',
+  waterfall: 'Waterfall',
+  strobe: 'Strobe',
+  ground: 'GroundShellFlash',
+  set_piece: 'Set Piece',
+  girandola: 'Girandola',
+  single_shot: 'Single Shot',
+  formation: 'Formation',
+  drone: 'Drone',
+  laser: 'Laser',
+  light: 'Light',
+  sfx: 'SFX',
+};
+
 /* ─── Finale 3D-style Table Row ─── */
 function EffectTableRow({ effect, index, usageCount }: { effect: Effect; index: number; usageCount: number }) {
     const selectedEffectId = useProjectStore(s => s.selectedEffectId);
@@ -464,6 +488,7 @@ export default function EffectLibrary() {
   const [vdlInput, setVdlInput] = useState('');
   const [openCategories, setOpenCategories] = useState<Set<string>>(new Set(['morteiros', 'drones']));
   const [typeFilter, setTypeFilter] = useState<FilterType>('all');
+  const [familyFilter, setFamilyFilter] = useState<Set<string>>(new Set());
   const [viewMode, setViewMode] = useState<ViewMode>('list');
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [createVdl, setCreateVdl] = useState('');
@@ -551,12 +576,27 @@ export default function EffectLibrary() {
     return merged;
   }, [importedFweEffects]);
 
-  const filteredEffects = useMemo(() =>
-    fullLibrary.filter((e) => {
+  const filteredEffects = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    return fullLibrary.filter((e) => {
       if (typeFilter !== 'all' && e.type !== typeFilter) return false;
-      if (search && !e.name.toLowerCase().includes(search.toLowerCase())) return false;
+      if (familyFilter.size > 0) {
+        const fam = e.partType ?? e.type;
+        if (!familyFilter.has(fam)) return false;
+      }
+      if (q) {
+        const hay = [
+          e.name,
+          e.category,
+          e.partType ?? '',
+          e.pattern ?? '',
+          FAMILY_LABEL[e.partType ?? ''] ?? '',
+        ].join(' ').toLowerCase();
+        if (!hay.includes(q)) return false;
+      }
       return true;
-    }), [fullLibrary, typeFilter, search]);
+    });
+  }, [fullLibrary, typeFilter, familyFilter, search]);
 
   const categoryCounts = useMemo(() => {
     const counts: Record<string, number> = {};
@@ -565,6 +605,32 @@ export default function EffectLibrary() {
     });
     return counts;
   }, [filteredEffects]);
+
+  /**
+   * Family chip catalog: distinct partTypes present in the library after
+   * type-filter (so chips reflect what's actually selectable). Sorted by
+   * count desc, then label asc. Counts are computed BEFORE familyFilter
+   * so the user can see how many entries each family adds.
+   */
+  const familyChips = useMemo(() => {
+    const counts = new Map<string, number>();
+    fullLibrary.forEach((e) => {
+      if (typeFilter !== 'all' && e.type !== typeFilter) return;
+      const fam = e.partType ?? e.type;
+      counts.set(fam, (counts.get(fam) ?? 0) + 1);
+    });
+    return Array.from(counts.entries())
+      .map(([id, count]) => ({ id, count, label: FAMILY_LABEL[id] ?? id }))
+      .sort((a, b) => b.count - a.count || a.label.localeCompare(b.label));
+  }, [fullLibrary, typeFilter]);
+
+  const toggleFamily = useCallback((id: string) => {
+    setFamilyFilter((prev) => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+  }, []);
 
   const handleVDLSubmit = (e: React.KeyboardEvent) => {
     if (e.key !== 'Enter' || !vdlInput.trim()) return;
@@ -685,6 +751,47 @@ export default function EffectLibrary() {
             );
           })}
         </div>
+
+        {/* Family filter chips (partType) — multi-select, derived from data */}
+        {familyChips.length > 0 && (
+          <div className="mt-1.5 flex items-center gap-1">
+            <span className="text-[8px] font-semibold uppercase tracking-wider text-muted-foreground/40 shrink-0">
+              Family
+            </span>
+            <div className="flex-1 overflow-x-auto scrollbar-thin">
+              <div className="flex gap-1 pb-0.5">
+                {familyFilter.size > 0 && (
+                  <button
+                    onClick={() => setFamilyFilter(new Set())}
+                    className="px-1.5 py-0.5 rounded text-[8px] font-bold uppercase tracking-wider bg-destructive/15 text-destructive hover:bg-destructive/25 transition-colors shrink-0"
+                    title="Clear family filter"
+                  >
+                    × {familyFilter.size}
+                  </button>
+                )}
+                {familyChips.map((f) => {
+                  const isActive = familyFilter.has(f.id);
+                  return (
+                    <button
+                      key={f.id}
+                      onClick={() => toggleFamily(f.id)}
+                      className={cn(
+                        "px-1.5 py-0.5 rounded text-[8px] font-semibold uppercase tracking-wider transition-all whitespace-nowrap shrink-0 flex items-center gap-1",
+                        isActive
+                          ? "bg-primary/20 text-primary ring-1 ring-primary/30"
+                          : "bg-surface-0/50 text-muted-foreground/60 hover:text-foreground hover:bg-surface-2/60"
+                      )}
+                      title={`${f.label} (${f.count})`}
+                    >
+                      <span>{f.label}</span>
+                      <span className="font-mono-code text-[7px] opacity-60 tabular-nums">{f.count}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Content */}
