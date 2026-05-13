@@ -37,6 +37,7 @@ export default function MineEffect({
   launchHeading = 0,
   launchPitch = 85,
   pattern = 'fan',
+  presetId,
 }: {
   position: [number, number, number];
   color: string;
@@ -48,7 +49,18 @@ export default function MineEffect({
   launchHeading?: number;
   launchPitch?: number;
   pattern?: MinePattern;
+  /** Canonical Finale Mine preset id (rev5–7). Overrides body color and applies tail strobe. */
+  presetId?: string;
 }) {
+  // Resolve canonical Finale Mine preset (rev5–7). Overrides body color and
+  // tail strobe. Geometry/lifetime/count remain renderer-driven for now.
+  const preset = useMemo(
+    () => (presetId ? resolveMinePresetProps(presetId) : undefined),
+    [presetId],
+  );
+  const effectiveColor = preset?.color ?? color;
+  const tailStrobeHz = preset?.strobeHz ?? 0;
+
   const count = useMemo(() => Math.min(600, Math.round(200 + caliber * caliber * 14)), [caliber]);
   const pointsRef = useRef<THREE.Points>(null);
   const smokePointsRef = useRef<THREE.Points>(null);
@@ -65,14 +77,14 @@ export default function MineEffect({
 
   // Chemistry-enhanced color: use formulation if available, else auto-match by color+type
   const chemistry = useMemo(() => {
-    const fId = formulationId || autoMatchFormulation(color, 'mine', caliber);
+    const fId = formulationId || autoMatchFormulation(effectiveColor, 'mine', caliber);
     return fId ? getChemistryForRendering(fId) : null;
-  }, [formulationId, color, caliber]);
+  }, [formulationId, effectiveColor, caliber]);
 
   const baseColor = useMemo(() => {
     if (chemistry?.resultColor) return chemistry.resultColor.clone();
-    return new THREE.Color(color);
-  }, [color, chemistry]);
+    return new THREE.Color(effectiveColor);
+  }, [effectiveColor, chemistry]);
   const emberColor = useMemo(() => new THREE.Color().setHSL(0.05, 0.8, 0.12), []);
   const charcoalColor = useMemo(() => new THREE.Color(0.15, 0.08, 0.03), []);
 
