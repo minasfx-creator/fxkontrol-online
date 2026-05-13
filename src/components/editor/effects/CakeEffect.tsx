@@ -435,7 +435,7 @@ export default function CakeEffect({
           <CakeShot
             key={i}
             offset={shot.offset}
-            color={color}
+            color={effectiveColor}
             progress={Math.max(0, Math.min(1, shotProgress))}
             seed={shot.seed}
             angle={shot.angle}
