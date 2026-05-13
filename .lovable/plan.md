@@ -1,103 +1,161 @@
-## Objetivo
+## Auditoria de gaps detectada (Rodada Realismo + Libraries)
 
-Plugar os 4 ativos enviados no editor existente sem criar rota nova:
-1. **`presets.zip`** (44 .fwe FWsim com PNG) → catálogo built-in de presets de fogos arrastáveis na timeline.
-2. **`vector.zip`** (12 SVGs por categoria + ícones de cue + UI) → ícones nativos no `EffectLibrarySidebar` e na lista de cues.
-3. **`2021-04_Old_Effects_Index.txt`** (229 nomes "Old Effects") → catálogo de busca textual (sem dados de partícula, marca como `claim: marketing_hypothesis`).
-4. **`shaders.zip`** (HLSL FWsim) → tradução **dirigida** de 4 técnicas-chave para o `FireworkRenderer`/`SkyCanvas3D` em GLSL (tonemapping, bloom, particle motion, smoke).
-5. **`manual-2.pdf`** (FWsim v3 Handbook) → 8 melhorias concretas mapeadas no editor existente.
+### Gap A — Memória mente sobre `Finale Libraries Import Canonical` (CRÍTICO)
+A entrada `mem://funcionalidades/finale-libraries-import-canonical` afirma que 5 libs (527 parts) estão integradas em `src/data/effectsLibraries/` com `parseFinalePartsXlsx`, `buildImportedEffects`, etc.
+**Realidade**: o diretório `src/data/effectsLibraries/` está **vazio**. Nenhum desses símbolos existe (`grep -r FinalePart src/` retorna nada). Os 5 .xlsx (Showven/Lidu/Magic/Winda/Amazon) que o usuário acabou de re-enviar **nunca foram importados de fato**.
+**Fix**: implementar de verdade desta vez (ver §1 abaixo) e atualizar a memória para refletir o estado real.
 
-Tudo em modo **simulação/design**. Zero impacto em `uiCommandGateway`, `safetyStateMachine`, `commandBus`, `workMode`, RLS ou backend.
+### Gap B — Renderer dos mines não usa silhueta dos vetores FWsim
+`MineEffect.tsx` (572 linhas) faz spray paramétrico mas ignora os SVGs `Mine_01/02/03.svg` enviados, que descrevem o **leque característico** (5 pétalas/jatos divergentes, ângulos 18°–72°, coroa frontal). Hoje rende cone genérico Gaussiano → não bate com referência visual real.
+**Fix**: ver §2.
 
-## Entrega 1 — Catálogo built-in de 44 presets FWsim
+### Gap C — `Modules_1-2.pdf` adiciona specs físicas ausentes do catálogo FireOne
+O Field Module Users Guide traz constantes que **não estão em lugar nenhum** do código:
+- 32 cues por módulo, 24V current-limited @ 5A
+- Tipicamente acende 5 e-matches em paralelo / 10 em série
+- Max **20 módulos por output** do control panel (e não 99 — confunde com endereçamento!)
+- LCD: 4 barras battery + 5 barras RSSI (≠ guide UltraFire que diz 5/6)
+- LEMO 5-pin DMX (pinos 4–5 reservados firmware)
+- TNC antenna conector (wireless)
+- Min wire gauge 18 AWG / 1 mm²
+**Fix**: incluir em `fireOneControlPanels.ts`/novo `fireOneFieldModule.ts` da rodada anterior (já planejada).
 
-- Rodar `scripts/parse-fwe-presets.py` (já existente) sobre os 44 `.fwe` em build-time → `src/data/fwsimBuiltinPresets.json` versionado no repo (~600KB JSON estimado).
-- Copiar os 44 thumbs `01.png..44.png` para `src/assets/fwsim-presets/preset-XX.jpg` (recompactar p/ JPG ~30KB cada).
-- Estender `useImportedFweStore` com slice `builtinPresets[]` read-only (não persiste no Supabase, vem do bundle). API: `getBuiltinPresets()`, `mergeWithImported()`.
-- `EffectLibrarySidebar` ganha aba **"FWsim Built-in"** (44 cards com preview PNG + nome + tipo). Drag-drop usa o mesmo `buildImportedEffects()` (mem `Finale Libraries Import Canonical`). Cada preset `claim: 'pilot'` (já temos cores/contagem reais do .fwe).
-- `EffectPreview3D` (já existente) renderiza pattern correto via `finalePresetEnrichment.ts`.
+### Gap D — `Design_de_Shows_RA.pdf` (deep-research) reforça itens já no roadmap
+O doc valida arquitetura existente (InstancedMesh, GPGPU, depthWrite=false, ray marching, VDL Euclidean) — **nada novo a implementar**, mas serve de citação/rastreabilidade. Vira `docs/reference/design-ra-deep-research-2026-05.md` (extrato).
 
-## Entrega 2 — Ícones SVG por categoria
+---
 
-- Copiar 12 SVGs de `vector/effects/` (`Cake_01..03`, `Comet_01..03`, `Mine_01..03`, `Other_01..03`, `Rocket_01..03`, `RomanCandle_01..03`, `FeuerProjektor_01..03`) → `src/assets/effect-icons/`.
-- Novo `src/components/icons/EffectCategoryIcon.tsx` resolve `category → SVG` (3 níveis de detalhe: small/medium/large baseado em `_01/_02/_03`).
-- Adotar em:
-  - `EffectLibrarySidebar` cards (substitui emojis 🔦💡💫 do `UE5DMXPrevisImporter`).
-  - `Timeline` cue blocks (atualmente usa `Zap` lucide genérico).
-  - `EffectPreview3D` overlay quando 3D ainda não pintou.
-- Ícones de cue (`vector/cue-*.svg`) → `src/components/icons/CueTypeIcon.tsx` para Camera/DMX/Scene/Single/Stepper.
-- **Não** mexer em `FxkLogo` ou paleta operacional.
+## §1 — Importar de verdade as 5 livrarias Finale
 
-## Entrega 3 — Old Effects Index searchable
-
-- `scripts/parse-old-effects-index.ts` lê o `.txt`, parse `LT|<name>` → `{ id, name, category (inferida do nome), tags[] }`.
-- Output: `src/data/fwsimOldEffectsIndex.json` (229 entries, ~25KB).
-- `EffectLibrarySidebar` ganha tab **"Old Effects (legacy)"** **read-only**: lista pesquisável (Cmd+K compatible), badge `claim: marketing_hypothesis` ds-status-warn, tooltip "Apenas nome — sem dados de partícula. Crie um preset .fwe ou use Finale Library para versão executável".
-- Drag-drop **desabilitado** (cursor not-allowed + tooltip explicativo) — é catálogo de inspiração, não executável.
-
-## Entrega 4 — 4 técnicas dos shaders FWsim portadas pra GLSL
-
-Os HLSL não rodam direto no Three.js. Vou portar **só** as funções-chave que melhoram o que já temos:
-
-| FWsim HLSL | Porta para | O quê |
-|---|---|---|
-| `tonemapping.hlsl` (9.7KB) | `src/components/editor/skycanvas/postFx/tonemapACES.glsl` | ACES Hue-Preserving (já temos doc, falta shader); aplica em `SkyCanvas3D` post-process |
-| `new_bloom.hlsl` + `bloom_include.hlsl` | `src/components/editor/skycanvas/postFx/bloomFwsim.glsl` | 5-tap dual-Kawase mais barato que UnrealBloomPass do drei (ganho ~2ms/frame em mobile) |
-| `particle_movement.inc.hlsl` (736B) | `src/components/editor/skycanvas/FireworkRenderer.tsx` | Drag exponencial framerate-independent + wind log law (já consolidado em mem `Studio Layer 3`, faltava no FireworkRenderer) |
-| `smoke.ps.hlsl` (416B) | `src/components/editor/skycanvas/SkyEnvironment.tsx` smoke shader | Beer-Lambert simples para puff de smoke pós-explosão |
-
-- Flag de feature `fwsim_shader_pack` (default OFF, ON-ramp em /dev).
-- 1 spec em `src/__tests__/fwsimShaderPack.spec.ts` valida que toggling o flag não quebra o render (smoke test).
-
-## Entrega 5 — 8 melhorias do manual FWsim v3
-
-Mapeadas para o editor existente, ordem de impacto:
-
-1. **Snap Cues to other Cues** (§10.2.4) — opção em `EditorPreferences` (já existe?), magnet com tolerance 50ms ao soltar cue na timeline.
-2. **Smart Clone** (§3.4.4) — Ctrl+drag clona cue mantendo offset rítmico do anterior (FWsim usa para multi-break).
-3. **Stepper** (§3.4.2) — modo de inserção rápida que avança automaticamente o cursor por intervalo configurável (já temos timelineClock; falta UI).
-4. **Multi Selection Rectangle** (§3.4.3) — drag-rectangle na timeline já existe? validar; se não, adicionar.
-5. **Custom Components / Color Variations** (§5.4.1-2) — botão "Generate variations" no card de preset gera N variações com hue rotacionado (FWsim Pro feature, popular).
-6. **Cost / NEC display** (§5.8-9) — campos opcionais `priceCents` e `necGrams` em `Effect`; somatório aparece no rodapé do timeline (já temos `BoM` export).
-7. **Auto-assign channels before export** (§10.2.7) — preferência em `ExportCoordinator` (já default?). Validar e expor toggle.
-8. **Snap Cues + Vertical zoom show editor** (§10.1.3) — atalho Ctrl+Wheel já mapeado? validar e documentar.
-
-Cada melhoria como toggle independente em `EditorPreferences` (Tools→Preferences pattern do FWsim). **Stepper, Smart Clone e Snap Cues** são os 3 com maior impacto operacional — implementar primeiro; restante fica como toggles documentados.
-
-## Detalhes técnicos
-
-- **Provenance trail**: presets built-in `claim: 'pilot'`, Old Effects `claim: 'marketing_hypothesis'`, ícones e shaders sem claim (puramente visual).
-- **Backend**: zero migração. `imported_fwe_effects` continua para uploads do usuário; built-in vive no bundle.
-- **Bundle size**: +~700KB total (44 thumbs + 44 .fwe parsed JSON + 60 SVG + 4 GLSL). Lazy-load tab "FWsim Built-in" via `React.lazy`.
-- **Memória nova**: 1 entry `funcionalidades/fwsim-asset-pack-integration` no `mem://index.md`.
-- **Testes (5)**: `fwsimBuiltinPresets.spec.ts` (44 carregam), `fwsimOldEffectsIndex.spec.ts` (229 parse), `effectCategoryIcon.spec.tsx`, `fwsimShaderPack.spec.ts` (toggle), `editorSnapCues.spec.ts` (50ms tolerance).
-
-## Arquivos criados/editados
-
-```text
-NEW  scripts/parse-old-effects-index.ts
-NEW  src/data/fwsimBuiltinPresets.json                 (gerado em build)
-NEW  src/data/fwsimOldEffectsIndex.json
-NEW  src/assets/fwsim-presets/preset-01..44.jpg
-NEW  src/assets/effect-icons/{Cake,Comet,Mine,Other,Rocket,RomanCandle,FeuerProjektor}_{01..03}.svg
-NEW  src/assets/cue-icons/cue-{camera,dmx,scene,single,stepper,chains}.svg
-NEW  src/components/icons/EffectCategoryIcon.tsx
-NEW  src/components/icons/CueTypeIcon.tsx
-NEW  src/components/editor/skycanvas/postFx/{tonemapACES,bloomFwsim}.glsl
-NEW  5 specs em src/__tests__/
-EDIT src/store/useImportedFweStore.ts                  (+builtinPresets slice)
-EDIT src/components/editor/EffectLibrary.tsx           (+2 abas: Built-in, Old Effects)
-EDIT src/components/editor/skycanvas/FireworkRenderer.tsx  (drag exp + wind)
-EDIT src/components/editor/skycanvas/SkyEnvironment.tsx    (smoke Beer-Lambert)
-EDIT src/components/editor/EditorPreferences.tsx       (5 toggles)
-EDIT src/components/editor/Timeline*.tsx               (Stepper, Smart Clone, Snap)
-EDIT mem://index.md                                    (+1 entry)
+### Pipeline real (substitui a entrada-fantasma na memória)
+```
+public/finale-libraries/
+├── showven.xlsx          (Showven_✔️Finale_Verified-2.xlsx)
+├── lidu.xlsx             (Lidu_USA-2.xlsx)
+├── magic.xlsx            (Magic_Fireworks-2.xlsx)
+├── winda.xlsx            (Winda_Fireworks-2.xlsx)
+└── amazon.xlsx           (Amazon_Fireworks_V2.1-2.xlsx)
 ```
 
-## Fora do escopo
+```
+src/data/effectsLibraries/
+├── types.ts                      # FinalePart 35-col canonical
+├── parseFinalePartsXlsx.ts       # SheetJS + auto-detect Winda↔canonical
+├── windaColumnMap.ts             # WINDA_DISPLAY_TO_CANONICAL
+├── finalePartToEffect.ts         # adapter → Effect (usa quantizeRgbToVdl)
+├── registry.ts                   # buildImportedEffects() lazy memo
+├── search.ts                     # filtro por manufacturer/family/caliber
+└── index.ts                      # re-export
+```
 
-- Importar HLSL bruto e rodar via DirectX (impossível no browser).
-- Executar `.fwe` via FWsim binary.
-- Mudanças em safety, workMode, command path ou backend RLS.
-- Replicar 100% das features do FWsim Handbook — só as 8 com maior impacto operacional.
-- Drone+Drotek workflow completo (§9) — fora deste lote, já temos Skybrush export.
+- Adapter usa `vdlColorPipeline.quantizeRgbToVdl` → `renderHex` (LED-accurate, já existe).
+- Lazy-load: arquivos só baixam quando `EffectLibrarySidebar` abre aba "Full Library".
+- Bundle size projetado ~520KB JSON cru → gzip ~95KB lazy chunk.
+- Merge no `EFFECT_LIBRARY` via `resolveEffect.ts` existente (já bridgeado).
+
+### Inspector
+Reutiliza rota `/dev/effects-libraries` (memory-listada) com drag-source para Timeline.
+
+### Tests (~6)
+- Parse Winda real (alias columns) → 85 parts
+- Parse Showven canonical → 181 parts
+- Parse Magic / Lidu / Amazon (40/112/109)
+- adapter `finalePartToEffect` preserva caliber/duration/color
+- LRU cache `buildImportedEffects()` não duplica entries entre chamadas
+
+---
+
+## §2 — Realismo: render baseado nos vetores FWsim
+
+### 2.1 MineEffect — cone leque com **vector silhouette mask**
+Cada SVG (`Mine_01/02/03.svg`) define **N pétalas radiais**. Extrair em build-time:
+- `scripts/extractMineSilhouette.ts` parseia path d=, amostra N=64 pontos por pétala, gera `mineSilhouettes.json` com {peta lAngles[], coreCrown}.
+- Em runtime, `MineEffect` usa esse perfil pra **distribuir partículas em ângulos fan-shaped** em vez de Gaussiana radial: `theta_i = silhouette.petals[i % petals.length] + jitter(σ=2°)`.
+- Adiciona **coroa frontal** (cluster denso na base, lifetime 80ms) que o SVG mostra.
+
+### 2.2 Particle chemistry hookup já presente
+`particleChemistry.ts` (thermalColor + autoMatchFormulation) já existe mas Mine não chama. Patch:
+- `MineEffect` lê `effect.formulationId` → `thermalColor(T_init=2800K, decay=Newton 0.65/s)` → cor por partícula.
+
+### 2.3 Realismo cross-cutting (todos os efeitos)
+- **Soft particle blend** (depth-aware fade quando partícula encosta em geometry) — flag `r_soft_particles` (default ON) — adiciona uma sub no fragment shader existente lendo `tDepth`.
+- **HDR ember tail decay** com `pow(life, 2.4)` em vez de linear (curva mais natural).
+- **Volumetric god ray** já implementado (mem GodRays); patch `MineEffect` pra pulsar god ray local 80ms no centro de massa do leque.
+- **Sub-frame jitter** anti-aliasing temporal: `attribute float aJitterPhase` → vertex shader desloca size em ±3% senoidal (60Hz) → quebra padrão visível em 4K.
+- **Smoke trail** já honest (mem R3 Pass 2); Mine ganha trilha curta (200ms) por pétala em vez do único trail central.
+- **Spectral bloom**: bloom pass usa luminance-aware threshold (0.85 → 1.2) + chromatic offset 0.4px nos canais R/B (halation).
+
+### 2.4 Comet/Shell/Cake — atualizações alinhadas
+Mesmos hooks:
+- Comet usa `Comet_01/02/03.svg` → curva trail bezier extraída
+- Shell usa `Shell_01/02/03` pra pattern de pétala (peony vs chrysanthemum vs dahlia)
+- Cake usa `Cake_01/02/03` pra fan-out de barragem
+- RomanCandle usa `RomanCandle_01/02/03` pra cadência stagger
+- Rocket usa `Rocket_01/02/03` pra cone propulsão
+- ShellOfShells usa cluster split
+
+Todos via `silhouetteSampler.ts` reutilizável.
+
+### 2.5 LightProbe ambient para fogos
+Adiciona `THREE.LightProbe` atualizada por frame com SH coeffs derivados das partículas ativas (top-N por luminância). Faz o palco/terreno **receber luz** dos fogos sem perf hit (1 light, não N).
+
+---
+
+## §3 — Atualizar listas de efeitos
+
+### 3.1 EffectLibrary merge sources (atual → novo)
+| Fonte | Status atual | Pós-Rodada |
+|---|---|---|
+| `EFFECT_LIBRARY` (legacy) | 96 entries | mantido |
+| `FWSIM_BUILTIN_EFFECTS` | 45 entries | mantido |
+| `parametricEffects` | 12 entries | mantido |
+| **`buildImportedEffects()` (Finale 5 libs)** | **0 (mente)** | **+527 entries reais** |
+| Total | ~153 | **~680** |
+
+### 3.2 EffectLibrarySidebar
+- Nova aba "Full Library (527)" agrupada por manufacturer com counter
+- Search global (nome + tags + family)
+- Drag-source pra Timeline já funciona via `resolveEffect`
+
+### 3.3 finalePresetEnrichment hook
+`enrichEffectFromFwe` ganha fallback: se id não bate FWE, tenta `buildImportedEffects().find(id)` → unifica enrich path.
+
+---
+
+## Arquivos novos (~18)
+```
+src/data/effectsLibraries/{types,parseFinalePartsXlsx,windaColumnMap,finalePartToEffect,registry,search,index}.ts
+src/data/effectsLibraries/__tests__/{parse,adapter,registry}.spec.ts
+public/finale-libraries/{showven,lidu,magic,winda,amazon}.xlsx
+src/render/silhouettes/{silhouetteSampler,mineSilhouettes.json,extractMineSilhouette}.ts
+scripts/extractEffectSilhouettes.ts
+src/lib/render/lightProbeFromBursts.ts
+src/__tests__/{mineSilhouette,silhouetteSampler}.spec.ts
+docs/reference/design-ra-deep-research-2026-05.md
+docs/reference/fireone-field-module-1-2.md
+```
+
+## Arquivos editados (~10)
+- `src/components/editor/effects/MineEffect.tsx` (silhouette + chemistry hookup)
+- `src/components/editor/effects/{CometEffect,CakeEffect,RocketEffect,RomanCandleEffect}.tsx` (silhouette mode opt-in)
+- `src/components/editor/skycanvas/FireworkRenderer.tsx` (soft particles, HDR ember, god-ray pulse, jitter)
+- `src/components/editor/EffectLibrarySidebar.tsx` (Full Library tab, 527 counter)
+- `src/data/finalePresetEnrichment.ts` (fallback resolver)
+- `src/data/effectLibrary.ts` (merge canal `IMPORTED_FINALE_PARTS`)
+- `src/lib/featureFlags.ts` (`r_soft_particles`, `r_silhouette_mines`, `r_silhouette_all`, `r_hdr_ember_tail`, `r_lightprobe_from_bursts` — todas default ON exceto silhouette_all)
+- `mem://index.md` + nova entry `mem://funcionalidades/finale-libraries-real-import-rodada-N` (corrige a entry-fantasma)
+- `mem://funcionalidades/render-realism-silhouette-driven` (novo)
+
+## Fora de escopo
+- `uiCommandGateway`, `safetyStateMachine`, `commandBus`, `workMode`, RLS — zero alteração
+- WebGPU rewrite — fica nos hooks GLSL/Three.js existentes (R3F)
+- AR HUD do PDF de RA — só rastreabilidade documental por enquanto
+- FireOne XL4/XL2 catalog — fica na rodada anterior (já planejada e aprovada)
+
+## Risco / mitigação
+- **Bundle bloat**: 527 parts lazy-loaded (não custa nada no boot do editor)
+- **Render perf**: silhouette mode é opt-in flag por efeito; defaults preservam FPS atual
+- **Memória mente**: explicitamente reescrita pra refletir o que existe de fato pós-implementação
+- **PDFs grandes**: só extrato em docs/, não embedados
+
+Pronto pra implementar.

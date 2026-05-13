@@ -9,6 +9,7 @@ import { EFFECT_LIBRARY, type Effect } from '@/data/effectLibrary';
 import { FINALE_SHELL_PRESET_EFFECTS } from '@/data/finaleShellPresetEffects';
 import { FWE_UPLOADED_EFFECTS } from '@/data/fweUploadedEffects';
 import { FWSIM_BUILTIN_EFFECTS } from '@/data/fwsimBuiltinPresets';
+import { getFinaleEffects, FINALE_LIBRARIES_META } from '@/data/effectsLibraries';
 import { parseFweXml } from '@/data/fweImporter';
 import { useImportedFweStore } from '@/store/useImportedFweStore';
 import { cn } from '@/lib/utils';
@@ -583,7 +584,16 @@ export default function EffectLibrary() {
     // Order: curated catalog → finale shell presets → FWsim built-ins (44 .fwe) →
     // user-uploaded curated → runtime-imported. EFFECT_LIBRARY wins on id collision
     // because it iterates first; dedup-by-id below preserves that.
-    for (const e of [...EFFECT_LIBRARY, ...FINALE_SHELL_PRESET_EFFECTS, ...FWSIM_BUILTIN_EFFECTS, ...FWE_UPLOADED_EFFECTS, ...importedFweEffects]) {
+    // Order: curated → shell presets → FWsim built-ins → 5 Finale libs (527 parts) →
+    // user-uploaded → runtime-imported. First seen wins (curated retains authority).
+    for (const e of [
+      ...EFFECT_LIBRARY,
+      ...FINALE_SHELL_PRESET_EFFECTS,
+      ...FWSIM_BUILTIN_EFFECTS,
+      ...getFinaleEffects(),
+      ...FWE_UPLOADED_EFFECTS,
+      ...importedFweEffects,
+    ]) {
       if (seen.has(e.id)) continue;
       seen.add(e.id);
       merged.push(e);
@@ -737,11 +747,17 @@ export default function EffectLibrary() {
           <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground/30" />
           <Input
             ref={searchInputRef}
-            placeholder="Search effects... (C)"
+            placeholder={`Search ${fullLibrary.length} effects... (C)`}
             value={search}
             onChange={(e) => { setSearch(e.target.value); setSelectedIndex(0); }}
             className="h-7 pl-7 text-[11px] bg-surface-0/50 border-border/15 focus:border-primary/30 rounded-lg"
           />
+          <span
+            className="absolute right-2 top-1/2 -translate-y-1/2 text-[9px] uppercase tracking-wider text-muted-foreground/40"
+            title={`Finale libs: Showven ${FINALE_LIBRARIES_META.summary.showven} · Lidu ${FINALE_LIBRARIES_META.summary.lidu} · Magic ${FINALE_LIBRARIES_META.summary.magic} · Winda ${FINALE_LIBRARIES_META.summary.winda} · Amazon ${FINALE_LIBRARIES_META.summary.amazon}`}
+          >
+            +{FINALE_LIBRARIES_META.total}
+          </span>
         </div>
 
         {/* Type filter chips */}
