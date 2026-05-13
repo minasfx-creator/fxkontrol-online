@@ -1,6 +1,6 @@
 /**
- * FireOneExportConsole — FireOne .fir script preview and export.
- * Consumes data from FireOneExporter (ShowPlan → VerificationEngine → Export).
+ * FireOneExportConsole — FireOne .fir script preview/export + UltraFire
+ * Download to Panel (advisory in design/simulation).
  */
 import { useState, useCallback } from 'react';
 import { generateFireOneScript, downloadFireOneScript } from '@/core/export/FireOneExporter';
@@ -10,6 +10,8 @@ import { cn } from '@/lib/utils';
 import { FileOutput, Download, CheckCircle2, XOctagon, RefreshCw, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+import DownloadToPanelConsole from '@/components/fireone/DownloadToPanelConsole';
 
 export default function FireOneExportConsole() {
   const [preview, setPreview] = useState<string>('');
