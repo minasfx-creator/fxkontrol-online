@@ -384,6 +384,10 @@ export const FireworkBurst = React.forwardRef<THREE.Group, {
   const starLife = useMemo(() => {
     const baseLife = caliber <= 3 ? 1.6 : caliber <= 4 ? 2.2 : caliber <= 5 ? 2.8
       : caliber <= 6 ? 3.5 : caliber <= 8 ? 4.5 : caliber <= 10 ? 6.0 : 7.5;
+    if (shellPreset) {
+      // Use the preset's own MaximumLifetime; tail/decay margin handled outside.
+      return Math.max(0.6, shellPreset.lifeMax);
+    }
     if (pattern === 'willow' || pattern === 'kamuro') return baseLife * 3.0;
     if (pattern === 'palm' || pattern === 'brocade') return baseLife * 1.6;
     if (pattern === 'chrysanthemum') return baseLife * 1.2;
@@ -399,13 +403,16 @@ export const FireworkBurst = React.forwardRef<THREE.Group, {
     if (pattern === 'coconut_tree') return baseLife * 2.8;
     if (pattern === 'spider_web') return baseLife * 1.6;
     return baseLife;
-  }, [caliber, pattern]);
+  }, [caliber, pattern, shellPreset]);
   
   const baseColor = useMemo(() => new THREE.Color(color), [color]);
   const secondaryBaseColor = useMemo(() => secondaryColor ? new THREE.Color(secondaryColor) : null, [secondaryColor]);
   const compound = useMemo(() => hexToCompound(color), [color]);
   
   const { velocities, lifetimes, twinklePhases, sparkleSeeds } = useMemo(() => {
+    if (shellPreset) {
+      return buildPresetVelocities(STAR_COUNT, shellPreset, breakSpeed, starLife);
+    }
     const v = new Float32Array(STAR_COUNT * 3);
     const l = new Float32Array(STAR_COUNT);
     const tp = new Float32Array(STAR_COUNT);
