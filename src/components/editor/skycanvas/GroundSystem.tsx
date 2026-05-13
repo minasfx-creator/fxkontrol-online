@@ -734,37 +734,7 @@ function InstancedMovingHeadBodies({ positions }: { positions: [number, number, 
   );
 }
 
-function InstancedSFXMarkers({ stageW, stageD, stageHeight }: { stageW: number; stageD: number; stageHeight: number }) {
-  const ringRef = useRef<THREE.InstancedMesh>(null);
-
-  const markerPositions = useMemo(() => {
-    const markers: [number, number, number][] = [];
-    for (const x of [-4, -2, 0, 2, 4]) markers.push([x * 3, stageHeight + 0.01, -stageD / 2 + 1]);
-    for (const side of [-1, 1]) for (const idx of [0, 1]) markers.push([side * (stageW / 2 - 2), stageHeight + 0.01, -3 + idx * 6]);
-    for (const x of [-1, 0, 1]) markers.push([x * 8, stageHeight + 0.01, stageD / 2 - 1.5]);
-    return markers;
-  }, [stageW, stageD, stageHeight]);
-
-  useEffect(() => {
-    if (!ringRef.current) return;
-    const dummy = new THREE.Object3D();
-    markerPositions.forEach((pos, i) => {
-      dummy.position.set(...pos);
-      dummy.rotation.set(-Math.PI / 2, 0, 0);
-      dummy.scale.set(1, 1, 1);
-      dummy.updateMatrix();
-      ringRef.current!.setMatrixAt(i, dummy.matrix);
-    });
-    ringRef.current.instanceMatrix.needsUpdate = true;
-  }, [markerPositions]);
-
-  return (
-    <instancedMesh ref={ringRef} args={[undefined, undefined, markerPositions.length]} frustumCulled={false}>
-      <ringGeometry args={[0.3, 0.5, 16]} />
-      <meshBasicMaterial color="#ff6600" transparent opacity={0.4} side={THREE.DoubleSide} />
-    </instancedMesh>
-  );
-}
+// InstancedSFXMarkers removed — orange ground rings were visual noise unrelated to actual pyro positions.
 
 // ═══════════════════════════════════════════════════════════════════════
 // SFXStageEnvironment
@@ -945,7 +915,7 @@ function SFXStageEnvironment() {
         })}
       </group>
 
-      <InstancedSFXMarkers stageW={stageW} stageD={stageD} stageHeight={stageHeight} />
+      {/* InstancedSFXMarkers removed — see definition above */}
 
       {/* ═══ Floating Orb Props — BP_Sphere/M_Orb reference ═══ */}
       {[-8, 0, 8].map((x, i) => (

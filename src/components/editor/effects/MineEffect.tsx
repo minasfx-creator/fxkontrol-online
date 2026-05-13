@@ -16,7 +16,7 @@ import { getChemistryForRendering, autoMatchFormulation } from '@/render_ultra/f
  */
 
 // Particle class boundaries (index ranges)
-const COLUMN_FRAC = 0.20;
+const COLUMN_FRAC = 0.28;
 const SPRAY_FRAC = 0.60; // 20-80%
 const DRIP_FRAC = 0.10;  // 80-90%
 const BOUNCE_FRAC = 0.10; // 90-100% — ground bounce sparks
@@ -99,8 +99,8 @@ export default function MineEffect({
         v[i * 3] = Math.cos(theta) * Math.sin(upAngle) * speed;
         v[i * 3 + 1] = Math.cos(upAngle) * speed + 3;
         v[i * 3 + 2] = Math.sin(theta) * Math.sin(upAngle) * speed;
-        l[i] = 0.3 + Math.random() * 0.3;
-        ps[i] = 0.6;
+        l[i] = 0.18 + Math.random() * 0.25;
+        ps[i] = 0.55;
       } else if (i < Math.floor(count * (COLUMN_FRAC + SPRAY_FRAC))) {
         // Spray particles: wide hemisphere (30-80°), jittered lifetime
         const upAngle = 0.35 + Math.random() * 0.85;
@@ -163,7 +163,7 @@ export default function MineEffect({
     const t = progress * 2.5;
     const GRAV = -9.81;
     const time = clock.getElapsedTime();
-    const envelope = attackReleaseEnvelope(progress, 0.02, 0.85, 2.5);
+    const envelope = attackReleaseEnvelope(progress, 0.015, 0.55, 3.2);
 
     // Wind integration
     const { wind } = useProjectStore.getState();
@@ -183,7 +183,7 @@ export default function MineEffect({
     const fluidDensity = fluidGrid ? readDensityAt(fluidGrid, position[0], position[2]) : 0;
     const smokeBoost = 1 + fluidDensity * 0.3;
 
-    const basePointSize = 0.22 + caliber * 0.05;
+    const basePointSize = 0.18 + caliber * 0.04;
 
     for (let i = 0; i < count; i++) {
       const vx = velocities[i * 3];
@@ -395,13 +395,10 @@ export default function MineEffect({
 
   const screenBlend = useMemo(() => getThreeBlending('screen'), []);
 
-  // Compute launch direction quaternion from heading/pitch
-  const launchRotation = useMemo(() => {
-    const headingRad = -(launchHeading || 0) * Math.PI / 180;
-    const pitchRad = (90 - (launchPitch || 85)) * Math.PI / 180;
-    const euler = new THREE.Euler(pitchRad, headingRad, 0, 'YXZ');
-    return euler;
-  }, [launchHeading, launchPitch]);
+  // Mines are omnidirectional — root group is intentionally NOT rotated.
+  // launchHeading/launchPitch are still accepted in the props for future
+  // selective use (e.g. sutil column tilt ≤10°), but never tip the cloud.
+  void launchHeading; void launchPitch;
 
   // Combustion-modulated muzzle flash
   const muzzleFlashOpacity = useMemo(() => 0.7, []);
@@ -431,11 +428,15 @@ export default function MineEffect({
   `;
 
   return (
-    <group position={position} rotation={launchRotation} renderOrder={50}>
+    <group position={position} renderOrder={50}>
+      {/* launchHeading/launchPitch intentionally NOT applied to the root group:
+          mines are omnidirectional ground bursts (NFPA) — column rises vertical,
+          spray fans hemispherically, drips fall by gravity. Tilting the whole
+          group would tip the ground ring and the entire particle field. */}
       {/* Combustion muzzle flash with flicker */}
       {progress < 0.08 && (
         <mesh position={[0, 0.3, 0]}>
-          <sphereGeometry args={[1.2 + caliber * 0.5 + progress * 20, 16, 16]} />
+          <sphereGeometry args={[0.6 + caliber * 0.3 + progress * 8, 16, 16]} />
           <meshBasicMaterial
             color="#FFFFF0"
             transparent
@@ -453,11 +454,11 @@ export default function MineEffect({
       {/* Ground ring flash */}
       {progress < 0.2 && (
         <mesh position={[0, 0.02, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-          <ringGeometry args={[1, 3 + progress * 30 + caliber * 2, 32]} />
+          <ringGeometry args={[1, 2 + progress * 15 + caliber * 1.2, 32]} />
           <meshBasicMaterial
             color={color}
             transparent
-            opacity={0.12 * (1 - progress / 0.2)}
+            opacity={0.08 * (1 - progress / 0.2)}
             blending={screenBlend.blending}
             blendEquation={screenBlend.blendEquation}
             blendSrc={screenBlend.blendSrc as any}

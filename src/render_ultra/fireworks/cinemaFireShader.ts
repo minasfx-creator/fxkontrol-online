@@ -115,9 +115,9 @@ const FIRE_FRAGMENT = /* glsl */ `
     float coreWhite = smoothstep(0.20, 0.0, vLifeRatio) * core;
     emissive = mix(emissive, vec3(1.15, 1.08, 0.98) * uHDRMultiplier * 1.3, coreWhite * 0.45);
 
-    // ── Ember tail: onset at 55% life for smoother transition ──
-    float emberPhase = smoothstep(0.55, 1.0, vLifeRatio);
-    vec3 emberColor = vec3(0.95, 0.3, 0.05) * intensity * 0.6;
+    // ── Ember tail: smoother onset, calibrated against real shell footage ──
+    float emberPhase = smoothstep(0.62, 1.0, vLifeRatio);
+    vec3 emberColor = vec3(0.95, 0.3, 0.05) * intensity * 0.55;
     emissive = mix(emissive, emberColor, emberPhase * 0.5);
 
     // ── Alpha: life-based with soft edge antialiasing ──
@@ -135,7 +135,7 @@ export interface CinemaFireConfig {
 }
 
 const DEFAULT_FIRE_CONFIG: CinemaFireConfig = {
-  hdrMultiplier: 10.0,          // recalibrated: peak ×10 for bloom threshold 1.2
+  hdrMultiplier: 7.5,           // recalibrated v3: 10.0 saturava bloom (threshold 1.2) deixando branco-leitoso
   flickerIntensity: 0.28,       // slightly higher for 7-harmonic richness
   thermalCoupling: 1.5,         // gradual cooling curve
 };
