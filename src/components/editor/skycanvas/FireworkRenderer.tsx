@@ -1580,6 +1580,9 @@ export function TimelineEffects() {
 
         const minePresetId = (effect as any).presetId as string | undefined ?? resolveMinePresetId((effect as any).name || effect.id);
         const cakePresetId = (effect as any).presetId as string | undefined ?? resolveCakeShotPresetId((effect as any).name || effect.id);
+        const shellPresetId = (effect as any).presetId as string | undefined
+          ?? resolveShellPresetId((effect as any).name)
+          ?? (effect.id.startsWith('finale-shell-') ? effect.id.slice('finale-shell-'.length) : undefined);
 
         if (pt === 'mine') return <MineEffect key={item.id} position={pos} color={effect.color} progress={progress} caliber={caliber} angleOffset={vdlAngle} heightMeters={effect.heightMeters} formulationId={effFormulationId} launchHeading={launchHeading} launchPitch={launchPitch} presetId={minePresetId} />;
         if (pt === 'candle') return <RomanCandleEffect key={item.id} position={pos} color={effect.color} progress={progress} shotCount={effect.shotCount || 8} caliber={caliber} angleOffset={vdlAngle} formulationId={effFormulationId} launchHeading={launchHeading} launchPitch={launchPitch} />;
