@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { useProjectStore } from '@/store/useProjectStore';
 import { EFFECT_LIBRARY, type Effect } from '@/data/effectLibrary';
 import { FINALE_SHELL_PRESET_EFFECTS } from '@/data/finaleShellPresetEffects';
+import { FWE_UPLOADED_EFFECTS } from '@/data/fweUploadedEffects';
 import { cn } from '@/lib/utils';
 import { parseVDL, vdlToEffect } from '@/lib/vdlParser';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -481,7 +482,7 @@ export default function EffectLibrary() {
   const fullLibrary = useMemo<Effect[]>(() => {
     const seen = new Set<string>();
     const merged: Effect[] = [];
-    for (const e of [...EFFECT_LIBRARY, ...FINALE_SHELL_PRESET_EFFECTS]) {
+    for (const e of [...EFFECT_LIBRARY, ...FINALE_SHELL_PRESET_EFFECTS, ...FWE_UPLOADED_EFFECTS]) {
       if (seen.has(e.id)) continue;
       seen.add(e.id);
       merged.push(e);
