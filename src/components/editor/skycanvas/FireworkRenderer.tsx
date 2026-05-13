@@ -7,7 +7,13 @@ import { useFrame, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
 import { useProjectStore } from '@/store/useProjectStore';
 import { EFFECT_LIBRARY } from '@/data/effectLibrary';
-import { resolveMinePresetId, resolveCakeShotPresetId } from '@/data/finalePresets';
+import {
+  resolveMinePresetId,
+  resolveCakeShotPresetId,
+  resolveShellPresetId,
+  FINALE_SHELL_PRESETS,
+  type ShellPreset,
+} from '@/data/finalePresets';
 import { useSceneStore } from '@/store/useSceneStore';
 import { useLiveSfxStore } from '@/store/useLiveSfxStore';
 import { useLOD } from '@/hooks/useLOD';
@@ -136,14 +142,193 @@ function _sharedStarMaterial(): THREE.ShaderMaterial {
 }
 
 // ═══════════════════════════════════════════════════════════════════════
+// buildPresetVelocities — Geometry-aware initializer for FWsim ShellPresets
+// (rev6 geometries: ring/double-ring/saturn-ring/heart/smiley/bow-tie/
+//  cluster-diadem/jellyfish/half-half). Returns the same shape as the
+// generic velocity initializer so the per-frame physics loop is reused.
+// ═══════════════════════════════════════════════════════════════════════
+function buildPresetVelocities(
+  STAR_COUNT: number,
+  preset: ShellPreset,
+  breakSpeed: number,
+  starLife: number,
+) {
+  const v = new Float32Array(STAR_COUNT * 3);
+  const l = new Float32Array(STAR_COUNT);
+  const tp = new Float32Array(STAR_COUNT);
+  const sparkle = new Float32Array(STAR_COUNT);
+  // Map FWsim Speed (units ≈ 0.5..1.0 m/s in their physics) onto our break-speed
+  // scale so every preset stays visually proportional to caliber.
+  const speedScale = breakSpeed * Math.max(0.4, preset.speedMS);
+  const sigma = Math.max(0, preset.sigmaRad);
+  const lifeAvg = (preset.lifeMin + preset.lifeMax) * 0.5;
+  const lifeSpread = (preset.lifeMax - preset.lifeMin) * 0.5;
+
+  for (let i = 0; i < STAR_COUNT; i++) {
+    tp[i] = Math.random() * Math.PI * 2;
+    sparkle[i] = Math.random() * 999 + i;
+    let vx = 0, vy = 0, vz = 0;
+    let life = (lifeAvg + (Math.random() * 2 - 1) * lifeSpread) / Math.max(0.6, lifeAvg) * starLife;
+
+    switch (preset.geometry) {
+      case 'ring': {
+        // Saturn-ring: 70% equatorial ring + 30% inner spherical core.
+        // Double-ring: split equatorial into 2 rings rotated ~35° around X.
+        const isDouble = preset.id === 'double-ring';
+        const isSaturn = preset.id === 'saturn-ring';
+        const ringFrac = isSaturn ? 0.7 : 1.0;
+        const isRingStar = (i / STAR_COUNT) < ringFrac;
+        if (isRingStar) {
+          const ringIdx = isDouble ? (i % 2) : 0;
+          const tilt = isDouble ? (ringIdx === 0 ? -0.31 : 0.31) : 0;
+          const angle = (i / Math.max(1, Math.round(STAR_COUNT * ringFrac))) * Math.PI * 2;
+          const jitter = (Math.random() - 0.5) * (sigma + 0.04);
+          const cs = Math.cos(angle + jitter);
+          const sn = Math.sin(angle + jitter);
+          const spd = speedScale * (0.92 + Math.random() * 0.08);
+          vx = cs * spd;
+          vy = sn * Math.sin(tilt) * spd + (Math.random() - 0.5) * spd * 0.04;
+          vz = sn * Math.cos(tilt) * spd;
+        } else {
+          // Saturn core: small spherical burst
+          const theta = Math.random() * Math.PI * 2;
+          const phi = Math.acos(2 * Math.random() - 1);
+          const spd = speedScale * 0.55 * (0.6 + Math.random() * 0.4);
+          vx = Math.sin(phi) * Math.cos(theta) * spd;
+          vy = Math.cos(phi) * spd;
+          vz = Math.sin(phi) * Math.sin(theta) * spd;
+        }
+        break;
+      }
+      case 'heart': {
+        // Heart curve in the X-Y plane (camera-facing).
+        const t_h = (i / STAR_COUNT) * Math.PI * 2 + (Math.random() - 0.5) * sigma;
+        const hx = 16 * Math.pow(Math.sin(t_h), 3);
+        const hy = 13 * Math.cos(t_h) - 5 * Math.cos(2 * t_h) - 2 * Math.cos(3 * t_h) - Math.cos(4 * t_h);
+        const scale_h = speedScale * 0.055;
+        vx = hx * scale_h + (Math.random() - 0.5) * speedScale * 0.05;
+        vy = hy * scale_h + (Math.random() - 0.5) * speedScale * 0.05;
+        vz = (Math.random() - 0.5) * speedScale * 0.06;
+        break;
+      }
+      case 'custom-shape': {
+        // Smiley: two eyes (top-left + top-right discs) + a smile arc (lower).
+        const seg = i % 5;
+        const r = (Math.random() - 0.5) * 0.18;
+        const radius = speedScale * 0.95;
+        if (seg === 0 || seg === 1) {
+          // Eyes — small filled discs at top
+          const eyeX = (seg === 0 ? -0.45 : 0.45) * radius;
+          const eyeY = 0.55 * radius;
+          const er = (Math.random() * 0.18 + 0.04) * radius;
+          const ang = Math.random() * Math.PI * 2;
+          vx = eyeX + Math.cos(ang) * er;
+          vy = eyeY + Math.sin(ang) * er;
+        } else {
+          // Smile arc — open downward, ±60°
+          const a = -Math.PI / 6 - (Math.random() * (Math.PI * 2 / 3));
+          const sr = (0.7 + Math.random() * 0.05) * radius;
+          vx = Math.cos(a) * sr + r;
+          vy = Math.sin(a) * sr - 0.05 * radius;
+        }
+        vz = (Math.random() - 0.5) * speedScale * 0.08;
+        break;
+      }
+      case 'hemisphere': {
+        // Half-Half: upper hemisphere split by sign of vx so the
+        // color loop can paint primary on +X / secondary on −X.
+        const half = i < STAR_COUNT / 2 ? 1 : -1;
+        const theta = Math.random() * Math.PI - Math.PI / 2; // -π/2..π/2
+        const phi = Math.acos(Math.random()); // 0..π/2 (upper)
+        const sx = Math.sin(phi) * Math.cos(theta) * half;
+        const sy = Math.cos(phi);
+        const sz = Math.sin(phi) * Math.sin(theta);
+        const spd = speedScale * (0.85 + Math.random() * 0.15);
+        vx = sx * spd + sigma * (Math.random() - 0.5);
+        vy = sy * spd * 0.95 + 0.4;
+        vz = sz * spd + sigma * (Math.random() - 0.5);
+        break;
+      }
+      case 'inverted-hemisphere': {
+        // Bow-Tie / Jellyfish: downward / outward inverted hemisphere.
+        const theta = Math.random() * Math.PI * 2;
+        const phi = Math.acos(Math.random()); // upper, then flip
+        const isBow = preset.id === 'bow-tie';
+        const sx = Math.sin(phi) * Math.cos(theta);
+        const sy = -Math.cos(phi); // inverted
+        const sz = Math.sin(phi) * Math.sin(theta);
+        const spd = speedScale * (0.9 + Math.random() * 0.1);
+        if (isBow) {
+          // Bow-tie: tighten azimuth to ±25° around two opposing axes.
+          const lobe = (i % 2) === 0 ? 0 : Math.PI;
+          const tightTheta = lobe + (Math.random() - 0.5) * 0.45;
+          vx = Math.cos(tightTheta) * spd * 0.95;
+          vy = -Math.abs(Math.sin(phi)) * spd * 0.55;
+          vz = Math.sin(tightTheta) * spd * 0.18 + (Math.random() - 0.5) * 0.2;
+        } else {
+          vx = sx * spd; vy = sy * spd; vz = sz * spd;
+        }
+        break;
+      }
+      case 'sphere':
+      default: {
+        // cluster-diadem (invisible body) and any unspecified geometry
+        const theta = Math.random() * Math.PI * 2;
+        const phi = Math.acos(2 * Math.random() - 1);
+        const spd = speedScale * (0.85 + Math.random() * 0.15);
+        vx = Math.sin(phi) * Math.cos(theta) * spd + sigma * (Math.random() - 0.5);
+        vy = Math.cos(phi) * spd;
+        vz = Math.sin(phi) * Math.sin(theta) * spd + sigma * (Math.random() - 0.5);
+        break;
+      }
+    }
+
+    v[i * 3] = vx; v[i * 3 + 1] = vy; v[i * 3 + 2] = vz;
+    l[i] = Math.max(0.2, life);
+  }
+  return { velocities: v, lifetimes: l, twinklePhases: tp, sparkleSeeds: sparkle };
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// AscentFlash — rev6 AscentEffect renderer (cluster-diadem golden
+// expanding cone). Deterministic, no per-frame allocations.
+// ═══════════════════════════════════════════════════════════════════════
+function AscentFlash({ progress, colorHex, width, lifeS, caliber }: {
+  progress: number; colorHex: string; width: number; lifeS: number; caliber: number;
+}) {
+  // Visible during the first slice of the burst; fades out over `lifeS` (preset).
+  const burstWindow = Math.max(0.04, Math.min(0.35, lifeS * 0.6));
+  if (progress > burstWindow) return null;
+  const t = progress / burstWindow; // 0..1
+  const ease = 1 - Math.pow(1 - t, 3);
+  const radius = (0.8 + caliber * 0.35) * width * (0.4 + ease * 1.3);
+  const opacity = 0.85 * Math.pow(1 - t, 1.6);
+  return (
+    <group>
+      {/* Halo sphere */}
+      <mesh renderOrder={101}>
+        <sphereGeometry args={[radius, 14, 14]} />
+        <meshBasicMaterial color={colorHex} transparent opacity={opacity} blending={THREE.AdditiveBlending} depthWrite={false} depthTest={true} />
+      </mesh>
+      {/* Bright core */}
+      <mesh renderOrder={102}>
+        <sphereGeometry args={[radius * 0.45, 10, 10]} />
+        <meshBasicMaterial color="#FFEFCB" transparent opacity={Math.min(1, opacity * 1.8)} blending={THREE.AdditiveBlending} depthWrite={false} depthTest={true} />
+      </mesh>
+    </group>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════════════
 // FireworkBurst — Niagara-inspired GPU particle system
 // ═══════════════════════════════════════════════════════════════════════
-export const FireworkBurst = React.forwardRef<THREE.Group, { 
+export const FireworkBurst = React.forwardRef<THREE.Group, {
   position: [number, number, number]; color: string; progress: number; 
   caliber?: number; pattern?: string;
   angleOffset?: number; trailType?: string; noTrail?: boolean;
   secondaryColor?: string; colorTransition?: string;
   hasPistil?: boolean; pistilColor?: string;
+  presetId?: string;
   niagaraProfile?: {
     starCount: number; lifetime: number; velocity: number;
     drag: number; gravityScale: number; sparkleRate: number;
@@ -152,7 +337,7 @@ export const FireworkBurst = React.forwardRef<THREE.Group, {
 }>(function FireworkBurst({ 
   position, color, progress, caliber = 4, pattern = 'peony',
   angleOffset = 0, trailType, noTrail, secondaryColor, colorTransition,
-  hasPistil, pistilColor, niagaraProfile,
+  hasPistil, pistilColor, niagaraProfile, presetId,
 }, _ref) {
   const pointsRef = useRef<THREE.Points>(null);
   const trailRef = useRef<THREE.LineSegments>(null);
@@ -164,12 +349,27 @@ export const FireworkBurst = React.forwardRef<THREE.Group, {
   const isMobileViewport = typeof window !== 'undefined' && window.innerWidth < 768;
   const { particleDensity, hdrMultiplier, effectBrightness, gpuParticlePhysics, frustumCullingBursts } = useSceneStore(st => st.settings);
 
+  // ── Finale shell-preset (rev6 geometries) ──────────────────────────
+  const shellPreset = useMemo<ShellPreset | undefined>(
+    () => (presetId ? FINALE_SHELL_PRESETS[presetId] : undefined),
+    [presetId],
+  );
+  const isClusterDiadem = shellPreset?.id === 'cluster-diadem';
+
   const STAR_COUNT = useMemo(() => {
     const densityScale = THREE.MathUtils.clamp(particleDensity, 0.5, 2.0);
+    const cap = isMobileViewport ? 200 : 420;
+    if (shellPreset) {
+      // Honour the preset's authored star count; ensure a minimum so even
+      // ultra-low presets (jellyfish=6) still read on screen.
+      const min = shellPreset.geometry === 'sphere' ? 16 : 28;
+      const scaled = Math.round(shellPreset.count * lod.particleMultiplier * densityScale * 1.4);
+      return Math.max(min, Math.min(cap, scaled));
+    }
     const baseCount = (60 + caliber * caliber * 10) * lod.particleMultiplier * densityScale;
-    const cap = isMobileViewport ? 120 : 320;
-    return Math.max(24, Math.min(cap, Math.round(baseCount)));
-  }, [caliber, lod.particleMultiplier, isMobileViewport, particleDensity]);
+    const cap2 = isMobileViewport ? 120 : 320;
+    return Math.max(24, Math.min(cap2, Math.round(baseCount)));
+  }, [caliber, lod.particleMultiplier, isMobileViewport, particleDensity, shellPreset]);
   const TRAIL_LENGTH = useMemo(() => {
     const trailCap = isMobileViewport ? 3 : 6;
     const densityTrail = particleDensity >= 1 ? 1 : 0.8;
@@ -184,6 +384,10 @@ export const FireworkBurst = React.forwardRef<THREE.Group, {
   const starLife = useMemo(() => {
     const baseLife = caliber <= 3 ? 1.6 : caliber <= 4 ? 2.2 : caliber <= 5 ? 2.8
       : caliber <= 6 ? 3.5 : caliber <= 8 ? 4.5 : caliber <= 10 ? 6.0 : 7.5;
+    if (shellPreset) {
+      // Use the preset's own MaximumLifetime; tail/decay margin handled outside.
+      return Math.max(0.6, shellPreset.lifeMax);
+    }
     if (pattern === 'willow' || pattern === 'kamuro') return baseLife * 3.0;
     if (pattern === 'palm' || pattern === 'brocade') return baseLife * 1.6;
     if (pattern === 'chrysanthemum') return baseLife * 1.2;
@@ -199,13 +403,16 @@ export const FireworkBurst = React.forwardRef<THREE.Group, {
     if (pattern === 'coconut_tree') return baseLife * 2.8;
     if (pattern === 'spider_web') return baseLife * 1.6;
     return baseLife;
-  }, [caliber, pattern]);
+  }, [caliber, pattern, shellPreset]);
   
   const baseColor = useMemo(() => new THREE.Color(color), [color]);
   const secondaryBaseColor = useMemo(() => secondaryColor ? new THREE.Color(secondaryColor) : null, [secondaryColor]);
   const compound = useMemo(() => hexToCompound(color), [color]);
   
   const { velocities, lifetimes, twinklePhases, sparkleSeeds } = useMemo(() => {
+    if (shellPreset) {
+      return buildPresetVelocities(STAR_COUNT, shellPreset, breakSpeed, starLife);
+    }
     const v = new Float32Array(STAR_COUNT * 3);
     const l = new Float32Array(STAR_COUNT);
     const tp = new Float32Array(STAR_COUNT);
@@ -397,7 +604,7 @@ export const FireworkBurst = React.forwardRef<THREE.Group, {
     }
 
     return { velocities: v, lifetimes: l, twinklePhases: tp, sparkleSeeds: sparkle };
-  }, [STAR_COUNT, breakSpeed, starLife, pattern]);
+  }, [STAR_COUNT, breakSpeed, starLife, pattern, shellPreset]);
 
   // ── Pistil velocities (25% star count, 40% speed, inner burst) ──
   const PISTIL_COUNT = hasPistil ? Math.max(8, Math.round(STAR_COUNT * 0.25)) : 0;
@@ -706,7 +913,10 @@ export const FireworkBurst = React.forwardRef<THREE.Group, {
       const userFade = 1 - starAge;
       
       let blendR = baseColor.r, blendG = baseColor.g, blendB = baseColor.b;
-      if (secondaryBaseColor && colorTransition) {
+      // Half-Half preset: paint the +X hemisphere with primary, the −X with secondary.
+      if (shellPreset?.id === 'half-half' && secondaryBaseColor && i >= STAR_COUNT / 2) {
+        blendR = secondaryBaseColor.r; blendG = secondaryBaseColor.g; blendB = secondaryBaseColor.b;
+      } else if (secondaryBaseColor && colorTransition) {
         if (colorTransition === 'to') {
           blendR = THREE.MathUtils.lerp(baseColor.r, secondaryBaseColor.r, starAge);
           blendG = THREE.MathUtils.lerp(baseColor.g, secondaryBaseColor.g, starAge);
@@ -722,10 +932,15 @@ export const FireworkBurst = React.forwardRef<THREE.Group, {
           }
         }
       }
+      // Cluster-Diadem: FWsim "Invisible" body — suppress the spherical
+      // placeholder so only the AscentEffect cone reads on screen.
+      if (isClusterDiadem) {
+        blendR = 0; blendG = 0; blendB = 0;
+      }
       
-      const r = THREE.MathUtils.lerp(blendR * userFade, chemR, 0.7);
-      const g = THREE.MathUtils.lerp(blendG * userFade, chemG, 0.7);
-      const b = THREE.MathUtils.lerp(blendB * userFade, chemB, 0.7);
+      const r = isClusterDiadem ? 0 : THREE.MathUtils.lerp(blendR * userFade, chemR, 0.7);
+      const g = isClusterDiadem ? 0 : THREE.MathUtils.lerp(blendG * userFade, chemG, 0.7);
+      const b = isClusterDiadem ? 0 : THREE.MathUtils.lerp(blendB * userFade, chemB, 0.7);
       const brightnessScale = THREE.MathUtils.clamp(effectBrightness, 0.6, 1.8);
       
       const niagaraGlow = niagaraProfile ? niagaraProfile.glowIntensity / 2.0 : 1.0;
@@ -747,7 +962,7 @@ export const FireworkBurst = React.forwardRef<THREE.Group, {
       const sizeOverLife = starAge < 0.05 
         ? 0.6 + starAge * 8
         : starAge < 0.4 ? 1.0 : 1.0 - (starAge - 0.4) / 0.6 * 0.7;
-      sizes[i] = baseSize * Math.max(0.1, sizeOverLife) * (1 + flashIntensity * 0.8);
+      sizes[i] = isClusterDiadem ? 0 : baseSize * Math.max(0.1, sizeOverLife) * (1 + flashIntensity * 0.8);
       lives[i] = starAge;
 
       for (let s = 0; s < TRAIL_LENGTH; s++) {
@@ -1029,15 +1244,26 @@ export const FireworkBurst = React.forwardRef<THREE.Group, {
         </points>
       )}
       
-      {/* Core flash — bright white, 80ms */}
-      {progress < 0.08 && (
+      {/* AscentEffect (rev6) — Cluster Diadem golden flash. */}
+      {shellPreset?.ascent && (
+        <AscentFlash
+          progress={progress}
+          colorHex={shellPreset.ascent.colorHex}
+          width={shellPreset.ascent.width}
+          lifeS={shellPreset.ascent.lifeS}
+          caliber={caliber}
+        />
+      )}
+
+      {/* Core flash — bright white, 80ms (suppressed for invisible-body presets) */}
+      {!isClusterDiadem && progress < 0.08 && (
         <mesh renderOrder={100}>
           <sphereGeometry args={[flashSize * 0.3 * (1 + progress * 15), 8, 8]} />
           <meshBasicMaterial color="#FFFDF0" transparent opacity={0.7 * (1 - progress / 0.08)} blending={THREE.AdditiveBlending} depthWrite={false} depthTest={true} />
         </mesh>
       )}
       {/* Halo — color-synced, 150ms */}
-      {progress < 0.15 && (
+      {!isClusterDiadem && progress < 0.15 && (
         <mesh renderOrder={99}>
           <sphereGeometry args={[flashSize * (1 + progress * 10), 8, 8]} />
           <meshBasicMaterial color={color} transparent opacity={0.35 * Math.pow(1 - progress / 0.15, 2)} blending={THREE.AdditiveBlending} depthWrite={false} depthTest={true} />
@@ -1354,6 +1580,9 @@ export function TimelineEffects() {
 
         const minePresetId = (effect as any).presetId as string | undefined ?? resolveMinePresetId((effect as any).name || effect.id);
         const cakePresetId = (effect as any).presetId as string | undefined ?? resolveCakeShotPresetId((effect as any).name || effect.id);
+        const shellPresetId = (effect as any).presetId as string | undefined
+          ?? resolveShellPresetId((effect as any).name)
+          ?? (effect.id.startsWith('finale-shell-') ? effect.id.slice('finale-shell-'.length) : undefined);
 
         if (pt === 'mine') return <MineEffect key={item.id} position={pos} color={effect.color} progress={progress} caliber={caliber} angleOffset={vdlAngle} heightMeters={effect.heightMeters} formulationId={effFormulationId} launchHeading={launchHeading} launchPitch={launchPitch} presetId={minePresetId} />;
         if (pt === 'candle') return <RomanCandleEffect key={item.id} position={pos} color={effect.color} progress={progress} shotCount={effect.shotCount || 8} caliber={caliber} angleOffset={vdlAngle} formulationId={effFormulationId} launchHeading={launchHeading} launchPitch={launchPitch} />;
@@ -1388,6 +1617,7 @@ export function TimelineEffects() {
                 pattern={effect.pattern || 'peony'} angleOffset={vdlAngle} trailType={vdlTrailType}
                 noTrail={vdlNoTrail} secondaryColor={vdlSecondaryColor} colorTransition={vdlColorTransition}
                 hasPistil={vdlHasPistil} pistilColor={vdlPistilColor} niagaraProfile={effect.niagaraProfile}
+                presetId={shellPresetId}
               />
             )}
           </group>
@@ -1410,6 +1640,7 @@ export function TimelineEffects() {
             hasPistil={vdlHasPistil}
             pistilColor={vdlPistilColor}
             niagaraProfile={effect.niagaraProfile}
+            presetId={shellPresetId}
           />
         );
         return <LightPoint key={item.id} position={pos} color={effect.color} />;
