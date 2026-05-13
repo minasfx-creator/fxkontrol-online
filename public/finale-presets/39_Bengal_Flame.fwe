@@ -1,0 +1,37 @@
+<?xml version="1.0"?>
+<FireworkEffect xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <Children>
+    <BaseEffectNode xsi:type="Bengal">
+      <Children />
+      <ID>0</ID>
+      <AllowRenaming>false</AllowRenaming>
+      <Duration>30</Duration>
+      <Strobe>false</Strobe>
+      <StrobeFrequency>0.4</StrobeFrequency>
+      <Color>
+        <CustomR>0</CustomR>
+        <CustomG>0</CustomG>
+        <CustomB>0</CustomB>
+        <Color>Mint</Color>
+      </Color>
+    </BaseEffectNode>
+  </Children>
+  <SimulationVersion>0</SimulationVersion>
+  <Protected>false</Protected>
+  <AutotagOverrideQuantity>0</AutotagOverrideQuantity>
+  <AutotagOverrideCaliber>0</AutotagOverrideCaliber>
+  <AutotagOverrideFurther />
+  <Identifier>
+    <Name>39 Bengal Flame</Name>
+    <Author>Marcus Athmer (Effekt-Vorschau)</Author>
+  </Identifier>
+  <Metadata>
+    <Pieces />
+  </Metadata>
+  <AuthorSoftwareVersion>
+    <Major>3</Major>
+    <Minor>3</Minor>
+    <Build>0</Build>
+    <Revision>26</Revision>
+  </AuthorSoftwareVersion>
+</FireworkEffect>
