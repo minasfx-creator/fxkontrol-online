@@ -1,68 +1,69 @@
-# Plano rev4 — Mine + Comet + Shell presets canônicos
+# Plano rev5 — Quarter-Sphere shells + Single-Shot Mine/Comet/Cake presets
 
-Consolida no mesmo `src/data/finalePresets.ts` os 7 shells reais extraídos dos FWE enviados, mantendo os mines (rev2) e comets (rev3) já planejados.
+Estende `src/data/finalePresets.ts` (já criado na rev4 com 7 shells) com 9 novos presets extraídos dos FWE recém-enviados, incluindo a primeira família **Mine** e a primeira família **Cake** canônicas.
 
 ## Parâmetros canônicos extraídos (FWsim Pro)
 
-| Preset | Stars Count | Speed | Sigma | Star Type / Mass | Lifetime (s) | FadeRatios A,B,C,D | Tails | Cor | Strobe |
-|---|---|---|---|---|---|---|---|---|---|
-| **peony** (01) | 110 | 0.8 | 0.017 | XXSmall / 0.7 | 1.2–1.6 | 0.077, 0.420, 0.891, 0.996 | — | Red (override) | — |
-| **peony-pistil** (02) | 110 + pistil | 0.8 / pistil 0.3 | 0.017 | XXSmall / 0.7 | 1.2–1.6 | mesmo peony | — | Outer Orange + pistil | — |
-| **wave** (03) | ~80 | 0.7 | 0.05 (anel) | XSmall / 0.6 | 0.8–1.2 | (0,0.124,0.63,1) | Silver Sparks D250 W0.6 Life0.05 strobe 2.7Hz | Spark | sim |
-| **chrysanthemum** (04) | ~120 | 0.9 | 0.025 | XSmall / 0.6 | 1.5–2.0 | (0.46,0.71,0.71,1) | Brocade #2: D250 W0.4 Life2.6 + D40 (gold→amber 254/176/0) | Custom (51,26,0) gold | — |
-| **dahlia** (05) | 20 | 0.6 | 0.024 | Normal / 0.8 | 2.0–2.5 | 0.064, 0.497, 0.824, 0.999 | — | LightPink (override) | — |
-| **palm** (06) | ~30 (semi) | 1.0 vert / 0.05 lateral | Normal / 1.0 | 1.6–2.2 | (0.147,0.852,0.853,1) | Gold #2: D400 W0.6 Life0.8 (255,226,174) + D100 W0.4 | Custom warm gold | — |
-| **crown** (07) | ~40 | 1.1 | 0.04 | Small / 0.7 | 1.4–1.8 | (0.178,0.780,0.781,1) | Gold Ferrotitanium #2: D400 W0.5 EmitEnd 0.9 (120,70,29) + D200 W0.1 ferrotitanium (90…) | Custom amber | — |
+### Shells novos (Distribution variants)
 
-(Counts marcados ~ serão refinados na leitura completa dos FWE; valores acima já cobrem a janela visível do upload — leitura final na implementação.)
+| ID | Source | Stars | Distribution | Speed | Sigma | Star/Mass | Life (s) | FadeABCD | Tails / cor |
+|---|---|---|---|---|---|---|---|---|---|
+| `quarter-4-4` | 34_4-4 | 60 | **QuarterSphere** (X-rot 2π) | 0.9 | 0 | XXSmall/0.7 | 1.2–1.6 | 0.064, 0.324, 0.781, 0.996 | Red, sem tail |
+| `ghost-shell` | 34a_Ghost_Shell | TBD | Spherical (provável) | TBD | TBD | TBD | TBD | TBD | Gold Sparks D200 W2 Life0.1 + amber D100 W0.4 EmitEnd 0.8 |
+| `hybrid-special` | 35_Hybrids_Special | TBD | Spherical | TBD | TBD | TBD | TBD | TBD | mesma base "Gold Sparks" do ghost + camadas extras (783 linhas, multi-layer) |
+
+### Mines novos (Cake/single-shot, Mine node)
+
+| ID | Source | Tail principal | Strobe | Cor | Notas |
+|---|---|---|---|---|---|
+| `single-mine-gold-glitter` | 40 | D5 W1 Life1.34 σ0.89 size0.5 | **29.4 Hz** | (254,224,184) warm gold | Glitter #3 |
+| `single-comet-silver-glitter` | 41 | D17 W0.5 Life0.76 σ0.68 size0.6 | 7.92 Hz | White + secundário (72,…) | Mine node + comet head Silver #4 |
+| `single-comet-mine-gold` | 42 | D9 W0.3 Life0.21 σ1.14 size0.3 | — | (149,74,0) deep gold | 1034 linhas — múltiplos layers Gold Sparks #3 |
+
+### Cake-Shells (single-shot dentro de Cake node)
+
+| ID | Source | Tail | Cor | Notas |
+|---|---|---|---|---|
+| `cake-shell-silver-titanium` | 43 | D250 W0.8 Life0.7 size0.5 fade(0,0,0.447,1) | Spark | 3577 linhas — Silver Titanium |
+| `cake-mine-shell-gold` | 44 | D9 W0.3 Life0.21 size0.3 (=Gold Sparks #3) | (149,74,0) | mine→shell hybrid 1968 lin |
+| `cake-hybrid-coal-gold` | 45 | D300 W0.3 Life0.6 σ0.7 size0.3 fade(0,0.5,0.501,1) | (55,28,0) coal gold | Coal Gold #2 |
+
+(`TBD` = preencho na implementação via leitura completa dos FWE — janela truncada não cobre tudo).
 
 ## Mudanças
 
-### 1. `src/data/finalePresets.ts` (novo, único)
-- `FinalePresetKind = 'mine' | 'comet' | 'shell'`
-- `ShellPreset`: `count, speedMS, sigmaRad, starType ('XXSmall'|'XSmall'|'Normal'|'Small'|'Large'), mass, lifeMin, lifeMax, fadeABCD: [number,number,number,number], colorHex, pistil?: { count, speedMS, colorHex }, tails?: TailLayer[], geometry?: 'sphere'|'ring'|'palm-semi'|'crown-asym'`
-- `TailLayer`: `densityHz, width, lifeS, lifeSigma, sizeFactor, colorHex, strobeHz?, emitStart, emitEnd, fadeABCD, crackle?`
-- `FINALE_SHELL_PRESETS`: 7 entradas acima.
+### 1. `src/data/finalePresets.ts`
+- Estender enum `ShellGeometry` com `'quarter-sphere'`.
+- Adicionar 3 entradas em `FINALE_SHELL_PRESETS` (`quarter-4-4`, `ghost-shell`, `hybrid-special`).
+- Criar `MinePreset` interface + `FINALE_MINE_PRESETS` record com 3 entradas (`single-mine-gold-glitter`, `single-comet-silver-glitter`, `single-comet-mine-gold`). Reusa `TailLayer`.
+- Criar `CakeShotPreset` interface + `FINALE_CAKE_SHOT_PRESETS` record com 3 entradas (`cake-shell-silver-titanium`, `cake-mine-shell-gold`, `cake-hybrid-coal-gold`). Cada cake-shot tem `wrappedKind: 'shell' | 'mine'` + sub-preset embutido.
+- Estender `resolveShellPresetId()` para reconhecer "quarter", "ghost", "hybrid" / "ghost shell" / "hybrid special".
+- Novos helpers: `resolveMinePresetId(raw)`, `resolveCakeShotPresetId(raw)`, `resolveMinePresetProps(id)`, `resolveCakeShotPresetProps(id)`.
+- Novo helper único `listAllPresetIds(): { shells, mines, cakes }`.
 
-### 2. `RealisticFirework.tsx` / `ShellBurstRenderer.tsx`
-- Aceitar `presetId?: string`. Quando setado, ler `FINALE_SHELL_PRESETS[presetId]` em vez de heurística atual.
-- `geometry`:
-  - `sphere` — padrão Peony/Dahlia/Chrysanthemum
-  - `ring` — Wave (distribuição planar XZ + sigma vertical pequeno)
-  - `palm-semi` — Palm (hemisfério superior + tronco vertical com tail longo)
-  - `crown-asym` — Crown (hemisfério com queda gravitacional dominante, EmitEnd 0.9)
-- Pistil renderizado como sub-burst central com `pistil.count/speed/colorHex`.
-- Tails passados ao mesmo motor 4-layer descrito em rev3 (comet).
+### 2. Test guard
+- Estender `src/data/__tests__/finalePresets.shell.spec.ts`:
+  - Bloco "Quarter-sphere shells" valida `quarter-4-4` count 60, speed 0.9, sigma 0, FadeABCD exato.
+  - Bloco "FINALE_MINE_PRESETS" valida glitter strobe 29.4 Hz, life 1.34, color (254,224,184).
+  - Bloco "FINALE_CAKE_SHOT_PRESETS" valida wrappedKind + sub-preset.
+  - Resolver: `resolveMinePresetId('Gold Glitter mine')` → `single-mine-gold-glitter` etc.
 
-### 3. `cinemaFireShader.ts`
-- Já recebe `[A,B,C,D]` envelope + strobe per-particle (rev2). Sem mudança extra.
-
-### 4. `FireworkRenderer.tsx`
-- Estender `resolvePresetId()` para mapear nomes VDL/Effect → shell preset:
-  - "peony" → peony; "peony pistil" / "pistil" → peony-pistil
-  - "wave" / "ring" → wave
-  - "chrysanthemum" / "brocade" / "kamuro" → chrysanthemum
-  - "dahlia" → dahlia
-  - "palm" → palm
-  - "crown" → crown
-  - fallback: mantém heurística atual (efeitos não catalogados não regridem).
-
-### 5. `index.ts`
-- Re-exportar `FinalePresetKind`, `ShellPreset`, `MinePreset`, `CometPreset`, `FINALE_SHELL_PRESETS`, `FINALE_MINE_PRESETS`, `FINALE_COMET_PRESETS`.
+### 3. Renderer wiring (rev6 — não nesta rodada)
+- `MineEffect.tsx` / `CakeEffect.tsx` ainda **não** consumirão `presetId`. Esta rev é só dados + guard. A integração visual fica para rev6 quando os renderers forem refatorados (igual ao que rev4 fez para shells: dados primeiro, render depois).
 
 ## Não muda
 
 - Safety / workMode / uiCommandGateway / CommandBus / FieldBus
-- WebGPU 10/11 unified compute
-- Hardware (FXK16/FireOne/DMX/etc.)
-- Outros emitters (gerb/waterfall/bengal/laser/drone)
-- VDL color pipeline (já LED-accurate)
+- WebGPU / GPGPU
+- Hardware (FXK16 / FireOne / DMX / etc.)
+- Renderers (`ShellBurstRenderer`, `MineEffect`, `CakeEffect`, `CometEffect`) — só consumirão na rev6
+- Outros emitters (gerb / waterfall / bengal / laser / drone)
 
 ## Verificação
 
-- `__tests__/finalePresets.shell.spec.ts`: cada preset retorna `count/speed/sigma/fade/tails` exatos do FWE.
-- Side-by-side visual em `/dev/effects-libraries`: 6 mines + 4 comets + 7 shells × screenshot FWsim Pro.
-- Performance: render dos 7 shells em ≤200ms cada na janela 1067×672 (viewport atual).
-- Zero regressão em 1263+ tests existentes.
+- `bunx vitest run src/data/__tests__/finalePresets.shell.spec.ts` — 100% passa (já passa hoje pelos 7 shells; +3 blocos novos).
+- Type-check verde no build harness.
+- `listAllPresetIds()` retorna 10 shells + 3 mines + 3 cakes.
+- Zero alteração visual no preview (nenhum renderer foi tocado).
 
 Aprovar para implementar?

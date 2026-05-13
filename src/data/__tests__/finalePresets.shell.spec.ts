@@ -1,9 +1,18 @@
 import { describe, it, expect } from 'vitest';
 import {
   FINALE_SHELL_PRESETS,
+  FINALE_MINE_PRESETS,
+  FINALE_CAKE_SHOT_PRESETS,
   listShellPresetIds,
+  listMinePresetIds,
+  listCakeShotPresetIds,
+  listAllPresetIds,
   resolveShellPresetId,
+  resolveMinePresetId,
+  resolveCakeShotPresetId,
   resolveShellPresetProps,
+  resolveMinePresetProps,
+  resolveCakeShotPresetProps,
 } from '@/data/finalePresets';
 
 /**
@@ -12,9 +21,20 @@ import {
  * exactly what we forbid.
  */
 describe('FINALE_SHELL_PRESETS — canonical FWsim Pro values', () => {
-  it('exposes all 7 catalogued shells', () => {
+  it('exposes 7 base + 3 rev5 shells (total 10)', () => {
     expect(listShellPresetIds().sort()).toEqual(
-      ['chrysanthemum', 'crown', 'dahlia', 'palm', 'peony', 'peony-pistil', 'wave'].sort(),
+      [
+        'chrysanthemum',
+        'crown',
+        'dahlia',
+        'ghost-shell',
+        'hybrid-special',
+        'palm',
+        'peony',
+        'peony-pistil',
+        'quarter-4-4',
+        'wave',
+      ].sort(),
     );
   });
 
@@ -123,5 +143,180 @@ describe('resolveShellPresetProps — adapter to ShellBurstRenderer', () => {
 
   it('returns undefined for unknown id', () => {
     expect(resolveShellPresetProps('not-a-preset')).toBeUndefined();
+  });
+});
+
+// ────────────────────────────────────────────────────────────────────
+// rev5 — quarter-sphere + ghost + hybrid shell guards
+// ────────────────────────────────────────────────────────────────────
+
+describe('FINALE_SHELL_PRESETS — rev5 (34/34a/35.fwe)', () => {
+  it('quarter-4-4 — QuarterSphere, count 60, speed 0.9, sigma 0', () => {
+    const p = FINALE_SHELL_PRESETS['quarter-4-4'];
+    expect(p.geometry).toBe('quarter-sphere');
+    expect(p.count).toBe(60);
+    expect(p.speedMS).toBe(0.9);
+    expect(p.sigmaRad).toBe(0);
+    expect(p.fadeABCD).toEqual([0.06393862, 0.32352942, 0.7811245, 0.99598396]);
+  });
+
+  it('ghost-shell — Normal/1.0 dense 240 stars + Gold Sparks dual tail', () => {
+    const p = FINALE_SHELL_PRESETS['ghost-shell'];
+    expect(p.count).toBe(240);
+    expect(p.starType).toBe('Normal');
+    expect(p.mass).toBe(1.0);
+    expect(p.tails).toHaveLength(2);
+    expect(p.tails![0].densityHz).toBe(200);
+    expect(p.tails![0].colorHex.toUpperCase()).toBe('#3C1E00');
+    expect(p.tails![1].emitEnd).toBe(0.8);
+  });
+
+  it('hybrid-special — Sparks/0.5 orange, life 2.0–3.5', () => {
+    const p = FINALE_SHELL_PRESETS['hybrid-special'];
+    expect(p.starType).toBe('XSmall');
+    expect(p.lifeMin).toBe(2.0);
+    expect(p.lifeMax).toBe(3.5);
+    expect(p.colorHex.toUpperCase()).toBe('#FF7A00');
+    expect(p.fadeABCD).toEqual([0.25081432, 0.747557, 0.748557, 1]);
+  });
+});
+
+// ────────────────────────────────────────────────────────────────────
+// rev5 — Mine presets
+// ────────────────────────────────────────────────────────────────────
+
+describe('FINALE_MINE_PRESETS — canonical FWsim Pro values', () => {
+  it('exposes 3 mine presets', () => {
+    expect(listMinePresetIds().sort()).toEqual(
+      [
+        'single-comet-mine-gold',
+        'single-comet-silver-glitter',
+        'single-mine-gold-glitter',
+      ].sort(),
+    );
+  });
+
+  it('40 — Gold Glitter mine: count 25, speed 1.0, primary tail strobe 29.4 Hz', () => {
+    const p = FINALE_MINE_PRESETS['single-mine-gold-glitter'];
+    expect(p.count).toBe(25);
+    expect(p.starType).toBe('XSmall');
+    expect(p.speedMS).toBe(1.0);
+    expect(p.sigmaRad).toBe(0.045);
+    expect(p.lifeMin).toBe(1.3);
+    expect(p.lifeMax).toBe(2.5);
+    expect(p.tails[0].strobeHz).toBeCloseTo(29.405308, 6);
+    expect(p.tails[0].colorHex.toUpperCase()).toBe('#FEE0B8');
+  });
+
+  it('41 — Silver Glitter comet head: count 1 Large, strobe 7.92 Hz', () => {
+    const p = FINALE_MINE_PRESETS['single-comet-silver-glitter'];
+    expect(p.count).toBe(1);
+    expect(p.starType).toBe('Large');
+    expect(p.speedMS).toBe(1.05);
+    expect(p.tails[0].strobeHz).toBeCloseTo(7.916814, 6);
+  });
+
+  it('42 — Deep Gold tails (149,74,0)', () => {
+    const p = FINALE_MINE_PRESETS['single-comet-mine-gold'];
+    expect(p.count).toBe(1);
+    expect(p.tails[0].colorHex.toUpperCase()).toBe('#954A00');
+    expect(p.tails[0].densityHz).toBe(9);
+    expect(p.tails[0].strobeHz).toBeUndefined();
+  });
+});
+
+// ────────────────────────────────────────────────────────────────────
+// rev5 — Cake-shot presets
+// ────────────────────────────────────────────────────────────────────
+
+describe('FINALE_CAKE_SHOT_PRESETS — canonical FWsim Pro values', () => {
+  it('exposes 3 cake-shot presets, all wrapping a shell', () => {
+    expect(listCakeShotPresetIds().sort()).toEqual(
+      [
+        'cake-hybrid-coal-gold',
+        'cake-mine-shell-gold',
+        'cake-shell-silver-titanium',
+      ].sort(),
+    );
+    for (const id of listCakeShotPresetIds()) {
+      expect(FINALE_CAKE_SHOT_PRESETS[id].wrappedKind).toBe('shell');
+    }
+  });
+
+  it('43 — Silver Titanium: inner 3 stars Small, tail Spark D250', () => {
+    const p = FINALE_CAKE_SHOT_PRESETS['cake-shell-silver-titanium'];
+    expect(p.inner.count).toBe(3);
+    expect(p.inner.starType).toBe('Small');
+    expect(p.inner.fadeABCD).toEqual([0.09, 0.22, 0.488, 0.756]);
+    expect(p.tail!.densityHz).toBe(250);
+    expect(p.tail!.colorHex.toUpperCase()).toBe('#C8C8D0');
+  });
+
+  it('44 — Mine→Shell Gold: inner 69 XSmall', () => {
+    const p = FINALE_CAKE_SHOT_PRESETS['cake-mine-shell-gold'];
+    expect(p.inner.count).toBe(69);
+    expect(p.inner.starType).toBe('XSmall');
+    expect(p.tail!.colorHex.toUpperCase()).toBe('#954A00');
+  });
+
+  it('45 — Hybrid Coal Gold: inner 40 XXSmall, tail (55,28,0)', () => {
+    const p = FINALE_CAKE_SHOT_PRESETS['cake-hybrid-coal-gold'];
+    expect(p.inner.count).toBe(40);
+    expect(p.inner.starType).toBe('XXSmall');
+    expect(p.tail!.colorHex.toUpperCase()).toBe('#371C00');
+    expect(p.tail!.densityHz).toBe(300);
+  });
+});
+
+// ────────────────────────────────────────────────────────────────────
+// rev5 — resolvers + adapters
+// ────────────────────────────────────────────────────────────────────
+
+describe('rev5 resolvers — name → preset id', () => {
+  it('shell resolvers cover ghost / hybrid / quarter', () => {
+    expect(resolveShellPresetId('ghost shell')).toBe('ghost-shell');
+    expect(resolveShellPresetId('Hybrids special')).toBe('hybrid-special');
+    expect(resolveShellPresetId('quarter shell 4-4')).toBe('quarter-4-4');
+  });
+
+  it('mine resolvers', () => {
+    expect(resolveMinePresetId('Gold Glitter mine')).toBe('single-mine-gold-glitter');
+    expect(resolveMinePresetId('silver comet')).toBe('single-comet-silver-glitter');
+    expect(resolveMinePresetId('Comet/Mine deep gold')).toBe('single-comet-mine-gold');
+    expect(resolveMinePresetId('peony')).toBeUndefined();
+  });
+
+  it('cake-shot resolvers', () => {
+    expect(resolveCakeShotPresetId('cake silver titanium'))
+      .toBe('cake-shell-silver-titanium');
+    expect(resolveCakeShotPresetId('cake mine-shell')).toBe('cake-mine-shell-gold');
+    expect(resolveCakeShotPresetId('cake hybrid')).toBe('cake-hybrid-coal-gold');
+    expect(resolveCakeShotPresetId('peony')).toBeUndefined();
+  });
+});
+
+describe('rev5 adapters — props mapping', () => {
+  it('mine props expose strobe + single-head flag', () => {
+    const a = resolveMinePresetProps('single-mine-gold-glitter')!;
+    expect(a.strobeHz).toBeCloseTo(29.405308, 6);
+    expect(a.isSingleHead).toBe(false);
+
+    const b = resolveMinePresetProps('single-comet-silver-glitter')!;
+    expect(b.isSingleHead).toBe(true);
+    expect(b.color).toBe('#FFFFFF');
+  });
+
+  it('cake-shot props expose wrappedKind + inner color', () => {
+    const c = resolveCakeShotPresetProps('cake-shell-silver-titanium')!;
+    expect(c.wrappedKind).toBe('shell');
+    expect(c.innerCount).toBe(3);
+    expect(c.trailDensityHz).toBe(250);
+  });
+
+  it('listAllPresetIds aggregates 10 + 3 + 3', () => {
+    const all = listAllPresetIds();
+    expect(all.shells).toHaveLength(10);
+    expect(all.mines).toHaveLength(3);
+    expect(all.cakes).toHaveLength(3);
   });
 });
