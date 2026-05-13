@@ -427,6 +427,8 @@ export function exportFiringCSV(
       }
     }
 
+    const meta = resolveCuePresetMetadata([item.effectId, effect.name, item.notes]);
+
     return {
       cue: index + 1,
       module,
@@ -444,12 +446,29 @@ export function exportFiringCSV(
       heading,
       pitch,
       angle: 0,
+      minePresetId: meta.minePresetId,
+      cakePresetId: meta.cakePresetId,
+      bodyColor: meta.bodyColorHex,
+      trailColor: meta.trailColorHex,
+      strobeHz: meta.strobeHz,
+      innerCount: meta.innerCount,
+      innerSpeedMS: meta.innerSpeedMS,
     };
   });
 
-  const header = 'Cue,Module,Slat,Pin,EventTime(s),PreFireTime(s),EffectName,Caliber,Duration(s),Position,X,Y,Z,Heading,Pitch,Angle';
+  const header =
+    'Cue,Module,Slat,Pin,EventTime(s),PreFireTime(s),EffectName,Caliber,Duration(s),Position,X,Y,Z,Heading,Pitch,Angle,MinePresetId,CakePresetId,BodyColor,TrailColor,StrobeHz,InnerCount,InnerSpeedMS';
   const rows = cues.map((c) =>
-    `${c.cue},${c.module},${c.slat},${c.pin},${c.eventTime},${c.preFireTime},${c.effectName},${c.caliber},${c.duration},${c.posName},${c.x},${c.y},${c.z},${c.heading},${c.pitch},${c.angle}`
+    [
+      c.cue, c.module, c.slat, c.pin, c.eventTime, c.preFireTime,
+      csvCell(c.effectName), c.caliber, c.duration, csvCell(c.posName),
+      c.x, c.y, c.z, c.heading, c.pitch, c.angle,
+      csvCell(c.minePresetId), csvCell(c.cakePresetId),
+      csvCell(c.bodyColor), csvCell(c.trailColor),
+      c.strobeHz != null ? c.strobeHz.toFixed(2) : '',
+      c.innerCount != null ? String(c.innerCount) : '',
+      c.innerSpeedMS != null ? c.innerSpeedMS.toFixed(2) : '',
+    ].join(','),
   );
 
   return header + '\n' + rows.join('\n');
