@@ -954,6 +954,151 @@ export const FINALE_CAKE_SHOT_PRESETS: Record<string, CakeShotPreset> = {
 };
 // ────────────────────────────────────────────────────────────────────
 
+// ────────────────────────────────────────────────────────────────────
+// rev8 — FWsim CustomComponent (.fwc) tail libraries
+// Source: Mortar_Sparks_Shell.fwc, Silver{,_thick,_long_thick,_short_thin,
+//         _short_thin_sparkle,_short_wide,_Cocout_Silver_short_dense}.fwc
+//
+// FWsim "CustomComponent" payloads ship only `<Inserts>` (StarTails
+// layers) — no Mine/Shell wrapper, no distribution. Reusable tail
+// bundles applied on top of an existing pyro effect (comet/mine/shell).
+// Captured 1:1 from the XML.
+// ────────────────────────────────────────────────────────────────────
+
+export interface TailComponentPreset {
+  id: string;
+  label: string;
+  /** FWsim CustomComponent.BaseID.Name */
+  sourceName: string;
+  /** `<Hide>true</Hide>` from the FWsim payload. */
+  hidden: boolean;
+  /** Ordered StarTails inserts (1:1 with `<Inserts>` block). */
+  tails: TailLayer[];
+}
+
+export const FINALE_TAIL_COMPONENT_PRESETS: Record<string, TailComponentPreset> = {
+  'tail-mortar-sparks-shell': {
+    id: 'tail-mortar-sparks-shell',
+    label: 'Mortar Sparks Shell',
+    sourceName: 'Mortar Sparks Shell',
+    hidden: true,
+    tails: [
+      { densityHz: 115, width: 0.5, lifeS: 0.46, lifeSigma: 0.3,  sizeFactor: 0.5,  colorHex: '#974B00', emitStart: 0.02, emitEnd: 0.05, fadeABCD: [0, 0, 0.63, 1] },
+      { densityHz: 50,  width: 0.3, lifeS: 0.36, lifeSigma: 0.45, sizeFactor: 0.41, colorHex: '#FFE2AE', strobeHz: 2.6, emitStart: 0.02, emitEnd: 0.05, fadeABCD: [0, 0, 0.63, 1] },
+      { densityHz: 10,  width: 0.5, lifeS: 0.7,  lifeSigma: 0.8,  sizeFactor: 0.5,  colorHex: '#552B00', emitStart: 0.02, emitEnd: 0.05, fadeABCD: [0, 0, 0.63, 1] },
+    ],
+  },
+  'tail-silver': {
+    id: 'tail-silver', label: 'Silver', sourceName: 'Silver', hidden: true,
+    tails: [
+      { densityHz: 250, width: 0.6, lifeS: 0.5, lifeSigma: 0.5,  sizeFactor: 0.7,  colorHex: '#C8C8D0', emitStart: 0.05, emitEnd: 1, fadeABCD: [0, 0, 0.63, 1] },
+      { densityHz: 250, width: 0.6, lifeS: 0.8, lifeSigma: 0.15, sizeFactor: 0.7,  colorHex: '#C8C8D0', emitStart: 0.05, emitEnd: 1, fadeABCD: [0, 0, 0.63, 1] },
+      { densityHz: 81,  width: 0.3, lifeS: 1.6, lifeSigma: 0.59, sizeFactor: 0.54, colorHex: '#FFC082', emitStart: 0.05, emitEnd: 1, fadeABCD: [0, 0, 0.63, 1] },
+      { densityHz: 62,  width: 0.4, lifeS: 1.3, lifeSigma: 0.65, sizeFactor: 0.5,  colorHex: '#A85400', emitStart: 0.05, emitEnd: 1, fadeABCD: [0, 0, 0.63, 1] },
+      { densityHz: 41,  width: 0.3, lifeS: 2.0, lifeSigma: 0.66, sizeFactor: 0.54, colorHex: '#8A4500', emitStart: 0.05, emitEnd: 1, fadeABCD: [0, 0, 0.63, 1] },
+      { densityHz: 250, width: 0.3, lifeS: 1.0, lifeSigma: 0.51, sizeFactor: 0.5,  colorHex: '#C8C8D0', emitStart: 0.05, emitEnd: 1, fadeABCD: [0, 0, 0.63, 1] },
+    ],
+  },
+  'tail-silver-thick': {
+    id: 'tail-silver-thick', label: 'Silver Thick', sourceName: 'Silver thick', hidden: true,
+    tails: [
+      { densityHz: 250, width: 1.2, lifeS: 0.5, lifeSigma: 0.5,  sizeFactor: 0.7,  colorHex: '#C8C8D0', emitStart: 0.05, emitEnd: 1, fadeABCD: [0, 0, 0.63, 1] },
+      { densityHz: 250, width: 1.2, lifeS: 0.8, lifeSigma: 0.15, sizeFactor: 0.7,  colorHex: '#C8C8D0', emitStart: 0.05, emitEnd: 1, fadeABCD: [0, 0, 0.63, 1] },
+      { densityHz: 160, width: 0.6, lifeS: 1.6, lifeSigma: 0.59, sizeFactor: 0.54, colorHex: '#FFC082', emitStart: 0.05, emitEnd: 1, fadeABCD: [0, 0, 0.63, 1] },
+      { densityHz: 120, width: 0.8, lifeS: 1.3, lifeSigma: 0.65, sizeFactor: 0.5,  colorHex: '#A85400', emitStart: 0.05, emitEnd: 1, fadeABCD: [0, 0, 0.63, 1] },
+      { densityHz: 80,  width: 0.6, lifeS: 2.0, lifeSigma: 0.66, sizeFactor: 0.54, colorHex: '#8A4500', emitStart: 0.05, emitEnd: 1, fadeABCD: [0, 0, 0.63, 1] },
+      { densityHz: 250, width: 0.6, lifeS: 1.0, lifeSigma: 0.51, sizeFactor: 0.5,  colorHex: '#C8C8D0', emitStart: 0.05, emitEnd: 1, fadeABCD: [0, 0, 0.63, 1] },
+      { densityHz: 250, width: 1.2, lifeS: 0.5, lifeSigma: 0.5,  sizeFactor: 0.7,  colorHex: '#C8C8D0', emitStart: 0.05, emitEnd: 1, fadeABCD: [0, 0, 0.63, 1] },
+      { densityHz: 250, width: 1.2, lifeS: 0.8, lifeSigma: 0.15, sizeFactor: 0.7,  colorHex: '#C8C8D0', emitStart: 0.05, emitEnd: 1, fadeABCD: [0, 0, 0.63, 1] },
+      { densityHz: 250, width: 0.6, lifeS: 1.0, lifeSigma: 0.51, sizeFactor: 0.5,  colorHex: '#C8C8D0', emitStart: 0.05, emitEnd: 1, fadeABCD: [0, 0, 0.63, 1] },
+    ],
+  },
+  'tail-silver-long-thick': {
+    id: 'tail-silver-long-thick', label: 'Silver Long Thick', sourceName: 'Silver long thick', hidden: true,
+    tails: [
+      { densityHz: 250, width: 1.2, lifeS: 1.0, lifeSigma: 0.5,  sizeFactor: 0.7,  colorHex: '#C8C8D0', emitStart: 0.05, emitEnd: 1, fadeABCD: [0, 0, 0.63, 1] },
+      { densityHz: 250, width: 1.2, lifeS: 1.6, lifeSigma: 0.15, sizeFactor: 0.7,  colorHex: '#C8C8D0', emitStart: 0.05, emitEnd: 1, fadeABCD: [0, 0, 0.63, 1] },
+      { densityHz: 160, width: 0.6, lifeS: 3.2, lifeSigma: 0.59, sizeFactor: 0.54, colorHex: '#FFC082', emitStart: 0.05, emitEnd: 1, fadeABCD: [0, 0, 0.63, 1] },
+      { densityHz: 120, width: 0.8, lifeS: 2.6, lifeSigma: 0.65, sizeFactor: 0.5,  colorHex: '#A85400', emitStart: 0.05, emitEnd: 1, fadeABCD: [0, 0, 0.63, 1] },
+      { densityHz: 80,  width: 0.6, lifeS: 4.0, lifeSigma: 0.66, sizeFactor: 0.54, colorHex: '#8A4500', emitStart: 0.05, emitEnd: 1, fadeABCD: [0, 0, 0.63, 1] },
+      { densityHz: 250, width: 0.6, lifeS: 2.0, lifeSigma: 0.51, sizeFactor: 0.5,  colorHex: '#C8C8D0', emitStart: 0.05, emitEnd: 1, fadeABCD: [0, 0, 0.63, 1] },
+      { densityHz: 250, width: 1.2, lifeS: 1.0, lifeSigma: 0.5,  sizeFactor: 0.7,  colorHex: '#C8C8D0', emitStart: 0.05, emitEnd: 1, fadeABCD: [0, 0, 0.63, 1] },
+      { densityHz: 250, width: 1.2, lifeS: 1.6, lifeSigma: 0.15, sizeFactor: 0.7,  colorHex: '#C8C8D0', emitStart: 0.05, emitEnd: 1, fadeABCD: [0, 0, 0.63, 1] },
+      { densityHz: 250, width: 0.6, lifeS: 2.0, lifeSigma: 0.51, sizeFactor: 0.5,  colorHex: '#C8C8D0', emitStart: 0.05, emitEnd: 1, fadeABCD: [0, 0, 0.63, 1] },
+    ],
+  },
+  'tail-silver-short-thin': {
+    id: 'tail-silver-short-thin', label: 'Silver Short Thin', sourceName: 'Silver short thin', hidden: true,
+    tails: [
+      { densityHz: 125, width: 0.3, lifeS: 0.25, lifeSigma: 0.5,  sizeFactor: 0.7,  colorHex: '#C8C8D0', emitStart: 0.05, emitEnd: 1, fadeABCD: [0, 0, 0.63, 1] },
+      { densityHz: 125, width: 0.3, lifeS: 0.4,  lifeSigma: 0.15, sizeFactor: 0.7,  colorHex: '#C8C8D0', emitStart: 0.05, emitEnd: 1, fadeABCD: [0, 0, 0.63, 1] },
+      { densityHz: 40,  width: 0.2, lifeS: 0.8,  lifeSigma: 0.59, sizeFactor: 0.54, colorHex: '#FFC082', emitStart: 0.05, emitEnd: 1, fadeABCD: [0, 0, 0.63, 1] },
+      { densityHz: 31,  width: 0.2, lifeS: 0.75, lifeSigma: 0.65, sizeFactor: 0.5,  colorHex: '#A85400', emitStart: 0.05, emitEnd: 1, fadeABCD: [0, 0, 0.63, 1] },
+      { densityHz: 20,  width: 0.2, lifeS: 1.0,  lifeSigma: 0.66, sizeFactor: 0.54, colorHex: '#8A4500', emitStart: 0.05, emitEnd: 1, fadeABCD: [0, 0, 0.63, 1] },
+      { densityHz: 125, width: 0.2, lifeS: 0.5,  lifeSigma: 0.51, sizeFactor: 0.5,  colorHex: '#C8C8D0', emitStart: 0.05, emitEnd: 1, fadeABCD: [0, 0, 0.63, 1] },
+    ],
+  },
+  'tail-silver-short-thin-sparkle': {
+    id: 'tail-silver-short-thin-sparkle', label: 'Silver Short Thin Sparkle', sourceName: 'Silver short thin sparkle', hidden: true,
+    tails: [
+      { densityHz: 35, width: 4.0, lifeS: 0.1, lifeSigma: 0.5,  sizeFactor: 0.7,  colorHex: '#C8C8D0', emitStart: 0.05, emitEnd: 0.86, fadeABCD: [0, 0, 0.63, 1] },
+      { densityHz: 35, width: 4.0, lifeS: 0.3, lifeSigma: 0.34, sizeFactor: 0.7,  colorHex: '#C8C8D0', emitStart: 0.05, emitEnd: 0.86, fadeABCD: [0, 0, 0.63, 1] },
+      { densityHz: 7,  width: 1.2, lifeS: 0.3, lifeSigma: 0.59, sizeFactor: 0.54, colorHex: '#FFC082', emitStart: 0.05, emitEnd: 0.86, fadeABCD: [0, 0, 0.63, 1] },
+      { densityHz: 6,  width: 1.6, lifeS: 0.4, lifeSigma: 0.65, sizeFactor: 0.5,  colorHex: '#A85400', emitStart: 0.05, emitEnd: 0.86, fadeABCD: [0, 0, 0.63, 1] },
+      { densityHz: 4,  width: 2.4, lifeS: 0.6, lifeSigma: 0.66, sizeFactor: 0.54, colorHex: '#8A4500', emitStart: 0.05, emitEnd: 0.86, fadeABCD: [0, 0, 0.63, 1] },
+      { densityHz: 25, width: 2.6, lifeS: 0.4, lifeSigma: 0.74, sizeFactor: 0.5,  colorHex: '#C8C8D0', emitStart: 0.05, emitEnd: 0.86, fadeABCD: [0, 0, 0.63, 1] },
+      { densityHz: 75, width: 4.0, lifeS: 0.3, lifeSigma: 0.39, sizeFactor: 0.7,  colorHex: '#C8C8D0', emitStart: 0.05, emitEnd: 0.86, fadeABCD: [0, 0, 0.63, 1] },
+    ],
+  },
+  'tail-silver-short-wide': {
+    id: 'tail-silver-short-wide', label: 'Silver Short Wide', sourceName: 'Silver short wide', hidden: true,
+    tails: [
+      { densityHz: 125, width: 2.0, lifeS: 0.1, lifeSigma: 0.5,  sizeFactor: 0.7,  colorHex: '#C8C8D0', emitStart: 0.05, emitEnd: 0.86, fadeABCD: [0, 0, 0.63, 1] },
+      { densityHz: 125, width: 2.0, lifeS: 0.3, lifeSigma: 0.34, sizeFactor: 0.7,  colorHex: '#C8C8D0', emitStart: 0.05, emitEnd: 0.86, fadeABCD: [0, 0, 0.63, 1] },
+      { densityHz: 30,  width: 0.6, lifeS: 0.3, lifeSigma: 0.59, sizeFactor: 0.54, colorHex: '#FFC082', emitStart: 0.05, emitEnd: 0.86, fadeABCD: [0, 0, 0.63, 1] },
+      { densityHz: 25,  width: 0.8, lifeS: 0.4, lifeSigma: 0.65, sizeFactor: 0.5,  colorHex: '#A85400', emitStart: 0.05, emitEnd: 0.86, fadeABCD: [0, 0, 0.63, 1] },
+      { densityHz: 15,  width: 1.2, lifeS: 0.6, lifeSigma: 0.66, sizeFactor: 0.54, colorHex: '#8A4500', emitStart: 0.05, emitEnd: 0.86, fadeABCD: [0, 0, 0.63, 1] },
+      { densityHz: 100, width: 1.3, lifeS: 0.4, lifeSigma: 0.74, sizeFactor: 0.5,  colorHex: '#C8C8D0', emitStart: 0.05, emitEnd: 0.86, fadeABCD: [0, 0, 0.63, 1] },
+      { densityHz: 250, width: 2.0, lifeS: 0.3, lifeSigma: 0.39, sizeFactor: 0.7,  colorHex: '#C8C8D0', emitStart: 0.05, emitEnd: 0.86, fadeABCD: [0, 0, 0.63, 1] },
+    ],
+  },
+  'tail-silver-cocout-short-dense': {
+    id: 'tail-silver-cocout-short-dense', label: 'Silver Cocout — Silver Short Dense', sourceName: 'Silver Cocout — Silver short dense', hidden: true,
+    tails: [
+      { densityHz: 250, width: 2.0, lifeS: 0.3, lifeSigma: 0.5,  sizeFactor: 0.7,  colorHex: '#C8C8D0', emitStart: 0.05, emitEnd: 0.86, fadeABCD: [0, 0, 0.63, 1] },
+      { densityHz: 250, width: 2.0, lifeS: 0.6, lifeSigma: 0.34, sizeFactor: 0.7,  colorHex: '#C8C8D0', emitStart: 0.05, emitEnd: 0.86, fadeABCD: [0, 0, 0.63, 1] },
+      { densityHz: 60,  width: 0.6, lifeS: 1.0, lifeSigma: 0.59, sizeFactor: 0.54, colorHex: '#FFC082', emitStart: 0.05, emitEnd: 0.86, fadeABCD: [0, 0, 0.63, 1] },
+      { densityHz: 51,  width: 0.8, lifeS: 0.8, lifeSigma: 0.65, sizeFactor: 0.5,  colorHex: '#A85400', emitStart: 0.05, emitEnd: 0.86, fadeABCD: [0, 0, 0.63, 1] },
+      { densityHz: 30,  width: 1.2, lifeS: 1.2, lifeSigma: 0.66, sizeFactor: 0.54, colorHex: '#8A4500', emitStart: 0.05, emitEnd: 0.86, fadeABCD: [0, 0, 0.63, 1] },
+      { densityHz: 200, width: 1.3, lifeS: 0.8, lifeSigma: 0.74, sizeFactor: 0.5,  colorHex: '#C8C8D0', emitStart: 0.05, emitEnd: 0.86, fadeABCD: [0, 0, 0.63, 1] },
+      { densityHz: 250, width: 2.0, lifeS: 0.6, lifeSigma: 0.39, sizeFactor: 0.7,  colorHex: '#C8C8D0', emitStart: 0.05, emitEnd: 0.86, fadeABCD: [0, 0, 0.63, 1] },
+    ],
+  },
+};
+
+export function listTailComponentPresetIds(): string[] {
+  return Object.keys(FINALE_TAIL_COMPONENT_PRESETS);
+}
+
+/**
+ * Map a free-text name → canonical Tail-component preset id.
+ * Bare "silver" maps to the baseline 'tail-silver' bundle.
+ */
+export function resolveTailComponentPresetId(raw: string | undefined | null): string | undefined {
+  if (!raw) return undefined;
+  const s = raw.toLowerCase().trim();
+  if (/mortar.*sparks/.test(s)) return 'tail-mortar-sparks-shell';
+  if (/silver.*long.*thick/.test(s)) return 'tail-silver-long-thick';
+  if (/silver.*short.*thin.*sparkle|sparkle.*silver/.test(s)) return 'tail-silver-short-thin-sparkle';
+  if (/silver.*short.*thin/.test(s)) return 'tail-silver-short-thin';
+  if (/silver.*short.*wide/.test(s)) return 'tail-silver-short-wide';
+  if (/silver.*cocout|cocout.*silver/.test(s)) return 'tail-silver-cocout-short-dense';
+  if (/silver.*thick/.test(s)) return 'tail-silver-thick';
+  if (/\bsilver\b/.test(s)) return 'tail-silver';
+  return undefined;
+}
+// ────────────────────────────────────────────────────────────────────
+
 /**
  * Map a free-text VDL/effect name to a canonical shell preset id.
  * Returns `undefined` when no match is found — caller should fall back
