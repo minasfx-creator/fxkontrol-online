@@ -90,6 +90,13 @@ export interface ShellPreset {
   };
   /** Optional StarTails layers (Wave/Chrysanthemum/Palm/Crown). */
   tails?: TailLayer[];
+  /** Optional ascent-effect descriptor (rev6 — Cluster Diadem). */
+  ascent?: {
+    densityHz: number;
+    width: number;
+    lifeS: number;
+    colorHex: string;
+  };
 }
 
 // ────────────────────────────────────────────────────────────────────
