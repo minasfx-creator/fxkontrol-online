@@ -7,6 +7,7 @@ import { useFrame, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
 import { useProjectStore } from '@/store/useProjectStore';
 import { EFFECT_LIBRARY } from '@/data/effectLibrary';
+import { enrichEffectFromFwe } from '@/data/finalePresetEnrichment';
 import {
   resolveMinePresetId,
   resolveCakeShotPresetId,
