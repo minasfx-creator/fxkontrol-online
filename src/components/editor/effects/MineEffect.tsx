@@ -439,7 +439,7 @@ export default function MineEffect({
       {/* Combustion muzzle flash with flicker */}
       {progress < 0.08 && (
         <mesh position={[0, 0.3, 0]}>
-          <sphereGeometry args={[1.2 + caliber * 0.5 + progress * 20, 16, 16]} />
+          <sphereGeometry args={[0.6 + caliber * 0.3 + progress * 8, 16, 16]} />
           <meshBasicMaterial
             color="#FFFFF0"
             transparent
