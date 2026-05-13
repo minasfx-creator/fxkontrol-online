@@ -2,8 +2,6 @@ import React, { useRef, useState, useCallback, useMemo, useEffect } from 'react'
 import { Play, Pause, SkipBack, SkipForward, Square, Trash2, ZoomIn, ZoomOut, Magnet, Copy, GripVertical, Zap, Sparkles, ChevronDown, ChevronRight, Clock, Move, Crosshair, Link2, Unlink, Scissors, ClipboardPaste, Eye, EyeOff, Headphones } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useProjectStore } from '@/store/useProjectStore';
-import { timelineTransport } from '@/core/transport/timelineTransport';
-import { useTransportDiagnostics } from '@/hooks/useTransportDiagnostics';
 import { EFFECT_LIBRARY } from '@/data/effectLibrary';
 import { useLaserPreviewStore } from '@/store/useLaserPreviewStore';
 import useGenerativeStore from '@/store/useGenerativeStore';
@@ -769,8 +767,6 @@ function DroneFXTrackRow({ pixelsPerSecond, duration }: { pixelsPerSecond: numbe
   const selectedTimelineItemId = useProjectStore(s => s.selectedTimelineItemId);
   const selectTimelineItem = useProjectStore(s => s.selectTimelineItem);
   const addTimelineItem = useProjectStore(s => s.addTimelineItem);
-  const updateDroneFormation = useProjectStore(s => s.updateDroneFormation);
-  const materializeFormation = useProjectStore(s => s.materializeFormation);
   const bpm = useProjectStore(s => s.bpm);
   const snapToBeat = useProjectStore(s => s.snapToBeat);
   
@@ -778,40 +774,29 @@ function DroneFXTrackRow({ pixelsPerSecond, duration }: { pixelsPerSecond: numbe
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
     const hasEffect = e.dataTransfer.types.includes('application/effect-id');
-    const hasFormation = e.dataTransfer.types.includes('application/formation-id');
-    if (!hasEffect && !hasFormation) return;
+    if (!hasEffect) return;
     e.preventDefault();
     e.dataTransfer.dropEffect = 'copy';
   }, []);
 
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
-    const rect = e.currentTarget.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    let time = Math.max(0, Math.min(x / pixelsPerSecond, duration));
-    time = snapTimeToBeat(time, bpm, snapToBeat, pixelsPerSecond);
-
-    const formationId = e.dataTransfer.getData('application/formation-id');
-    if (formationId) {
-      const formation = useProjectStore.getState().droneFormations.find(f => f.id === formationId);
-      if (!formation) return;
-      const repositioned = { ...formation, startTime: time };
-      updateDroneFormation(formation.id, { startTime: time });
-      materializeFormation(repositioned);
-      return;
-    }
-
     const effectId = e.dataTransfer.getData('application/effect-id');
     if (!effectId) return;
     const effect = EFFECT_LIBRARY.find((ef) => ef.id === effectId);
     if (!effect || effect.type !== 'drone') return;
+
+    const rect = e.currentTarget.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    let time = Math.max(0, Math.min(x / pixelsPerSecond, duration));
+    time = snapTimeToBeat(time, bpm, snapToBeat, pixelsPerSecond);
 
     addTimelineItem({
       id: `tl-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
       effectId: effect.id, startTime: time, trackIndex: 3,
       position: { x: 0, y: 20, z: 0 },
     });
-  }, [pixelsPerSecond, duration, addTimelineItem, bpm, snapToBeat, updateDroneFormation, materializeFormation]);
+  }, [pixelsPerSecond, duration, addTimelineItem, bpm, snapToBeat]);
 
   if (droneFormations.length === 0) return null;
 
@@ -1039,7 +1024,6 @@ const Timeline = React.forwardRef<HTMLDivElement, {}>(function Timeline(_props, 
   const clearTimelineItemSelection = useProjectStore(s => s.clearTimelineItemSelection);
   const duplicateTimelineItems = useProjectStore(s => s.duplicateTimelineItems);
   const removeMultipleTimelineItems = useProjectStore(s => s.removeMultipleTimelineItems);
-  const { chip: transportChip, toggle: togglePlayback } = useTransportDiagnostics();
   const scrollRef = useRef<HTMLDivElement>(null);
   const [pixelsPerSecond, setPixelsPerSecond] = useState(12);
   const [scrollLeft, setScrollLeft] = useState(0);
@@ -1151,25 +1135,25 @@ const Timeline = React.forwardRef<HTMLDivElement, {}>(function Timeline(_props, 
   const progressPct = duration > 0 ? (currentTime / duration) * 100 : 0;
 
   return (
-    <div className="flex h-full flex-col border-t border-border/20 bg-card/95 shadow-[inset_0_1px_0_hsl(var(--border)/0.08)] backdrop-blur-xl">
+    <div className="flex flex-col h-full border-t border-white/[0.04]" style={{ background: 'hsl(var(--card) / 0.95)', backdropFilter: 'blur(20px)' }}>
       {/* ─── Transport Bar ─── */}
-      <div className="flex items-center gap-1 border-b border-border/15 bg-surface-0/70 px-2.5 py-1">
+      <div className="flex items-center gap-1 px-2.5 py-1 border-b border-white/[0.04]">
         {/* Play controls */}
         <div className="flex items-center gap-px rounded-lg p-px" style={{ background: 'hsl(var(--muted) / 0.15)' }}>
-          <Button variant="ghost" size="icon" className="h-7 w-7 rounded-md hover:bg-white/[0.06]" onClick={() => timelineTransport.rewind()}>
+          <Button variant="ghost" size="icon" className="h-7 w-7 rounded-md hover:bg-white/[0.06]" onClick={() => setCurrentTime(0)}>
             <SkipBack className="h-3 w-3 text-muted-foreground" />
           </Button>
           <Button
             variant="ghost" size="icon"
             className={cn("h-8 w-8 rounded-md transition-all", isPlaying ? "bg-primary/12 text-primary" : "hover:bg-white/[0.06]")}
-            onClick={() => togglePlayback()}
+            onClick={() => setPlaying(!isPlaying)}
           >
             {isPlaying ? <Pause className="h-3.5 w-3.5" /> : <Play className="h-3.5 w-3.5 ml-0.5" />}
           </Button>
-          <Button variant="ghost" size="icon" className="h-7 w-7 rounded-md hover:bg-white/[0.06]" onClick={() => timelineTransport.stop()}>
+          <Button variant="ghost" size="icon" className="h-7 w-7 rounded-md hover:bg-white/[0.06]" onClick={() => setPlaying(false)}>
             <Square className="h-2.5 w-2.5 text-muted-foreground" />
           </Button>
-          <Button variant="ghost" size="icon" className="h-7 w-7 rounded-md hover:bg-white/[0.06]" onClick={() => timelineTransport.seekTo(Math.min(currentTime + 10, duration))}>
+          <Button variant="ghost" size="icon" className="h-7 w-7 rounded-md hover:bg-white/[0.06]" onClick={() => setCurrentTime(Math.min(currentTime + 10, duration))}>
             <SkipForward className="h-3 w-3 text-muted-foreground" />
           </Button>
         </div>
@@ -1180,25 +1164,6 @@ const Timeline = React.forwardRef<HTMLDivElement, {}>(function Timeline(_props, 
           <span className="text-muted-foreground/20 text-[10px] mx-1">/</span>
           <span className="font-mono text-[13px] text-muted-foreground/35 tabular-nums tracking-tight">{formatTime(duration)}</span>
         </div>
-
-        {/* Transport diagnostic chip — explains why Play may not advance (0×, END, EXT) */}
-        {transportChip && (
-          <div
-            className={cn(
-              "flex items-center px-1.5 h-5 rounded-md ring-1 tabular-nums",
-              transportChip.tone === 'warning' && "ring-[hsl(var(--warning)/0.45)] bg-[hsl(var(--warning)/0.08)]",
-              transportChip.tone === 'accent' && "ring-[hsl(var(--accent)/0.45)] bg-[hsl(var(--accent)/0.08)]",
-            )}
-            title={transportChip.reason}
-            aria-label={transportChip.reason}
-          >
-            <span className={cn(
-              "text-[9px] font-mono font-bold tracking-wider",
-              transportChip.tone === 'warning' && "text-[hsl(var(--warning))]",
-              transportChip.tone === 'accent' && "text-[hsl(var(--accent))]",
-            )}>{transportChip.label}</span>
-          </div>
-        )}
 
         {/* Speed */}
         <div className="flex items-center gap-1 px-2 py-0.5 rounded-lg" style={{ background: 'hsl(var(--muted) / 0.1)' }}>
@@ -1268,12 +1233,12 @@ const Timeline = React.forwardRef<HTMLDivElement, {}>(function Timeline(_props, 
       </div>
 
       {/* ─── Mini progress bar ─── */}
-      <div className="relative h-[2px] w-full bg-muted/10">
+      <div className="h-[2px] w-full relative" style={{ background: 'hsl(var(--muted) / 0.08)' }}>
         <div className="h-full bg-primary/40 transition-[width] duration-75" style={{ width: `${progressPct}%` }} />
       </div>
 
       {/* ─── Timeline tracks ─── */}
-      <div ref={scrollRef} className="flex-1 overflow-x-auto overflow-y-auto bg-surface-0/45" onClick={handleTrackClick}>
+      <div ref={scrollRef} className="flex-1 overflow-x-auto overflow-y-auto" onClick={handleTrackClick}>
         <div style={{ width: `${duration * pixelsPerSecond + 96}px` }}>
           <div className="flex">
             <div className="w-24 flex-shrink-0" />

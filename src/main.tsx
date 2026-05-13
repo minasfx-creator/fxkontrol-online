@@ -1,17 +1,12 @@
 import { createRoot } from "react-dom/client";
 import App from "./App.tsx";
 import "./index.css";
-import { initWebVitals as initWebVitalsConsole } from "@/lib/webVitals";
-import { initObservability } from "@/observability";
+import { initWebVitals } from "@/lib/webVitals";
 
 createRoot(document.getElementById("root")!).render(<App />);
 
-// Dev-only Web Vitals console reporter (per-route, color-coded).
-initWebVitalsConsole();
-
-// Production observability (RUM + error capture + Web Vitals shipping).
-// No-ops silently when VITE_RUM_ENDPOINT is not set.
-initObservability();
+// Initialize Web Vitals RUM instrumentation
+initWebVitals();
 
 // Dismiss splash screen after React mounts — use idle callback to let browser paint first
 const dismissSplash = () => (window as any).__splashDone?.();

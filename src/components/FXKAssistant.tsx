@@ -5,12 +5,15 @@
 import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { playGlitchBurst } from '@/utils/glitchSound';
 type JoiEmotion = 'caring' | 'celebrating' | 'serious';
-import { X, Minimize2, Send, Sparkles, Maximize2, Trash2, ThumbsUp, ThumbsDown, FileText, Globe, Volume2, VolumeX, Mic, MicOff, Play, Paperclip, File, Image as ImageIcon, XCircle } from 'lucide-react';
+import { X, Minimize2, Send, Zap, ShieldCheck, Activity, Sparkles, Maximize2, Trash2, ThumbsUp, ThumbsDown, AlertTriangle, FileText, Download, Gavel, Plane, MapPin, Globe, Volume2, VolumeX, Mic, MicOff, Play, Paperclip, File, Image as ImageIcon, XCircle } from 'lucide-react';
 const lazyExportPdf = () => import('@/utils/joiPdfExport').then(m => m.exportJoiPdf);
 const lazyExportDocx = () => import('@/utils/joiDocxExport').then(m => m.exportJoiDocx);
 import { parseKmzReadyBlock, stripKmzReadyBlock, downloadAeroKmz } from '@/utils/joiAeroKmzExport';
 import { executeJoiCommands, stripJoiCommands, hasJoiCommands, type JoiCommandResult } from '@/utils/joiCommandExecutor';
 import JoiCommandFeedback from '@/components/JoiCommandFeedback';
+import { OPERATIONAL_PRESETS } from '@/components/JoiCommandPresets';
+import { useProjectStore } from '@/store/useProjectStore';
+import { EFFECT_LIBRARY } from '@/data/effectLibrary';
 import { cn } from '@/lib/utils';
 import ReactMarkdown from 'react-markdown';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -18,7 +21,7 @@ import { useVoiceRecognition } from '@/hooks/useVoiceRecognition';
 import { useJoiSpeech } from '@/hooks/useJoiSpeech';
 import joiFaceIcon from '@/assets/joi-face-icon.png';
 import { joiContextBuilder } from '@/core/joi/JoiContextBuilder';
-import { JOI_MODES, getPresetsForMode, getModeConfig, type JoiMode } from '@/core/joi/joiModes';
+import { JOI_MODES, JOI_MODE_PRESETS, getPresetsForMode, getModeConfig, type JoiMode } from '@/core/joi/joiModes';
 import { JOIContextRibbon } from '@/components/joi/JOIContextRibbon';
 import { JOIInsightPanel } from '@/components/joi/JOIInsightPanel';
 import { JOITruthInspector } from '@/components/joi/JOITruthInspector';
@@ -65,7 +68,7 @@ const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/fxk-ai-chat`
 const HISTORY_KEY = 'fxk-ai-history';
 const MAX_HISTORY = 10;
 
-
+// Legacy PRESETS_DOCS moved to joiModes.ts under 'docs' mode
 
 const IDLE_PHRASES = [
   'Aqui firme cuidando de tudo, chefinho!',
@@ -111,7 +114,7 @@ function TypewriterGreeting({ text }: { text: string }) {
   );
 }
 
-
+// Legacy getContextPresets is replaced by mode-aware presets below
 
 function getGreeting(): string {
   const h = new Date().getHours();
@@ -394,11 +397,10 @@ export function FXKAssistant() {
   const [minimized, setMinimized] = useState(false);
   const [closing, setClosing] = useState(false);
   const [expanded, setExpanded] = useState(false);
-  const [mobileSide, setMobileSide] = useState<'left' | 'right'>('right');
   const [messages, setMessages] = useState<Msg[]>(() => loadHistory());
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
-  
+  const [glitching, setGlitching] = useState(false);
   const [isTyping, setIsTyping] = useState(false);
   const [idlePhrase, setIdlePhrase] = useState(0);
   const [connectionOk, setConnectionOk] = useState<boolean | null>(null);
@@ -414,7 +416,6 @@ export function FXKAssistant() {
   const [attachment, setAttachment] = useState<AttachedFile | null>(null);
   const [joiMode, setJoiMode] = useState<JoiMode>('show');
   const [lastTrace, setLastTrace] = useState<JOIExecutionTrace | null>(null);
-  const swipeStartRef = useRef<{ x: number; y: number } | null>(null);
 
   // Stable ref for send to avoid stale closure in voice callbacks
   const sendRef = useRef<(text: string) => void>(() => {});
@@ -532,7 +533,7 @@ export function FXKAssistant() {
   const presets = useMemo(() => {
     return getPresetsForMode(joiMode).map(p => ({ label: p.label, icon: p.icon, prompt: p.prompt }));
   }, [joiMode]);
-  
+  const joiState = loading ? 'active' : isTyping ? 'active' : 'idle';
 
   const handleFileSelect = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -557,7 +558,9 @@ export function FXKAssistant() {
 
   const send = useCallback(async (text: string) => {
     if ((!text.trim() && !attachment) || loading) return;
+    setGlitching(true);
     playGlitchBurst();
+    setTimeout(() => setGlitching(false), 800);
 
     // Build user message with attachment context
     let userContent = text.trim();
@@ -661,34 +664,12 @@ export function FXKAssistant() {
   const handleClose = useCallback(() => {
     joiSpeech.stop();
     voiceRecognition.stopListening();
-    if (isMobile) {
-      setOpen(false);
-      setClosing(false);
-      return;
-    }
     setClosing(true);
     setTimeout(() => {
       setOpen(false);
       setClosing(false);
-    }, 220);
-  }, [isMobile, joiSpeech, voiceRecognition]);
-
-  const handleMobileTouchStart = useCallback((e: React.TouchEvent<HTMLDivElement>) => {
-    if (!isMobile) return;
-    const touch = e.touches[0];
-    swipeStartRef.current = { x: touch.clientX, y: touch.clientY };
-  }, [isMobile]);
-
-  const handleMobileTouchEnd = useCallback((e: React.TouchEvent<HTMLDivElement>) => {
-    if (!isMobile || !swipeStartRef.current) return;
-    const touch = e.changedTouches[0];
-    const deltaX = touch.clientX - swipeStartRef.current.x;
-    const deltaY = touch.clientY - swipeStartRef.current.y;
-    swipeStartRef.current = null;
-
-    if (Math.abs(deltaX) < 56 || Math.abs(deltaX) < Math.abs(deltaY) * 1.2) return;
-    setMobileSide(deltaX > 0 ? 'right' : 'left');
-  }, [isMobile]);
+    }, 350);
+  }, [joiSpeech, voiceRecognition]);
 
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -704,14 +685,6 @@ export function FXKAssistant() {
 
   const panelWidth = isMobile ? undefined : (expanded ? 560 : 360);
   const isListening = voiceRecognition.state === 'listening';
-  const mobilePanelStyle = isMobile ? {
-    width: 'min(23.5rem, calc(100vw - 1rem))',
-    height: 'min(76dvh, calc(100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom) - 5rem))',
-    top: 'max(0.5rem, env(safe-area-inset-top))',
-    bottom: 'calc(4.5rem + env(safe-area-inset-bottom))',
-    left: mobileSide === 'left' ? '0.5rem' : 'auto',
-    right: mobileSide === 'right' ? '0.5rem' : 'auto',
-  } : undefined;
 
   const fabState = joiSpeech.speaking ? 'speaking' : isListening ? 'listening' : loading ? 'processing' : 'idle';
 
@@ -867,19 +840,16 @@ export function FXKAssistant() {
   return (
     <div
       className={cn(
-        "fixed z-[10000] rounded-xl flex flex-col overflow-hidden fxk-panel transition-all duration-300",
+        "fixed z-[70] rounded-xl flex flex-col overflow-hidden fxk-panel transition-all duration-300",
         closing ? "animate-holo-dissolve" : "animate-holo-materialize",
-        isMobile ? "max-w-[calc(100vw-1rem)]" : "bottom-5 right-5 h-[560px]"
+        isMobile ? "inset-3 bottom-[76px]" : "bottom-5 right-5 h-[560px]"
       )}
-      onTouchStart={handleMobileTouchStart}
-      onTouchEnd={handleMobileTouchEnd}
       style={{
         width: isMobile ? undefined : panelWidth,
         background: 'hsl(220 22% 4% / 0.96)',
         border: '1px solid hsl(190 100% 50% / 0.15)',
         boxShadow: '0 0 50px hsl(190 100% 50% / 0.08), 0 0 100px hsl(38 100% 45% / 0.05), 0 20px 80px hsl(0 0% 0% / 0.7)',
         backdropFilter: 'blur(32px)',
-        ...mobilePanelStyle,
       }}
     >
       {/* Scanline overlay */}
@@ -889,34 +859,17 @@ export function FXKAssistant() {
       {messages.length === 0 && <div className="absolute inset-0 pointer-events-none br2049-rain rounded-xl" style={{ zIndex: 1 }} />}
 
       {/* Header */}
-      <div
-        className={cn(
-          "relative z-20 flex items-center shrink-0 pointer-events-auto",
-          isMobile ? "gap-1.5 px-2 py-2.5" : "gap-2.5 px-3 py-3"
-        )}
-        style={{ borderBottom: '1px solid hsl(190 100% 50% / 0.1)' }}
-      >
-        {isMobile && (
-          <div className="absolute left-1/2 top-1.5 h-1 w-10 -translate-x-1/2 rounded-full bg-border/50" />
-        )}
+      <div className="relative z-10 flex items-center gap-2.5 px-3 py-3 shrink-0" style={{ borderBottom: '1px solid hsl(190 100% 50% / 0.1)' }}>
         {/* Joi face in header — speaking avatar */}
         <div className="relative cursor-pointer hover:brightness-125 transition-all shrink-0">
-          <img
-            src={joiFaceIcon}
-            alt="Joi"
-            className={cn(
-              "rounded-full object-cover transition-all duration-500",
-              isMobile ? "w-8 h-8" : "w-10 h-10"
-            )}
-            style={{
-              border: joiSpeech.speaking ? '2px solid hsl(38 100% 50% / 0.6)' : '1.5px solid hsl(190 100% 50% / 0.3)',
-              boxShadow: joiSpeech.speaking
-                ? '0 0 20px hsl(38 100% 50% / 0.25), 0 0 8px hsl(38 100% 50% / 0.15)'
-                : '0 0 12px hsl(190 100% 50% / 0.15)',
-              animation: joiSpeech.speaking ? 'joi-avatar-speaking 1.5s ease-in-out infinite' : undefined,
-              transform: joiSpeech.speaking ? 'scale(1.02)' : 'scale(1)',
-            }}
-          />
+          <img src={joiFaceIcon} alt="Joi" className="w-10 h-10 rounded-full object-cover transition-all duration-500" style={{
+            border: joiSpeech.speaking ? '2px solid hsl(38 100% 50% / 0.6)' : '1.5px solid hsl(190 100% 50% / 0.3)',
+            boxShadow: joiSpeech.speaking
+              ? '0 0 20px hsl(38 100% 50% / 0.25), 0 0 8px hsl(38 100% 50% / 0.15)'
+              : '0 0 12px hsl(190 100% 50% / 0.15)',
+            animation: joiSpeech.speaking ? 'joi-avatar-speaking 1.5s ease-in-out infinite' : undefined,
+            transform: joiSpeech.speaking ? 'scale(1.02)' : 'scale(1)',
+          }} />
           {joiSpeech.speaking && (
             <div className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full flex items-center justify-center" style={{ background: 'hsl(38 100% 50%)', boxShadow: '0 0 6px hsl(38 100% 50% / 0.5)' }}>
               <Volume2 className="w-2 h-2 text-black" />
@@ -924,88 +877,53 @@ export function FXKAssistant() {
           )}
         </div>
 
-        <div className="flex-1 min-w-0 overflow-hidden">
-          <div className="flex items-center gap-1.5 min-w-0">
-            <span className="text-[10px] font-mono font-bold tracking-[0.25em] uppercase truncate" style={{ color: `hsl(${modeConfig.accentHsl})` }}>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-1.5">
+            <span className="text-[10px] font-mono font-bold tracking-[0.25em] uppercase" style={{ color: `hsl(${modeConfig.accentHsl})` }}>
               JOI · {modeConfig.shortLabel}
             </span>
-            <div className={cn("w-1.5 h-1.5 rounded-full shrink-0",
+            <div className={cn("w-1.5 h-1.5 rounded-full",
               connectionOk === true ? "bg-green-500" : connectionOk === false ? "bg-red-500" : "bg-muted-foreground/20"
             )} style={{ boxShadow: connectionOk === true ? '0 0 4px hsl(120 70% 50%)' : 'none' }} />
             {joiSpeech.speaking && <SpeakingWave />}
           </div>
-          <span className="text-[7px] font-mono tracking-[0.15em] uppercase transition-all duration-500 truncate block" style={{
+          <span className="text-[7px] font-mono tracking-[0.15em] uppercase transition-all duration-500" style={{
             color: voiceRecognition.state === 'listening' ? 'hsl(190 100% 65%)' : joiSpeech.speaking ? 'hsl(38 100% 65%)' : joiEmotion === 'celebrating' ? 'hsl(42 90% 60%)' : joiEmotion === 'serious' ? 'hsl(32 80% 55%)' : 'hsl(190 100% 50% / 0.4)',
           }}>
             {statusText}
           </span>
         </div>
 
-        {/* Action cluster — secondary controls */}
-        <div className={cn("flex items-center shrink-0", isMobile ? "gap-0.5" : "gap-1")}>
-          {/* Voice toggle */}
-          {joiSpeech.supported && (
-            <button
-              onClick={joiSpeech.toggle}
-              className={cn("flex items-center justify-center rounded hover:bg-white/5 transition-colors shrink-0", isMobile ? "h-9 w-9" : "h-6 w-6")}
-              title={joiSpeech.enabled ? 'Desativar voz' : 'Ativar voz'}
-              aria-label={joiSpeech.enabled ? 'Desativar voz' : 'Ativar voz'}
-            >
-              {joiSpeech.enabled ? (
-                <Volume2 className="h-3.5 w-3.5" style={{ color: 'hsl(38 100% 55%)' }} />
-              ) : (
-                <VolumeX className="h-3.5 w-3.5" style={{ color: 'hsl(190 100% 50% / 0.3)' }} />
-              )}
-            </button>
-          )}
-
-          {/* Clear — desktop only */}
+        {/* Voice toggle */}
+        {joiSpeech.supported && (
           <button
-            onClick={clearMessages}
-            className="hidden sm:flex h-6 w-6 items-center justify-center rounded hover:bg-white/5 transition-colors shrink-0"
-            title="Limpar conversa"
-            aria-label="Limpar conversa"
+            onClick={joiSpeech.toggle}
+            className="h-6 w-6 flex items-center justify-center rounded hover:bg-white/5 transition-colors"
+            title={joiSpeech.enabled ? 'Desativar voz' : 'Ativar voz'}
           >
-            <Trash2 className="h-3 w-3" style={{ color: 'hsl(190 100% 50% / 0.4)' }} />
+            {joiSpeech.enabled ? (
+              <Volume2 className="h-3 w-3" style={{ color: 'hsl(38 100% 55%)' }} />
+            ) : (
+              <VolumeX className="h-3 w-3" style={{ color: 'hsl(190 100% 50% / 0.3)' }} />
+            )}
           </button>
+        )}
 
-          {!isMobile && (
-            <button
-              onClick={() => setExpanded(!expanded)}
-              className="h-6 w-6 flex items-center justify-center rounded hover:bg-white/5 transition-colors shrink-0"
-              title="Expandir"
-              aria-label="Expandir"
-            >
-              <Maximize2 className="h-3 w-3" style={{ color: 'hsl(190 100% 50% / 0.6)' }} />
-            </button>
-          )}
-
-          <button
-            onClick={() => setMinimized(true)}
-            className={cn("flex items-center justify-center rounded hover:bg-white/5 transition-colors shrink-0", isMobile ? "h-9 w-9" : "h-6 w-6")}
-            title="Minimizar"
-            aria-label="Minimizar"
-          >
-            <Minimize2 className={cn(isMobile ? "h-4 w-4" : "h-3 w-3")} style={{ color: 'hsl(190 100% 50% / 0.6)' }} />
+        <button onClick={clearMessages} className="h-6 w-6 flex items-center justify-center rounded hover:bg-white/5 transition-colors" title="Clear">
+          <Trash2 className="h-3 w-3" style={{ color: 'hsl(190 100% 50% / 0.4)' }} />
+        </button>
+        {!isMobile && (
+          <button onClick={() => setExpanded(!expanded)} className="h-6 w-6 flex items-center justify-center rounded hover:bg-white/5 transition-colors" title="Expand">
+            <Maximize2 className="h-3 w-3" style={{ color: 'hsl(190 100% 50% / 0.6)' }} />
           </button>
-        </div>
-
-        {/* Close — always anchored to the far right, isolated from cluster */}
-        <button
-          onClick={handleClose}
-          className={cn(
-            "flex items-center justify-center rounded-md transition-colors shrink-0 relative z-10",
-            isMobile
-              ? "h-11 w-11 ml-1 bg-destructive/15 border border-destructive/30 hover:bg-destructive/25 active:bg-destructive/35"
-              : "h-6 w-6 ml-0.5 hover:bg-white/5"
-          )}
-          title="Fechar"
-          aria-label="Fechar Joi"
-        >
-          <X className={cn(isMobile ? "h-5 w-5" : "h-3 w-3")} style={{ color: isMobile ? 'hsl(0 80% 70%)' : 'hsl(190 100% 50% / 0.6)' }} />
+        )}
+        <button onClick={() => setMinimized(true)} className="h-6 w-6 flex items-center justify-center rounded hover:bg-white/5 transition-colors">
+          <Minimize2 className="h-3 w-3" style={{ color: 'hsl(190 100% 50% / 0.6)' }} />
+        </button>
+        <button onClick={handleClose} className="h-6 w-6 flex items-center justify-center rounded hover:bg-white/5 transition-colors">
+          <X className="h-3 w-3" style={{ color: 'hsl(190 100% 50% / 0.6)' }} />
         </button>
       </div>
-
 
       {/* Mode selector bar */}
       <div className="relative z-10 flex flex-wrap gap-1 px-2 py-1.5 shrink-0" style={{ borderBottom: '1px solid hsl(190 100% 50% / 0.06)' }}>
@@ -1034,21 +952,26 @@ export function FXKAssistant() {
         })}
       </div>
 
-      {/* Joi side panels — desktop only. No mobile to keep header/close button clean. */}
-      {!isMobile && (
-        <>
-          <JOIContextRibbon />
-          <JOIInsightPanel />
-          <JOITruthInspector />
-          <JOIExecutionTracePanel trace={lastTrace} />
-          <JOIStylePanel />
-        </>
-      )}
+      {/* Context Ribbon — truth badges */}
+      <JOIContextRibbon />
+
+      {/* Insight Panel — blockers/warnings */}
+      <JOIInsightPanel />
+
+      {/* Truth Inspector — adapter integration status */}
+      <JOITruthInspector />
+
+      {/* Execution Trace — resolver pipeline visibility */}
+      <JOIExecutionTracePanel trace={lastTrace} />
+
+      {/* Style Panel — active style management */}
+      <JOIStylePanel />
 
       {/* Content area */}
       <div className="relative z-10 flex flex-1 overflow-hidden">
-        {/* Messages */}
+        {/* Sidebar hologram (expanded only) */}
 
+        {/* Messages */}
         <div ref={scrollRef} onScroll={handleScroll} className="flex-1 overflow-y-auto px-3 py-2 space-y-3 scrollbar-thin">
           {messages.length === 0 && (
             <div className="flex flex-col items-center justify-center h-full gap-3 opacity-90">

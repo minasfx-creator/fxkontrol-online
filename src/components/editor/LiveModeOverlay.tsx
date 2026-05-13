@@ -10,8 +10,6 @@ import { useDisplayStore } from '@/store/useDisplayStore';
 import { usePlaybackState, useHardwareStatus } from '@/hooks/useEditorUI';
 import { useHoldToConfirm } from '@/hooks/useHoldToConfirm';
 import { useShowSettings } from '@/hooks/useShowSettings';
-import { timelineClock } from '@/core/timeline/TimelineClock';
-import { timelineTransport } from '@/core/transport/timelineTransport';
 
 type ShowState = 'READY' | 'ARMED' | 'LIVE' | 'STOPPED';
 
@@ -59,9 +57,10 @@ export default function LiveModeOverlay() {
   // E-STOP
   const handlePanic = useCallback(() => {
     clearAll();
-    timelineTransport.stop();
+    setPlaying(false);
+    setCurrentTime(0);
     haptics.panic();
-  }, [clearAll]);
+  }, [clearAll, setPlaying, setCurrentTime]);
 
   const stateColors: Record<ShowState, string> = {
     READY: 'text-[hsl(var(--success))]',
@@ -135,7 +134,7 @@ export default function LiveModeOverlay() {
           {/* Center: Transport */}
           <div className="flex items-center gap-3">
             <button
-              onClick={() => { haptics.tap(); timelineTransport.toggle(); }}
+              onClick={() => { haptics.tap(); setPlaying(!isPlaying); }}
               className="w-16 h-16 rounded-2xl glass-button flex items-center justify-center active:scale-90 transition-transform"
             >
               {isPlaying
@@ -156,7 +155,7 @@ export default function LiveModeOverlay() {
             </button>
 
             <button
-              onClick={() => { haptics.toggle(); timelineTransport.stop(); }}
+              onClick={() => { haptics.toggle(); setPlaying(false); setCurrentTime(0); }}
               className="w-14 h-14 rounded-2xl glass-button flex items-center justify-center active:scale-90 transition-transform"
             >
               <Square className="w-5 h-5 text-[hsl(var(--muted-foreground))]" />

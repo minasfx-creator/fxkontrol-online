@@ -122,11 +122,7 @@ export function useProjectPersistence() {
       store.setDuration(project.duration);
       if (project.audio_url) store.setAudioUrl(project.audio_url);
       if (project.bpm) store.setBpm(project.bpm);
-      // Guard against legacy/corrupted projects persisted with speed=0 or null:
-      // those would leave the timeline "playing but frozen" on next open.
-      const persistedSpeed = Number(project.playback_speed);
-      const safeSpeed = Number.isFinite(persistedSpeed) && persistedSpeed > 0 ? persistedSpeed : 1;
-      store.setPlaybackSpeed(safeSpeed);
+      store.setPlaybackSpeed(project.playback_speed);
 
       // Load positions
       const { data: posData } = await supabase

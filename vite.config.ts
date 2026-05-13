@@ -39,7 +39,6 @@ export default defineConfig(({ mode }) => ({
         globPatterns: ["**/*.{js,css,html,ico,png,svg,woff2}"],
         maximumFileSizeToCacheInBytes: 3 * 1024 * 1024,
         globIgnores: [
-          "**/bundle-analysis.html",
           "**/lovable-uploads/**",
           "**/vendor-export-*.js",
           "**/ru-*.js",

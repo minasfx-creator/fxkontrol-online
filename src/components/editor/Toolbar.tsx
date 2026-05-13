@@ -22,9 +22,6 @@ import { secondsToTimecode, formatTimecode } from '@/lib/smpteEngine';
 import { useFireOneHardware } from '@/hooks/useFireOneHardware';
 import { usePBusHardware } from '@/hooks/usePBusHardware';
 import { artnetModuleService } from '@/services/artnetModuleService';
-import { timelineClock } from '@/core/timeline/TimelineClock';
-import { timelineTransport } from '@/core/transport/timelineTransport';
-import TimelineClockPanel from './TimelineClockPanel';
 
 // ── Lazy-loaded modals (only fetched when user opens them) ──
 const lz = (loader: () => Promise<{ default: React.ComponentType<any> }>) => lazy(loader);
@@ -461,7 +458,7 @@ export default function Toolbar({ onOpenPanel, isMaximized, onToggleMaximize }: 
       if (ctrl && e.key === 'd' && !isInput) { e.preventDefault(); const store = useProjectStore.getState(); const ids = store.selectedTimelineItemIds.length > 0 ? store.selectedTimelineItemIds : store.selectedTimelineItemId ? [store.selectedTimelineItemId] : []; if (ids.length) store.duplicateTimelineItems(ids); return; }
       if (isInput) return;
       switch (e.key) {
-        case ' ': e.preventDefault(); timelineTransport.toggle(); break;
+        case ' ': e.preventDefault(); { const { isPlaying, setPlaying } = useProjectStore.getState(); setPlaying(!isPlaying); } break;
         case 'c': case 'C': onOpenPanel?.('effects'); window.dispatchEvent(new Event('focus-effect-search')); break;
         case 'v': case 'V': onOpenPanel?.('positions'); break;
         case 'p': case 'P': onOpenPanel?.('addressing'); break;
@@ -471,10 +468,10 @@ export default function Toolbar({ onOpenPanel, isMaximized, onToggleMaximize }: 
         case 'h': case 'H': if (!ctrl) { window.dispatchEvent(new CustomEvent('open-scripting-tool', { detail: 'spread' })); } break;
         case 'd': case 'D': if (!ctrl) { const store = useProjectStore.getState(); const ids = store.selectedTimelineItemIds; if (ids.length) store.duplicateTimelineItems(ids); } break;
         case 'z': case 'Z': if (!ctrl) { onOpenPanel?.('racks'); } break;
-        case 'Home': { e.preventDefault(); timelineClock.seek(0); break; }
-        case 'End': { e.preventDefault(); timelineClock.seek(useProjectStore.getState().duration); break; }
-        case 'ArrowLeft': { e.preventDefault(); const store = useProjectStore.getState(); const sorted = [...store.timelineItems].sort((a, b) => a.startTime - b.startTime); const current = store.currentTime; const prev = sorted.filter(i => i.startTime < current - 0.01).pop(); if (prev) { timelineClock.seek(prev.startTime); store.selectTimelineItem(prev.id); } break; }
-        case 'ArrowRight': { e.preventDefault(); const store = useProjectStore.getState(); const sorted = [...store.timelineItems].sort((a, b) => a.startTime - b.startTime); const current = store.currentTime; const next = sorted.find(i => i.startTime > current + 0.01); if (next) { timelineClock.seek(next.startTime); store.selectTimelineItem(next.id); } break; }
+        case 'Home': { e.preventDefault(); useProjectStore.getState().setCurrentTime(0); break; }
+        case 'End': { e.preventDefault(); useProjectStore.getState().setCurrentTime(useProjectStore.getState().duration); break; }
+        case 'ArrowLeft': { e.preventDefault(); const store = useProjectStore.getState(); const sorted = [...store.timelineItems].sort((a, b) => a.startTime - b.startTime); const current = store.currentTime; const prev = sorted.filter(i => i.startTime < current - 0.01).pop(); if (prev) { store.setCurrentTime(prev.startTime); store.selectTimelineItem(prev.id); } break; }
+        case 'ArrowRight': { e.preventDefault(); const store = useProjectStore.getState(); const sorted = [...store.timelineItems].sort((a, b) => a.startTime - b.startTime); const current = store.currentTime; const next = sorted.find(i => i.startTime > current + 0.01); if (next) { store.setCurrentTime(next.startTime); store.selectTimelineItem(next.id); } break; }
         case 'Delete': case 'Backspace': { const store = useProjectStore.getState(); if (store.selectedTimelineItemIds.length > 0) store.removeMultipleTimelineItems(store.selectedTimelineItemIds); else if (store.selectedTimelineItemId) store.removeTimelineItem(store.selectedTimelineItemId); break; }
         case 'Escape': setEditorMode('select'); break;
       }
@@ -599,7 +596,6 @@ export default function Toolbar({ onOpenPanel, isMaximized, onToggleMaximize }: 
       {/* ─── RIGHT: Mission-Critical Controls ──── */}
       <div className="flex items-center gap-1.5">
         <TimecodeDisplay />
-        {!isMobile && <TimelineClockPanel />}
 
         {!isMobile && (
           <>
@@ -650,7 +646,7 @@ export default function Toolbar({ onOpenPanel, isMaximized, onToggleMaximize }: 
             </button>
             <button
               onClick={() => {
-                timelineTransport.pause();
+                useProjectStore.getState().setPlaying(false);
                 toast.error('🔴 EMERGENCY STOP');
               }}
               className="h-9 px-4 flex items-center gap-1.5 rounded-xl bg-red-600 text-red-50 hover:bg-red-500 shadow-[0_0_20px_rgba(220,38,38,0.3)] transition-all text-[11px] font-black uppercase tracking-wider"

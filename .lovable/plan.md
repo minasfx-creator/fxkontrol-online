@@ -1,54 +1,101 @@
-## Adicionar uploads aos paths canônicos (rodada consolidada v3)
 
-Mesmo padrão das rodadas anteriores: copiar uploads aos paths canônicos sem editar nada existente. Nenhum dos novos arquivos é referenciado pelo código vivo, e nem `scripts/` nem `src/seo/` existem ainda — adição limpa.
 
-### Esta rodada — 7 novos arquivos
+# Camada 11: Render Volumétrico Real — Curl Noise Smoke, ACES Tonemapping, Light Scattering
 
-| Upload | Destino |
-|---|---|
-| `audit-landing-seo.ts` | `scripts/audit-landing-seo.ts` |
-| `bridge-cert.windows.ps1` | `scripts/bridge-cert.windows.ps1` |
-| `build-windows-offline-installer.ps1` | `scripts/build-windows-offline-installer.ps1` |
-| `prepare-ios-native.ps1` | `scripts/prepare-ios-native.ps1` |
-| `local-bridge.mjs` | `scripts/local-bridge.mjs` |
-| `vite-plugin-bundle-budget.ts` | `scripts/vite-plugin-bundle-budget.ts` |
-| `vite-plugin-precache-guard.ts` | `scripts/vite-plugin-precache-guard.ts` |
-| `vite-plugin-sitemap.ts` | `scripts/vite-plugin-sitemap.ts` |
+## Objetivo
 
-### Acumulado das rodadas anteriores (também a copiar)
+Upgrade os shaders de render e compute existentes no pipeline WebGPU nativo (`src/render_ultra/gpgpu/`) com: (1) smoke compute dedicado com curl noise divergence-free, (2) fragment shaders cinematográficos com ACES tonemapping, (3) light scattering pass, (4) billboard instanciado via storage buffer read. Tudo incremental sobre a Camada 10 existente.
 
-Frontend: `src/dev/fxk16AsciiEmulator.ts`, `src/dev/__tests__/fxk16AsciiEmulator.test.ts`, `src/config/fxkProduct.ts`, `src/config/landing.ts`, `src/config/landing.test.ts`.
+---
 
-Firmware: `firmware/fxk32q-esp32s3/{platformio.ini, README.md, src/main.ino, src/fxk32q_config.h, src/fxk32q_pinmap.h, src/fxk32q_protocol.{h,cpp}, src/fxk32q_relay.{h,cpp}, src/fxk32q_rs485.{h,cpp}}`.
+## Arquivos a Criar
 
-### Pendências observadas (NÃO bloqueiam esta rodada)
+### 1. `src/render_ultra/gpgpu/wgsl/smokeCompute.wgsl.ts`
+Exporta string WGSL do compute shader de fumaça com:
+- `SmokeSimParams` uniform (dt, time, wind, turbulence, dissipation, rise_force)
+- `SmokeParticle` struct (pos, vel, density)
+- `curl_noise()`: derivadas cruzadas de 3D value noise → campo divergence-free
+- `cs_smoke_update`: advecção com curl noise, rise force, drag racional, dissipação de densidade
+- Workgroup size 256
 
-Os scripts/plugins novos referenciam dependências e arquivos que **não existem no repo hoje**. Eles são adicionados como **standalone** (não plugados em `vite.config.ts` nem `package.json`):
+### 2. `src/render_ultra/gpgpu/wgsl/renderShaders.wgsl.ts`
+Substitui o `RENDER_WGSL` inline no `webgpuLoop.ts`. Exporta shader completo com:
+- **Billboard vertex** com particle read via `var<storage, read>` (instancing nativo, sem vertex buffer layout)
+- **Fire fragment**: núcleo emissivo `exp(-r²*7)` + halo `exp(-r²*1.8)*0.35`, blackbody tint por temperatura, ACES tonemapping no output
+- **Smoke fragment**: Beer-Lambert absorption, densidade variável por `misc.z`, cor base escura com aquecimento por proximidade de fogo
+- **ACES helper**: `fn aces_tonemap(x: vec3<f32>) -> vec3<f32>` — Narkowicz fit
 
-1. `audit-landing-seo.ts` precisa `jsdom` + um React tree montável de `<Landing/>`. Roda fora do build padrão.
-2. `local-bridge.mjs` precisa `ws` e os certs em `.certs/bridge/` (gerados pelo `bridge-cert.windows.ps1`). Os scripts npm `bridge:local` / `bridge:cert:windows` referenciados ainda não existem em `package.json`.
-3. `vite-plugin-sitemap.ts` precisa `src/seo/publicRoutes.mjs` (não existe) com `PUBLIC_ROUTES`, `SITE_ORIGIN`, `buildSitemapXml`. Sem ele o plugin é no-op silencioso (warn-only no caso atual).
-4. `vite-plugin-bundle-budget.ts` e `vite-plugin-precache-guard.ts` só rodam se forem importados em `vite.config.ts` — vou deixar ambos disponíveis mas **não plugar**.
-5. Firmware FXK32Q ainda falta `fxk32q_artnet.{h,cpp}` (referenciado por `main.ino`).
+### 3. `src/render_ultra/gpgpu/wgsl/lightScatter.wgsl.ts`
+Exporta WGSL para um fullscreen-triangle pass de light scattering:
+- `LightScatterParams` uniform (intensity, falloff, radius, time, light positions)
+- Fragment shader que amostra radial falloff `1/(1 + k*d²)` de cada fonte de luz
+- Output aditivo baixa intensidade para aquecer bordas de fumaça
 
-Vou criar `scripts/_PENDING.md` listando essas dependências para próxima rodada explícita do usuário.
+### 4. `src/render_ultra/gpgpu/webgpuLightScatter.ts`
+Pipeline e pass de light scattering:
+- `createLightScatterPipeline(device, format, wgslCode)`: fullscreen triangle, additive blend leve
+- `createLightScatterUniform(device)`: buffer para parâmetros + posições de luz
+- `runLightScatterPass(encoder, view, pipeline, bindGroup)`: draw(3) fullscreen
 
-### Não muda
+---
 
-- Zero edição em `vite.config.ts`, `package.json`, `App.tsx`, rotas, sidebar, Supabase.
-- Sem instalar `jsdom`, `ws`, `tsx` ou outras deps mencionadas pelos scripts.
-- Sem mudança em safety/workMode/CommandBus/uiCommandGateway.
-- Pluggar bundle-budget / precache-guard / sitemap em `vite.config.ts` fica para rodada futura explícita (envolve risco de quebrar build atual e exige ajustar `globPatterns` PWA).
+## Arquivos a Modificar
 
-### Verificação pós-implementação
+### 5. `src/render_ultra/gpgpu/webgpuLoop.ts`
+- Importar shaders de `wgsl/renderShaders.wgsl.ts` em vez do `RENDER_WGSL` inline
+- Adicionar smoke compute pipeline e bind groups separados
+- Adicionar light scatter pass após smoke render
+- Frame pipeline atualizado:
+  ```
+  Compute Physics → Compute Smoke → Sort → Fire Render → Smoke Render → Light Scatter → Present
+  ```
+- Novo campo `smokeComputePipeline`, `lightScatterPipeline` e bind groups correspondentes
 
-1. `bun vitest run src/dev/__tests__/fxk16AsciiEmulator.test.ts src/config/landing.test.ts` → verde.
-2. Build do app não deve quebrar (nenhum dos novos arquivos é importado pelo código vivo).
-3. `scripts/_PENDING.md` documenta as 5 dependências pendentes com instruções concisas pra próxima rodada.
+### 6. `src/render_ultra/gpgpu/webgpuPipelines.ts`
+- Adicionar `createSmokeComputePipeline(device, wgslCode)` com entry `cs_smoke_update`
+- Exportar nova factory
 
-### Memória
+### 7. `src/render_ultra/gpgpu/webgpuPasses.ts`
+- Adicionar `runSmokeComputePass(encoder, pipeline, bindGroup, count)`
+- Adicionar `runLightScatterPass(encoder, view, pipeline, bindGroup)`
 
-Adicionar entradas curtas ao `mem://index.md`:
-- `mem://hardware/fxk32q-firmware-tree`
-- `mem://funcionalidades/fxk16-ascii-emulator-bench`
-- `mem://infra/scripts-tree-standalone` — `scripts/` contém SEO audit, bundle-budget, precache-guard, sitemap-generator, local-bridge HTTPS+WS, certs Windows, iOS native prep, Windows offline installer; **standalone**, não plugados em vite.config nem package.json até decisão explícita.
+### 8. `src/render_ultra/gpgpu/webgpuBuffers.ts`
+- Adicionar `createSmokeUniformBuffer(device)` (32 bytes)
+- Adicionar `createLightScatterUniformBuffer(device)` (64 bytes)
+- Exportar constantes `SMOKE_UNIFORM_BYTES`, `LIGHT_SCATTER_UNIFORM_BYTES`
+
+### 9. `src/render_ultra/gpgpu/webgpuBindGroups.ts`
+- Adicionar `createSmokeComputeBindGroup(device, layout, uniformBuf, smokeBuf)`
+- Adicionar `createLightScatterBindGroup(device, layout, uniformBuf)`
+
+### 10. `src/render_ultra/gpgpu/index.ts`
+- Re-exportar novos módulos e types
+
+---
+
+## Detalhes Técnicos
+
+```text
+Frame Pipeline Atualizado:
+
+SimParams ──→ Compute Physics (particles)
+SmokeParams ──→ Compute Smoke (curl noise advection)
+                    ↓
+              Bitonic Sort (transparency ordering)
+                    ↓
+              Fire Render Pass (additive, clear, ACES in fragment)
+                    ↓
+              Smoke Render Pass (alpha blend, load, Beer-Lambert)
+                    ↓
+              Light Scatter Pass (fullscreen, additive low-intensity)
+                    ↓
+              Present
+```
+
+- ACES tonemapping aplicado **dentro** do fire fragment shader (preserva HDR até o último momento)
+- Curl noise é divergence-free por construção (derivadas cruzadas), garantindo turbulência sem explosão de volume
+- Light scatter usa fullscreen triangle (3 vertices, no index buffer) para evitar overhead de quad
+- Smoke compute separado do physics principal para permitir tuning independente de turbulência vs física
+- Todos os novos buffers pré-alocados no constructor, zero GC no hot path
+- CPU fallback path inalterado — todo código novo é WebGPU-only com guard `if (!navigator.gpu)`
+

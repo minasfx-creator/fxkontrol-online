@@ -1,7 +1,6 @@
 import { create } from 'zustand';
 import type { VideoChoreoResult } from '@/lib/videoChoreoEngine';
 import { createDroneFormationSlice } from '@/store/slices/droneFormationSlice';
-import { timelineClock } from '@/core/timeline/TimelineClock';
 
 // ── Effect types & EFFECT_LIBRARY re-exported from src/data for backward compat ──
 export type { Effect, PartType } from '@/data/effectLibrary';
@@ -64,9 +63,6 @@ export interface ProjectState {
   timeZoneOffset: number | null;
   terrainElevation: number | null;
   staticMapUrl: string | null;
-  timelineSource: 'local' | 'external';
-  timelineLastExternalSync: number | null;
-  timelineDriftSec: number;
   setGpsOrigin: (origin: { lat: number; lng: number; heading: number; altitude: number }) => void;
   setGeoIntelligence: (data: {
     locationName?: string | null;
@@ -202,9 +198,6 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
   timeZoneOffset: null,
   terrainElevation: null,
   staticMapUrl: null,
-  timelineSource: 'local',
-  timelineLastExternalSync: null,
-  timelineDriftSec: 0,
   setGpsOrigin: (origin) => set({ gpsOrigin: origin }),
   setGeoIntelligence: (data) => set({
     ...(data.locationName !== undefined && { locationName: data.locationName }),
@@ -214,16 +207,9 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
     ...(data.staticMapUrl !== undefined && { staticMapUrl: data.staticMapUrl }),
   }),
 
-  setPlaying: (playing) => {
-    if (playing) timelineClock.play();
-    else timelineClock.pause();
-  },
-  setCurrentTime: (time) => {
-    timelineClock.seek(time);
-  },
-  setDuration: (duration) => {
-    timelineClock.setDuration(duration);
-  },
+  setPlaying: (playing) => set({ isPlaying: playing }),
+  setCurrentTime: (time) => set({ currentTime: time }),
+  setDuration: (duration) => set({ duration }),
   addTimelineItem: (item) => set((s) => ({ timelineItems: [...s.timelineItems, item] })),
   removeTimelineItem: (id) => set((s) => {
     const removed = s.timelineItems.find(i => i.id === id);
@@ -404,13 +390,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
   setAudioUrl: (url) => set({ audioUrl: url }),
   setBpm: (bpm) => set({ bpm }),
   setSnapToBeat: (snap) => set({ snapToBeat: snap }),
-  setPlaybackSpeed: (speed) => {
-    // Sanitize: NaN, negative or non-finite values fall back to 1×.
-    // Speed=0 is a valid technical state (external sync hold) and is preserved,
-    // but the operational transport controller will auto-correct it on Play.
-    const safe = Number.isFinite(speed) && speed >= 0 ? speed : 1;
-    timelineClock.setSpeed(safe);
-  },
+  setPlaybackSpeed: (speed) => set({ playbackSpeed: speed }),
   setProjectId: (id) => set({ projectId: id }),
 
   combineAsChain: (itemIds, gap = 0) => set((s) => {
@@ -460,36 +440,6 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
   setVideoChoreoResult: (result) => set({ videoChoreoResult: result }),
   setDepthLayers: (layers) => set({ depthLayers: layers }),
 }));
-
-timelineClock.setDuration(useProjectStore.getState().duration);
-timelineClock.setSpeed(useProjectStore.getState().playbackSpeed);
-timelineClock.seek(useProjectStore.getState().currentTime);
-
-timelineClock.onChange((state) => {
-  useProjectStore.setState((prev) => {
-    if (
-      prev.currentTime === state.time &&
-      prev.isPlaying === state.playing &&
-      prev.duration === state.duration &&
-      prev.playbackSpeed === state.speed &&
-      prev.timelineSource === state.source &&
-      prev.timelineLastExternalSync === state.lastExternalSync &&
-      prev.timelineDriftSec === state.driftSec
-    ) {
-      return prev;
-    }
-
-    return {
-      currentTime: state.time,
-      isPlaying: state.playing,
-      duration: state.duration,
-      playbackSpeed: state.speed,
-      timelineSource: state.source,
-      timelineLastExternalSync: state.lastExternalSync,
-      timelineDriftSec: state.driftSec,
-    };
-  });
-});
 
 // ── effectWorldOrientation re-exported from src/lib for backward compat ──
 export { effectWorldOrientation } from '@/lib/effectOrientation';

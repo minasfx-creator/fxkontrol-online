@@ -8,14 +8,6 @@
  * TransportManager handles priority routing, E-STOP broadcast, and auto-fallback.
  */
 
-import {
-  assertBridgeWebSocketAllowed,
-  buildBridgeWebSocketProtocols,
-  buildBridgeWebSocketUrl,
-  openBridgeWebSocket,
-  requiresSecureBridgeTransport,
-} from '@/lib/bridgeGateway';
-
 export type TransportType = 'serial' | 'radio' | 'wifi' | 'wifi_direct' | 'artnet' | 'cellular';
 export type TransportState = 'disconnected' | 'connecting' | 'connected' | 'error' | 'reconnecting';
 
@@ -282,32 +274,14 @@ export class WiFiTransport implements FireOneTransport {
   }
 
   async connect(config?: Record<string, any>): Promise<void> {
-    const secureRequired = config?.secure ?? requiresSecureBridgeTransport();
-    const explicitHost = config?.relayHost || config?.relayIp;
-    const ip = explicitHost || (secureRequired ? undefined : '192.168.1.100');
+    const ip = config?.relayIp || '192.168.1.100';
     const port = config?.relayPort || 9485;
-    this.relayUrl = config?.relayUrl || buildBridgeWebSocketUrl({
-      host: ip,
-      port: explicitHost || !secureRequired ? port : undefined,
-      secure: secureRequired,
-      path: config?.relayPath ?? '',
-      defaultInsecurePort: port,
-      defaultSecurePort: config?.secureRelayPort || 9443,
-    });
+    this.relayUrl = `ws://${ip}:${port}`;
     this.autoReconnect = config?.autoReconnect !== false;
 
     return new Promise((resolve, reject) => {
       this.setState('connecting');
-      const protocols = buildBridgeWebSocketProtocols(config?.bridgeKey);
-      try {
-        assertBridgeWebSocketAllowed(this.relayUrl);
-        this.ws = openBridgeWebSocket(this.relayUrl, protocols);
-      } catch (error) {
-        const message = error instanceof Error ? error.message : 'Bridge local indisponível para este contexto';
-        this.setState('error', message);
-        reject(new Error(message));
-        return;
-      }
+      this.ws = new WebSocket(this.relayUrl);
       this.ws.binaryType = 'arraybuffer';
 
       this.ws.onopen = () => {
