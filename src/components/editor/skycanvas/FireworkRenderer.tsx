@@ -938,9 +938,9 @@ export const FireworkBurst = React.forwardRef<THREE.Group, {
         blendR = 0; blendG = 0; blendB = 0;
       }
       
-      const r = THREE.MathUtils.lerp(blendR * userFade, chemR, 0.7);
-      const g = THREE.MathUtils.lerp(blendG * userFade, chemG, 0.7);
-      const b = THREE.MathUtils.lerp(blendB * userFade, chemB, 0.7);
+      const r = isClusterDiadem ? 0 : THREE.MathUtils.lerp(blendR * userFade, chemR, 0.7);
+      const g = isClusterDiadem ? 0 : THREE.MathUtils.lerp(blendG * userFade, chemG, 0.7);
+      const b = isClusterDiadem ? 0 : THREE.MathUtils.lerp(blendB * userFade, chemB, 0.7);
       const brightnessScale = THREE.MathUtils.clamp(effectBrightness, 0.6, 1.8);
       
       const niagaraGlow = niagaraProfile ? niagaraProfile.glowIntensity / 2.0 : 1.0;
