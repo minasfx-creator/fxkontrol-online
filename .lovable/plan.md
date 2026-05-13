@@ -1,88 +1,120 @@
-# Refinamento Visual — Marcadores, Mines e Realismo
+## Refinamento de Realismo — calibrado por Great Grizzly + Weingart + FWsim "F1" (vídeos enviados)
 
-## 1. Remover marcadores laranjas
+Os dois vídeos são do **FWsim "Hans Zimmer F1"** — definem o look-alvo: bursts pequenos com **estrelas discretas brilhantes** (não blobs), **gerbs/fountains de palco** muito densos e dourados, **mines em leque cônico** subindo do palco, **cascade/Niagara de longa persistência** dourado caindo paralelo, e **comet rises** dourados visíveis indo do solo até o ponto de quebra. Bloom controlado, não estourado.
 
-### 1a. DirectionLine + anel da posição pyro
-**Arquivo:** `src/components/editor/PositionPins.tsx`
-- Remover o render `<DirectionLine .../>` na linha ~473 (linha + arrowhead saindo da posição pyro indicando heading/pitch)
-- Manter o `MortarTubeIcon` (o tubo 3D em si — usuário não pediu pra remover) e a base disc
-- Manter o `LinkedGlowRing` (pulsa só quando evento é selecionado no timeline — feedback útil, não é "marcador parado")
-- Remover também o componente `DirectionLine` se não for usado em outro lugar (dead-code)
+Escopo: render/simulação dos efeitos pirotécnicos. Sem mexer em safety, ShowPlan, WebGPU layers 10/11, hardware ou backend.
 
-### 1b. Marcadores SFX laranjas no palco
-**Arquivo:** `src/components/editor/skycanvas/GroundSystem.tsx`
-- Remover a chamada `<InstancedSFXMarkers ...>` do `SFXStageEnvironment` (anéis `#ff6600` espalhados sobre o palco que não correspondem a posições reais)
-- Remover a função `InstancedSFXMarkers` inteira (linhas 737-767)
+---
 
-## 2. Corrigir renderização das Mines
+### Lacunas detectadas no plano anterior (após análise dos vídeos)
 
-**Bug identificado em** `src/components/editor/effects/MineEffect.tsx` (linhas 399-404, 434):
+| Gap | Evidência no vídeo | Ação adicionada |
+|---|---|---|
+| **Bloom muito alto faz tudo virar blob** | FWsim mostra estrelas como pontos discretos brilhantes | Reduzir HDR peak global de 7.5 → **5.5** e star size base −20% |
+| **Falta perfil "stage gerb"** denso dourado de borda de palco | Linhas de gerbs no proscênio (v1_3, v2_3) | `GerbEffect` ganha preset `stage` (ângulo cone 4°, density ×1.5, golden #ffb060) |
+| **Mines V-cone (leque) ausentes** após omnidirectional | Pares de mines abrindo leque ~35° (v1_3, v2_3) | `MineEffect` ganha `pattern: 'omni' \| 'fan' \| 'v'`; default `fan` 30°±10° upward |
+| **Niagara/cascade waterfall fraca** (curta, sem paralelismo) | v2_8: chuva dourada longa, paralela, ~3-4s persistência | `WaterfallEffect`: lifetime ×2.2, gravity 1.4×, sparks paralelos com jitter horizontal <0.05, golden #ffa840 |
+| **Comet rise pouco visível** | Trilhos dourados verticais do solo ao burst (v1_3) | `CometEffect` rising trail density +60%, brilho do head ×1.4 |
+| **Ground strobes azuis** sincronizados ausentes | Pontos azuis intermitentes na base do palco (v2_3, v2_12) | `BengalEffect` ganha modo `strobe` (flicker 8Hz, cor azul #4080ff configurável) |
+| **Star size variation** fraca → look "CG" uniforme | Refs mostram tamanhos visivelmente diferentes | Já contemplado (variância ±15%); reforçar para ±25% nos color stars |
 
-```text
-PROBLEMA: o <group> raiz aplica launchRotation (pitch+heading)
-       → inclina TODOS os 600 particles + muzzle flash + ring de chão
-       → mine de 85° pitch (quase vertical) sai torta
-       → ground ring deixa de ser horizontal
-```
+---
 
-**Correção:**
-- Remover `rotation={launchRotation}` do `<group>` raiz (linha 434)
-- Manter `position={position}` e `renderOrder={50}`
-- Mine é **omnidirecional ground burst** (NFPA): coluna sobe vertical, spray em hemisfério, drips caem por gravidade — não deve seguir orientação do tubo
-- O `launchHeading`/`launchPitch` continuam recebidos pra futura aplicação seletiva (ex.: tilt sutil ≤10° na coluna), mas não rotacionar o grupo inteiro
-- Remover o `useMemo` `launchRotation` e os params da assinatura se ficarem unused após confirmação
+### Plano consolidado (substitui o anterior)
 
-## 3. Refinamento de realismo dos fogos
+#### 1. `src/render_ultra/fireworks/burstSimulation.ts` — calibração de padrões
 
-Ajustes pontuais, calibrados contra referência real (vídeos PyroJam / WPM):
+Tabela `BURST_CONFIGS`:
 
-### 3a. `src/components/editor/effects/MineEffect.tsx`
-- **Coluna mais densa e curta**: aumentar `COLUMN_FRAC` 0.20→0.28, reduzir lifetime coluna `0.3+random*0.3` → `0.18+random*0.25` (jet real dura ~0.4s, não 0.6s)
-- **Spray com decay mais rápido**: `attackReleaseEnvelope(progress, 0.02, 0.85, 2.5)` → `(progress, 0.015, 0.55, 3.2)` (mines reais têm release curto, não cauda longa)
-- **Muzzle flash menor e mais branco**: raio `1.2 + caliber*0.5 + progress*20` → `0.6 + caliber*0.3 + progress*8` (estava virando bola gigante)
-- **Ground ring opacity**: 0.12 → 0.08 e raio máximo `3+progress*30` → `2+progress*15` (era halo desproporcional)
-- **Smoke plume**: já está bom, sem alteração
+| Padrão | tailFactor | velocity | gravityMult | starCount | Notas |
+|---|---|---|---|---|---|
+| peony | 0.3→**0.05** | 26 | 1.0 | 280 | Esfera limpa sem rastro (Grizzly) |
+| chrysanthemum | 1.4→**1.6** | 30 | 1.0 | 200 | Ponta com curl progressivo (já existe) |
+| willow | 2.0→**2.8** | 22→**18** | 1.8→**2.2** | 180 | Charcoal pesado, life ×1.6 |
+| brocade | 1.8→**2.2** | 25→**23** | 1.3 | 250 | Default cor gold |
+| kamuro | 2.0→**2.6** | 18 | 1.5 | 300 | Life ×1.4, gold persistente até solo |
+| palm | 1.2 | 24 | 1.6 | 60 | Adicionar **rising comet trunk** 0.4s pré-burst |
+| crossette | 0.6 | 32 | 1.0 | 36→**40** | Sub-burst em 4 ramos **ortogonais reais** (não jitter) |
+| crackle/dragon_egg | 0.3 | 15 | 1.8 | 40 | `crackleSparkRate` +60%, micro-flashes 0.08–0.15s |
+| glitter | 0.4→**0.8** | 26 | 1.0 | 200 | Intermitência 8–14Hz |
+| horsetail | 2.5 | 16→**14** | 2.0→**2.4** | 160 | Cascata pesada |
+| dahlia | 0.2 | 42 | 1.1 | 60 | OK, manter |
 
-### 3b. `src/components/editor/skycanvas/FireworkRenderer.tsx` + efeitos shell
-- **HDR clamp**: garantir que `clampNiagaraHDR` está sendo aplicado nos cores finais de Comet/MultiBurst (verificar `multiplier ≤ 8.0` em vez de valores soltos que estouram o tonemap)
-- **Trail decay mais natural**: nos `CometEffect` e `ShellBurst`, o ember tail está fazendo transição abrupta — suavizar com `smoothstep(0.5, 0.85, lifeRatio)` em vez de cliff em 0.55
-- **Gravity em stars de shell**: confirmar que stars individuais estão recebendo gravidade pós-burst (não só o shell). Se não estiverem, adicionar integração simples no loop de stars
+Adicionar **drag aerodinâmico fraco** no integrador de partículas: `v *= 1 - 0.018*dt*speed/30`. Quebra a esfera perfeita CGI.
 
-### 3c. `src/render_ultra/fireworks/cinemaFireShader.ts`
-- **HDR multiplier 10.0 → 7.5**: está saturando o pipeline (bloom threshold 1.2 fica branco-leitoso). Calibrar pra HDR ~7.5 mantém realce sem clip
-- **Ember onset 0.55 → 0.62**: começa cedo demais hoje, dá impressão de "envelhecer rápido"
+Adicionar **variância ±25%** em `starSize` e `starBrightness` por partícula (Weingart §III).
 
-### 3d. (opcional, baixo risco) — escala de partículas
-- Reduzir `basePointSize` global em `MineEffect` 0.22 → 0.18 (caliber 3 estava com pontos visivelmente "grandes" no SkyCanvas)
+#### 2. `src/render_ultra/fireworks/cinemaFireShader.ts` — bloom controlado + cooling
 
-## Detalhes Técnicos
+- HDR multiplier 7.5 → **5.5** (impede que estrelas virem blobs estourados)
+- Color shift no fade últimos 25% de vida: `mix(starColor, vec3(1.0,0.45,0.1), smoothstep(0.75,1.0,lifeRatio))` — simula cooling blackbody
 
-```text
-Pipeline visual atual (mantido):
-  Effects (MineEffect, CometEffect…) → Three.js Points (additive)
-  → ExplosionGlowSystem (HDR pass)
-  → ACES Hue-Preserve tonemap
-  → Bloom + Halation + Grain → Final
+#### 3. `src/components/editor/effects/RealisticFirework.tsx` + `ShellBurstRenderer.tsx`
 
-Mudanças NÃO tocam:
-  - safety (workMode, uiCommandGateway, FieldBus)
-  - ShowPlan / cue scheduling
-  - Pipeline WebGPU camadas 10/11 (gpgpu/)
-  - particleChemistry / formulações
-  - hardware adapters
-```
+- **Cor padrão por padrão** quando usuário não definir: brocade/kamuro/willow → gold (#ffb84d); peony/chrys → cor do shell explícita
+- **Charcoal stars** (willow/brocade/kamuro): HDR peak local **3.5** (não 5.5), tail life ×1.6, "drip" particles a cada 80–120ms
+- **Pistil interno** auto em chrys/brocade_crown ≥100mm: dispara em **t=0** (não 250ms; Weingart: simultâneo)
+- **Star size base −20%** + variância ±25%
 
-## Validação
+#### 4. `src/components/editor/effects/GerbEffect.tsx` — preset "stage"
 
-1. Build automático passa
-2. Visual: abrir `/editor`, dropar uma mine no SkyCanvas, executar — verificar que (a) sem orange ring no palco, (b) sem linha laranja saindo das posições pyro, (c) mine sobe **vertical**, (d) burst aéreo parece mais "punchy" e menos "borracha".
-3. Sem novos erros no console (browser--read_console_logs após render)
+Novo prop `preset?: 'standard' | 'stage' | 'cold'`:
+- `stage`: coneAngle 4°, density ×1.5, color #ffb060 (gold), lifetime ×1.3, top-cap brightness +30%
 
-## Arquivos afetados
-- `src/components/editor/PositionPins.tsx` (remover DirectionLine usage + componente)
-- `src/components/editor/skycanvas/GroundSystem.tsx` (remover InstancedSFXMarkers)
-- `src/components/editor/effects/MineEffect.tsx` (remover rotation, calibrar muzzle/ring/coluna)
-- `src/components/editor/skycanvas/FireworkRenderer.tsx` (suavizar ember transition)
-- `src/render_ultra/fireworks/cinemaFireShader.ts` (HDR 10→7.5, ember 0.55→0.62)
+#### 5. `src/components/editor/effects/MineEffect.tsx` — patterns
 
-Zero mudança de backend, schema, rotas ou comandos.
+Novo prop `pattern?: 'omni' | 'fan' | 'v'` (default: **`fan`**):
+- `omni`: comportamento atual (hemisférico)
+- `fan`: cone vertical 30°±10°, stars discretos brilhantes (FWsim look)
+- `v`: dois leques ortogonais 25°
+
+#### 6. `src/components/editor/effects/WaterfallEffect.tsx` — niagara/cascade
+
+- Lifetime ×2.2 (~3.5s)
+- Gravity 1.4× (queda visivelmente acelerada)
+- Jitter horizontal <0.05 (paralelo, não esparramado)
+- Color default #ffa840
+- Spark size −15%, density ×1.4
+
+#### 7. `src/components/editor/effects/CometEffect.tsx` — rising trail
+
+- Trail density +60% no `rising` phase
+- Head brightness ×1.4
+- Trail color gold default; persist 0.6s após head desaparecer
+
+#### 8. `src/components/editor/effects/BengalEffect.tsx` — modo strobe
+
+Novo prop `mode?: 'steady' | 'strobe'` + `flickerHz?: number`:
+- `strobe`: on/off square-wave 8Hz default, cor configurável (default #4080ff azul gelado)
+
+#### 9. `src/components/editor/effects/EmberParticles.tsx` — densidade por padrão
+
+- peony: density ×0.3 (limpa)
+- willow/kamuro/brocade: density ×1.6, length ×1.6, drip particles
+- crackle/dragon_egg: micro-burst sparkle ×3 brilho no fim de vida
+
+---
+
+### Arquivos afetados
+
+- `src/render_ultra/fireworks/burstSimulation.ts` — tabela + drag + variância
+- `src/render_ultra/fireworks/cinemaFireShader.ts` — HDR 5.5 + color shift fade
+- `src/components/editor/effects/RealisticFirework.tsx`
+- `src/components/editor/effects/ShellBurstRenderer.tsx`
+- `src/components/editor/effects/GerbEffect.tsx` (preset `stage`)
+- `src/components/editor/effects/MineEffect.tsx` (patterns omni/fan/v)
+- `src/components/editor/effects/WaterfallEffect.tsx`
+- `src/components/editor/effects/CometEffect.tsx`
+- `src/components/editor/effects/BengalEffect.tsx` (modo strobe)
+- `src/components/editor/effects/EmberParticles.tsx`
+
+### Não muda
+
+Safety/SSM/CommandBus/uiCommandGateway · ShowPlan/VVIZ/VDL · WebGPU layers 10/11 · MineEffect-omnidirectional fix anterior · marcadores 3D já removidos · hardware adapters · edge functions · Lovable Cloud schema.
+
+### Validação
+
+- Build limpa
+- `/editor`: comparar peony, chrys, willow, brocade, palm, crossette, crackle, comet, glitter, mine `fan`, gerb `stage`, waterfall lado-a-lado com frames FWsim
+- Sem regressão de FPS (drag e variância são O(N) no mesmo loop; novos presets são só configs)
+- Confirmar que estrelas viram pontos discretos brilhantes (não blobs) — critério visual de "passou"
