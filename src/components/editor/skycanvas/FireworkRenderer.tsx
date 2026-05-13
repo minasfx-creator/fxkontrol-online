@@ -142,9 +142,187 @@ function _sharedStarMaterial(): THREE.ShaderMaterial {
 }
 
 // ═══════════════════════════════════════════════════════════════════════
+// buildPresetVelocities — Geometry-aware initializer for FWsim ShellPresets
+// (rev6 geometries: ring/double-ring/saturn-ring/heart/smiley/bow-tie/
+//  cluster-diadem/jellyfish/half-half). Returns the same shape as the
+// generic velocity initializer so the per-frame physics loop is reused.
+// ═══════════════════════════════════════════════════════════════════════
+function buildPresetVelocities(
+  STAR_COUNT: number,
+  preset: ShellPreset,
+  breakSpeed: number,
+  starLife: number,
+) {
+  const v = new Float32Array(STAR_COUNT * 3);
+  const l = new Float32Array(STAR_COUNT);
+  const tp = new Float32Array(STAR_COUNT);
+  const sparkle = new Float32Array(STAR_COUNT);
+  // Map FWsim Speed (units ≈ 0.5..1.0 m/s in their physics) onto our break-speed
+  // scale so every preset stays visually proportional to caliber.
+  const speedScale = breakSpeed * Math.max(0.4, preset.speedMS);
+  const sigma = Math.max(0, preset.sigmaRad);
+  const lifeAvg = (preset.lifeMin + preset.lifeMax) * 0.5;
+  const lifeSpread = (preset.lifeMax - preset.lifeMin) * 0.5;
+
+  for (let i = 0; i < STAR_COUNT; i++) {
+    tp[i] = Math.random() * Math.PI * 2;
+    sparkle[i] = Math.random() * 999 + i;
+    let vx = 0, vy = 0, vz = 0;
+    let life = (lifeAvg + (Math.random() * 2 - 1) * lifeSpread) / Math.max(0.6, lifeAvg) * starLife;
+
+    switch (preset.geometry) {
+      case 'ring': {
+        // Saturn-ring: 70% equatorial ring + 30% inner spherical core.
+        // Double-ring: split equatorial into 2 rings rotated ~35° around X.
+        const isDouble = preset.id === 'double-ring';
+        const isSaturn = preset.id === 'saturn-ring';
+        const ringFrac = isSaturn ? 0.7 : 1.0;
+        const isRingStar = (i / STAR_COUNT) < ringFrac;
+        if (isRingStar) {
+          const ringIdx = isDouble ? (i % 2) : 0;
+          const tilt = isDouble ? (ringIdx === 0 ? -0.31 : 0.31) : 0;
+          const angle = (i / Math.max(1, Math.round(STAR_COUNT * ringFrac))) * Math.PI * 2;
+          const jitter = (Math.random() - 0.5) * (sigma + 0.04);
+          const cs = Math.cos(angle + jitter);
+          const sn = Math.sin(angle + jitter);
+          const spd = speedScale * (0.92 + Math.random() * 0.08);
+          vx = cs * spd;
+          vy = sn * Math.sin(tilt) * spd + (Math.random() - 0.5) * spd * 0.04;
+          vz = sn * Math.cos(tilt) * spd;
+        } else {
+          // Saturn core: small spherical burst
+          const theta = Math.random() * Math.PI * 2;
+          const phi = Math.acos(2 * Math.random() - 1);
+          const spd = speedScale * 0.55 * (0.6 + Math.random() * 0.4);
+          vx = Math.sin(phi) * Math.cos(theta) * spd;
+          vy = Math.cos(phi) * spd;
+          vz = Math.sin(phi) * Math.sin(theta) * spd;
+        }
+        break;
+      }
+      case 'heart': {
+        // Heart curve in the X-Y plane (camera-facing).
+        const t_h = (i / STAR_COUNT) * Math.PI * 2 + (Math.random() - 0.5) * sigma;
+        const hx = 16 * Math.pow(Math.sin(t_h), 3);
+        const hy = 13 * Math.cos(t_h) - 5 * Math.cos(2 * t_h) - 2 * Math.cos(3 * t_h) - Math.cos(4 * t_h);
+        const scale_h = speedScale * 0.055;
+        vx = hx * scale_h + (Math.random() - 0.5) * speedScale * 0.05;
+        vy = hy * scale_h + (Math.random() - 0.5) * speedScale * 0.05;
+        vz = (Math.random() - 0.5) * speedScale * 0.06;
+        break;
+      }
+      case 'custom-shape': {
+        // Smiley: two eyes (top-left + top-right discs) + a smile arc (lower).
+        const seg = i % 5;
+        const r = (Math.random() - 0.5) * 0.18;
+        const radius = speedScale * 0.95;
+        if (seg === 0 || seg === 1) {
+          // Eyes — small filled discs at top
+          const eyeX = (seg === 0 ? -0.45 : 0.45) * radius;
+          const eyeY = 0.55 * radius;
+          const er = (Math.random() * 0.18 + 0.04) * radius;
+          const ang = Math.random() * Math.PI * 2;
+          vx = eyeX + Math.cos(ang) * er;
+          vy = eyeY + Math.sin(ang) * er;
+        } else {
+          // Smile arc — open downward, ±60°
+          const a = -Math.PI / 6 - (Math.random() * (Math.PI * 2 / 3));
+          const sr = (0.7 + Math.random() * 0.05) * radius;
+          vx = Math.cos(a) * sr + r;
+          vy = Math.sin(a) * sr - 0.05 * radius;
+        }
+        vz = (Math.random() - 0.5) * speedScale * 0.08;
+        break;
+      }
+      case 'hemisphere': {
+        // Half-Half: upper hemisphere split by sign of vx so the
+        // color loop can paint primary on +X / secondary on −X.
+        const half = i < STAR_COUNT / 2 ? 1 : -1;
+        const theta = Math.random() * Math.PI - Math.PI / 2; // -π/2..π/2
+        const phi = Math.acos(Math.random()); // 0..π/2 (upper)
+        const sx = Math.sin(phi) * Math.cos(theta) * half;
+        const sy = Math.cos(phi);
+        const sz = Math.sin(phi) * Math.sin(theta);
+        const spd = speedScale * (0.85 + Math.random() * 0.15);
+        vx = sx * spd + sigma * (Math.random() - 0.5);
+        vy = sy * spd * 0.95 + 0.4;
+        vz = sz * spd + sigma * (Math.random() - 0.5);
+        break;
+      }
+      case 'inverted-hemisphere': {
+        // Bow-Tie / Jellyfish: downward / outward inverted hemisphere.
+        const theta = Math.random() * Math.PI * 2;
+        const phi = Math.acos(Math.random()); // upper, then flip
+        const isBow = preset.id === 'bow-tie';
+        const sx = Math.sin(phi) * Math.cos(theta);
+        const sy = -Math.cos(phi); // inverted
+        const sz = Math.sin(phi) * Math.sin(theta);
+        const spd = speedScale * (0.9 + Math.random() * 0.1);
+        if (isBow) {
+          // Bow-tie: tighten azimuth to ±25° around two opposing axes.
+          const lobe = (i % 2) === 0 ? 0 : Math.PI;
+          const tightTheta = lobe + (Math.random() - 0.5) * 0.45;
+          vx = Math.cos(tightTheta) * spd * 0.95;
+          vy = -Math.abs(Math.sin(phi)) * spd * 0.55;
+          vz = Math.sin(tightTheta) * spd * 0.18 + (Math.random() - 0.5) * 0.2;
+        } else {
+          vx = sx * spd; vy = sy * spd; vz = sz * spd;
+        }
+        break;
+      }
+      case 'sphere':
+      default: {
+        // cluster-diadem (invisible body) and any unspecified geometry
+        const theta = Math.random() * Math.PI * 2;
+        const phi = Math.acos(2 * Math.random() - 1);
+        const spd = speedScale * (0.85 + Math.random() * 0.15);
+        vx = Math.sin(phi) * Math.cos(theta) * spd + sigma * (Math.random() - 0.5);
+        vy = Math.cos(phi) * spd;
+        vz = Math.sin(phi) * Math.sin(theta) * spd + sigma * (Math.random() - 0.5);
+        break;
+      }
+    }
+
+    v[i * 3] = vx; v[i * 3 + 1] = vy; v[i * 3 + 2] = vz;
+    l[i] = Math.max(0.2, life);
+  }
+  return { velocities: v, lifetimes: l, twinklePhases: tp, sparkleSeeds: sparkle };
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// AscentFlash — rev6 AscentEffect renderer (cluster-diadem golden
+// expanding cone). Deterministic, no per-frame allocations.
+// ═══════════════════════════════════════════════════════════════════════
+function AscentFlash({ progress, colorHex, width, lifeS, caliber }: {
+  progress: number; colorHex: string; width: number; lifeS: number; caliber: number;
+}) {
+  // Visible during the first slice of the burst; fades out over `lifeS` (preset).
+  const burstWindow = Math.max(0.04, Math.min(0.35, lifeS * 0.6));
+  if (progress > burstWindow) return null;
+  const t = progress / burstWindow; // 0..1
+  const ease = 1 - Math.pow(1 - t, 3);
+  const radius = (0.8 + caliber * 0.35) * width * (0.4 + ease * 1.3);
+  const opacity = 0.85 * Math.pow(1 - t, 1.6);
+  return (
+    <group>
+      {/* Halo sphere */}
+      <mesh renderOrder={101}>
+        <sphereGeometry args={[radius, 14, 14]} />
+        <meshBasicMaterial color={colorHex} transparent opacity={opacity} blending={THREE.AdditiveBlending} depthWrite={false} depthTest={true} />
+      </mesh>
+      {/* Bright core */}
+      <mesh renderOrder={102}>
+        <sphereGeometry args={[radius * 0.45, 10, 10]} />
+        <meshBasicMaterial color="#FFEFCB" transparent opacity={Math.min(1, opacity * 1.8)} blending={THREE.AdditiveBlending} depthWrite={false} depthTest={true} />
+      </mesh>
+    </group>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════════════
 // FireworkBurst — Niagara-inspired GPU particle system
 // ═══════════════════════════════════════════════════════════════════════
-export const FireworkBurst = React.forwardRef<THREE.Group, { 
+export const FireworkBurst = React.forwardRef<THREE.Group, {
   position: [number, number, number]; color: string; progress: number; 
   caliber?: number; pattern?: string;
   angleOffset?: number; trailType?: string; noTrail?: boolean;
