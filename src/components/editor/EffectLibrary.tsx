@@ -13,6 +13,7 @@ import { useImportedFweStore } from '@/store/useImportedFweStore';
 import { cn } from '@/lib/utils';
 import { resolveEffectThumb } from '@/data/effectThumbnails';
 import { familyIconsForPart } from '@/data/effectFamilyIcons';
+import EffectPreview3D from './EffectPreview3D';
 import { parseVDL, vdlToEffect } from '@/lib/vdlParser';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
