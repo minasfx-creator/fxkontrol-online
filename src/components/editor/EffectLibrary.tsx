@@ -482,7 +482,7 @@ export default function EffectLibrary() {
   const fullLibrary = useMemo<Effect[]>(() => {
     const seen = new Set<string>();
     const merged: Effect[] = [];
-    for (const e of [...EFFECT_LIBRARY, ...FINALE_SHELL_PRESET_EFFECTS]) {
+    for (const e of [...EFFECT_LIBRARY, ...FINALE_SHELL_PRESET_EFFECTS, ...FWE_UPLOADED_EFFECTS]) {
       if (seen.has(e.id)) continue;
       seen.add(e.id);
       merged.push(e);
