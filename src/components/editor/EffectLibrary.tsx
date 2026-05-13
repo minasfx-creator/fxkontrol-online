@@ -8,6 +8,7 @@ import { useProjectStore } from '@/store/useProjectStore';
 import { EFFECT_LIBRARY, type Effect } from '@/data/effectLibrary';
 import { FINALE_SHELL_PRESET_EFFECTS } from '@/data/finaleShellPresetEffects';
 import { FWE_UPLOADED_EFFECTS } from '@/data/fweUploadedEffects';
+import { FWSIM_BUILTIN_EFFECTS } from '@/data/fwsimBuiltinPresets';
 import { parseFweXml } from '@/data/fweImporter';
 import { useImportedFweStore } from '@/store/useImportedFweStore';
 import { cn } from '@/lib/utils';
@@ -579,7 +580,10 @@ export default function EffectLibrary() {
     const merged: Effect[] = [];
     // Imported (runtime) entries last so they override the curated
     // catalog when ids collide (re-import = update in place).
-    for (const e of [...EFFECT_LIBRARY, ...FINALE_SHELL_PRESET_EFFECTS, ...FWE_UPLOADED_EFFECTS, ...importedFweEffects]) {
+    // Order: curated catalog → finale shell presets → FWsim built-ins (44 .fwe) →
+    // user-uploaded curated → runtime-imported. EFFECT_LIBRARY wins on id collision
+    // because it iterates first; dedup-by-id below preserves that.
+    for (const e of [...EFFECT_LIBRARY, ...FINALE_SHELL_PRESET_EFFECTS, ...FWSIM_BUILTIN_EFFECTS, ...FWE_UPLOADED_EFFECTS, ...importedFweEffects]) {
       if (seen.has(e.id)) continue;
       seen.add(e.id);
       merged.push(e);
