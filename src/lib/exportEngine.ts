@@ -2,6 +2,7 @@ import { type TimelineItem, type Position, type Trajectory, type DroneFormation 
 import { EFFECT_LIBRARY } from '@/data/effectLibrary';
 import { rgbToVdlString } from '@/lib/vdlQuantizer';
 import { getLiftTime } from '@/lib/pyroPhysics';
+import { resolveCuePresetMetadata, csvCell, type CuePresetMetadata } from '@/core/export/cuePresetMetadata';
 
 // ─── VVIZ Drone Export (Finale 3D Spec) ─────────────────────────────
 // Generates a valid .vviz JSON file following the official Finale 3D specification:
@@ -41,6 +42,13 @@ interface VVIZPyroPayload {
   partNumber: string;
   tilt?: number;
   pan?: number;
+  /**
+   * rev9: Mine/Cake-shot canonical Finale preset wiring.
+   * Optional — present when the source effect resolves to a known preset.
+   * Consumers (Finale 3D plugin, Skybrush bridge, FXKONTROL replay) read
+   * this block to render the LED-accurate body/trail and strobe.
+   */
+  presetMetadata?: CuePresetMetadata;
 }
 
 type VVIZPayload = VVIZLightPayload | VVIZPyroPayload;
@@ -173,19 +181,28 @@ export function exportVVIZ(
   const zF = (z: number) => applyZFlip(z, frame);
 
   // ── Helper: add VDL pyro payload alongside light payload ──
-  const buildVdlPayloads = (lightPayload: VVIZLightPayload): VVIZPayload[] => {
+  // `presetHints` (rev9): strings consulted to resolve Mine/Cake-shot canonical
+  // Finale presets — when present the partNumber is upgraded to the preset id
+  // and a `presetMetadata` block is attached to the Pyro payload.
+  const buildVdlPayloads = (
+    lightPayload: VVIZLightPayload,
+    presetHints: ReadonlyArray<string | undefined | null> = [],
+  ): VVIZPayload[] => {
     const payloads: VVIZPayload[] = [lightPayload];
     // Find dominant color from light payload for VDL string
     const actions = lightPayload.payloadActions;
     const dominant = actions.find(a => a.r > 0 || a.g > 0 || a.b > 0);
     if (dominant) {
       const vdl = rgbToVdlString(dominant.r, dominant.g, dominant.b, noTrail);
+      const meta = resolveCuePresetMetadata(presetHints);
+      const presetId = meta.minePresetId ?? meta.cakePresetId;
       payloads.push({
         id: 1,
         type: 'Pyro',
         eventTime: 0,
         vdl,
-        partNumber: `VDL-${vdl.replace(/\s+/g, '-')}`,
+        partNumber: presetId ?? `VDL-${vdl.replace(/\s+/g, '-')}`,
+        ...(presetId ? { presetMetadata: meta } : {}),
       });
     }
     return payloads;
@@ -225,7 +242,7 @@ export function exportVVIZ(
     performances.push({
       id: performanceId++,
       agentDescription: { homeX, homeY, homeZ, homeH, agentTraversal: buildTraversal(keyframes) },
-      payloadDescription: buildVdlPayloads(lp),
+      payloadDescription: buildVdlPayloads(lp, [item.effectId, effect.name, item.notes]),
     });
   }
 
@@ -344,6 +361,14 @@ interface FiringCue {
   heading: number;
   pitch: number;
   angle: number;
+  /** rev9: canonical Mine/Cake-shot wiring (optional). */
+  minePresetId?: string;
+  cakePresetId?: string;
+  bodyColor?: string;
+  trailColor?: string;
+  strobeHz?: number;
+  innerCount?: number;
+  innerSpeedMS?: number;
 }
 
 /** Extract caliber from effect name (e.g., 'Chrysanthemum 3"' → '3"') */
@@ -402,6 +427,8 @@ export function exportFiringCSV(
       }
     }
 
+    const meta = resolveCuePresetMetadata([item.effectId, effect.name, item.notes]);
+
     return {
       cue: index + 1,
       module,
@@ -419,12 +446,29 @@ export function exportFiringCSV(
       heading,
       pitch,
       angle: 0,
+      minePresetId: meta.minePresetId,
+      cakePresetId: meta.cakePresetId,
+      bodyColor: meta.bodyColorHex,
+      trailColor: meta.trailColorHex,
+      strobeHz: meta.strobeHz,
+      innerCount: meta.innerCount,
+      innerSpeedMS: meta.innerSpeedMS,
     };
   });
 
-  const header = 'Cue,Module,Slat,Pin,EventTime(s),PreFireTime(s),EffectName,Caliber,Duration(s),Position,X,Y,Z,Heading,Pitch,Angle';
+  const header =
+    'Cue,Module,Slat,Pin,EventTime(s),PreFireTime(s),EffectName,Caliber,Duration(s),Position,X,Y,Z,Heading,Pitch,Angle,MinePresetId,CakePresetId,BodyColor,TrailColor,StrobeHz,InnerCount,InnerSpeedMS';
   const rows = cues.map((c) =>
-    `${c.cue},${c.module},${c.slat},${c.pin},${c.eventTime},${c.preFireTime},${c.effectName},${c.caliber},${c.duration},${c.posName},${c.x},${c.y},${c.z},${c.heading},${c.pitch},${c.angle}`
+    [
+      c.cue, c.module, c.slat, c.pin, c.eventTime, c.preFireTime,
+      csvCell(c.effectName), c.caliber, c.duration, csvCell(c.posName),
+      c.x, c.y, c.z, c.heading, c.pitch, c.angle,
+      csvCell(c.minePresetId), csvCell(c.cakePresetId),
+      csvCell(c.bodyColor), csvCell(c.trailColor),
+      c.strobeHz != null ? c.strobeHz.toFixed(2) : '',
+      c.innerCount != null ? String(c.innerCount) : '',
+      c.innerSpeedMS != null ? c.innerSpeedMS.toFixed(2) : '',
+    ].join(','),
   );
 
   return header + '\n' + rows.join('\n');
