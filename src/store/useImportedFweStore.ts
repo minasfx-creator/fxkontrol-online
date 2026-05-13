@@ -21,6 +21,12 @@ import { create } from 'zustand';
 import type { Effect } from '@/data/effectLibrary';
 import { supabase } from '@/integrations/supabase/client';
 
+// Table created via migration; supabase types may lag a refresh, so we
+// access this table through an untyped handle to keep the store decoupled
+// from the generated Database schema.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const fweTable = () => (supabase as any).from('imported_fwe_effects');
+
 const LS_KEY = 'fxk.imported-fwe-effects.v1';
 
 function loadFromStorage(): Effect[] {
