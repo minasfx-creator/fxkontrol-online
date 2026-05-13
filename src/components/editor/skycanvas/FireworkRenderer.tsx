@@ -962,7 +962,7 @@ export const FireworkBurst = React.forwardRef<THREE.Group, {
       const sizeOverLife = starAge < 0.05 
         ? 0.6 + starAge * 8
         : starAge < 0.4 ? 1.0 : 1.0 - (starAge - 0.4) / 0.6 * 0.7;
-      sizes[i] = baseSize * Math.max(0.1, sizeOverLife) * (1 + flashIntensity * 0.8);
+      sizes[i] = isClusterDiadem ? 0 : baseSize * Math.max(0.1, sizeOverLife) * (1 + flashIntensity * 0.8);
       lives[i] = starAge;
 
       for (let s = 0; s < TRAIL_LENGTH; s++) {
