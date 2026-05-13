@@ -45,6 +45,30 @@ const FILTER_CHIPS: { key: FilterType; label: string; icon: typeof Flame }[] = [
 
 const CALIBER_OPTIONS = [2, 3, 4, 5, 6, 8, 10, 12];
 
+/** Display label for a partType (Finale/FWsim canonical names). */
+const FAMILY_LABEL: Record<string, string> = {
+  shell: 'Shell',
+  mine: 'Mine',
+  cake: 'Cake',
+  comet: 'Comet',
+  candle: 'Roman Candle',
+  fan: 'Fan',
+  gerb: 'Gerb',
+  flame: 'Flame',
+  rocket: 'Rocket',
+  waterfall: 'Waterfall',
+  strobe: 'Strobe',
+  ground: 'GroundShellFlash',
+  set_piece: 'Set Piece',
+  girandola: 'Girandola',
+  single_shot: 'Single Shot',
+  formation: 'Formation',
+  drone: 'Drone',
+  laser: 'Laser',
+  light: 'Light',
+  sfx: 'SFX',
+};
+
 /* ─── Finale 3D-style Table Row ─── */
 function EffectTableRow({ effect, index, usageCount }: { effect: Effect; index: number; usageCount: number }) {
     const selectedEffectId = useProjectStore(s => s.selectedEffectId);
