@@ -699,7 +699,34 @@ export function resolveShellPresetId(raw: string | undefined | null): string | u
   if (/\bdahlia\b/.test(s)) return 'dahlia';
   if (/\bpalm\b/.test(s)) return 'palm';
   if (/\b(crown|ferrotitanium)\b/.test(s)) return 'crown';
+  if (/\bghost\b/.test(s)) return 'ghost-shell';
+  if (/\bhybrid(s)?\b/.test(s)) return 'hybrid-special';
+  if (/\b(quarter|quarter[-_ ]?shell|4[-_ ]?4)\b/.test(s)) return 'quarter-4-4';
 
+  return undefined;
+}
+
+/**
+ * Map a free-text name → canonical Mine preset id.
+ */
+export function resolveMinePresetId(raw: string | undefined | null): string | undefined {
+  if (!raw) return undefined;
+  const s = raw.toLowerCase().trim();
+  if (/(comet).*(silver|white)|silver.*comet/.test(s)) return 'single-comet-silver-glitter';
+  if (/(comet).*(gold|deep)|comet.?mine|comet[-_/ ]mine/.test(s)) return 'single-comet-mine-gold';
+  if (/(mine).*(gold|glitter)|gold.*(glitter|mine)|\bglitter\b/.test(s)) return 'single-mine-gold-glitter';
+  return undefined;
+}
+
+/**
+ * Map a free-text name → canonical Cake-shot preset id.
+ */
+export function resolveCakeShotPresetId(raw: string | undefined | null): string | undefined {
+  if (!raw) return undefined;
+  const s = raw.toLowerCase().trim();
+  if (/cake.*(silver|titanium)|silver.*titanium/.test(s)) return 'cake-shell-silver-titanium';
+  if (/cake.*(mine.*shell|mine[-_ ]shell)/.test(s)) return 'cake-mine-shell-gold';
+  if (/cake.*(hybrid|coal)/.test(s)) return 'cake-hybrid-coal-gold';
   return undefined;
 }
 
