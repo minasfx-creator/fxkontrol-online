@@ -897,31 +897,6 @@
   },
   {
     "id": "fin-41-cake-i-shape",
-    "file": "41_Cake_(I-Shape).fwe",
-    "leadingNumber": "41",
-    "name": "Brocade (short, thin)",
-    "author": "Marcus Athmer",
-    "rootType": "Cake",
-    "caliberM": 0.15,
-    "caliberIn": 5.9,
-    "starCount": 80,
-    "shotCount": null,
-    "primaryColor": "#FFE2AE",
-    "secondaryColor": "#FFB871",
-    "palette": [
-      "#FFE2AE",
-      "#FFB871",
-      "#824100",
-      "#FF1A1A",
-      "#FF8A00",
-      "#623100",
-      "#934900",
-      "#A65300"
-    ],
-    "thumbUrl": "/finale-presets/thumbs/41.png"
-  },
-  {
-    "id": "fin-41-cake-i-shape",
     "file": "41_Cake_I-Shape.fwe",
     "leadingNumber": "41",
     "name": "Brocade (short, thin)",
@@ -944,31 +919,6 @@
       "#A65300"
     ],
     "thumbUrl": "/finale-presets/thumbs/41.png"
-  },
-  {
-    "id": "fin-42-cake-z-shape-v-shape",
-    "file": "42_Cake_(Z-Shape_V-Shape).fwe",
-    "leadingNumber": "42",
-    "name": "Brocade (short, thin)",
-    "author": "Marcus Athmer",
-    "rootType": "Cake",
-    "caliberM": 0.2,
-    "caliberIn": 7.9,
-    "starCount": 80,
-    "shotCount": null,
-    "primaryColor": "#FFE2AE",
-    "secondaryColor": "#623100",
-    "palette": [
-      "#FFE2AE",
-      "#623100",
-      "#934900",
-      "#A65300",
-      "#3F7BFF",
-      "#FF8A00",
-      "#FF66C4",
-      "#FFC082"
-    ],
-    "thumbUrl": "/finale-presets/thumbs/42.png"
   },
   {
     "id": "fin-42-cake-z-shape-v-shape",
