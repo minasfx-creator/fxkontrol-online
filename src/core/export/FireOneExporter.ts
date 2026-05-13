@@ -68,7 +68,7 @@ export function generateFireOneScript(): FireOneExportResult {
   return { script: lines.join('\n'), cueCount: sorted.length, errors, verified: canExport };
 }
 
-export function downloadFireOneScript(filename = 'fxk_show.fir'): void {
+export function downloadFireOneScript(filename = 'fxk_show.csv'): void {
   const result = generateFireOneScript();
   const blob = new Blob([result.script], { type: 'text/plain' });
   const url = URL.createObjectURL(blob);
