@@ -377,11 +377,12 @@ describe('rev5 adapters — props mapping', () => {
     expect(c.trailDensityHz).toBe(250);
   });
 
-  it('listAllPresetIds aggregates 19 + 3 + 3', () => {
+  it('listAllPresetIds aggregates 19 shells + 12 mines + 3 cakes + 8 tail components', () => {
     const all = listAllPresetIds();
     expect(all.shells).toHaveLength(19);
     expect(all.mines).toHaveLength(12);
     expect(all.cakes).toHaveLength(3);
+    expect(all.tails).toHaveLength(8);
   });
 });
 
