@@ -134,15 +134,14 @@ export const useImportedFweStore = create<ImportedFweState>((set, get) => ({
     }
     set({ syncing: true });
     try {
-      const { data, error } = await supabase
-        .from('imported_fwe_effects')
+      const { data, error } = await fweTable()
         .select('effect_id, effect')
         .eq('user_id', userId);
       if (error) throw error;
 
       const cloudMap = new Map<string, Effect>();
-      for (const row of data ?? []) {
-        const fx = row.effect as unknown as Effect;
+      for (const row of (data ?? []) as Array<{ effect_id: string; effect: unknown }>) {
+        const fx = row.effect as Effect;
         if (fx && typeof fx.id === 'string') cloudMap.set(row.effect_id, fx);
       }
       const localOnly = get().effects.filter((e) => !cloudMap.has(e.id));
