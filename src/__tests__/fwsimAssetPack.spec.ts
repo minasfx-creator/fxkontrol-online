@@ -28,8 +28,8 @@ describe('FWsim asset pack', () => {
   });
 
   it('searchFwsimOldEffects matches case-insensitively', () => {
-    const hits = searchFwsimOldEffects('crown');
+    const hits = searchFwsimOldEffects('comet');
     expect(hits.length).toBeGreaterThan(0);
-    expect(hits[0].name.toLowerCase()).toContain('crown');
+    expect(hits[0].name.toLowerCase()).toContain('comet');
   });
 });
