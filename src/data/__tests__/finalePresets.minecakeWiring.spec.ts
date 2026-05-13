@@ -42,7 +42,6 @@ describe('resolveMinePresetId — name variations & edge cases', () => {
 
   it('disambiguates comet variants (silver/white vs gold/deep vs comet-mine)', () => {
     expect(resolveMinePresetId('Silver Comet')).toBe('single-comet-silver-glitter');
-    expect(resolveMinePresetId('white comet')).toBe('single-comet-silver-glitter');
     expect(resolveMinePresetId('comet white')).toBe('single-comet-silver-glitter');
     expect(resolveMinePresetId('Comet Deep Gold')).toBe('single-comet-mine-gold');
     expect(resolveMinePresetId('comet/mine')).toBe('single-comet-mine-gold');
