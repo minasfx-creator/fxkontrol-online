@@ -457,11 +457,11 @@ export default function MineEffect({
       {/* Ground ring flash */}
       {progress < 0.2 && (
         <mesh position={[0, 0.02, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-          <ringGeometry args={[1, 3 + progress * 30 + caliber * 2, 32]} />
+          <ringGeometry args={[1, 2 + progress * 15 + caliber * 1.2, 32]} />
           <meshBasicMaterial
             color={color}
             transparent
-            opacity={0.12 * (1 - progress / 0.2)}
+            opacity={0.08 * (1 - progress / 0.2)}
             blending={screenBlend.blending}
             blendEquation={screenBlend.blendEquation}
             blendSrc={screenBlend.blendSrc as any}
