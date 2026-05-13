@@ -18,6 +18,13 @@ export interface TwoWireDiscoveredModule {
   lastSeenTs?: number;
 }
 
+export interface ScanBusProgress {
+  addr: number;
+  index: number;
+  total: number;
+  module: TwoWireDiscoveredModule;
+}
+
 export interface ScanBusOptions {
   addrs?: number[];
   /** Per-address window before declaring `unseen`. */
@@ -25,6 +32,8 @@ export interface ScanBusOptions {
   /** Inter-address spacing — keeps the bus from saturating. */
   spacingMs?: number;
   signal?: AbortSignal;
+  /** Fired after each address resolves (live or unseen). */
+  onProgress?: (p: ScanBusProgress) => void;
 }
 
 export interface ScanBusResult {
