@@ -74,8 +74,8 @@ describe('twoWireProtocol — frame round-trip', () => {
     frame[frame.length - 5] ^= 0x01;
     const decoded = await decodeFrame(frame, { psk: PSK });
     expect(decoded.ok).toBe(false);
-    if (!decoded.ok) {
-      expect(['hmac', 'crc']).toContain(decoded.error);
+    if (decoded.ok === false) {
+      expect(['hmac', 'crc']).toContain((decoded as { error: string }).error);
     }
   });
 
@@ -87,7 +87,7 @@ describe('twoWireProtocol — frame round-trip', () => {
       lastCounter: (a) => seen.get(a) ?? 0,
     });
     expect(decoded.ok).toBe(false);
-    if (!decoded.ok) expect(decoded.error).toBe('replay');
+    if (decoded.ok === false) expect((decoded as { error: string }).error).toBe('replay');
   });
 
   it('rejects wrong PSK', async () => {
