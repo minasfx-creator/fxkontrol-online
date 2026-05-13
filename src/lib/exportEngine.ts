@@ -361,6 +361,14 @@ interface FiringCue {
   heading: number;
   pitch: number;
   angle: number;
+  /** rev9: canonical Mine/Cake-shot wiring (optional). */
+  minePresetId?: string;
+  cakePresetId?: string;
+  bodyColor?: string;
+  trailColor?: string;
+  strobeHz?: number;
+  innerCount?: number;
+  innerSpeedMS?: number;
 }
 
 /** Extract caliber from effect name (e.g., 'Chrysanthemum 3"' → '3"') */
