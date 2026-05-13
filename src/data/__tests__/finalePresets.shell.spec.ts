@@ -1,9 +1,18 @@
 import { describe, it, expect } from 'vitest';
 import {
   FINALE_SHELL_PRESETS,
+  FINALE_MINE_PRESETS,
+  FINALE_CAKE_SHOT_PRESETS,
   listShellPresetIds,
+  listMinePresetIds,
+  listCakeShotPresetIds,
+  listAllPresetIds,
   resolveShellPresetId,
+  resolveMinePresetId,
+  resolveCakeShotPresetId,
   resolveShellPresetProps,
+  resolveMinePresetProps,
+  resolveCakeShotPresetProps,
 } from '@/data/finalePresets';
 
 /**
@@ -12,9 +21,20 @@ import {
  * exactly what we forbid.
  */
 describe('FINALE_SHELL_PRESETS — canonical FWsim Pro values', () => {
-  it('exposes all 7 catalogued shells', () => {
+  it('exposes 7 base + 3 rev5 shells (total 10)', () => {
     expect(listShellPresetIds().sort()).toEqual(
-      ['chrysanthemum', 'crown', 'dahlia', 'palm', 'peony', 'peony-pistil', 'wave'].sort(),
+      [
+        'chrysanthemum',
+        'crown',
+        'dahlia',
+        'ghost-shell',
+        'hybrid-special',
+        'palm',
+        'peony',
+        'peony-pistil',
+        'quarter-4-4',
+        'wave',
+      ].sort(),
     );
   });
 
