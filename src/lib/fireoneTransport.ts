@@ -54,6 +54,18 @@ export interface FireOneTransport {
 // SERIAL TRANSPORT (RS-485 via WebSerial)
 // ═══════════════════════════════════════════════════════════
 
+/**
+ * A minimal interface satisfied by `TwoWireTransport` (and any future
+ * pyro-priority sub-link). We keep it structural to avoid a hard import
+ * cycle with `twoWireTransport.ts`.
+ */
+export interface PyroSubLink {
+  readonly id: string;
+  readonly type: string;
+  send(frame: Uint8Array): Promise<void>;
+  close?: () => Promise<void>;
+}
+
 export class SerialTransport implements FireOneTransport {
   readonly id: string;
   readonly type: TransportType = 'serial';
@@ -71,6 +83,7 @@ export class SerialTransport implements FireOneTransport {
   private receiveCallbacks: TransportReceiveCallback[] = [];
   private stateCallbacks: TransportStateCallback[] = [];
   private baudRate: number;
+  private subLinks = new Map<string, PyroSubLink>();
 
   constructor(id?: string, baudRate = 9600) {
     this.id = id || `serial-${Date.now()}`;
@@ -112,6 +125,11 @@ export class SerialTransport implements FireOneTransport {
 
   async disconnect(): Promise<void> {
     this.readLoop = false;
+    // Detach all sub-links first (idempotent).
+    for (const link of this.subLinks.values()) {
+      try { await link.close?.(); } catch { /* ignore */ }
+    }
+    this.subLinks.clear();
     try {
       if (this.reader) { await this.reader.cancel().catch(() => {}); this.reader.releaseLock(); }
       if (this.writer) { await this.writer.close().catch(() => {}); this.writer.releaseLock(); }
@@ -141,6 +159,57 @@ export class SerialTransport implements FireOneTransport {
         }
       } catch { break; }
     }
+  }
+
+  /**
+   * Attach a 2-Wire (or other priority sub-link) under this serial transport.
+   *
+   * The sub-link is *additive* — the legacy serial downlink (CSV bridge,
+   * heartbeat, telemetry) keeps working. Use `sendPyro()` to route a frame
+   * through the highest-priority sub-link when available, falling back to
+   * the primary serial port. This never mutates `pyroTransportPolicy`; it
+   * only consumes its priority order.
+   *
+   * Returns a detach callback (idempotent — safe to call twice).
+   */
+  attachTwoWireSubLink(link: PyroSubLink): () => void {
+    this.subLinks.set(link.id, link);
+    let detached = false;
+    return () => {
+      if (detached) return;
+      detached = true;
+      this.subLinks.delete(link.id);
+    };
+  }
+
+  /** Read-only accessor for tests + UI. */
+  getSubLinks(): ReadonlyArray<PyroSubLink> {
+    return Array.from(this.subLinks.values());
+  }
+
+  /**
+   * Route a pyro frame through the best available sub-link, falling back
+   * to the primary serial transport.
+   *
+   * @param frame raw bytes already encoded for the chosen transport
+   * @param preferredType e.g. `'two_wire'`. When omitted, picks the first
+   *                      sub-link by insertion order.
+   */
+  async sendPyro(frame: Uint8Array, preferredType?: string): Promise<{ via: string }> {
+    const links = Array.from(this.subLinks.values());
+    const preferred = preferredType
+      ? links.find(l => l.type === preferredType)
+      : links[0];
+    if (preferred) {
+      try {
+        await preferred.send(frame);
+        return { via: preferred.type };
+      } catch {
+        // Fall through to primary serial.
+      }
+    }
+    await this.send(frame);
+    return { via: this.type };
   }
 }
 

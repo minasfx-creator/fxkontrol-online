@@ -26,6 +26,7 @@ const Settings = lazy(() => import("./pages/Settings"));
 const Admin = lazy(() => import("./pages/Admin"));
 const AccreditationDashboard = lazy(() => import("./pages/AccreditationDashboard"));
 const FestivalStageDemo = lazy(() => import("./pages/FestivalStageDemo"));
+const PairingTwoWire = lazy(() => import("./pages/PairingTwoWire"));
 
 const queryClient = new QueryClient();
 
@@ -73,6 +74,7 @@ function App() {
                   <Route path="/admin" element={<Admin />} />
                   <Route path="/accreditation" element={<AccreditationDashboard />} />
                   <Route path="/festival-stage-demo" element={<FestivalStageDemo />} />
+                  <Route path="/pairing/two-wire" element={<PairingTwoWire />} />
                 </Route>
                 <Route path="*" element={<NotFound />} />
               </Routes>

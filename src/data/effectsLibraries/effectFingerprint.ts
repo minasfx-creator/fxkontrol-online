@@ -2,31 +2,23 @@
  * effectFingerprint — deterministic, idempotent dedupe key for Effect entries.
  *
  * Buckets used:
- *   partType | caliber(in, integer) | colorBucket | duration(0.5s) | height(5m)
+ *   partType | caliber(in, integer) | vdlBucket | duration(0.5s) | height(5m)
  *
- * The colorBucket is built from the hex color reduced to a coarse RGB lattice
- * (32-step) so that "Red" variants from different vendors collapse to the same
- * key while truly different colors remain distinct. This avoids depending on
- * the (currently absent) `vdlColorPipeline` canonical module while staying
- * forward-compatible — when that pipeline lands, this function is a one-line
- * swap.
+ * The colour bucket is anchored on the canonical VDL palette name
+ * (`@/lib/vdlQuantizer`). This collapses vendor "Red" variants that map to the
+ * same VDL entry while keeping truly different palette entries distinct, and
+ * stays consistent with `colorResolver` (single source of truth).
  *
- * Output is a short stable string (no crypto needed; 22 ASCII chars).
+ * Output is a short stable string (no crypto needed).
  */
 
 import type { Effect } from '@/data/effectLibrary';
+import { resolveEffectColor } from './colorResolver';
 
 function colorBucket(hex: string | undefined): string {
-  if (!hex) return '------';
-  const m = /^#?([0-9a-f]{6})$/i.exec(hex.trim());
-  if (!m) return '------';
-  const n = parseInt(m[1], 16);
-  const r = (n >> 16) & 0xff;
-  const g = (n >> 8) & 0xff;
-  const b = n & 0xff;
-  // 8 levels per channel = 512 buckets; collapses near-duplicates.
-  const q = (v: number) => (v >> 5).toString(16);
-  return `${q(r)}${q(g)}${q(b)}`;
+  const r = resolveEffectColor(hex);
+  // Lowercase, no spaces — keeps the fingerprint compact.
+  return r.vdl.toLowerCase().replace(/\s+/g, '_');
 }
 
 function bucket(value: number | undefined, step: number): string {

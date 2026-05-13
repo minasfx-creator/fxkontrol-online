@@ -2,36 +2,15 @@
  * finalePartToEffect — Adapter that maps a FinalePart (canonical XLSX row)
  * to the runtime Effect type used by the editor library + 3D renderer.
  *
- * No external color pipeline is assumed. We derive a render hex from the
- * `color` column with a minimal name→hex lookup, falling back to cream.
+ * Color resolution is delegated to `colorResolver`, which routes every input
+ * (hex, EN name, PT-BR alias) through the canonical VDL palette
+ * (`@/lib/vdlQuantizer`). This guarantees deterministic bucketing in
+ * `effectFingerprint` regardless of vendor.
  */
 
 import type { Effect, PartType } from '@/data/effectLibrary';
 import type { FinalePart } from './types';
-
-// VDL/Finale color names + Portuguese aliases used by Amazon/Magic libraries
-const COLOR_NAME_TO_HEX: Record<string, string> = {
-  // English
-  red: '#ff2233', green: '#22ff44', blue: '#3366ff', white: '#fff8e8',
-  silver: '#d8e2e8', gold: '#ffd27a', yellow: '#ffe24a', orange: '#ff7a1a',
-  purple: '#a24bff', pink: '#ff6fb1', cyan: '#4be6ff', magenta: '#ff3acb',
-  lemon: '#f3ff5a', aqua: '#5af6ff', brocade: '#ffd9a3',
-  // Portuguese (Magic + Amazon use these)
-  vermelho: '#ff2233', verde: '#22ff44', azul: '#3366ff', branco: '#fff8e8',
-  prateado: '#d8e2e8', dourado: '#ffd27a', amarelo: '#ffe24a', laranja: '#ff7a1a',
-  roxo: '#a24bff', rosa: '#ff6fb1', ciano: '#4be6ff',
-};
-
-function vdlColorToHex(raw: string | undefined): string {
-  if (!raw) return '#fff2c4';
-  const lower = raw.toLowerCase().trim();
-  if (lower.startsWith('#') && (lower.length === 7 || lower.length === 4)) return raw;
-  // Take the first known token (handles "Verde Cintilante")
-  for (const token of lower.split(/[\s/,;-]+/)) {
-    if (COLOR_NAME_TO_HEX[token]) return COLOR_NAME_TO_HEX[token];
-  }
-  return '#fff2c4';
-}
+import { resolveEffectColorHex } from './colorResolver';
 
 function num(v: unknown, fallback = 0): number {
   if (v === null || v === undefined || v === '') return fallback;
@@ -111,7 +90,7 @@ export function finalePartToEffect(p: FinalePart): Effect {
   const numDevices = num(p.numDevices, 1);
   const safety = num(p.safetyDistance);
   const cost = num(p.stdPrice, 0);
-  const color = vdlColorToHex(p.color);
+  const color = resolveEffectColorHex(p.color);
 
   return {
     id: finalePartToEffectId(p),
