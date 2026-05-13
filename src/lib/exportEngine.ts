@@ -181,19 +181,28 @@ export function exportVVIZ(
   const zF = (z: number) => applyZFlip(z, frame);
 
   // ── Helper: add VDL pyro payload alongside light payload ──
-  const buildVdlPayloads = (lightPayload: VVIZLightPayload): VVIZPayload[] => {
+  // `presetHints` (rev9): strings consulted to resolve Mine/Cake-shot canonical
+  // Finale presets — when present the partNumber is upgraded to the preset id
+  // and a `presetMetadata` block is attached to the Pyro payload.
+  const buildVdlPayloads = (
+    lightPayload: VVIZLightPayload,
+    presetHints: ReadonlyArray<string | undefined | null> = [],
+  ): VVIZPayload[] => {
     const payloads: VVIZPayload[] = [lightPayload];
     // Find dominant color from light payload for VDL string
     const actions = lightPayload.payloadActions;
     const dominant = actions.find(a => a.r > 0 || a.g > 0 || a.b > 0);
     if (dominant) {
       const vdl = rgbToVdlString(dominant.r, dominant.g, dominant.b, noTrail);
+      const meta = resolveCuePresetMetadata(presetHints);
+      const presetId = meta.minePresetId ?? meta.cakePresetId;
       payloads.push({
         id: 1,
         type: 'Pyro',
         eventTime: 0,
         vdl,
-        partNumber: `VDL-${vdl.replace(/\s+/g, '-')}`,
+        partNumber: presetId ?? `VDL-${vdl.replace(/\s+/g, '-')}`,
+        ...(presetId ? { presetMetadata: meta } : {}),
       });
     }
     return payloads;
