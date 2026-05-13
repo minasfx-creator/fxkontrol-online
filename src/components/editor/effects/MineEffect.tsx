@@ -431,7 +431,11 @@ export default function MineEffect({
   `;
 
   return (
-    <group position={position} rotation={launchRotation} renderOrder={50}>
+    <group position={position} renderOrder={50}>
+      {/* launchHeading/launchPitch intentionally NOT applied to the root group:
+          mines are omnidirectional ground bursts (NFPA) — column rises vertical,
+          spray fans hemispherically, drips fall by gravity. Tilting the whole
+          group would tip the ground ring and the entire particle field. */}
       {/* Combustion muzzle flash with flicker */}
       {progress < 0.08 && (
         <mesh position={[0, 0.3, 0]}>
