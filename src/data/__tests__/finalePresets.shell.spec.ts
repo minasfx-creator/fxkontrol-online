@@ -336,6 +336,20 @@ describe('rev5 resolvers — name → preset id', () => {
     expect(resolveMinePresetId('peony')).toBeUndefined();
   });
 
+  it('rev7 — silver-crackling tip resolver', () => {
+    expect(resolveMinePresetId('Mine Silver Crackling to Aqua Tip')).toBe('mine-silver-crackling-aqua');
+    expect(resolveMinePresetId('mine silver crackling to blue tip')).toBe('mine-silver-crackling-blue');
+    expect(resolveMinePresetId('SILVER CRACKLING GREEN')).toBe('mine-silver-crackling-green');
+    expect(resolveMinePresetId('silver-crackling mint')).toBe('mine-silver-crackling-mint');
+    expect(resolveMinePresetId('silver crackling orange')).toBe('mine-silver-crackling-orange');
+    expect(resolveMinePresetId('silver crackling pastel blue')).toBe('mine-silver-crackling-pastel-blue');
+    expect(resolveMinePresetId('silver crackling pastel green')).toBe('mine-silver-crackling-pastel-green');
+    expect(resolveMinePresetId('silver crackling pastel purple')).toBe('mine-silver-crackling-pastel-purple');
+    expect(resolveMinePresetId('silver crackling pastel red')).toBe('mine-silver-crackling-pastel-red');
+    // Bare "silver crackling" → ambiguous, falls through to undefined.
+    expect(resolveMinePresetId('silver crackling')).toBeUndefined();
+  });
+
   it('cake-shot resolvers', () => {
     expect(resolveCakeShotPresetId('cake silver titanium'))
       .toBe('cake-shell-silver-titanium');
