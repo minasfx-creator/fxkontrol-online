@@ -48,7 +48,11 @@ export type ShellGeometry =
   | 'ring'
   | 'palm-semi'
   | 'crown-asym'
-  | 'quarter-sphere';
+  | 'quarter-sphere'
+  | 'heart'
+  | 'custom-shape'
+  | 'hemisphere'
+  | 'inverted-hemisphere';
 
 export type ShellStarType = 'XXSmall' | 'XSmall' | 'Normal' | 'Small' | 'Large';
 
