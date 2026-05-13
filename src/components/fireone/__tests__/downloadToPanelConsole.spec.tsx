@@ -6,11 +6,11 @@ import { setWorkMode } from '@/lib/workMode';
 import type { UltraFireTransportLike } from '@/core/export/UltraFireDownloader';
 
 function seedPyro() {
-  const sp = showPlanManager.current;
+  const sp = showPlanManager.current as unknown as { pyroCues: unknown[] };
   sp.pyroCues = [
-    { id: 'c1', time: 1, module: 1, channel: 0, fuseDelay: 50, effectId: 'fx', position: { x: 0, y: 0, z: 0 } } as never,
-    { id: 'c2', time: 2, module: 1, channel: 1, fuseDelay: 100, effectId: 'fx', position: { x: 0, y: 0, z: 0 } } as never,
-    { id: 'c3', time: 3, module: 2, channel: 0, fuseDelay: 50, effectId: 'fx', position: { x: 0, y: 0, z: 0 } } as never,
+    { id: 'c1', time: 1, module: 1, channel: 0, fuseDelay: 50, effectId: 'fx', position: { x: 0, y: 0, z: 0 } },
+    { id: 'c2', time: 2, module: 1, channel: 1, fuseDelay: 100, effectId: 'fx', position: { x: 0, y: 0, z: 0 } },
+    { id: 'c3', time: 3, module: 2, channel: 0, fuseDelay: 50, effectId: 'fx', position: { x: 0, y: 0, z: 0 } },
   ];
 }
 
