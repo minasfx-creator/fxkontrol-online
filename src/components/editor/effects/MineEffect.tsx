@@ -6,6 +6,7 @@ import { getThreeBlending } from '@/lib/niagaraBlenderRules';
 import { useProjectStore } from '@/store/useProjectStore';
 import { readDensityAt, injectDensity, injectVelocity, type FluidGrid } from '@/render_ultra/fireworks/niagaraFluids';
 import { getChemistryForRendering, autoMatchFormulation } from '@/render_ultra/fireworks/particleChemistry';
+import { resolveMinePresetProps } from '@/data/finalePresets';
 
 /**
  * Mine Effect — Multi-phase ground burst (PyroJam 2026 reference)
@@ -36,6 +37,7 @@ export default function MineEffect({
   launchHeading = 0,
   launchPitch = 85,
   pattern = 'fan',
+  presetId,
 }: {
   position: [number, number, number];
   color: string;
@@ -47,7 +49,18 @@ export default function MineEffect({
   launchHeading?: number;
   launchPitch?: number;
   pattern?: MinePattern;
+  /** Canonical Finale Mine preset id (rev5–7). Overrides body color and applies tail strobe. */
+  presetId?: string;
 }) {
+  // Resolve canonical Finale Mine preset (rev5–7). Overrides body color and
+  // tail strobe. Geometry/lifetime/count remain renderer-driven for now.
+  const preset = useMemo(
+    () => (presetId ? resolveMinePresetProps(presetId) : undefined),
+    [presetId],
+  );
+  const effectiveColor = preset?.color ?? color;
+  const tailStrobeHz = preset?.strobeHz ?? 0;
+
   const count = useMemo(() => Math.min(600, Math.round(200 + caliber * caliber * 14)), [caliber]);
   const pointsRef = useRef<THREE.Points>(null);
   const smokePointsRef = useRef<THREE.Points>(null);
@@ -64,14 +77,14 @@ export default function MineEffect({
 
   // Chemistry-enhanced color: use formulation if available, else auto-match by color+type
   const chemistry = useMemo(() => {
-    const fId = formulationId || autoMatchFormulation(color, 'mine', caliber);
+    const fId = formulationId || autoMatchFormulation(effectiveColor, 'mine', caliber);
     return fId ? getChemistryForRendering(fId) : null;
-  }, [formulationId, color, caliber]);
+  }, [formulationId, effectiveColor, caliber]);
 
   const baseColor = useMemo(() => {
     if (chemistry?.resultColor) return chemistry.resultColor.clone();
-    return new THREE.Color(color);
-  }, [color, chemistry]);
+    return new THREE.Color(effectiveColor);
+  }, [effectiveColor, chemistry]);
   const emberColor = useMemo(() => new THREE.Color().setHSL(0.05, 0.8, 0.12), []);
   const charcoalColor = useMemo(() => new THREE.Color(0.15, 0.08, 0.03), []);
 
@@ -265,10 +278,18 @@ export default function MineEffect({
       posArr[i * 3 + 1] = bounced ? Math.abs(rawY) * restitution : rawY;
       posArr[i * 3 + 2] = vz * t * dragH + windZ * t * t * 0.5;
 
-      // Combustion flicker for column particles, temporal for spray/drips
-      const twinkle = isColumn
+      // Combustion flicker for column particles, temporal for spray/drips.
+      // When a Finale Mine preset declares a tail strobeHz (e.g. Gold Glitter
+      // 29.4 Hz), we modulate the spray twinkle by a square-wave at that rate
+      // so the canonical strobe character is visible.
+      let twinkle = isColumn
         ? combustionFlicker(sparkleSeeds[i], time, 1.2)
         : temporalFlicker(sparkleSeeds[i], time, 0.6, 0.34, 0.36);
+      if (!isColumn && tailStrobeHz > 0) {
+        const phase = (time * tailStrobeHz + sparkleSeeds[i] * 0.137) % 1;
+        const strobeGate = phase < 0.5 ? 1 : 0.35;
+        twinkle *= strobeGate;
+      }
 
       const flashIntensity = Math.max(0, 1 - progress * 15);
       const emberPhase = Math.max(0, (progress - 0.35) / 0.65);
