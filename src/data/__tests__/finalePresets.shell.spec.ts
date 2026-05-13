@@ -380,7 +380,7 @@ describe('rev5 adapters — props mapping', () => {
   it('listAllPresetIds aggregates 19 + 3 + 3', () => {
     const all = listAllPresetIds();
     expect(all.shells).toHaveLength(19);
-    expect(all.mines).toHaveLength(3);
+    expect(all.mines).toHaveLength(12);
     expect(all.cakes).toHaveLength(3);
   });
 });
