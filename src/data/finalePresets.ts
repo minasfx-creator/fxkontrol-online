@@ -423,10 +423,220 @@ export const FINALE_SHELL_PRESETS: Record<string, ShellPreset> = {
       },
     ],
   },
-};
 
-// ────────────────────────────────────────────────────────────────────
-// rev5 — Mine presets (single-shot Mine node)
+  // ──────────────────────────────────────────────────────────────────
+  // rev6 additions — Pattern shells (Ring/Heart/Smiley/Bow Tie/
+  // Cluster Diadem/Jellyfish/Half-Half).
+  // Sources: 25..33 .fwe — values are 1:1 with the canonical primary
+  // <Stars> node of each Shell (sub-rings/layered Stars not stored in
+  // this rev). Tails reproduce the first <CustomTailsLink> insert when
+  // the source effect carries one.
+  // ──────────────────────────────────────────────────────────────────
+
+  // 25_Ring.fwe — RingDistribution, 20 Small/0.8 Red, life 1.2–1.6
+  ring: {
+    id: 'ring',
+    label: 'Ring (Red)',
+    pattern: 'ring',
+    geometry: 'ring',
+    count: 20,
+    speedMS: 0.8,
+    sigmaRad: 0,
+    starType: 'Small',
+    mass: 0.8,
+    lifeMin: 1.2,
+    lifeMax: 1.6,
+    fadeABCD: [0.12703583, 0.46091205, 0.81433225, 0.999],
+    colorHex: '#FF2A2A',
+  },
+
+  // 26_Double_Ring.fwe — Ring + 2nd ring rotated; FadeRatio B=0.705
+  'double-ring': {
+    id: 'double-ring',
+    label: 'Double Ring (Red)',
+    pattern: 'ring',
+    geometry: 'ring',
+    count: 30,
+    speedMS: 0.8,
+    sigmaRad: 0,
+    starType: 'Small',
+    mass: 0.8,
+    lifeMin: 1.2,
+    lifeMax: 1.6,
+    fadeABCD: [0.12703583, 0.70481926, 0.81433225, 0.999],
+    colorHex: '#FF2A2A',
+  },
+
+  // 27_Saturn_Ring.fwe — Ring + spherical core; Gold Titanium glitter
+  // primary tail @ 36.505306 Hz strobe (Custom 255,226,174).
+  'saturn-ring': {
+    id: 'saturn-ring',
+    label: 'Saturn Ring (Orange + Gold Titanium glitter)',
+    pattern: 'ring',
+    geometry: 'ring',
+    count: 16,
+    speedMS: 0.8,
+    sigmaRad: 0,
+    starType: 'XSmall',
+    mass: 0.5,
+    lifeMin: 2.3,
+    lifeMax: 2.5,
+    fadeABCD: [0.5057252, 0.6984733, 0.870229, 1],
+    colorHex: '#FF7A00',
+    tails: [
+      {
+        densityHz: 89,
+        width: 1.2,
+        lifeS: 0.24,
+        lifeSigma: 0.26,
+        sizeFactor: 0.5,
+        colorHex: '#FFE2AE',
+        strobeHz: 36.505306,
+        emitStart: 0.05,
+        emitEnd: 1,
+        fadeABCD: [0.22580644, 0.5604839, 0.87096775, 1],
+      },
+    ],
+  },
+
+  // 28_Heart.fwe — HeartDistribution, 34 Small/0.8 Red, sigma 0.14
+  heart: {
+    id: 'heart',
+    label: 'Heart (Red)',
+    pattern: 'peony',
+    geometry: 'heart',
+    count: 34,
+    speedMS: 0.5,
+    sigmaRad: 0.14,
+    starType: 'Small',
+    mass: 0.8,
+    lifeMin: 1.2,
+    lifeMax: 1.6,
+    fadeABCD: [0.12703583, 0.46091205, 0.81433225, 0.999],
+    colorHex: '#FF2A2A',
+  },
+
+  // 29_Smiley.fwe — CustomShapeDistribution, 150 XSmall/0.7 Orange
+  smiley: {
+    id: 'smiley',
+    label: 'Smiley (Orange)',
+    pattern: 'peony',
+    geometry: 'custom-shape',
+    count: 150,
+    speedMS: 1.0,
+    sigmaRad: 0.02,
+    starType: 'XSmall',
+    mass: 0.7,
+    lifeMin: 1.5,
+    lifeMax: 2.82,
+    fadeABCD: [0.1, 0.3018868, 0.79622644, 1],
+    colorHex: '#FF7A00',
+  },
+
+  // 30_Bow_Tie.fwe — MineDistribution (X-rot π) PastelGreen + Silver #4 tail
+  'bow-tie': {
+    id: 'bow-tie',
+    label: 'Bow Tie (Pastel Green + Silver)',
+    pattern: 'crossette',
+    geometry: 'inverted-hemisphere',
+    count: 40,
+    speedMS: 0.8,
+    sigmaRad: 0.018,
+    starType: 'XSmall',
+    mass: 0.7,
+    lifeMin: 1.0,
+    lifeMax: 2.0,
+    fadeABCD: [0.17601547, 0.5473888, 0.8974855, 0.999],
+    colorHex: '#A8FFB0',
+    tails: [
+      {
+        densityHz: 250,
+        width: 0.6,
+        lifeS: 0.25,
+        lifeSigma: 0.44,
+        sizeFactor: 0.8,
+        colorHex: '#C8C8D0', // FWsim "Spark" silver
+        emitStart: 0.15,
+        emitEnd: 1,
+        fadeABCD: [0, 0.07751938, 0.68061674, 1],
+      },
+    ],
+  },
+
+  // 31_Cluster_Diadem.fwe — Mine, Invisible body, AscentEffect cluster.
+  // Body kept as transparent placeholder; ascent describes the AscentEffect
+  // primary insert (Custom 149,74,0 D5 W2.1 life 0.21).
+  'cluster-diadem': {
+    id: 'cluster-diadem',
+    label: 'Cluster Diadem (Gold ascent)',
+    pattern: 'kamuro',
+    geometry: 'sphere',
+    count: 20,
+    speedMS: 0.6,
+    sigmaRad: 0.14,
+    starType: 'Small',
+    mass: 0.8,
+    lifeMin: 1.5,
+    lifeMax: 2.3,
+    fadeABCD: [0.1, 0.3018868, 0.79622644, 1],
+    colorHex: '#000000', // FWsim "Invisible"
+    ascent: {
+      densityHz: 5,
+      width: 2.1,
+      lifeS: 0.21,
+      colorHex: '#954A00', // Custom (149,74,0)
+    },
+  },
+
+  // 32_Jellyfish_Mushroom.fwe — Mine inverted (X-rot π), 6 Small/0.8 White
+  // + Silver primary tail D500 W0.6 life 0.7.
+  jellyfish: {
+    id: 'jellyfish',
+    label: 'Jellyfish / Mushroom (White + Silver)',
+    pattern: 'palm',
+    geometry: 'inverted-hemisphere',
+    count: 6,
+    speedMS: 0.8,
+    sigmaRad: 0,
+    starType: 'Small',
+    mass: 0.8,
+    lifeMin: 1.5,
+    lifeMax: 2.3,
+    fadeABCD: [0.1, 0.3018868, 0.79622644, 1],
+    colorHex: '#FFFFFF',
+    tails: [
+      {
+        densityHz: 500,
+        width: 0.6,
+        lifeS: 0.7,
+        lifeSigma: 0.1,
+        sizeFactor: 0.7,
+        colorHex: '#C8C8D0',
+        emitStart: 0.12,
+        emitEnd: 1,
+        fadeABCD: [0.13656388, 0.937326, 0.938326, 1],
+      },
+    ],
+  },
+
+  // 33_Half_Half.fwe — HemisphereDistribution (X-rot π), 50 XXSmall/0.5 Orange
+  'half-half': {
+    id: 'half-half',
+    label: 'Half-Half (Orange/Red)',
+    pattern: 'peony',
+    geometry: 'hemisphere',
+    count: 50,
+    speedMS: 0.8,
+    sigmaRad: 0.02,
+    starType: 'XXSmall',
+    mass: 0.5,
+    lifeMin: 1.2,
+    lifeMax: 1.5,
+    fadeABCD: [0.1, 0.25047082, 0.7344633, 0.9679849],
+    colorHex: '#FF7A00',
+    secondaryColorHex: '#FF2A2A',
+  },
+};
 // Source: 40_Single_Shot_Mine.fwe / 41_Single_Shot_Comet.fwe /
 //         42_Single_Shot_Comet_Mine.fwe
 // ────────────────────────────────────────────────────────────────────
