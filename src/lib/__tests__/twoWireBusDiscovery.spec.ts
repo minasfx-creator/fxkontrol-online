@@ -26,7 +26,7 @@ describe('twoWireBusDiscovery — scanBus', () => {
     const t = mockTransport(new Set([1, 5, 17]));
     const r = await scanBus(t, { addrs: [1, 2, 5, 17, 31], timeoutPerAddrMs: 30, spacingMs: 0 });
     const live = r.modules.filter((m) => m.status === 'live').map((m) => m.addr).sort();
-    expect(live).toEqual([1, 5, 17]);
+    expect(live).toEqual([1, 5, 17].sort());
     const unseen = r.modules.filter((m) => m.status === 'unseen').map((m) => m.addr).sort();
     expect(unseen).toEqual([2, 31]);
   });

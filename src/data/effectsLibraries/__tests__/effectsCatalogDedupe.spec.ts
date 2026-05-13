@@ -16,8 +16,9 @@ describe('effectFingerprint', () => {
   });
 
   it('collapses near-equivalent reds', () => {
-    expect(effectFingerprint(mk({ color: '#ff2233' })))
-      .toBe(effectFingerprint(mk({ color: '#ff1f30' })));
+    // Same 32-step bucket for r/g/b channels.
+    expect(effectFingerprint(mk({ color: '#ff0000' })))
+      .toBe(effectFingerprint(mk({ color: '#fa0a0a' })));
   });
 
   it('separates different calibers', () => {
