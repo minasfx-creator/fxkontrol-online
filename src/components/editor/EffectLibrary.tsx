@@ -585,6 +585,21 @@ export default function EffectLibrary() {
             >
               <Plus className="w-3 h-3" />
             </button>
+            <button
+              onClick={() => fweInputRef.current?.click()}
+              className="p-1 rounded-md bg-primary/10 text-primary hover:bg-primary/20 transition-colors"
+              title="Import .fwe (FWsim FireworkEffect)"
+            >
+              <Upload className="w-3 h-3" />
+            </button>
+            <input
+              ref={fweInputRef}
+              type="file"
+              accept=".fwe,application/xml,text/xml"
+              multiple
+              className="hidden"
+              onChange={(e) => handleFweUpload(e.target.files)}
+            />
           </div>
           {/* View toggle — Finale 3D has list/table */}
           <div className="flex gap-0.5 p-0.5 rounded-lg bg-surface-0/50">
