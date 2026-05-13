@@ -1,303 +1,150 @@
+# Rodada 4 v4 — Gaps & Refino: Libraries, 2-Wire, Download-to-Panel
 
-## Plano v3 — 2-Wire FireOne (CDS) + Demo Show + Festival Stage 3D
-
-Refinamento final consolidando v1 (escopo) + v2 (25 gaps HW/SW/UX) + v3 (mais 25 gaps de segurança, perf, integração, conformidade).
-
----
-
-## §0 — Princípios não negociáveis
-- Zero mudança em `uiCommandGateway`, `safetyStateMachine`, `commandBus`, `workMode`, RLS
-- Toda nova superfície honra `mem://honest-hardware-layer` (default disconnected/unknown)
-- Toda dispatch passa por `commandJournal` (mem liveops-3-camadas) e carimba `safetyBlackBox`
-- 2-Wire em pyro families = **transport exclusivo** (anti double-fire)
-- E-STOP <50ms é invariante testado, não aspiração
+Foco em três frentes que ficaram **abertas/parcialmente plugadas** depois das rodadas anteriores. Cada item lista o gap atual no código, o que entra e o critério de aceite. Nada toca `safety/SafetyStateMachine`/`workMode`. Tudo passa por `uiCommandGateway` quando há comando.
 
 ---
 
-## §1 — Camada física e protocolo 2-Wire CDS
+## §A — Effect Libraries (Showven/Lidu/Magic/Winda/Amazon + FWsim + EFFECT_LIBRARY)
 
-### 1.1 Especificação física (`docs/reference/two-wire-cds-physical-layer.md`)
-- DC bias 28V ±10%, current-limit 5A, ripple <2%
-- Polaridade-agnóstica (bridge no módulo)
-- FSK half-duplex sobre bias, baud 9600 (≤6,5km) ou 19200 (≤2km)
-- Termination 120Ω nos dois extremos, par 18 AWG
-- Galvanic isolation obrigatória no módulo (ISO1500-class, 2,5kVrms)
-- Surge IEC 61000-4-5 classe 4 (4kV par↔par, 6kV par↔terra) — TVS bidir + GDT
-- Inrush soft-start: PTC + ramp 100ms (cold-start cap charge)
-- Faixa térmica operacional: −20°C a +60°C (módulo recusa FIRE fora)
-- Cross-channel isolation ≥500V
+**Estado real (verificado):**
+- `EffectLibrary.tsx` faz spread direto: `EFFECT_LIBRARY ∪ FWSIM_BUILTIN_EFFECTS ∪ getFinaleEffects()` → 527 + 45 + N ≈ 600+ entries num único array sem dedupe.
+- `finalePartToEffect` mapeia cor por nome PT/EN local; **não usa o `vdlColorPipeline` canônico** (mem://vdl-color-pipeline-led-accurate). `renderHex` e `paletteHex` divergem do shader 3D.
+- Sem fingerprint para casar parts equivalentes vindos de fabricantes diferentes (mesmo Peony 4" Red).
+- Sem badge por library na lista, sem filtro por manufacturer, sem indicador de provenance (`validated` vs `pilot` vs `marketing_hypothesis`).
+- Thumbnails: só FWsim built-ins (44 PNG). 527 parts importadas mostram emoji.
 
-### 1.2 Frame protocol (`src/lib/twoWireProtocol.ts`)
+**Entra:**
+1. `src/data/effectsLibraries/effectFingerprint.ts` — `effectFingerprint(e: Effect): string` = SHA-1 truncado de `partType|caliber|color(VDL-canonical)|durationBucket(0.5s)|heightBucket(5m)`. Determinístico, idempotente.
+2. `registry.ts`: novo `getMergedEffectsCatalog()` que aplica dedupe por fingerprint, mantendo o de prioridade maior (`EFFECT_LIBRARY > FWSIM_BUILTIN > Finale`), expondo `aliases: string[]` com os ids colapsados.
+3. `finalePartToEffect.ts`: trocar resolver de cor pelo `vdlColorPipeline.quantizeRgbToVdl` (já canônico) — `renderHex` passa a bater 1:1 com o SkyCanvas.
+4. UI `EffectLibrary.tsx`: chip de manufacturer (Showven/Lidu/Magic/Winda/Amazon/FWsim/Curated), filtro multi-select, contador `N/Total`, badge de `ClaimPolicy` (`validated/pilot/marketing_hypothesis`) lendo `src/lib/claims.ts`.
+5. Guard test: `effectsCatalogDedupe.spec.ts` — garante que merge não regrida (≥600 antes, ≤600 após dedupe, alias coverage ≥10%).
+
+**Aceite:**
+- `getMergedEffectsCatalog()` retorna < input total e expõe aliases.
+- `renderHex` de qualquer Finale part = `quantizeRgbToVdl(part.color).renderHex`.
+- Lista mostra chips e contador correto; filtro por manufacturer funciona.
+- Suite verde, **zero arquivo binário** novo.
+
+---
+
+## §B — 2-Wire CDS: integração + bus discovery + policy
+
+**Estado real:**
+- `twoWireProtocol.ts` (HMAC+CRC+counter) e `twoWireTransport.ts` (WebSerial) **existem standalone**.
+- `pyroTransportPolicy.ts` declara `PYRO_FIRE_PRIORITY=[two_wire, serial, usb, artnet]` mas **nada consome** essa policy ainda.
+- Sem rota de pareamento, sem bus-scan (POLL 1..32), sem painel de saúde do barramento, sem ligação com `fireoneTransport` (que é quem o `FireOnePanel` realmente usa hoje).
+
+**Entra:**
+1. `src/lib/twoWireBusDiscovery.ts` — `scanBus(transport, {addrs:[1..32], timeoutPerAddr:80ms})`: emite `IDENTIFY` por addr, agrega `{addr, fwVersion, deviceType, lastSeenTs}` honesto (ausência = `unknown`, nunca sintético).
+2. `src/components/hardware/TwoWireBusPanel.tsx` — read-only: lista 32 endereços com chip `LIVE-RO/UNSEEN/COLLISION`, `crcErrorRate60s`, `busBiasV/busCurrentA` quando o adapter publicar; botão "Rescan" e "Open WebSerial port".
+3. `fireoneTransport.ts`: novo método `attachTwoWireSubLink(twoWire: TwoWireTransport)` — quando presente, `fire()` consulta `pyroTransportPolicy.pickTransport(['two_wire','serial','usb','artnet'])` e roteia. `real_operation` rejeita BLE.
+4. Rota nova `/pairing/two-wire` (4 passos: Welcome → WebSerial port → IDENTIFY scan → Confirm). Reusa o estilo do `/pairing/usb`. `pairingAuditLog` (mem://) recebe success+failure.
+5. Tests:
+   - `twoWireBusDiscovery.spec.ts` (mock transport, scan retorna shape correto, ausência ≠ erro).
+   - `pyroTransportPolicy.routing.spec.ts` (real_operation: BLE bloqueado; design: passa com warn).
+
+**Aceite:**
+- `scanBus()` cobre 32 addrs em ≤2.5s no mock.
+- `TwoWireBusPanel` monta sem hardware real e mostra todos `UNSEEN` (honest).
+- `fireoneTransport.fire()` em `real_operation` com 2-wire conectado roteia via `two_wire`.
+- `/pairing/two-wire` registrado em `App.tsx`, fora de `/command`.
+
+---
+
+## §C — "Download to Panel" (FireOne UltraFire + 2-Wire batch)
+
+**Estado real:**
+- `fireoneProtocol.ts` já tem `buildDownloadToModule`/`buildVerifyUltraFire`/`buildUltraFireGo` e wrappers `downloadUltraFire/verifyUltraFire/startUltraFire` na class transport.
+- **Não há orquestrador**: nada compila `ShowPlan.pyroCues` em `UltraFireCueData[]` por módulo, faz chunking, retry, verify code, progress, audit. `FireOneExportConsole` só baixa CSV.
+- Botão "Download to Panel" não existe na UI.
+
+**Entra:**
+1. `src/core/export/UltraFireDownloader.ts`:
+   - `compileShowToModules(showPlan): Map<addr, UltraFireCueData[]>` (agrupa por `cue.module`, valida channel 1–32, duration clamp 20–1000ms, max 4000 firings/módulo, max 999 events).
+   - `verifyCodeFor(cuesByModule)` = CRC-16 do payload concatenado canônico (determinístico, idempotente).
+   - `downloadAll(transport, {onProgress, abortSignal})` — POR módulo: `downloadUltraFire` → aguarda `STATUS` → `verifyUltraFire` → confere reply. Retry 2x com backoff 250→750ms. **NÃO arma**, **NÃO dispara** `ULTRAFIRE_GO` automaticamente.
+   - Black box: `safetyBlackBox.recordSafetyNote('ultrafire-download', {planHash, modulesOk, modulesFail, verifyCode})` — usando o `blackBoxRecorder` existente como gancho real (memória menciona `safetyBlackBox` mas não existe).
+2. `src/components/editor/DownloadToPanelConsole.tsx`:
+   - Card abaixo do `FireOneExportConsole`. Pré-condições visíveis: `level∈READY_FOR_*`, `transport.connected`, `workMode`. Em `design/simulation` mostra "SIM · ADVISORY" e habilita download (mock loopback).
+   - Lista módulos com progress bar individual (idle/sending/verifying/ok/fail), código de verify global, total bytes, ETA.
+   - Botões: `COMPILE` (preview por módulo), `DOWNLOAD` (Hold-to-Confirm 800ms em `real_operation`, single-click em sim/design), `ABORT`.
+   - **Nunca** um botão "FIRE NOW". Disparo continua exclusivo do Show Commander via `uiCommandGateway`.
+3. Tests `ultraFireDownloader.spec.ts`:
+   - Compilação determinística (mesmo show → mesmo verifyCode).
+   - Channel out-of-range é rejeitado antes de tx.
+   - Retry: 1 falha CRC + sucesso = 1 retry, status `ok`.
+   - Abort no meio para a fila; black box registra parcial.
+
+**Aceite:**
+- `compileShowToModules(festivalMainStageDemo)` produz Map não-vazio, verifyCode estável entre runs.
+- Painel monta em `/` (editor) e mostra todos os módulos como `idle` quando sem transport.
+- Em mock loopback, download de 50 cues × 4 módulos completa em ≤3s na suite.
+- 0 chamadas a `safetyStateMachine.transition` ou `executor.fire` no caminho de download.
+
+---
+
+## Detalhes técnicos resumidos
+
+```text
+ShowPlan.pyroCues
+  └→ UltraFireDownloader.compileShowToModules
+       └→ Map<addr, UltraFireCueData[]>  (validate channel/duration/limits)
+            └→ verifyCodeFor() ── CRC16 canonical ──┐
+            └→ for each addr:                       │
+                 buildDownloadToModule  ── tx ──┐   │
+                 wait STATUS (≤500ms, retry×2)  │   │
+                                                ▼   │
+                              buildVerifyUltraFire ─┘
+                                  ↓ reply == verifyCode?
+                                  ↓ yes → modulesOk++
+                                  ↓ no  → modulesFail++ (retry)
+            └→ blackBox.record('ultrafire-download', {...})
+
+UI Download path (NEVER fires):
+  DownloadToPanelConsole
+    └→ uiCommandGateway.downloadShowToPanel()  (NEW gateway method, no SSM transition)
+         └→ UltraFireDownloader.downloadAll(transport, …)
 ```
-[PRE 0xAA 0xAA][SYNC 0x7E][ADDR u8][CMD u8][LEN u8][PAYLOAD ≤56B]
-[COUNTER u32 monotônico][HMAC-SHA256 truncado 8B][CRC16-CCITT]
-```
-- **Anti-replay**: monotônico por slave, master persiste em `localStorage`
-- **Anti-tamper**: HMAC-SHA256 com PSK gerado no /pairing/two-wire (32B em NVS)
-- **Frame max 80B** (limita buffer firmware)
-- Opcodes: `POLL, IDENTIFY, STATUS, CONTINUITY_REQ, CONTINUITY_REPLY, ARM, DISARM, FIRE_MASK, E_STOP, BUS_RENUMBER, SET_PSK, FW_VERSION, TEMP_READ`
-- **CRC16-CCITT vetores de teste** publicados no doc (8 casos canônicos)
 
-### 1.3 Discriminated union TS
-```ts
-export type TwoWireCmd =
-  | { type:'POLL'; addr:number }
-  | { type:'IDENTIFY'; addr:number }
-  | { type:'FIRE_MASK'; addr:number; mask:Uint32Array; tFire:number }
-  | { type:'E_STOP' /* broadcast addr=0 */ }
-  | ...
+Transport routing:
+```text
+fireoneTransport.fire(cmd)
+  └→ pyroTransportPolicy.pickTransport(available, workMode)
+        priority: two_wire > serial > usb > artnet
+        real_operation: BLE → REJECTED
+        design/sim: BLE → WARN, allowed
 ```
 
-### 1.4 E-STOP broadcast preempção [CRIT]
-- `E_STOP` com `addr=0x00` interrompe transação em curso no master em ≤2 byte-times
-- Slaves abortam FIRE em ≤2 byte-times (~2ms @9600)
-- **Watchdog dual-side**: master sem POLL recebido por 500ms → auto-disarm; slave sem POLL >500ms → drop bias caps em ≤200ms (safe state)
-- Spec `eStopBroadcastLatency.spec.ts` valida <50ms com 99 endereços ativos
+## Arquivos
 
-### 1.5 Continuity thresholds elétricos
-- Test current 30mA, NO-fire >50mA (NFPA 1126)
-- `<50Ω = OK`, `50–200Ω = WARN`, `open || >200Ω = FAIL`
-- `enum ContinuityState { OK, OPEN, SHORT, OUT_OF_RANGE, NO_TEST }` integra com `MuxContinuityReader`
+**Novos (~12):**
+- `src/data/effectsLibraries/effectFingerprint.ts`
+- `src/data/effectsLibraries/__tests__/effectsCatalogDedupe.spec.ts`
+- `src/lib/twoWireBusDiscovery.ts`
+- `src/lib/__tests__/twoWireBusDiscovery.spec.ts`
+- `src/lib/__tests__/pyroTransportPolicy.routing.spec.ts`
+- `src/components/hardware/TwoWireBusPanel.tsx`
+- `src/pages/PairingTwoWire.tsx`
+- `src/core/export/UltraFireDownloader.ts`
+- `src/core/export/__tests__/ultraFireDownloader.spec.ts`
+- `src/components/editor/DownloadToPanelConsole.tsx`
+- `docs/reference/ultrafire-download-flow.md`
 
-### 1.6 FireOne compat decoder
-- `twoWireProtocol` ganha dois decoders: `fxkNative` + `fireoneCompat` (sniff por preamble)
-- FXK em 2-wire entra em `dual-listen`: responde ao protocolo do master detectado
-- Mapping `fireoneCompat`: `FireOne FIRE OUT n` → `FXK channel n`
-- Spec `fireoneCompatRoundtrip.spec.ts`
+**Editados (~6):**
+- `src/data/effectsLibraries/finalePartToEffect.ts` (cor via VDL pipeline)
+- `src/data/effectsLibraries/registry.ts` (`getMergedEffectsCatalog`)
+- `src/components/editor/EffectLibrary.tsx` (chips/filtro)
+- `src/lib/fireoneTransport.ts` (`attachTwoWireSubLink` + policy routing)
+- `src/lib/pyroTransportPolicy.ts` (`pickTransport(available, workMode)`)
+- `src/App.tsx` (rota `/pairing/two-wire`, console no editor)
 
----
+**Zero** binário novo, **zero** mudança em `SafetyStateMachine`/`CommandBus`/`workMode`.
 
-## §2 — Transport, discovery, identidade
+## Fora de escopo (próxima rodada)
+- Edição inline de presets Finale.
+- BLE handshake real para FXK16 ↔ 2-wire bridge.
+- `safetyBlackBox` canônico (atualmente só memória; usaremos `blackBoxRecorder` como gancho).
+- Gate Phase 2 vs 2-wire (precisa `phase2Transition` real, ausente no repo).
 
-### 2.1 `TwoWireTransport` em `fireoneTransport.ts`
-- `TransportType += 'two_wire'`, priority `0` (mais alto)
-- Honest default: connected mas devices `unknown` até IDENTIFY
-- `LinkHealth` estende: `busBiasV, busCurrentA, collisionCount, crcErrorRate60s`
-
-### 2.2 Discovery em Worker (`twoWireBusDiscovery.worker.ts`)
-- Scan 1..99 com POLL 80ms/addr, AbortController, progress 5-em-5
-- UI mostra progress bar + cancel sempre habilitado
-- Resultado parcial é válido
-
-### 2.3 `pyroTransportPolicy` mudanças auditadas
-- `PYRO_FIRE_PRIORITY = ['two_wire','serial','usb','artnet','radio']`
-- **Novo:** `EXCLUSIVE_FAMILIES = ['fireone-ifmx','fxk16','fxk32q']` → MultiTransportLink usa single-best-link
-- 4 call-sites auditados: `MultiTransportLink.selectBestLink`, `transport-auto-fallback`, `safetyBlackBox.evaluatePyroDispatchVerdict`, `useFXK16Bridge.preferredTransport`
-- Spec `pyroExclusiveTransport.spec.ts` (anti double-fire)
-
-### 2.4 Identity unification (mem identity-unification-portregistry)
-- `busAddress` vira alias do `PhysicalDevice` quando linkMode=`two_wire`
-- IFMx serial X em wireless ≡ bus addr 17 em 2-wire ≡ mesmo device
-
-### 2.5 FXK busAddress persistido
-- `fxk16FieldConfigStore.busAddress: 0..99` (localStorage host + NVS firmware-decl)
-- Wizard detecta colisão e oferece auto-renumber
-
-### 2.6 IDENTIFY com capability bitmask
-- Reply: `{ family, fwVersion, busAddress, serialNumber, supportedCommands: u32 bitmask, tempC, biasReadV }`
-- Master adapta call set por slave conforme fwVersion
-
----
-
-## §3 — Safety integration
-
-### 3.1 Phase 2 gate (mem phase2-transition-gate) — novas condições
-- 2-wire bus completou POLL cycle ≤30s
-- crcErrorRate60s < 0.5%
-- Termination confirmada pelo operador no preflight
-- `linkMode='two_wire'` exige checkbox "instalação aterrada + surge protegida"
-
-### 3.2 `safetyBlackBox.evaluatePyroDispatchVerdict` enriquece envelope
-Carimba: `{ transport:'two_wire', busAddress, busBiasV, busCurrentA, counter, slaveAckTs, planHash }`
-- Telemetria rate-limited a 1Hz (não inflar ring 500)
-
-### 3.3 `commandJournal` (mem liveops-3-camadas)
-- `recordCommandRequested` + `recordCommandDispatched` para todo frame 2-wire (correlated por commandId)
-- Fire-and-forget no uiCommandGateway preservado
-
-### 3.4 `realOnlyGate` aceita handshake 2-wire
-- `markHandshakeOk('two_wire', deviceKey)` integra ao mesmo registry
-
-### 3.5 `pairingAuditLog`
-- /pairing/two-wire registra success+failure (cap 100 mantido)
-
-### 3.6 `mocksErradicated` guard
-- Novo transport não pode ter samples hardcoded; teste estende allow-list
-
----
-
-## §4 — Demo Show "Main 2021-02-03"
-
-### 4.1 Asset original (não em `public/`)
-- Hospedado em **Lovable Cloud Storage** bucket privado `demo-shows/` + signed URL
-- Header `MA DATA` documentado em `docs/reference/demo-shows/main-2021-02-03.md` com SHA-256
-- **NÃO parseado** (binário grandMA proprietário)
-
-### 4.2 Seed canônico equivalente (`src/data/demoShows/festivalMainStageDemo.ts`)
-- 4:30 min, ~120 cues, BPM 128, downbeats hardcoded
-- Mix: 18 mines (6 anchors × 3 fileiras), 8 CO₂ jets, 16 movers DMX, 32 drones (logo + grid)
-- `provenance:'marketing_hypothesis'` por-cue (não só plan-level)
-- `transportRequirements:['two_wire']` no manifest
-- Adicionado a `GOLDEN_SHOW_CATALOG` como 3ª seed
-- Spec dedicada (`festivalMainStageDemo.spec.ts`): zero error-severity, totalCues>100, anchors resolvidos, dry-run cuesFired===total
-
-### 4.3 Audio sync
-- Stem royalty-free 4:30 em Cloud Storage `demo-shows/main-2021-02-03-audio.mp3`
-- `_LICENSE.md` ao lado documenta autoria/licença
-- `useAudioMasterClock` liga timeline ↔ engine
-- SoundLevelPanel mostra SPL meter synced
-
-### 4.4 Overlay anti-confusão
-- Componente `DemoModeOverlay` canto inferior, ds-status-warn
-- Texto i18n PT/EN: "DEMO · CUES SIMULADOS · NÃO É SHOW REAL"
-- WCAG AA contraste, aria-live="polite" anuncia "demo mode" no mount
-- Botão "Ver código fonte do seed" abre modal TS pretty-printed
-
-### 4.5 Camera presets
-- 4 shots cinematic: front-low, side-pan, drone-bird, audience-pov
-- CameraAnimator existente, presets em `festivalDemoCameras.ts`
-
-### 4.6 Export demo (GoldenShowExport)
-- ZIP com .fir + CSV + BoM (lista IFMx + FXK16 em 2-wire) + PDF + disclaimer
-- BoM gerado por `goldenShowExport.ts` extendido
-
----
-
-## §5 — Festival Stage 3D
-
-### 5.1 `FestivalStageModel.tsx` (procedural, zero asset binário)
-- Deck 18×12×1.2m
-- Truss principal pórtico 20×12m (InstancedMesh barras 3cm) + 2 delays laterais 8m
-- **LED wall**: 1 PlaneGeometry 14×8m + DataTexture 224×128 RGBA + shader uniform pulse (≠ 28k instances)
-- 2 IMAG 4×3m laterais
-- Cluster PA: 2 line array hangs (8 boxes) + 2 subs
-- 16 movers (InstancedMesh + per-instance color attribute)
-- Beam cones: billboards aditivos
-- 6 mine anchors (3 front, 2 mid, 1 back) + 4 CO₂ jet anchors
-- Plateia 80×60m ground com gradiente noturno
-
-### 5.2 `stageAnchors.ts` tipado
-```ts
-export type StageAnchorKind = 'mine-front'|'mine-mid'|'mine-back'|'co2-jet-l'|'co2-jet-r'|'mover-truss'|'led-wall'|'pa-cluster';
-export interface StageAnchor { id:string; kind:StageAnchorKind; position:[number,number,number]; rotation?:[number,number,number]; }
-export const STAGE_ANCHORS_VERSION = 1;
-```
-- ShowPlan cue `position?: [x,y,z] | { anchorRef:string }` resolvido em `canonicalToEnginePlan`
-- Versionado para detectar mismatch seed↔model
-
-### 5.3 Performance
-- Target ≤4 draw calls extras vs SkyCanvas baseline
-- LOD: camera distance >50m → truss vira boxes, LED wall vira plano emissivo plano
-- 1 shadow map opt-in (flag `r_festival_stage_shadows`)
-- Spec `festivalStagePerf.spec.ts` mede draw calls headless
-
-### 5.4 Dispose contract (mem M5)
-- `useEffect(()=>cleanup,[])` dispõe geometries/materials/textures/RTs
-
-### 5.5 Terrain sync (mem terrain-sync)
-- Stage placeable em coords reais (default Maracanã 22.9122°S 43.2302°W) → height via XZ raycaster
-- Sun position correta para hora do show
-
-### 5.6 Variants
-- `stage: 'arch' | 'festival' | 'festival-small' | 'minimal' | 'none'`
-- `festival-small` para mobile (1 mover wall, sem IMAG)
-
-### 5.7 SkyCanvas integration
-- `SkyCanvas3D` aceita prop `stage`, default `arch` (retrocompat)
-- ShowEngineHost força `festival` para seed `festival-main-stage-demo`
-- React.Suspense fallback durante mount
-
-### 5.8 Rota dev
-- `/dev/festival-stage-demo` — SkyCanvas + FestivalStageModel + ShowEngineHost loop + HUD play/pause/seek + camera presets
-
----
-
-## §6 — UX / wizard /pairing/two-wire
-
-5 passos: Welcome → Wiring (SVG inline) → Termination check → Bus scan (worker progress) → Confirm + PSK gen
-
-- `GlobalSafetyBar` chip `2-WIRE` com tooltip `BIAS 28V · 12 nodes · 0 CRC errors`
-- `FieldDiagnosticsDock` coluna "Bus" (BLE/USB/2-Wire/RF) + bus health row
-- AutoControllerLauncher reconhece IFMx 2-wire e mostra card
-
----
-
-## §7 — Firmware decl-only
-
-- `firmware/fxk32q-esp32s3/include/fxk32q_two_wire.h` — pinmap RS-485, ISO1500 wiring, NVS keys (`busAddr`, `psk`, `counter`), watchdog 500ms, cold-start safe state, FW update-over-bus bootloader vector (TODO)
-- `firmware/_PENDING.md` lista cpp impls pendentes (não bloqueiam web)
-- Header parsável por TS importer para validação de constantes (pinmap consistency test)
-
----
-
-## §8 — Testes (cobertura final)
-
-| Spec | O que valida |
-|---|---|
-| `twoWireProtocol.spec.ts` | encode/decode RT, CRC vectors, HMAC, counter |
-| `twoWireTransport.spec.ts` | connect/disconnect, IDENTIFY, honest default |
-| `twoWireBusDiscovery.spec.ts` | scan 1..99, cancel, partial result |
-| `eStopBroadcastLatency.spec.ts` | **<50ms com 99 nodes ativos (CRIT)** |
-| `twoWireBusCollision.spec.ts` | 2 slaves mesmo addr, master detecta |
-| `twoWireReplayAttack.spec.ts` | counter reuse rejeitado |
-| `twoWireHmacTamper.spec.ts` | HMAC inválido rejeitado |
-| `fireoneCompatRoundtrip.spec.ts` | FXK responde frame FireOne válido |
-| `pyroExclusiveTransport.spec.ts` | single-fire em multi-transport |
-| `phase2GateTwoWire.spec.ts` | gate exige bus health |
-| `festivalMainStageDemo.spec.ts` | seed válida, anchors resolvidos |
-| `festivalStagePerf.spec.ts` | draw calls ≤ baseline+4 |
-| `festivalStageDispose.spec.ts` | zero leak após unmount |
-| `demoShowOverlay.spec.ts` | overlay sempre presente |
-| `stageAnchorsContract.spec.ts` | versão + resolver |
-| `mocksErradicatedTwoWire.spec.ts` | guard estendido |
-
-**Total: 16 specs novas.** Suite alvo 1310+/1310+ verde.
-
----
-
-## §9 — Documentação
-
-- `docs/reference/two-wire-cds-physical-layer.md`
-- `docs/reference/two-wire-protocol-frames.md` (+ CRC vectors + HMAC test cases)
-- `docs/reference/two-wire-bench-test-procedure.md`
-- `docs/reference/two-wire-wiring-diagram.svg` (procedural)
-- `docs/reference/fireone-compat-mode.md`
-- `docs/reference/festival-stage-anchors.md`
-- `docs/reference/demo-shows/main-2021-02-03.md`
-- `docs/reference/firmware-version-skew-matrix.md`
-
----
-
-## §10 — Roadmap memória (pós-build)
-
-- `mem://hardware/two-wire-fireone-cds` — protocolo + HMAC + counter + bias + watchdog + claim pilot
-- `mem://funcionalidades/festival-main-stage-demo` — seed + model + rota + audio
-- atualizar `mem://hardware/fireone-system` (paridade 2-wire)
-- atualizar `mem://funcionalidades/skycanvas-v2-stagelayer` (variant festival)
-- atualizar `mem://arquitetura/showplan-canonical-source-truth` (transportRequirements)
-
----
-
-## §11 — Out of scope explícito
-
-- .cpp do firmware FXK32Q 2-wire (apenas headers + TODO)
-- Parser binário grandMA proprietário
-- GLTF externo de palco
-- Mudanças em `uiCommandGateway`/`safetyStateMachine`/`commandBus`/`workMode`/RLS
-- Showven PBUS interop em 2-wire (documental only — gap registrado)
-- FX Commander Pro 2-wire (gap documental)
-- FW update-over-bus implementação (vector reservado, não implementado)
-
----
-
-## §12 — Inventário final
-
-- **~28 novos arquivos** (TS+specs+docs+SVG+1 worker+1 header)
-- **~12 editados** (fireoneTransport, useFXK16Bridge, fxk16FieldConfigStore, MultiTransportLink, unifiedDiscovery, GlobalSafetyBar, FieldDiagnosticsDock, SkyCanvas3D, GOLDEN_SHOW_CATALOG, pyroTransportPolicy, App router, AutoControllerLauncher)
-- **2 assets em Cloud Storage** (show .gz + audio .mp3, NÃO em public/)
-- **0 binários novos em `public/`**
-
----
-
-### Decisão pedida
-Aprovar plano v3 inteiro (recomendado) ou pedir corte (ex.: pular §5.5 terrain, §5.6 mobile variant, §4.5 cameras)?
+Aprovar para implementar nesta rodada?
