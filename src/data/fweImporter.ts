@@ -179,7 +179,9 @@ function detectRootKind(root: Element): FweRootKind {
 
 /** Heuristic pattern from filename keywords. */
 function patternFromName(name: string): string | undefined {
-  const n = name.toLowerCase();
+  // Underscores are word-chars in JS regex, so normalise to spaces
+  // before applying \b boundaries.
+  const n = name.toLowerCase().replace(/[_\-.]+/g, ' ');
   if (/\bcrown\b|\bbrocade\b|\bkamuro\b/.test(n)) return 'kamuro';
   if (/\bchrysanthemum\b/.test(n)) return 'chrysanthemum';
   if (/\bpeony\b/.test(n)) return 'peony';
