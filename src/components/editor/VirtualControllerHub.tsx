@@ -245,9 +245,21 @@ export default function VirtualControllerHub({ fs = false, onSelectMode, onClose
           <ChevronRight className="w-3.5 h-3.5 text-muted-foreground/20 group-hover:text-muted-foreground/50 transition-colors shrink-0 mt-1" />
         </div>
       </button>
+      {showFireOneRoster && (
+        <div className={cn("rounded-lg border bg-card/30", GROUP_META[card.group]?.borderColor)}>
+          <div className="px-2 pb-1.5">
+            <FireOneModulesInline
+              modules={fireone.modules}
+              isConnected={fireone.isConnected}
+              onRescan={() => fireone.discoverModules()}
+              maxRows={fs ? 24 : 12}
+            />
+          </div>
+        </div>
+      )}
+      </div>
     );
   };
-
   return (
     <div className={cn("space-y-3", fs ? "p-4" : "p-2")}>
       <div className="flex items-center justify-between">
