@@ -175,6 +175,15 @@ export default function TwoWireBusPanel({
         liveCount: result.modules.filter(m => m.status === 'live').length,
         unseenCount: result.modules.filter(m => m.status === 'unseen').length,
       });
+      // Persist this sweep into the cross-session ring (best-effort).
+      appendScanHistory({
+        startedAt: result.startedAt,
+        finishedAt: result.finishedAt,
+        durationMs: result.durationMs,
+        hubLabel,
+        modules: result.modules,
+      });
+      setHistory(loadScanHistory());
     } catch (err) {
       if (!ac.signal.aborted) {
         setError(err instanceof Error ? err.message : String(err));
