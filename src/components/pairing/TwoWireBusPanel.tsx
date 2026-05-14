@@ -16,10 +16,17 @@ import {
   type ScanBusProgress,
 } from '@/lib/twoWireBusDiscovery';
 import { useWorkMode } from '@/lib/workMode';
+import {
+  appendScanHistory,
+  clearScanHistory,
+  diffScans,
+  loadScanHistory,
+  type ScanHistoryEntry,
+} from '@/lib/twoWireScanHistory';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
-import { Cable, Search, Zap, AlertTriangle, CheckCircle2, Activity, XCircle } from 'lucide-react';
+import { Cable, Search, Zap, AlertTriangle, CheckCircle2, Activity, XCircle, History, Trash2, Server } from 'lucide-react';
 
 type SerialApi = { requestPort: (opts?: unknown) => Promise<unknown> };
 
