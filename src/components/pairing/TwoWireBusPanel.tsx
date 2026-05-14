@@ -88,12 +88,15 @@ export default function TwoWireBusPanel({
   const workMode = useWorkMode();
   const transportRef = useRef<TwoWireTransport | null>(null);
   const [health, setHealth] = useState<TwoWireLinkHealth | null>(null);
+  const [hubLabel, setHubLabel] = useState<string | null>(null);
   const [modules, setModules] = useState<TwoWireDiscoveredModule[]>([]);
   const [scanning, setScanning] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [holdProgress, setHoldProgress] = useState(0);
   const [scanProgress, setScanProgress] = useState<ScanBusProgress | null>(null);
   const [lastSweep, setLastSweep] = useState<LastSweep | null>(null);
+  const [history, setHistory] = useState<ScanHistoryEntry[]>(() => loadScanHistory());
+  const [historyOpen, setHistoryOpen] = useState(false);
   const [now, setNow] = useState(Date.now());
   const holdStartRef = useRef<number | null>(null);
   const holdRafRef = useRef<number | null>(null);
