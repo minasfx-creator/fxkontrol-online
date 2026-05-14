@@ -16,10 +16,17 @@ import {
   type ScanBusProgress,
 } from '@/lib/twoWireBusDiscovery';
 import { useWorkMode } from '@/lib/workMode';
+import {
+  appendScanHistory,
+  clearScanHistory,
+  diffScans,
+  loadScanHistory,
+  type ScanHistoryEntry,
+} from '@/lib/twoWireScanHistory';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
-import { Cable, Search, Zap, AlertTriangle, CheckCircle2, Activity, XCircle } from 'lucide-react';
+import { Cable, Search, Zap, AlertTriangle, CheckCircle2, Activity, XCircle, History, Trash2, Server } from 'lucide-react';
 
 type SerialApi = { requestPort: (opts?: unknown) => Promise<unknown> };
 
@@ -81,12 +88,15 @@ export default function TwoWireBusPanel({
   const workMode = useWorkMode();
   const transportRef = useRef<TwoWireTransport | null>(null);
   const [health, setHealth] = useState<TwoWireLinkHealth | null>(null);
+  const [hubLabel, setHubLabel] = useState<string | null>(null);
   const [modules, setModules] = useState<TwoWireDiscoveredModule[]>([]);
   const [scanning, setScanning] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [holdProgress, setHoldProgress] = useState(0);
   const [scanProgress, setScanProgress] = useState<ScanBusProgress | null>(null);
   const [lastSweep, setLastSweep] = useState<LastSweep | null>(null);
+  const [history, setHistory] = useState<ScanHistoryEntry[]>(() => loadScanHistory());
+  const [historyOpen, setHistoryOpen] = useState(false);
   const [now, setNow] = useState(Date.now());
   const holdStartRef = useRef<number | null>(null);
   const holdRafRef = useRef<number | null>(null);
@@ -125,6 +135,7 @@ export default function TwoWireBusPanel({
       await transport.open(port, { psk: new Uint8Array(32), baudRate: 9600 });
       transportRef.current = transport;
       setHealth(transport.getHealth());
+      setHubLabel(transport.getHubLabel?.() ?? null);
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
     }
@@ -137,6 +148,7 @@ export default function TwoWireBusPanel({
     await t.close();
     transportRef.current = null;
     setHealth(null);
+    setHubLabel(null);
     setModules([]);
     setScanProgress(null);
   }, []);
@@ -163,6 +175,15 @@ export default function TwoWireBusPanel({
         liveCount: result.modules.filter(m => m.status === 'live').length,
         unseenCount: result.modules.filter(m => m.status === 'unseen').length,
       });
+      // Persist this sweep into the cross-session ring (best-effort).
+      appendScanHistory({
+        startedAt: result.startedAt,
+        finishedAt: result.finishedAt,
+        durationMs: result.durationMs,
+        hubLabel,
+        modules: result.modules,
+      });
+      setHistory(loadScanHistory());
     } catch (err) {
       if (!ac.signal.aborted) {
         setError(err instanceof Error ? err.message : String(err));
@@ -171,7 +192,7 @@ export default function TwoWireBusPanel({
       setScanning(false);
       setScanProgress(null);
     }
-  }, [scan]);
+  }, [scan, hubLabel]);
 
   const cancelScan = useCallback(() => {
     abortRef.current?.abort();
@@ -234,6 +255,18 @@ export default function TwoWireBusPanel({
           data-testid="provenance-badge"
         >
           {prov.label}
+        </span>
+      </div>
+
+      {/* Hub identification — which XL4/XL2/FXK16 hosts the bus */}
+      <div
+        className="flex items-center gap-2 text-[10px] font-mono px-2 py-1.5 rounded border border-border/20 bg-muted/10"
+        data-testid="hub-label"
+      >
+        <Server className="w-3 h-3 text-cyan-400 shrink-0" />
+        <span className="text-muted-foreground">Hub:</span>
+        <span className={cn('font-bold', hubLabel ? 'text-cyan-300' : 'text-muted-foreground')}>
+          {connected ? (hubLabel ?? 'unknown (no USB descriptor)') : 'not connected'}
         </span>
       </div>
 
@@ -431,6 +464,96 @@ export default function TwoWireBusPanel({
           </tbody>
         </table>
       </ScrollArea>
+
+      {/* Persistent sweep history — compare with previous sessions */}
+      <div className="border border-border/10 rounded" data-testid="sweep-history">
+        <div className="flex items-center justify-between px-2 py-1.5 bg-muted/20">
+          <button
+            type="button"
+            onClick={() => setHistoryOpen(o => !o)}
+            className="inline-flex items-center gap-1.5 text-[10px] font-mono uppercase tracking-wider text-muted-foreground hover:text-foreground"
+            data-testid="history-toggle"
+          >
+            <History className="w-3 h-3" />
+            History ({history.length})
+            <span className="text-cyan-400">{historyOpen ? '▾' : '▸'}</span>
+          </button>
+          {history.length > 0 && (
+            <button
+              type="button"
+              onClick={() => { clearScanHistory(); setHistory([]); }}
+              className="inline-flex items-center gap-1 text-[9px] font-mono text-muted-foreground hover:text-red-400"
+              data-testid="history-clear"
+            >
+              <Trash2 className="w-3 h-3" /> clear
+            </button>
+          )}
+        </div>
+        {historyOpen && (
+          <div className="max-h-48 overflow-auto">
+            {history.length === 0 ? (
+              <div className="p-3 text-center text-[10px] font-mono text-muted-foreground">
+                No previous sweeps stored.
+              </div>
+            ) : (
+              <table className="w-full text-[10px] font-mono">
+                <thead className="bg-muted/10 text-muted-foreground sticky top-0">
+                  <tr>
+                    <th className="text-left p-2">When</th>
+                    <th className="text-left p-2">Hub</th>
+                    <th className="text-right p-2">Time</th>
+                    <th className="text-right p-2">Live</th>
+                    <th className="text-left p-2">Δ vs prev</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {history.map((h, i) => {
+                    const prev = history[i + 1];
+                    const diff = prev ? diffScans(prev, h) : null;
+                    const liveCount = h.modules.filter(m => m.status === 'live').length;
+                    return (
+                      <tr key={h.id} className="border-t border-border/10">
+                        <td className="p-2 text-muted-foreground">{fmtAge(h.startedAt, now)}</td>
+                        <td className="p-2 text-foreground truncate max-w-[120px]" title={h.hubLabel ?? ''}>
+                          {h.hubLabel ?? '—'}
+                        </td>
+                        <td className="p-2 text-right text-foreground">{h.durationMs}ms</td>
+                        <td className="p-2 text-right text-emerald-400">{liveCount}</td>
+                        <td className="p-2 text-[9px]">
+                          {diff ? (
+                            <span className="inline-flex items-center gap-2">
+                              {diff.added.length > 0 && (
+                                <span className="text-emerald-400" title={`added: ${diff.added.join(',')}`}>
+                                  +{diff.added.length}
+                                </span>
+                              )}
+                              {diff.removed.length > 0 && (
+                                <span className="text-red-400" title={`removed: ${diff.removed.join(',')}`}>
+                                  −{diff.removed.length}
+                                </span>
+                              )}
+                              {diff.added.length === 0 && diff.removed.length === 0 && (
+                                <span className="text-muted-foreground">stable</span>
+                              )}
+                              <span className={cn(
+                                diff.durationDeltaMs > 0 ? 'text-amber-400' : 'text-muted-foreground',
+                              )}>
+                                {diff.durationDeltaMs >= 0 ? '+' : ''}{diff.durationDeltaMs}ms
+                              </span>
+                            </span>
+                          ) : (
+                            <span className="text-muted-foreground">—</span>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            )}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
