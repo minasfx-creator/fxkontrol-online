@@ -464,6 +464,96 @@ export default function TwoWireBusPanel({
           </tbody>
         </table>
       </ScrollArea>
+
+      {/* Persistent sweep history — compare with previous sessions */}
+      <div className="border border-border/10 rounded" data-testid="sweep-history">
+        <div className="flex items-center justify-between px-2 py-1.5 bg-muted/20">
+          <button
+            type="button"
+            onClick={() => setHistoryOpen(o => !o)}
+            className="inline-flex items-center gap-1.5 text-[10px] font-mono uppercase tracking-wider text-muted-foreground hover:text-foreground"
+            data-testid="history-toggle"
+          >
+            <History className="w-3 h-3" />
+            History ({history.length})
+            <span className="text-cyan-400">{historyOpen ? '▾' : '▸'}</span>
+          </button>
+          {history.length > 0 && (
+            <button
+              type="button"
+              onClick={() => { clearScanHistory(); setHistory([]); }}
+              className="inline-flex items-center gap-1 text-[9px] font-mono text-muted-foreground hover:text-red-400"
+              data-testid="history-clear"
+            >
+              <Trash2 className="w-3 h-3" /> clear
+            </button>
+          )}
+        </div>
+        {historyOpen && (
+          <div className="max-h-48 overflow-auto">
+            {history.length === 0 ? (
+              <div className="p-3 text-center text-[10px] font-mono text-muted-foreground">
+                No previous sweeps stored.
+              </div>
+            ) : (
+              <table className="w-full text-[10px] font-mono">
+                <thead className="bg-muted/10 text-muted-foreground sticky top-0">
+                  <tr>
+                    <th className="text-left p-2">When</th>
+                    <th className="text-left p-2">Hub</th>
+                    <th className="text-right p-2">Time</th>
+                    <th className="text-right p-2">Live</th>
+                    <th className="text-left p-2">Δ vs prev</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {history.map((h, i) => {
+                    const prev = history[i + 1];
+                    const diff = prev ? diffScans(prev, h) : null;
+                    const liveCount = h.modules.filter(m => m.status === 'live').length;
+                    return (
+                      <tr key={h.id} className="border-t border-border/10">
+                        <td className="p-2 text-muted-foreground">{fmtAge(h.startedAt, now)}</td>
+                        <td className="p-2 text-foreground truncate max-w-[120px]" title={h.hubLabel ?? ''}>
+                          {h.hubLabel ?? '—'}
+                        </td>
+                        <td className="p-2 text-right text-foreground">{h.durationMs}ms</td>
+                        <td className="p-2 text-right text-emerald-400">{liveCount}</td>
+                        <td className="p-2 text-[9px]">
+                          {diff ? (
+                            <span className="inline-flex items-center gap-2">
+                              {diff.added.length > 0 && (
+                                <span className="text-emerald-400" title={`added: ${diff.added.join(',')}`}>
+                                  +{diff.added.length}
+                                </span>
+                              )}
+                              {diff.removed.length > 0 && (
+                                <span className="text-red-400" title={`removed: ${diff.removed.join(',')}`}>
+                                  −{diff.removed.length}
+                                </span>
+                              )}
+                              {diff.added.length === 0 && diff.removed.length === 0 && (
+                                <span className="text-muted-foreground">stable</span>
+                              )}
+                              <span className={cn(
+                                diff.durationDeltaMs > 0 ? 'text-amber-400' : 'text-muted-foreground',
+                              )}>
+                                {diff.durationDeltaMs >= 0 ? '+' : ''}{diff.durationDeltaMs}ms
+                              </span>
+                            </span>
+                          ) : (
+                            <span className="text-muted-foreground">—</span>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            )}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
