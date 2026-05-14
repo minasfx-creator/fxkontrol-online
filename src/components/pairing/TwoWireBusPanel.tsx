@@ -135,6 +135,7 @@ export default function TwoWireBusPanel({
       await transport.open(port, { psk: new Uint8Array(32), baudRate: 9600 });
       transportRef.current = transport;
       setHealth(transport.getHealth());
+      setHubLabel(transport.getHubLabel?.() ?? null);
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
     }
@@ -147,6 +148,7 @@ export default function TwoWireBusPanel({
     await t.close();
     transportRef.current = null;
     setHealth(null);
+    setHubLabel(null);
     setModules([]);
     setScanProgress(null);
   }, []);
