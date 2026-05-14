@@ -258,6 +258,18 @@ export default function TwoWireBusPanel({
         </span>
       </div>
 
+      {/* Hub identification — which XL4/XL2/FXK16 hosts the bus */}
+      <div
+        className="flex items-center gap-2 text-[10px] font-mono px-2 py-1.5 rounded border border-border/20 bg-muted/10"
+        data-testid="hub-label"
+      >
+        <Server className="w-3 h-3 text-cyan-400 shrink-0" />
+        <span className="text-muted-foreground">Hub:</span>
+        <span className={cn('font-bold', hubLabel ? 'text-cyan-300' : 'text-muted-foreground')}>
+          {connected ? (hubLabel ?? 'unknown (no USB descriptor)') : 'not connected'}
+        </span>
+      </div>
+
       {/* Telemetry chips row */}
       <div
         className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-[9px] font-mono"
