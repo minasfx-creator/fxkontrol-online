@@ -40,12 +40,36 @@ export interface TwoWireOpenOptions {
   psk: Uint8Array;
 }
 
+type SerialPortInfo = { usbVendorId?: number; usbProductId?: number };
 type SerialPortLike = {
   open(opts: { baudRate: number }): Promise<void>;
   close(): Promise<void>;
   readable: ReadableStream<Uint8Array> | null;
   writable: WritableStream<Uint8Array> | null;
+  getInfo?: () => SerialPortInfo;
 };
+
+/**
+ * Best-effort label for the host gateway behind the 2-Wire bus
+ * (FireOne XL4/XL2/FXK16 hub). Honest layer: returns null when we
+ * cannot identify it — never invents a name.
+ */
+export function inferHubLabel(info: SerialPortInfo | undefined): string | null {
+  if (!info) return null;
+  const vid = info.usbVendorId;
+  const pid = info.usbProductId;
+  if (vid == null && pid == null) return null;
+  // Known FireOne / FXK gateway VIDs (FTDI / Silicon Labs / WCH commonly used).
+  const HUB_MAP: Record<string, string> = {
+    '0403:6015': 'FireOne XL4',  // FTDI FT231X (XL4 default)
+    '0403:6001': 'FireOne XL2',  // FTDI FT232R
+    '10c4:ea60': 'FXK16 Hub',    // Silicon Labs CP210x
+    '1a86:7523': 'Generic CDS Hub', // WCH CH340
+  };
+  const key = `${vid?.toString(16).padStart(4, '0')}:${pid?.toString(16).padStart(4, '0')}`;
+  if (HUB_MAP[key]) return `${HUB_MAP[key]} (${key})`;
+  return `Unknown hub (${key})`;
+}
 
 const TX_TIMEOUT_MS = 1500;
 const CRC_WINDOW_MS = 60_000;
