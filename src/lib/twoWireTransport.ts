@@ -111,6 +111,19 @@ export class TwoWireTransport {
     return { ...this.health };
   }
 
+  /**
+   * Best-effort label for the host hub (XL4/XL2/FXK16). Returns null
+   * when the port has no `getInfo()` or no USB descriptor.
+   */
+  getHubLabel(): string | null {
+    try {
+      const info = this.port?.getInfo?.();
+      return inferHubLabel(info);
+    } catch {
+      return null;
+    }
+  }
+
   onHealthChange(cb: (h: TwoWireLinkHealth) => void): () => void {
     this.healthSubs.add(cb);
     return () => this.healthSubs.delete(cb);
