@@ -192,7 +192,7 @@ export default function TwoWireBusPanel({
       setScanning(false);
       setScanProgress(null);
     }
-  }, [scan]);
+  }, [scan, hubLabel]);
 
   const cancelScan = useCallback(() => {
     abortRef.current?.abort();
