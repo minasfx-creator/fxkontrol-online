@@ -22,6 +22,8 @@ import {
   clampFireDuration,
 } from '@/lib/fireoneProtocol';
 import { getTransportManager, type TransportStatus, type TransportType } from '@/lib/fireoneTransport';
+import { moduleAggregator, aggregatedToFireOneStatus } from '@/lib/moduleAggregator';
+import { inferFxkModel } from '@/lib/inferFxkModel';
 
 export interface FireOneHardwareState {
   isConnected: boolean;
