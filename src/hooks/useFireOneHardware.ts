@@ -119,6 +119,22 @@ export function useFireOneHardware() {
         case 'module-discovered':
         case 'status-update': {
           const status = event.data as FireOneModuleStatus;
+          // Tag with model/transport so FireOneModulesInline renders consistently.
+          if (!status.model) {
+            status.model = inferFxkModel({ name: status.serialNumber, firmware: status.firmwareVersion });
+          }
+          if (!status.transport) status.transport = 'serial';
+          // Mirror to aggregator so any cross-transport surface sees it too.
+          moduleAggregator.upsert({
+            address: status.moduleAddress,
+            model: status.model ?? 'IFMx-i32Q',
+            transport: 'serial',
+            firmware: status.firmwareVersion,
+            battery: status.batteryVoltage,
+            rssi: status.rssiDbm,
+            igniterCount: status.igniters?.filter(i => i.connected).length,
+            channels: status.igniters?.length || 32,
+          });
           setState(prev => {
             const newModules = new Map(prev.modules);
             newModules.set(event.moduleAddress, status);
