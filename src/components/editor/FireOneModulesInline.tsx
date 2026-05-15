@@ -1,13 +1,15 @@
 /**
- * FireOneModulesInline — compact roster of IFMx-i32Q modules currently
- * seen by the connected FireOne controller (XL4/XL2/Wi-Fi Direct).
+ * FireOneModulesInline — compact roster of FXK / FXK-M1 / IFMx-i32Q / ESP32
+ * modules currently seen by the Pyro Console, regardless of transport
+ * (RS-485 / USB / BLE / BLE-LR / WebSocket / Wi-Fi-Direct / Art-Net / 2-Wire).
  *
- * Honest hardware: rows reflect what `useFireOneHardware().modules`
- * actually contains. Empty roster = "no modules answered yet" — never
- * synthesised. Read-only: this component never arms/disarms/fires.
+ * Honest hardware: rows reflect what `useFireOneHardware().modules` actually
+ * contains (sourced from the controller AND moduleAggregator). Empty roster =
+ * "no modules answered yet" — never synthesised. Read-only: this component
+ * never arms/disarms/fires.
  */
 import { useMemo } from 'react';
-import { Cpu, Battery, Signal, Radio, Cable, RefreshCcw, AlertTriangle } from 'lucide-react';
+import { Cpu, Battery, Signal, Radio, Cable, RefreshCcw, AlertTriangle, Bluetooth, Wifi, Antenna, Plug } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { FireOneModuleStatus } from '@/lib/fireoneProtocol';
 
@@ -27,17 +29,43 @@ function fmtAge(ts: number | undefined, now: number): string {
   return `${Math.round(s / 60)}m`;
 }
 
-function modeIcon(mode: FireOneModuleStatus['connectionMode']) {
-  if (mode === 'wireless' || mode === 'fallback') return Radio;
-  return Cable;
+function transportIcon(t: FireOneModuleStatus['transport'] | undefined) {
+  switch (t) {
+    case 'ble':
+    case 'ble_lr': return Bluetooth;
+    case 'usb':
+    case 'direct_relay': return Plug;
+    case 'websocket':
+    case 'wifi_direct': return Wifi;
+    case 'artnet': return Antenna;
+    case 'two_wire': return Cable;
+    case 'serial':
+    default: return Cable;
+  }
 }
 
-function modeLabel(m: FireOneModuleStatus): string {
+function transportLabel(m: FireOneModuleStatus): string {
+  if (m.transport === 'ble') return 'BLE';
+  if (m.transport === 'ble_lr') return 'BLE-LR';
+  if (m.transport === 'usb') return 'USB';
+  if (m.transport === 'direct_relay') return 'RELAY';
+  if (m.transport === 'websocket') return 'WS';
+  if (m.transport === 'wifi_direct') return 'WiFi-D';
+  if (m.transport === 'artnet') return 'ArtNet';
+  if (m.transport === 'two_wire') return '2-Wire';
+  if (m.transport === 'serial') return 'RS485';
   if (m.connectionMode === 'fallback') return 'WL-FB';
   if (m.connectionMode === 'wireless') return 'WL';
-  if (m.connectionMode === 'wired') return 'RS485';
-  return m.wireless ? 'WL' : 'RS485';
+  return 'RS485';
 }
+
+const MODEL_COLOR: Record<string, string> = {
+  'FXK': 'text-orange-400',
+  'FXK-M1': 'text-cyan-300',
+  'IFMx-i32Q': 'text-amber-400',
+  'ESP32-Generic': 'text-fuchsia-400',
+  'Unknown': 'text-muted-foreground/60',
+};
 
 export default function FireOneModulesInline({
   modules,
@@ -53,10 +81,10 @@ export default function FireOneModulesInline({
   const shown = rows.slice(0, maxRows);
   const overflow = Math.max(0, rows.length - shown.length);
 
-  if (!isConnected) {
+  if (!isConnected && rows.length === 0) {
     return (
       <div className="text-[8px] font-mono text-muted-foreground/60 px-2 py-1.5 italic">
-        Conecte o controlador para enxergar módulos.
+        Conecte (USB / BLE / Wi-Fi / RS-485 / 2-Wire / Art-Net) para enxergar módulos.
       </div>
     );
   }
@@ -65,7 +93,7 @@ export default function FireOneModulesInline({
     <div className="border-t border-border/10 mt-1.5 pt-1.5" data-testid="fireone-modules-inline">
       <div className="flex items-center justify-between px-1 mb-1">
         <span className="text-[8px] font-mono uppercase tracking-wider text-muted-foreground">
-          Módulos IFMx-i32Q ({rows.length})
+          Módulos FXK / FXK-M1 ({rows.length})
         </span>
         {onRescan && (
           <button
@@ -81,7 +109,7 @@ export default function FireOneModulesInline({
       {rows.length === 0 ? (
         <div className="flex items-center gap-1 text-[8px] font-mono text-amber-400/80 px-1 py-1">
           <AlertTriangle className="w-2.5 h-2.5" />
-          Nenhum módulo respondeu ao IDENTIFY ainda.
+          Nenhum módulo respondeu via BLE / USB / Wi-Fi / Art-Net / 2-Wire / RS-485 ainda.
         </div>
       ) : (
         <div className="rounded border border-border/10 overflow-hidden">
@@ -89,7 +117,8 @@ export default function FireOneModulesInline({
             <thead className="bg-muted/20 text-muted-foreground/70">
               <tr>
                 <th className="text-left px-1.5 py-1 w-8">Addr</th>
-                <th className="text-left px-1.5 py-1 w-10">Link</th>
+                <th className="text-left px-1.5 py-1 w-16">Model</th>
+                <th className="text-left px-1.5 py-1 w-14">Link</th>
                 <th className="text-left px-1.5 py-1 w-10">FW</th>
                 <th className="text-right px-1.5 py-1 w-12">Sig</th>
                 <th className="text-right px-1.5 py-1 w-10">Bat</th>
@@ -99,31 +128,32 @@ export default function FireOneModulesInline({
             </thead>
             <tbody>
               {shown.map((m) => {
-                const Icon = modeIcon(m.connectionMode);
+                const TransportIcon = transportIcon(m.transport);
                 const live = m.igniters?.filter((i) => i.connected && !i.fired).length ?? 0;
                 const total = m.igniters?.length ?? 0;
                 const ageMs = m.lastSeen ? now - m.lastSeen : null;
                 const stale = ageMs != null && ageMs > 5_000;
                 const rssi = m.rssiDbm;
+                const model = m.model ?? 'Unknown';
                 return (
-                  <tr key={m.moduleAddress} className={cn('border-t border-border/10', stale && 'opacity-60')}>
+                  <tr key={`${model}-${m.moduleAddress}`} className={cn('border-t border-border/10', stale && 'opacity-60')}>
                     <td className="px-1.5 py-1 font-bold text-foreground">
                       <span className="inline-flex items-center gap-1">
-                        <Cpu className="w-2.5 h-2.5 text-orange-400" />
+                        <Cpu className={cn('w-2.5 h-2.5', MODEL_COLOR[model] ?? 'text-orange-400')} />
                         {m.moduleAddress}
                       </span>
                     </td>
+                    <td className={cn('px-1.5 py-1 font-bold', MODEL_COLOR[model] ?? 'text-foreground')}>
+                      {model}
+                    </td>
                     <td className="px-1.5 py-1">
-                      <span className={cn(
-                        'inline-flex items-center gap-0.5',
-                        m.connectionMode === 'fallback' ? 'text-amber-400' : 'text-cyan-400/80',
-                      )}>
-                        <Icon className="w-2.5 h-2.5" /> {modeLabel(m)}
+                      <span className="inline-flex items-center gap-0.5 text-cyan-400/80">
+                        <TransportIcon className="w-2.5 h-2.5" /> {transportLabel(m)}
                       </span>
                     </td>
                     <td className="px-1.5 py-1 text-muted-foreground">{m.firmwareVersion ?? '—'}</td>
                     <td className="px-1.5 py-1 text-right">
-                      {rssi != null ? (
+                      {rssi != null && rssi !== 0 ? (
                         <span className={cn(
                           'inline-flex items-center gap-0.5 justify-end',
                           rssi > -60 ? 'text-emerald-400' : rssi > -75 ? 'text-amber-400' : 'text-red-400',
@@ -133,7 +163,7 @@ export default function FireOneModulesInline({
                       ) : <span className="text-muted-foreground/50">—</span>}
                     </td>
                     <td className="px-1.5 py-1 text-right">
-                      {m.batteryVoltage != null ? (
+                      {m.batteryVoltage != null && m.batteryVoltage > 0 ? (
                         <span className={cn(
                           'inline-flex items-center gap-0.5 justify-end',
                           m.batteryVoltage < 3.3 ? 'text-red-400' : 'text-emerald-400/80',
@@ -143,7 +173,7 @@ export default function FireOneModulesInline({
                       ) : <span className="text-muted-foreground/50">—</span>}
                     </td>
                     <td className="px-1.5 py-1 text-right text-foreground">
-                      <span className={cn(live === 0 && total > 0 && 'text-amber-400')}>{live}/{total || 32}</span>
+                      <span className={cn(live === 0 && total > 0 && 'text-amber-400')}>{live}/{total || '—'}</span>
                     </td>
                     <td className="px-1.5 py-1 text-right text-muted-foreground">{fmtAge(m.lastSeen, now)}</td>
                   </tr>
@@ -151,7 +181,7 @@ export default function FireOneModulesInline({
               })}
               {overflow > 0 && (
                 <tr className="border-t border-border/10">
-                  <td colSpan={7} className="px-1.5 py-1 text-center text-muted-foreground/60">
+                  <td colSpan={8} className="px-1.5 py-1 text-center text-muted-foreground/60">
                     + {overflow} mais (abrir painel para detalhes)
                   </td>
                 </tr>
