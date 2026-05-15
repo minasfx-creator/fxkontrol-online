@@ -8,7 +8,14 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { FireOneModuleEmulator, type ModuleStatus, type ModuleState, type FiringMode, type ScriptEvent } from '@/lib/fireoneModuleEmulator';
 import { FireOneHardwareBridge, type BridgeStatus } from '@/lib/fireoneModuleHardwareBridge';
+import { moduleAggregator, type AggregatedTransport } from '@/lib/moduleAggregator';
+import { inferFxkModel } from '@/lib/inferFxkModel';
 import { toast } from 'sonner';
+
+const BRIDGE_TO_AGG: Record<string, AggregatedTransport> = {
+  ble: 'ble', ble_lr: 'ble_lr', usb: 'usb',
+  websocket: 'websocket', wifi_direct: 'wifi_direct', direct_relay: 'direct_relay',
+};
 
 export interface UseFireOneModuleReturn {
   status: ModuleStatus | null;
@@ -58,16 +65,44 @@ export function useFireOneModuleMode(): UseFireOneModuleReturn {
   useEffect(() => {
     const bridge = new FireOneHardwareBridge((event, data) => {
       if (event === 'connected') {
+        const status = bridge.getStatus();
         toast.success(`Hardware conectado: ${(data as any)?.device}`);
-        setBridgeStatus(bridge.getStatus());
+        setBridgeStatus(status);
+        const aggTransport = BRIDGE_TO_AGG[status.transport] ?? 'usb';
+        const model = inferFxkModel({ name: status.deviceName, firmware: status.firmwareVersion });
+        moduleAggregator.upsert({
+          address: 1,
+          model,
+          transport: aggTransport,
+          firmware: status.firmwareVersion,
+          battery: status.batteryVoltage,
+          rssi: status.rssi,
+          deviceName: status.deviceName,
+        });
         const emu = emulatorRef.current;
         if (emu) {
           emu.onFire = (pin, dur) => bridge.fire(pin, dur);
           emu.onContinuityRead = (pin) => bridge.readContinuity(pin);
         }
+      } else if (event === 'firmware_version' || event === 'data') {
+        // Refresh model/firmware as soon as VER:/data lines arrive.
+        const status = bridge.getStatus();
+        if (status.connected) {
+          const aggTransport = BRIDGE_TO_AGG[status.transport] ?? 'usb';
+          const model = inferFxkModel({ name: status.deviceName, firmware: status.firmwareVersion });
+          moduleAggregator.upsert({
+            address: 1, model, transport: aggTransport,
+            firmware: status.firmwareVersion, battery: status.batteryVoltage,
+            rssi: status.rssi, deviceName: status.deviceName,
+          });
+          setBridgeStatus(status);
+        }
       } else if (event === 'disconnected') {
         toast.info('Hardware desconectado');
         setBridgeStatus(bridge.getStatus());
+        // Drop every entry tied to a non-serial transport bridge owns.
+        (['ble','ble_lr','usb','websocket','wifi_direct','direct_relay'] as AggregatedTransport[])
+          .forEach(t => moduleAggregator.removeByTransport(t));
       } else if (event === 'heartbeat_timeout') {
         toast.warning('Hardware sem resposta — desconectado');
         setBridgeStatus(bridge.getStatus());

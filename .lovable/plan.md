@@ -1,61 +1,92 @@
-## Rodada 4 — UI + Integração canônica
+## Objetivo
 
-Fecha as pendências da rodada anterior conectando os módulos já criados (`twoWireBusDiscovery`, `UltraFireDownloader`, `pyroTransportPolicy`, `effectFingerprint`) à UI real e ao `fireoneTransport`.
+Que o Pyro Console reconheça módulos **FXK** e **FXK-M1** em **qualquer transporte** (BLE / BLE-LR / USB / Wi-Fi WS / Wi-Fi Direct / 2-Wire / Art-Net), tratar **qualquer ESP32** detectado como módulo válido, **liberar o disparo real** para esses módulos e **remover páginas/bloqueios de compliance** que hoje pertencem só ao admin.
 
-### §1 — `TwoWireBusPanel` + rota `/pairing/two-wire`
+---
 
-- `src/components/pairing/TwoWireBusPanel.tsx`
-  - Botão "Connect 2-Wire" → `WebSerial.requestPort()` → `TwoWireTransport`.
-  - Tabela de módulos descobertos (`scanBus`): addr, deviceType, fwVersion, RSSI/health, age.
-  - Provenance badge (`live_read_only` em design/simulation, `live` em real).
-  - Hold-to-Confirm 800ms para "Test continuity sweep" (read-only IDENTIFY ping, jamais FIRE).
-- `src/pages/PairingTwoWire.tsx` + rota lazy em `App.tsx` (`/pairing/two-wire`).
-- Tema operacional Vantablack + cyan-dessat (DS tokens, sem laranja).
+## 1 · Reconhecimento universal de módulos FXK / FXK-M1
 
-### §2 — `attachTwoWireSubLink` em `fireoneTransport`
+**Onde está hoje:** `useFireOneHardware` agrega `FireOneModuleStatus` (Map<addr,status>) vindos só de `fireoneController` (RS-485/serial). BLE/USB/WS/Wi-Fi-Direct (`fireoneModuleHardwareBridge`) e Art-Net (`ArtNetModulePanel`) e 2-Wire (`twoWireBusDiscovery`) emitem eventos próprios e **não populam** o mesmo Map. Por isso o `FireOneModulesInline` mostra vazio em qualquer transporte que não seja o XL4 cabeado. Não há campo `model` para FXK / FXK-M1 / IFMx-i32Q.
 
-- Em `SerialTransport` (e `FireOneTransportManager`), adicionar método opcional:
-  - `attachTwoWireSubLink(twoWireTransport: TwoWireTransport): () => void`
-  - Registra o link 2-wire como **sub-transporte de comando pyro** sem substituir o serial primário (downlink CSV/legacy continua).
-  - Roteia frames CDS por ele quando `pyroTransportPolicy.pickPyroTransport(workMode)` devolver `two_wire`.
-  - Detach idempotente; auto-detach em `disconnect()`.
-- Sem mudar `CommandBus` nem `uiCommandGateway`; apenas amplia o transporte pyro.
+**O que entregar:**
 
-### §3 — `DownloadToPanelConsole` (UltraFire)
+- Estender `FireOneModuleStatus` com `model: 'FXK' | 'FXK-M1' | 'IFMx-i32Q' | 'ESP32-Generic'` e `transport: BridgeTransport | 'serial' | 'two_wire' | 'artnet'`.
+- Criar `src/lib/moduleAggregator.ts` (singleton `moduleAggregator`) que une as 4 fontes:
+  1. `fireoneController.discoveredModules` (RS-485)
+  2. `fireoneModuleHardwareBridge` (BLE / BLE-LR / USB / WS / Wi-Fi-Direct)
+  3. `artnetModuleService` (Art-Net)
+  4. `twoWireBusDiscovery` (CDS 2-wire)
+  Cada fonte chama `moduleAggregator.upsert({addr, transport, model, firmware, rssi, batt, ignCount, lastSeen})`. Identidade canônica = `${model}#${addr}` (alias por transporte → mesmo Map p/ não duplicar entre BLE+USB do mesmo módulo).
+- Detector de modelo em `inferFxkModel(name, fw, vidPid)`:
+  - prefixo `FXK-M1*` → `FXK-M1`
+  - prefixo `FXK*` ou `IFMx*` → `FXK` / `IFMx-i32Q`
+  - qualquer ESP32 (`ESP32-FXK*`, VID 0x303A, hostname `fxk-esp32.local`) sem prefixo conhecido → `ESP32-Generic` (tratado como módulo de 32 canais por padrão).
+- `useFireOneHardware().modules` passa a expor o agregado (sem mudar contrato Map, só fonte).
+- `FireOneModulesInline`: nova coluna **MODEL**, ícone por transporte (Cable/Radio/Wifi/Bluetooth/Two-Wire), header "Módulos FXK / FXK-M1 (N)". Empty state passa a "Nenhum módulo respondeu via BLE/USB/Wi-Fi/Art-Net/2-Wire ainda."
+- `useFireOneHardware().connectionPath` aceita `'ble' | 'usb' | 'websocket' | 'wifi_direct' | 'two_wire' | 'artnet'`.
 
-- `src/components/fireone/DownloadToPanelConsole.tsx`
-  - Lê `ShowPlan` ativa (`useProjectStore`), instancia `UltraFireDownloader`.
-  - UI por módulo: progresso, retries, Verify CRC, status final.
-  - Botão "Download to Panel" só habilitado em `workMode ∈ {design, simulation}` **ou** com gate Phase 2 carimbado (não muda gate, só consome).
-  - Em `real_operation` sem gate, mostra "ADVISORY" (alinhado a `simulationGuard`).
-  - Plug em `FireOneExportConsole` (aba "Download to Panel" ao lado de "CSV Export").
+## 2 · Liberar disparo real para FXK / FXK-M1 / ESP32 em qualquer transporte
 
-### §4 — Color pipeline canônico via `vdlQuantizer`
+- Em `src/lib/pyroTransportPolicy.ts`:
+  - `PYRO_FIRE_PRIORITY = ['two_wire','serial','usb','websocket','wifi_direct','artnet','ble_lr','radio']` (BLE clássico continua banido p/ fire por jitter; BLE-LR liberado).
+  - `EXCLUSIVE_FAMILIES` adiciona `'fxk'`, `'fxk-m1'`, `'esp32-generic'`.
+  - `BANNED_FOR_REAL_FIRE` permanece apenas `ble` (clássico).
+- `selectBestPyroTransport('fxk-m1', available, 'real_operation')` passa a retornar transporte real disponível (não-null) p/ qualquer ESP32 conectado.
+- Roteamento no `uiCommandGateway` para FIRE: se `model ∈ {FXK, FXK-M1, ESP32-Generic}` → manda via melhor transporte do agregador (em vez de assumir RS-485). Hold-to-Confirm 800ms preservado.
 
-- Substituir `vdlColorToHex` local em `finalePartToEffect.ts` por `rgbToNearestVdl` / `VDL_PALETTE` de `src/lib/vdlQuantizer.ts` (fonte canônica que existe no repo).
-- Wrapper em `src/data/effectsLibraries/colorResolver.ts`:
-  - `resolveEffectColorHex(name: string): { hex, vdl, source: 'name'|'rgb'|'fallback' }`
-  - Mantém aliases PT-BR (Amazon/Magic) e cai no `vdlQuantizer` quando o input é hex/rgb.
-- `effectFingerprint` consome o mesmo wrapper para garantir bucketing consistente.
-- Memo: como `vdlColorPipeline` (mem) **não existe** no repo, `vdlQuantizer` é tratado como o "módulo canônico atual"; nota em `mem://render/vdl-color-resolver-actual`.
+## 3 · Remover páginas / blocos de compliance que hoje são só admin
 
-### §5 — Testes
+**Rotas/páginas a remover do app principal** (mover para `src/_admin/` para não quebrar imports, esconder do roteamento):
+- `/admin`, `/accreditation` (rotas removidas de `src/App.tsx` + lazy imports). Sidebar perde os itens.
+- `ManualComplianceMatrix.tsx` deixa de ser montado em `ReportsPanel`.
+- `ComplianceChecklist.tsx` removido do tab Reports.
 
-- `twoWireBusPanel.spec.tsx` — render mock transport, scan list, hold-to-confirm.
-- `fireoneTransport.subLink.spec.ts` — attach/detach idempotente + routing por policy.
-- `downloadToPanelConsole.spec.tsx` — gating por workMode, progresso, retry path.
-- `colorResolver.spec.ts` — aliases PT, vdlQuantizer fallback, idempotência.
+**Bloqueios "admin-only" desligados (mantendo Black Box e safety crítica):**
+- `OperationalModeGuard` deixa `'export'` aceitar `simulate|preview|validate|export|diagnostics|sync_read_only` (compliance gate vira **advisory badge**, não bloqueio).
+- `VerificationBar`: status `BLOCKED` por falha de compliance vira `ADVISORY` (cor amber, sem travar fire). E-STOP, ARM/DISARM, hold-to-confirm e SafetyBlackBox **continuam intocados** (regras safety-critical).
+- `ExportReadinessPanel` / `LockoutPanel` continuam exibindo, mas advisory: nada bloqueia export ou fire.
 
-### §6 — Fora de escopo
+**O que NÃO muda (escopo de safety crítico, fora do pedido):**
+- E-STOP global, hold-to-confirm 800ms, SafetyStateMachine, BlackBox, oath de produção, plano de show hash, audit trail.
+- `requestRealOperation()` continua exigindo Phase 2 grant fresco — apenas o roteamento de transporte é ampliado.
 
-- Nenhuma mudança em `CommandBus`, `safetyStateMachine`, `uiCommandGateway`, `workMode`, gates Phase 1/2.
-- Sem firmware real / handshake BLE.
-- Sem mover Finale libraries.
+---
 
-### Arquivos
+## Arquivos previstos
 
-**Criados (~9):** `TwoWireBusPanel.tsx`, `PairingTwoWire.tsx`, `DownloadToPanelConsole.tsx`, `colorResolver.ts`, 4 specs, 1 nota mem.
+**Novos**
+- `src/lib/moduleAggregator.ts` + `__tests__/moduleAggregator.spec.ts`
+- `src/lib/inferFxkModel.ts` + `__tests__/inferFxkModel.spec.ts`
 
-**Editados (~4):** `fireoneTransport.ts` (sub-link), `finalePartToEffect.ts` (consome resolver), `effectFingerprint.ts` (consome resolver), `App.tsx` (rota), `FireOneExportConsole.tsx` (aba Download).
+**Editar**
+- `src/lib/fireoneProtocol.ts` (campo `model`, `transport` em `FireOneModuleStatus`)
+- `src/lib/fireoneModuleHardwareBridge.ts` (emitir upsert no aggregator com modelo inferido)
+- `src/services/artnetModuleService.ts` (idem)
+- `src/lib/twoWireBusDiscovery.ts` (idem)
+- `src/hooks/useFireOneHardware.ts` (consumir `moduleAggregator`)
+- `src/components/editor/FireOneModulesInline.tsx` (coluna MODEL + ícone por transporte + empty state)
+- `src/lib/pyroTransportPolicy.ts` (prioridade ampliada, famílias FXK/M1/ESP32 exclusivas)
+- `src/core/hardware/OperationalModeGuard.ts` (compliance vira advisory)
+- `src/components/editor/VerificationBar.tsx` (BLOCKED por compliance → ADVISORY)
+- `src/components/editor/ReportsPanel.tsx` (drop ManualComplianceMatrix + ComplianceChecklist)
+- `src/App.tsx` + `src/layouts/MainLayout.tsx` (remover rotas /admin /accreditation do menu)
 
-Zero binários. Zero impacto em safety/transport policy (apenas consome).
+**Mover (não deletar) p/ não quebrar memória**
+- `src/pages/Admin.tsx`, `src/pages/AccreditationDashboard.tsx`, `src/components/editor/ManualComplianceMatrix.tsx`, `src/components/editor/reports/ComplianceChecklist.tsx` → `src/_admin/`
+
+---
+
+## Validação
+
+- Suite Vitest (espera +6 specs novas):
+  - aggregator dedupe cross-transport
+  - inferFxkModel para FXK / FXK-M1 / ESP32 / IFMx
+  - pyroTransportPolicy retorna transporte real para FXK-M1 em real_operation com BLE-LR ou Wi-Fi-Direct
+  - FireOneModulesInline render com 3 módulos heterogêneos (RS-485 + BLE + Art-Net)
+  - OperationalModeGuard: compliance fail não bloqueia export
+  - smoke test que `/admin` e `/accreditation` retornam 404
+- Manual: conectar BLE de fixture ESP32 → módulo aparece no `FireOneModulesInline` com badge "FXK · BLE"; ARM + Hold-Fire dispara via melhor transporte real.
+
+## Fora do escopo
+
+- Reescrever firmware ESP32, mover compliance p/ módulo separado, novo design de admin. Tudo isso fica para uma rodada futura.

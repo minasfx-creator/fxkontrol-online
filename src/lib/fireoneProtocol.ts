@@ -131,6 +131,10 @@ export interface FireOneModuleStatus {
   linkQuality?: number;
   connectionMode?: WirelessConnectionMode;
   ultraFireVerified?: boolean;
+  /** Cross-transport extensions populated by moduleAggregator (optional). */
+  model?: 'FXK' | 'FXK-M1' | 'IFMx-i32Q' | 'ESP32-Generic' | 'Unknown';
+  transport?: 'serial' | 'usb' | 'ble' | 'ble_lr' | 'websocket' | 'wifi_direct' | 'two_wire' | 'artnet' | 'direct_relay';
+  deviceName?: string;
 }
 
 export interface FireOneIgniterStatus {

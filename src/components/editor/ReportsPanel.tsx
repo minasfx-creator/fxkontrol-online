@@ -139,9 +139,7 @@ export default function ReportsPanel({ onClose }: { onClose: () => void }) {
           );
         })}
 
-        {(timelineItems.length > 0 || positions.length > 0) && (
-          <ComplianceChecklist items={complianceItems} />
-        )}
+        {/* Compliance checklist removed — admin-only scope */}
 
         <div className="bg-muted/30 rounded-lg border border-border/30 p-2.5">
           <p className="text-[8px] text-muted-foreground leading-relaxed">

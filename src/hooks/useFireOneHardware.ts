@@ -22,6 +22,8 @@ import {
   clampFireDuration,
 } from '@/lib/fireoneProtocol';
 import { getTransportManager, type TransportStatus, type TransportType } from '@/lib/fireoneTransport';
+import { moduleAggregator, aggregatedToFireOneStatus } from '@/lib/moduleAggregator';
+import { inferFxkModel } from '@/lib/inferFxkModel';
 
 export interface FireOneHardwareState {
   isConnected: boolean;
@@ -117,6 +119,22 @@ export function useFireOneHardware() {
         case 'module-discovered':
         case 'status-update': {
           const status = event.data as FireOneModuleStatus;
+          // Tag with model/transport so FireOneModulesInline renders consistently.
+          if (!status.model) {
+            status.model = inferFxkModel({ name: status.serialNumber, firmware: status.firmwareVersion });
+          }
+          if (!status.transport) status.transport = 'serial';
+          // Mirror to aggregator so any cross-transport surface sees it too.
+          moduleAggregator.upsert({
+            address: status.moduleAddress,
+            model: status.model ?? 'IFMx-i32Q',
+            transport: 'serial',
+            firmware: status.firmwareVersion,
+            battery: status.batteryVoltage,
+            rssi: status.rssiDbm,
+            igniterCount: status.igniters?.filter(i => i.connected).length,
+            channels: status.igniters?.length || 32,
+          });
           setState(prev => {
             const newModules = new Map(prev.modules);
             newModules.set(event.moduleAddress, status);
@@ -200,6 +218,29 @@ export function useFireOneHardware() {
     });
     return unsubscribe;
   }, [controller]);
+
+  // Subscribe to moduleAggregator — merges BLE / USB / WS / Wi-Fi-Direct /
+  // 2-Wire / Art-Net entries into the same modules Map consumed by
+  // FireOneModulesInline. RS-485 entries are mirrored from the controller
+  // events above; here we only need to absorb the cross-transport ones.
+  useEffect(() => {
+    const apply = () => {
+      const aggList = moduleAggregator.list();
+      if (aggList.length === 0) return;
+      setState(prev => {
+        const newModules = new Map(prev.modules);
+        for (const agg of aggList) {
+          const existing = newModules.get(agg.address);
+          // Don't clobber rich RS-485 status frames with synthetic agg rows.
+          if (existing && existing.transport === 'serial' && agg.transport !== 'serial') continue;
+          newModules.set(agg.address, aggregatedToFireOneStatus(agg));
+        }
+        return { ...prev, modules: newModules };
+      });
+    };
+    apply();
+    return moduleAggregator.subscribe(() => apply());
+  }, []);
 
   // Wireless RSSI polling
   useEffect(() => {
@@ -432,7 +473,7 @@ export function useFireOneHardware() {
 
   return {
     ...state,
-    isConnected: effectivelyConnected,
+    isConnected: effectivelyConnected || state.modules.size > 0,
     connectionPath,
     connect,
     connectWiFi,

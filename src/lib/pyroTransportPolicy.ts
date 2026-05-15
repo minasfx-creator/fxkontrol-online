@@ -16,13 +16,30 @@
 
 import type { TransportType } from './fireoneTransport';
 
-export type ExtendedTransportType = TransportType | 'two_wire' | 'usb' | 'ble';
+export type ExtendedTransportType =
+  | TransportType
+  | 'two_wire'
+  | 'usb'
+  | 'ble'
+  | 'ble_lr'
+  | 'websocket'
+  | 'wifi_direct'
+  | 'direct_relay';
 
+/**
+ * Priority order for selecting a transport to dispatch pyro fire.
+ * Wired/RS-485/2-wire come first (deterministic latency); BLE-LR is allowed
+ * because Coded PHY survives field RF; classic BLE is BANNED for real fire.
+ */
 export const PYRO_FIRE_PRIORITY: ReadonlyArray<ExtendedTransportType> = [
   'two_wire',
   'serial',
   'usb',
+  'direct_relay',
+  'websocket',
+  'wifi_direct',
   'artnet',
+  'ble_lr',
   'radio',
 ];
 
@@ -30,8 +47,12 @@ export const PYRO_FIRE_PRIORITY: ReadonlyArray<ExtendedTransportType> = [
 export const EXCLUSIVE_FAMILIES: ReadonlySet<string> = new Set([
   'fireone-ifmx',
   'fireone-ifmx-i32q',
+  'fxk',
+  'fxk-m1',
   'fxk16',
   'fxk32q',
+  'ifmx-i32q',
+  'esp32-generic',
 ]);
 
 /** Transports that may NEVER be used to dispatch pyro fire in real_operation. */
