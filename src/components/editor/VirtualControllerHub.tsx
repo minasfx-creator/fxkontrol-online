@@ -159,7 +159,7 @@ export default function VirtualControllerHub({ fs = false, onSelectMode, onClose
   const renderCard = (card: ControllerCard) => {
     const status = getConnectionStatus(card);
     const telemetry = getLiveTelemetry(card);
-    const showFireOneRoster = card.id === 'fireone-xl4' && fireone.isConnected;
+    const showFireOneRoster = card.group === 'fireone' && fireone.isConnected;
     return (
       <div key={card.id} className="space-y-1">
       <button

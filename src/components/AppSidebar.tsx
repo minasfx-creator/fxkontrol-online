@@ -155,7 +155,6 @@ export function AppSidebar() {
               <TooltipProvider delayDuration={0}>
                 {[
                   { title: 'Configurações', url: '/settings', icon: Settings, desc: 'Perfil operador' },
-                  ...(isAdmin ? [{ title: 'Admin', url: '/admin', icon: Shield, desc: 'Gestão plataforma' }] : []),
                 ].map(item => {
                   const active = location.pathname === item.url;
                   const content = (
