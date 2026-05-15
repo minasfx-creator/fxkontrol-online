@@ -219,6 +219,29 @@ export function useFireOneHardware() {
     return unsubscribe;
   }, [controller]);
 
+  // Subscribe to moduleAggregator — merges BLE / USB / WS / Wi-Fi-Direct /
+  // 2-Wire / Art-Net entries into the same modules Map consumed by
+  // FireOneModulesInline. RS-485 entries are mirrored from the controller
+  // events above; here we only need to absorb the cross-transport ones.
+  useEffect(() => {
+    const apply = () => {
+      const aggList = moduleAggregator.list();
+      if (aggList.length === 0) return;
+      setState(prev => {
+        const newModules = new Map(prev.modules);
+        for (const agg of aggList) {
+          const existing = newModules.get(agg.address);
+          // Don't clobber rich RS-485 status frames with synthetic agg rows.
+          if (existing && existing.transport === 'serial' && agg.transport !== 'serial') continue;
+          newModules.set(agg.address, aggregatedToFireOneStatus(agg));
+        }
+        return { ...prev, modules: newModules };
+      });
+    };
+    apply();
+    return moduleAggregator.subscribe(() => apply());
+  }, []);
+
   // Wireless RSSI polling
   useEffect(() => {
     if (!effectivelyConnected) {
