@@ -473,7 +473,7 @@ export function useFireOneHardware() {
 
   return {
     ...state,
-    isConnected: effectivelyConnected,
+    isConnected: effectivelyConnected || state.modules.size > 0,
     connectionPath,
     connect,
     connectWiFi,
