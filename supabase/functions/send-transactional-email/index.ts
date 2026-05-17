@@ -15,11 +15,7 @@ const SENDER_DOMAIN = "notify.fxkontrol.online"
 // even though actual sending uses the subdomain above.
 const FROM_DOMAIN = "fxkontrol.online"
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers':
-    'authorization, x-client-info, apikey, content-type',
-}
+import { handleCors, buildCorsHeaders } from '../_shared/cors.ts'
 
 // Generate a cryptographically random 32-byte hex token
 function generateToken(): string {
@@ -35,10 +31,8 @@ function generateToken(): string {
 // reaches this code. No in-function auth check is needed.
 
 Deno.serve(async (req) => {
-  // Handle CORS preflight
-  if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders })
-  }
+  const pre = handleCors(req)
+  if (pre) return pre
 
   const supabaseUrl = Deno.env.get('SUPABASE_URL')
   const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
@@ -49,7 +43,7 @@ Deno.serve(async (req) => {
       JSON.stringify({ error: 'Server configuration error' }),
       {
         status: 500,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        headers: { ...buildCorsHeaders(req), 'Content-Type': 'application/json' },
       }
     )
   }
@@ -133,15 +127,12 @@ Deno.serve(async (req) => {
     .maybeSingle()
 
   if (suppressionError) {
-    console.error('Suppression check failed — refusing to send', {
-      error: suppressionError,
-      effectiveRecipient,
-    })
+    console.error('Suppression check failed — refusing to send', { error: suppressionError })
     return new Response(
       JSON.stringify({ error: 'Failed to verify suppression status' }),
       {
         status: 500,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        headers: { ...buildCorsHeaders(req), 'Content-Type': 'application/json' },
       }
     )
   }
@@ -155,12 +146,12 @@ Deno.serve(async (req) => {
       status: 'suppressed',
     })
 
-    console.log('Email suppressed', { effectiveRecipient, templateName })
+    console.log('Email suppressed', { templateName })
     return new Response(
       JSON.stringify({ success: false, reason: 'email_suppressed' }),
       {
         status: 200,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        headers: { ...buildCorsHeaders(req), 'Content-Type': 'application/json' },
       }
     )
   }
@@ -177,10 +168,7 @@ Deno.serve(async (req) => {
     .maybeSingle()
 
   if (tokenLookupError) {
-    console.error('Token lookup failed', {
-      error: tokenLookupError,
-      email: normalizedEmail,
-    })
+    console.error('Token lookup failed', { error: tokenLookupError })
     await supabase.from('email_send_log').insert({
       message_id: messageId,
       template_name: templateName,
@@ -192,7 +180,7 @@ Deno.serve(async (req) => {
       JSON.stringify({ error: 'Failed to prepare email' }),
       {
         status: 500,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        headers: { ...buildCorsHeaders(req), 'Content-Type': 'application/json' },
       }
     )
   }
@@ -211,9 +199,7 @@ Deno.serve(async (req) => {
       )
 
     if (tokenError) {
-      console.error('Failed to create unsubscribe token', {
-        error: tokenError,
-      })
+      console.error('Failed to create unsubscribe token', { error: tokenError })
       await supabase.from('email_send_log').insert({
         message_id: messageId,
         template_name: templateName,
@@ -225,7 +211,7 @@ Deno.serve(async (req) => {
         JSON.stringify({ error: 'Failed to prepare email' }),
         {
           status: 500,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          headers: { ...buildCorsHeaders(req), 'Content-Type': 'application/json' },
         }
       )
     }
@@ -239,10 +225,7 @@ Deno.serve(async (req) => {
       .maybeSingle()
 
     if (reReadError || !storedToken) {
-      console.error('Failed to read back unsubscribe token after upsert', {
-        error: reReadError,
-        email: normalizedEmail,
-      })
+      console.error('Failed to read back unsubscribe token after upsert', { error: reReadError })
       await supabase.from('email_send_log').insert({
         message_id: messageId,
         template_name: templateName,
@@ -254,7 +237,7 @@ Deno.serve(async (req) => {
         JSON.stringify({ error: 'Failed to prepare email' }),
         {
           status: 500,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          headers: { ...buildCorsHeaders(req), 'Content-Type': 'application/json' },
         }
       )
     }
@@ -262,9 +245,7 @@ Deno.serve(async (req) => {
   } else {
     // Token exists but is already used — email should have been caught by suppression check above.
     // This is a safety fallback; log and skip sending.
-    console.warn('Unsubscribe token already used but email not suppressed', {
-      email: normalizedEmail,
-    })
+    console.warn('Unsubscribe token already used but email not suppressed')
     await supabase.from('email_send_log').insert({
       message_id: messageId,
       template_name: templateName,
@@ -277,7 +258,7 @@ Deno.serve(async (req) => {
       JSON.stringify({ success: false, reason: 'email_suppressed' }),
       {
         status: 200,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        headers: { ...buildCorsHeaders(req), 'Content-Type': 'application/json' },
       }
     )
   }

@@ -3,11 +3,7 @@
  * to Paddle internal ID for the requested environment.
  */
 import { gatewayFetch, type PaddleEnv } from "../_shared/paddle.ts";
-
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-};
+import { handleCors, buildCorsHeaders } from "../_shared/cors.ts";
 
 async function resolvePaddlePrice(priceId: string, environment: PaddleEnv): Promise<string> {
   const response = await gatewayFetch(environment, `/prices?external_id=${encodeURIComponent(priceId)}`);
@@ -18,31 +14,33 @@ async function resolvePaddlePrice(priceId: string, environment: PaddleEnv): Prom
 }
 
 Deno.serve(async (req) => {
-  if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
+  // Handle CORS preflight
+  const pre = handleCors(req);
+  if (pre) return pre;
   try {
     const { priceId, environment } = await req.json();
     if (!priceId || !environment) {
       return new Response(JSON.stringify({ error: "priceId and environment are required" }), {
         status: 400,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        headers: { ...buildCorsHeaders(req), "Content-Type": "application/json" },
       });
     }
     if (environment !== "sandbox" && environment !== "live") {
       return new Response(JSON.stringify({ error: "environment must be 'sandbox' or 'live'" }), {
-        status: 400,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      status: 400,
+      headers: { ...buildCorsHeaders(req), "Content-Type": "application/json" },
+    });
     }
     const paddleId = await resolvePaddlePrice(priceId, environment as PaddleEnv);
     return new Response(JSON.stringify({ paddleId }), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
+      headers: { ...buildCorsHeaders(req), "Content-Type": "application/json" },
     });
   } catch (e) {
-    console.error("get-paddle-price error:", e);
+    console.error("get-paddle-price error");
     const msg = e instanceof Error ? e.message : "unknown error";
     return new Response(JSON.stringify({ error: msg }), {
       status: 500,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
+      headers: { ...buildCorsHeaders(req), "Content-Type": "application/json" },
     });
   }
 });

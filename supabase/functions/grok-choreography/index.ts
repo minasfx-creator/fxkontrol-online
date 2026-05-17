@@ -5,11 +5,7 @@
  * client-side expander then interpolates into per-drone trajectories for up to 2000 drones.
  * This keeps token usage bounded and trajectories deterministic / collision-checked.
  */
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
-};
+import { handleCors, buildCorsHeaders } from "../_shared/cors.ts";
 
 import { Pool } from "https://deno.land/x/postgres@v0.19.3/mod.ts";
 
@@ -303,7 +299,8 @@ const reqSchema = z
   });
 
 Deno.serve(async (req) => {
-  if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
+  const pre = handleCors(req);
+  if (pre) return pre;
 
   // ─── Per-request correlation id (used in every log line + echoed to client) ───
   const requestId =

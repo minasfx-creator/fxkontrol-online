@@ -19,11 +19,7 @@
  * The function NEVER echoes the key in plaintext — only the prefix and last
  * four chars, joined by `…`, suitable to display in an admin toast.
  */
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
-};
+import { handleCors, buildCorsHeaders } from "../_shared/cors.ts";
 
 const XAI_MODELS_URL = "https://api.x.ai/v1/models";
 
@@ -37,10 +33,10 @@ function maskKey(raw: string): string {
   return `${k.slice(0, prefixLen)}…${k.slice(-4)}`;
 }
 
-function json(body: unknown, status = 200): Response {
+function json(body: unknown, status = 200, req?: Request): Response {
   return new Response(JSON.stringify(body), {
     status,
-    headers: { ...corsHeaders, "Content-Type": "application/json" },
+    headers: { ...buildCorsHeaders(req), "Content-Type": "application/json" },
   });
 }
 
