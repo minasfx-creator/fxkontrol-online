@@ -926,14 +926,23 @@ export class FireOneController {
     }
   }
 
-  private handleFrame(frame: FireOneFrame): void {
+  private handleFrame(frame: FireOneFrame, transportId?: string): void {
     const addr = frame.moduleAddr;
+    const controllerLabel = this.controllerLabelFor(transportId);
+    const transportTag = this.transportTagFor(transportId);
+
+    const tagStatus = (s: FireOneModuleStatus): FireOneModuleStatus => {
+      if (transportId) s.controllerId = transportId;
+      if (controllerLabel) s.controllerLabel = controllerLabel;
+      if (transportTag) s.transport = transportTag;
+      return s;
+    };
 
     switch (frame.command) {
       case FireOneCmd.STATUS: {
-        const status = parseStatusPayload(addr, frame.payload);
+        const status = tagStatus(parseStatusPayload(addr, frame.payload));
         this.modules.set(addr, status);
-        this.emit({ type: 'status-update', moduleAddress: addr, data: status, timestamp: Date.now() });
+        this.emit({ type: 'status-update', moduleAddress: addr, data: status, timestamp: Date.now(), transportId, controllerLabel });
         break;
       }
 
@@ -951,7 +960,7 @@ export class FireOneController {
           }
           this.modules.set(addr, { ...status, lastSeen: Date.now() });
         }
-        this.emit({ type: 'continuity-result', moduleAddress: addr, data: frame.payload, timestamp: Date.now() });
+        this.emit({ type: 'continuity-result', moduleAddress: addr, data: frame.payload, timestamp: Date.now(), transportId, controllerLabel });
         break;
       }
 
@@ -963,7 +972,7 @@ export class FireOneController {
           if (ig) ig.fired = true;
           this.modules.set(addr, { ...module, lastSeen: Date.now() });
         }
-        this.emit({ type: 'fire-confirm', moduleAddress: addr, data: { igniterPos }, timestamp: Date.now() });
+        this.emit({ type: 'fire-confirm', moduleAddress: addr, data: { igniterPos }, timestamp: Date.now(), transportId, controllerLabel });
         break;
       }
 
@@ -973,7 +982,7 @@ export class FireOneController {
           module.armed = true;
           this.modules.set(addr, { ...module, lastSeen: Date.now() });
         }
-        this.emit({ type: 'arm-confirm', moduleAddress: addr, data: { armed: true }, timestamp: Date.now() });
+        this.emit({ type: 'arm-confirm', moduleAddress: addr, data: { armed: true }, timestamp: Date.now(), transportId, controllerLabel });
         break;
       }
 
@@ -983,15 +992,15 @@ export class FireOneController {
           module.armed = false;
           this.modules.set(addr, { ...module, lastSeen: Date.now() });
         }
-        this.emit({ type: 'arm-confirm', moduleAddress: addr, data: { armed: false }, timestamp: Date.now() });
+        this.emit({ type: 'arm-confirm', moduleAddress: addr, data: { armed: false }, timestamp: Date.now(), transportId, controllerLabel });
         break;
       }
 
       case FireOneCmd.IDENTIFY: {
-        // Module responded to identify — parse as status
-        const status = parseStatusPayload(addr, frame.payload);
+        // Module responded to identify — parse as status, tag with controller.
+        const status = tagStatus(parseStatusPayload(addr, frame.payload));
         this.modules.set(addr, status);
-        this.emit({ type: 'module-discovered', moduleAddress: addr, data: status, timestamp: Date.now() });
+        this.emit({ type: 'module-discovered', moduleAddress: addr, data: status, timestamp: Date.now(), transportId, controllerLabel });
         break;
       }
 
