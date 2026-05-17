@@ -767,13 +767,39 @@ export class FireOneController {
     await this.send(buildContinuityCommand(addr));
   }
 
-  /** Discover modules — default 40 per XLII+ manual (2×20 outputs) */
-  async discoverModules(maxAddr = FIREONE_MAX_MODULES): Promise<void> {
-    for (let addr = 1; addr <= maxAddr; addr++) {
-      await this.send(buildIdentify(addr));
-      await new Promise(r => setTimeout(r, 50)); // 50ms gap between polls
+  /** Discover modules. Without opts: scan every connected transport
+   * individually so each controller (XL4 / XL2 / RS-485 / Wi-Fi Direct /
+   * Art-Net / 2-Wire) gets its own IDENTIFY sweep and answers are tagged
+   * with the originating controllerId. With opts.transportId: scope the
+   * sweep to a single controller. */
+  async discoverModules(
+    maxAddr = FIREONE_MAX_MODULES,
+    opts?: { transportId?: string },
+  ): Promise<void> {
+    const targets = opts?.transportId
+      ? ([this.transportManager.getTransport(opts.transportId)].filter(Boolean) as any[])
+      : this.transportManager.getConnectedTransports();
+
+    // Legacy fallback: nothing registered with the manager — keep the old
+    // single-path broadcast so existing flows still work.
+    if (targets.length === 0) {
+      for (let addr = 1; addr <= maxAddr; addr++) {
+        await this.send(buildIdentify(addr));
+        await new Promise(r => setTimeout(r, 50));
+      }
+      return;
+    }
+
+    for (const t of targets) {
+      for (let addr = 1; addr <= maxAddr; addr++) {
+        try {
+          await this.transportManager.sendVia(t.id, buildIdentify(addr));
+        } catch { /* skip unreachable target */ }
+        await new Promise(r => setTimeout(r, 50));
+      }
     }
   }
+
 
   async armAll(): Promise<void> {
     await this.send(buildArmAll());
