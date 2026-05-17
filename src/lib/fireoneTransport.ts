@@ -664,6 +664,21 @@ export class FireOneTransportManager {
   getTransportsByType(type: TransportType): FireOneTransport[] {
     return Array.from(this.transports.values()).filter(t => t.type === type);
   }
+
+  /** Connected transports only — used by per-controller discovery. */
+  getConnectedTransports(): FireOneTransport[] {
+    return Array.from(this.transports.values())
+      .filter(t => t.state === 'connected')
+      .sort((a, b) => a.priority - b.priority);
+  }
+
+  /** Send via a specific transport id (used by per-controller IDENTIFY scan). */
+  async sendVia(transportId: string, frame: Uint8Array): Promise<void> {
+    const t = this.transports.get(transportId);
+    if (!t) throw new Error(`Transport ${transportId} não registrado`);
+    if (t.state !== 'connected') throw new Error(`Transport ${transportId} não conectado`);
+    await t.send(frame);
+  }
 }
 
 // Singleton
