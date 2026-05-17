@@ -255,6 +255,7 @@ class ArtNetModuleService {
     this.updateModule(module.id, { lastSeen: Date.now(), latencyMs: latency });
     this.startHeartbeat(module.id);
     this.startStaleCheck();
+    this.projectToAggregator(module);
     this.emit('module-connected', { moduleId: module.id, latencyMs: latency });
     return true;
   }
