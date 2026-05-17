@@ -595,6 +595,8 @@ export class FireOneController {
   private listeners: FireOneListener[] = [];
   private heartbeatInterval: ReturnType<typeof setInterval> | null = null;
   private readBuffer = new Uint8Array(0);
+  /** Per-transport read buffer, so XL4 frames don't desync XL2 frames. */
+  private readBuffers: Map<string, Uint8Array> = new Map();
   private modules: Map<number, FireOneModuleStatus> = new Map();
   private transportManager: TransportMgr;
   private hybridRouter: HybridTransportRouter | null = null;
@@ -602,10 +604,10 @@ export class FireOneController {
 
   constructor() {
     this.transportManager = getTransportManager();
-    // Subscribe to incoming data from all transports
+    // Subscribe to incoming data from all transports — propagate origin id.
     this.transportManager.on((event) => {
       if (event.type === 'data') {
-        this.processIncoming(event.data);
+        this.processIncoming(event.data, event.transportId);
       }
     });
   }
