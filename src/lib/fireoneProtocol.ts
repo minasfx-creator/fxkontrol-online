@@ -217,6 +217,10 @@ export interface FireOneEvent {
   moduleAddress: number;
   data: any;
   timestamp: number;
+  /** Transport id that produced the frame (when known). */
+  transportId?: string;
+  /** Human label of the controller that answered (when known). */
+  controllerLabel?: string;
 }
 
 export type FireOneListener = (event: FireOneEvent) => void;
