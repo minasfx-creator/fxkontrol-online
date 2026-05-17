@@ -333,6 +333,14 @@ class ArtNetModuleService {
       ws.close();
       this.wsConnections.delete(moduleId);
     }
+    const mod = this.controller?.modules.find(m => m.id === moduleId);
+    if (mod) {
+      const model = inferFxkModel({ name: mod.label || mod.name, firmware: mod.firmwareVersion });
+      const norm = (model === 'Unknown' ? 'ESP32-Generic' : model);
+      moduleAggregator.remove(
+        `${this.controller?.id ?? 'artnet'}::${norm.toLowerCase()}#${mod.moduleAddress}`,
+      );
+    }
     this.moduleStates.set(moduleId, 'disconnected');
     this.emit('module-disconnected', { moduleId });
   }
