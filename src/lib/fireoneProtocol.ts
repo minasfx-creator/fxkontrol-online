@@ -868,27 +868,61 @@ export class FireOneController {
     }
   }
 
-  private processIncoming(chunk: Uint8Array): void {
-    // Append to buffer
-    const newBuf = new Uint8Array(this.readBuffer.length + chunk.length);
-    newBuf.set(this.readBuffer, 0);
-    newBuf.set(chunk, this.readBuffer.length);
-    this.readBuffer = newBuf;
+  private processIncoming(chunk: Uint8Array, transportId?: string): void {
+    // Pick per-transport buffer when origin is known, otherwise the shared one
+    // (legacy serial readLoop path).
+    const bufKey = transportId ?? '__shared__';
+    const prev = transportId
+      ? (this.readBuffers.get(bufKey) ?? new Uint8Array(0))
+      : this.readBuffer;
+    const newBuf = new Uint8Array(prev.length + chunk.length);
+    newBuf.set(prev, 0);
+    newBuf.set(chunk, prev.length);
 
+    let working = newBuf;
     // Extract complete frames
     while (true) {
-      const stxIdx = this.readBuffer.indexOf(STX);
-      if (stxIdx === -1) { this.readBuffer = new Uint8Array(0); break; }
-      const etxIdx = this.readBuffer.indexOf(ETX, stxIdx);
+      const stxIdx = working.indexOf(STX);
+      if (stxIdx === -1) { working = new Uint8Array(0); break; }
+      const etxIdx = working.indexOf(ETX, stxIdx);
       if (etxIdx === -1) break; // incomplete frame
 
-      const frameData = this.readBuffer.slice(stxIdx, etxIdx + 1);
-      this.readBuffer = this.readBuffer.slice(etxIdx + 1);
+      const frameData = working.slice(stxIdx, etxIdx + 1);
+      working = working.slice(etxIdx + 1);
 
       const frame = parseFrame(frameData);
       if (frame) {
-        this.handleFrame(frame);
+        this.handleFrame(frame, transportId);
       }
+    }
+
+    if (transportId) this.readBuffers.set(bufKey, working);
+    else this.readBuffer = working;
+  }
+
+  /** Resolve a controller label for a transportId (best-effort). */
+  private controllerLabelFor(transportId?: string): string | undefined {
+    if (!transportId) return undefined;
+    const t = this.transportManager.getTransport(transportId);
+    if (!t) return undefined;
+    // Wi-Fi Direct exposes connectedDevice.label (e.g. "XL4 Gateway").
+    const wd: any = t;
+    if (wd?.connectedDevice?.label) return wd.connectedDevice.label as string;
+    return t.label;
+  }
+
+  /** Map a manager transport type → FireOneModuleStatus.transport tag. */
+  private transportTagFor(transportId?: string): FireOneModuleStatus['transport'] | undefined {
+    if (!transportId) return undefined;
+    const t = this.transportManager.getTransport(transportId);
+    if (!t) return undefined;
+    switch (t.type) {
+      case 'serial': return 'serial';
+      case 'wifi': return 'websocket';
+      case 'wifi_direct': return 'wifi_direct';
+      case 'artnet': return 'artnet';
+      case 'radio': return 'serial'; // radio is RS-485-shaped frames
+      default: return undefined;
     }
   }
 
