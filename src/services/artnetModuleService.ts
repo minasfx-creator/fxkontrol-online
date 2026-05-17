@@ -4,6 +4,9 @@
  * Supports: direct LAN, WAN via relay server, per-module addressing.
  */
 import { supabase } from '@/integrations/supabase/client';
+import { moduleAggregator } from '@/lib/moduleAggregator';
+import { inferFxkModel, type FxkModel } from '@/lib/inferFxkModel';
+import { artNetBridge } from '@/core/protocols/ArtNetBridge';
 
 export type ModuleTransport = 'lan' | 'wan' | 'relay';
 export type ModuleConnectionState = 'disconnected' | 'connecting' | 'connected' | 'error' | 'timeout';
@@ -252,6 +255,7 @@ class ArtNetModuleService {
     this.updateModule(module.id, { lastSeen: Date.now(), latencyMs: latency });
     this.startHeartbeat(module.id);
     this.startStaleCheck();
+    this.projectToAggregator(module);
     this.emit('module-connected', { moduleId: module.id, latencyMs: latency });
     return true;
   }
@@ -279,6 +283,7 @@ class ArtNetModuleService {
           this.updateModule(module.id, { lastSeen: Date.now() });
           this.startHeartbeat(module.id);
           this.startStaleCheck();
+          this.projectToAggregator(module);
           this.emit('module-connected', { moduleId: module.id });
 
           // Send auth if WAN
@@ -327,6 +332,14 @@ class ArtNetModuleService {
     if (ws) {
       ws.close();
       this.wsConnections.delete(moduleId);
+    }
+    const mod = this.controller?.modules.find(m => m.id === moduleId);
+    if (mod) {
+      const model = inferFxkModel({ name: mod.label || mod.name, firmware: mod.firmwareVersion });
+      const norm = (model === 'Unknown' ? 'ESP32-Generic' : model);
+      moduleAggregator.remove(
+        `${this.controller?.id ?? 'artnet'}::${norm.toLowerCase()}#${mod.moduleAddress}`,
+      );
     }
     this.moduleStates.set(moduleId, 'disconnected');
     this.emit('module-disconnected', { moduleId });
@@ -562,20 +575,95 @@ class ArtNetModuleService {
         gpsLat: msg.lat,
         gpsLng: msg.lng,
       });
+      const mod = this.controller?.modules.find(m => m.id === moduleId);
+      if (mod) this.projectToAggregator(mod);
     }
   }
 
   // ─── Discovery ───────────────────────────────────
-  async discoverModules(): Promise<ArtNetModuleConfig[]> {
-    const { data, error } = await supabase.functions.invoke('artnet-bridge', {
-      body: { action: 'poll', universes: [{ universe: 0, subnet: 0, net: 0, channels: [0], sequence: 0 }] },
-    });
+  /**
+   * Discover Art-Net modules and push them into the canonical
+   * `moduleAggregator` so the Pyro Console renders them alongside Serial/USB/
+   * BLE/Wi-Fi-Direct modules.
+   *
+   * Sources, in order of trust:
+   *   1. `artNetBridge` ArtPollReply nodes seen on the LAN (honest live data).
+   *   2. Already-connected modules in `this.controller.modules` (state==='connected').
+   *
+   * Never fabricates modules — returns empty when nothing is live.
+   */
+  async discoverModules(options: { waitMs?: number } = {}): Promise<ArtNetModuleConfig[]> {
+    const waitMs = options.waitMs ?? 800;
+    const discovered: ArtNetModuleConfig[] = [];
+    const controllerId = this.controller?.id ?? 'artnet';
+    const controllerLabel = this.controller?.name ?? 'Art-Net Controller';
 
-    if (error || !data) return [];
-    // In production, ArtPollReply would return discovered nodes
-    // For now, return empty — real discovery needs UDP on local network
-    return [];
+    // 1. Fire ArtPoll on the local bridge and let replies accumulate.
+    try {
+      artNetBridge.sendPoll();
+    } catch { /* bridge not connected — fall through */ }
+
+    try {
+      await supabase.functions.invoke('artnet-bridge', {
+        body: { action: 'poll', universes: [{ universe: 0, subnet: 0, net: 0, channels: [0], sequence: 0 }] },
+      });
+    } catch { /* edge function offline — fall through */ }
+
+    if (waitMs > 0) {
+      await new Promise(r => setTimeout(r, waitMs));
+    }
+
+    const now = Date.now();
+    const seenNodes = artNetBridge.getNodes().filter(n => now - n.lastSeen < Math.max(5_000, waitMs * 4));
+
+    for (const node of seenNodes) {
+      const advertised = `${node.shortName ?? ''} ${node.longName ?? ''}`.trim() || node.ip;
+      const model: FxkModel = inferFxkModel({ name: advertised });
+      const lastOctet = Number(node.ip?.split('.').pop() ?? '0') || 0;
+      const address = lastOctet > 0 && lastOctet < 255 ? lastOctet : (node.universes?.[0] ?? 1);
+      moduleAggregator.upsert({
+        address,
+        model: model === 'Unknown' ? 'ESP32-Generic' : model,
+        transport: 'artnet',
+        firmware: undefined,
+        deviceName: advertised,
+        controllerId,
+        controllerLabel,
+        lastSeen: node.lastSeen,
+      });
+    }
+
+    // 2. Project already-connected modules so the console reflects them even
+    //    when the LAN ArtPoll is silent (e.g. WAN relay path).
+    for (const m of this.controller?.modules ?? []) {
+      if (this.moduleStates.get(m.id) !== 'connected') continue;
+      this.projectToAggregator(m);
+      discovered.push(m);
+    }
+    return discovered;
   }
+
+  /** Upsert a single configured module into the canonical aggregator. */
+  private projectToAggregator(module: ArtNetModuleConfig): void {
+    const advertised = module.label || module.name || module.ip;
+    const model: FxkModel = inferFxkModel({
+      name: advertised,
+      firmware: module.firmwareVersion,
+    });
+    moduleAggregator.upsert({
+      address: module.moduleAddress,
+      model: model === 'Unknown' ? 'ESP32-Generic' : model,
+      transport: 'artnet',
+      firmware: module.firmwareVersion,
+      battery: module.batteryLevel,
+      channels: module.dmxChannelCount || module.channelCount,
+      deviceName: advertised,
+      controllerId: this.controller?.id ?? 'artnet',
+      controllerLabel: this.controller?.name ?? 'Art-Net Controller',
+      lastSeen: module.lastSeen || Date.now(),
+    });
+  }
+
 
   // ─── Resilience: packet stats ─────────────────────
   private resetPacketStats(moduleId: string) {
