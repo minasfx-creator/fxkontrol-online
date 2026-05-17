@@ -366,10 +366,10 @@ export function useFireOneHardware() {
     await controller.requestContinuity(addr);
   }, [controller]);
 
-  const discoverModules = useCallback(async (maxAddr = FIREONE_MAX_MODULES) => {
+  const discoverModules = useCallback(async (maxAddr = FIREONE_MAX_MODULES, opts?: { transportId?: string }) => {
     setState(prev => ({ ...prev, scanning: true }));
     try {
-      await controller.discoverModules(maxAddr);
+      await controller.discoverModules(maxAddr, opts);
       await new Promise(r => setTimeout(r, maxAddr * 60));
     } finally {
       setState(prev => ({ ...prev, scanning: false }));
