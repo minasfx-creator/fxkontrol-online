@@ -56,16 +56,17 @@ class ModuleAggregator {
   private _modules = new Map<string, AggregatedModule>();
   private _listeners = new Set<Listener>();
 
-  static keyFor(model: FxkModel, address: number): string {
+  static keyFor(model: FxkModel, address: number, controllerId?: string): string {
     const m = (model ?? 'Unknown').toString().toLowerCase();
-    return `${m}#${address}`;
+    const c = (controllerId ?? '_').toString();
+    return `${c}::${m}#${address}`;
   }
 
   upsert(input: Omit<AggregatedModule, 'key' | 'channels' | 'lastSeen'> & {
     channels?: number;
     lastSeen?: number;
   }): AggregatedModule {
-    const key = ModuleAggregator.keyFor(input.model, input.address);
+    const key = ModuleAggregator.keyFor(input.model, input.address, input.controllerId);
     const prev = this._modules.get(key);
     const next: AggregatedModule = {
       ...prev,
