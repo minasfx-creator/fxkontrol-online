@@ -4,6 +4,9 @@
  * Supports: direct LAN, WAN via relay server, per-module addressing.
  */
 import { supabase } from '@/integrations/supabase/client';
+import { moduleAggregator } from '@/lib/moduleAggregator';
+import { inferFxkModel, type FxkModel } from '@/lib/inferFxkModel';
+import { artNetBridge } from '@/core/protocols/ArtNetBridge';
 
 export type ModuleTransport = 'lan' | 'wan' | 'relay';
 export type ModuleConnectionState = 'disconnected' | 'connecting' | 'connected' | 'error' | 'timeout';
