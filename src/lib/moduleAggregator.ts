@@ -151,5 +151,7 @@ export function aggregatedToFireOneStatus(m: AggregatedModule): FireOneModuleSta
     model: m.model,
     transport: m.transport,
     deviceName: m.deviceName,
-  } as FireOneModuleStatus & { model?: FxkModel; transport?: AggregatedTransport; deviceName?: string };
+    controllerId: m.controllerId,
+    controllerLabel: m.controllerLabel,
+  } as FireOneModuleStatus;
 }
