@@ -27,7 +27,7 @@ export type AggregatedTransport =
   | 'direct_relay';
 
 export interface AggregatedModule {
-  /** Stable canonical key — `${model}#${address}` (model normalised). */
+  /** Stable canonical key — `${controllerId|'_'}::${model}#${address}` (model normalised). */
   key: string;
   address: number;
   model: FxkModel;
@@ -40,6 +40,10 @@ export interface AggregatedModule {
   igniterCount?: number;
   lastSeen: number;
   deviceName?: string;
+  /** Transport instance id that saw this module (XL4 vs XL2 differentiation). */
+  controllerId?: string;
+  /** Human-readable controller label (e.g. "XL4 Gateway"). */
+  controllerLabel?: string;
 }
 
 export type ModuleAggregatorEvent =
