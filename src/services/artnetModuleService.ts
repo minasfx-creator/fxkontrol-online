@@ -283,6 +283,7 @@ class ArtNetModuleService {
           this.updateModule(module.id, { lastSeen: Date.now() });
           this.startHeartbeat(module.id);
           this.startStaleCheck();
+          this.projectToAggregator(module);
           this.emit('module-connected', { moduleId: module.id });
 
           // Send auth if WAN
