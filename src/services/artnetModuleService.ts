@@ -567,6 +567,8 @@ class ArtNetModuleService {
         gpsLat: msg.lat,
         gpsLng: msg.lng,
       });
+      const mod = this.controller?.modules.find(m => m.id === moduleId);
+      if (mod) this.projectToAggregator(mod);
     }
   }
 
