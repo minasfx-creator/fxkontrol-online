@@ -135,6 +135,10 @@ export interface FireOneModuleStatus {
   model?: 'FXK' | 'FXK-M1' | 'IFMx-i32Q' | 'ESP32-Generic' | 'Unknown';
   transport?: 'serial' | 'usb' | 'ble' | 'ble_lr' | 'websocket' | 'wifi_direct' | 'two_wire' | 'artnet' | 'direct_relay';
   deviceName?: string;
+  /** Which transport instance (manager id) answered this module. */
+  controllerId?: string;
+  /** Human label of the controller (e.g. "XL4 Gateway", "RS-485 Cable"). */
+  controllerLabel?: string;
 }
 
 export interface FireOneIgniterStatus {
