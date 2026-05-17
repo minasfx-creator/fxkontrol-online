@@ -135,6 +135,10 @@ export interface FireOneModuleStatus {
   model?: 'FXK' | 'FXK-M1' | 'IFMx-i32Q' | 'ESP32-Generic' | 'Unknown';
   transport?: 'serial' | 'usb' | 'ble' | 'ble_lr' | 'websocket' | 'wifi_direct' | 'two_wire' | 'artnet' | 'direct_relay';
   deviceName?: string;
+  /** Which transport instance (manager id) answered this module. */
+  controllerId?: string;
+  /** Human label of the controller (e.g. "XL4 Gateway", "RS-485 Cable"). */
+  controllerLabel?: string;
 }
 
 export interface FireOneIgniterStatus {
@@ -213,6 +217,10 @@ export interface FireOneEvent {
   moduleAddress: number;
   data: any;
   timestamp: number;
+  /** Transport id that produced the frame (when known). */
+  transportId?: string;
+  /** Human label of the controller that answered (when known). */
+  controllerLabel?: string;
 }
 
 export type FireOneListener = (event: FireOneEvent) => void;
@@ -587,6 +595,8 @@ export class FireOneController {
   private listeners: FireOneListener[] = [];
   private heartbeatInterval: ReturnType<typeof setInterval> | null = null;
   private readBuffer = new Uint8Array(0);
+  /** Per-transport read buffer, so XL4 frames don't desync XL2 frames. */
+  private readBuffers: Map<string, Uint8Array> = new Map();
   private modules: Map<number, FireOneModuleStatus> = new Map();
   private transportManager: TransportMgr;
   private hybridRouter: HybridTransportRouter | null = null;
@@ -594,10 +604,10 @@ export class FireOneController {
 
   constructor() {
     this.transportManager = getTransportManager();
-    // Subscribe to incoming data from all transports
+    // Subscribe to incoming data from all transports — propagate origin id.
     this.transportManager.on((event) => {
       if (event.type === 'data') {
-        this.processIncoming(event.data);
+        this.processIncoming(event.data, event.transportId);
       }
     });
   }
@@ -757,13 +767,39 @@ export class FireOneController {
     await this.send(buildContinuityCommand(addr));
   }
 
-  /** Discover modules — default 40 per XLII+ manual (2×20 outputs) */
-  async discoverModules(maxAddr = FIREONE_MAX_MODULES): Promise<void> {
-    for (let addr = 1; addr <= maxAddr; addr++) {
-      await this.send(buildIdentify(addr));
-      await new Promise(r => setTimeout(r, 50)); // 50ms gap between polls
+  /** Discover modules. Without opts: scan every connected transport
+   * individually so each controller (XL4 / XL2 / RS-485 / Wi-Fi Direct /
+   * Art-Net / 2-Wire) gets its own IDENTIFY sweep and answers are tagged
+   * with the originating controllerId. With opts.transportId: scope the
+   * sweep to a single controller. */
+  async discoverModules(
+    maxAddr = FIREONE_MAX_MODULES,
+    opts?: { transportId?: string },
+  ): Promise<void> {
+    const targets = opts?.transportId
+      ? ([this.transportManager.getTransport(opts.transportId)].filter(Boolean) as any[])
+      : this.transportManager.getConnectedTransports();
+
+    // Legacy fallback: nothing registered with the manager — keep the old
+    // single-path broadcast so existing flows still work.
+    if (targets.length === 0) {
+      for (let addr = 1; addr <= maxAddr; addr++) {
+        await this.send(buildIdentify(addr));
+        await new Promise(r => setTimeout(r, 50));
+      }
+      return;
+    }
+
+    for (const t of targets) {
+      for (let addr = 1; addr <= maxAddr; addr++) {
+        try {
+          await this.transportManager.sendVia(t.id, buildIdentify(addr));
+        } catch { /* skip unreachable target */ }
+        await new Promise(r => setTimeout(r, 50));
+      }
     }
   }
+
 
   async armAll(): Promise<void> {
     await this.send(buildArmAll());
@@ -832,38 +868,81 @@ export class FireOneController {
     }
   }
 
-  private processIncoming(chunk: Uint8Array): void {
-    // Append to buffer
-    const newBuf = new Uint8Array(this.readBuffer.length + chunk.length);
-    newBuf.set(this.readBuffer, 0);
-    newBuf.set(chunk, this.readBuffer.length);
-    this.readBuffer = newBuf;
+  private processIncoming(chunk: Uint8Array, transportId?: string): void {
+    // Pick per-transport buffer when origin is known, otherwise the shared one
+    // (legacy serial readLoop path).
+    const bufKey = transportId ?? '__shared__';
+    const prev = transportId
+      ? (this.readBuffers.get(bufKey) ?? new Uint8Array(0))
+      : this.readBuffer;
+    const newBuf = new Uint8Array(prev.length + chunk.length);
+    newBuf.set(prev, 0);
+    newBuf.set(chunk, prev.length);
 
+    let working = newBuf;
     // Extract complete frames
     while (true) {
-      const stxIdx = this.readBuffer.indexOf(STX);
-      if (stxIdx === -1) { this.readBuffer = new Uint8Array(0); break; }
-      const etxIdx = this.readBuffer.indexOf(ETX, stxIdx);
+      const stxIdx = working.indexOf(STX);
+      if (stxIdx === -1) { working = new Uint8Array(0); break; }
+      const etxIdx = working.indexOf(ETX, stxIdx);
       if (etxIdx === -1) break; // incomplete frame
 
-      const frameData = this.readBuffer.slice(stxIdx, etxIdx + 1);
-      this.readBuffer = this.readBuffer.slice(etxIdx + 1);
+      const frameData = working.slice(stxIdx, etxIdx + 1);
+      working = working.slice(etxIdx + 1);
 
       const frame = parseFrame(frameData);
       if (frame) {
-        this.handleFrame(frame);
+        this.handleFrame(frame, transportId);
       }
+    }
+
+    if (transportId) this.readBuffers.set(bufKey, working);
+    else this.readBuffer = working;
+  }
+
+  /** Resolve a controller label for a transportId (best-effort). */
+  private controllerLabelFor(transportId?: string): string | undefined {
+    if (!transportId) return undefined;
+    const t = this.transportManager.getTransport(transportId);
+    if (!t) return undefined;
+    // Wi-Fi Direct exposes connectedDevice.label (e.g. "XL4 Gateway").
+    const wd: any = t;
+    if (wd?.connectedDevice?.label) return wd.connectedDevice.label as string;
+    return t.label;
+  }
+
+  /** Map a manager transport type → FireOneModuleStatus.transport tag. */
+  private transportTagFor(transportId?: string): FireOneModuleStatus['transport'] | undefined {
+    if (!transportId) return undefined;
+    const t = this.transportManager.getTransport(transportId);
+    if (!t) return undefined;
+    switch (t.type) {
+      case 'serial': return 'serial';
+      case 'wifi': return 'websocket';
+      case 'wifi_direct': return 'wifi_direct';
+      case 'artnet': return 'artnet';
+      case 'radio': return 'serial'; // radio is RS-485-shaped frames
+      default: return undefined;
     }
   }
 
-  private handleFrame(frame: FireOneFrame): void {
+  private handleFrame(frame: FireOneFrame, transportId?: string): void {
     const addr = frame.moduleAddr;
+    const controllerLabel = this.controllerLabelFor(transportId);
+    const transportTag = this.transportTagFor(transportId);
+
+    const tagStatus = (s: FireOneModuleStatus): FireOneModuleStatus => {
+      if (transportId) s.controllerId = transportId;
+      if (controllerLabel) s.controllerLabel = controllerLabel;
+      if (transportTag) s.transport = transportTag;
+      return s;
+    };
 
     switch (frame.command) {
       case FireOneCmd.STATUS: {
-        const status = parseStatusPayload(addr, frame.payload);
+        const status = tagStatus(parseStatusPayload(addr, frame.payload));
         this.modules.set(addr, status);
-        this.emit({ type: 'status-update', moduleAddress: addr, data: status, timestamp: Date.now() });
+        this.emit({ type: 'status-update', moduleAddress: addr, data: status, timestamp: Date.now(), transportId, controllerLabel });
         break;
       }
 
@@ -881,7 +960,7 @@ export class FireOneController {
           }
           this.modules.set(addr, { ...status, lastSeen: Date.now() });
         }
-        this.emit({ type: 'continuity-result', moduleAddress: addr, data: frame.payload, timestamp: Date.now() });
+        this.emit({ type: 'continuity-result', moduleAddress: addr, data: frame.payload, timestamp: Date.now(), transportId, controllerLabel });
         break;
       }
 
@@ -893,7 +972,7 @@ export class FireOneController {
           if (ig) ig.fired = true;
           this.modules.set(addr, { ...module, lastSeen: Date.now() });
         }
-        this.emit({ type: 'fire-confirm', moduleAddress: addr, data: { igniterPos }, timestamp: Date.now() });
+        this.emit({ type: 'fire-confirm', moduleAddress: addr, data: { igniterPos }, timestamp: Date.now(), transportId, controllerLabel });
         break;
       }
 
@@ -903,7 +982,7 @@ export class FireOneController {
           module.armed = true;
           this.modules.set(addr, { ...module, lastSeen: Date.now() });
         }
-        this.emit({ type: 'arm-confirm', moduleAddress: addr, data: { armed: true }, timestamp: Date.now() });
+        this.emit({ type: 'arm-confirm', moduleAddress: addr, data: { armed: true }, timestamp: Date.now(), transportId, controllerLabel });
         break;
       }
 
@@ -913,15 +992,15 @@ export class FireOneController {
           module.armed = false;
           this.modules.set(addr, { ...module, lastSeen: Date.now() });
         }
-        this.emit({ type: 'arm-confirm', moduleAddress: addr, data: { armed: false }, timestamp: Date.now() });
+        this.emit({ type: 'arm-confirm', moduleAddress: addr, data: { armed: false }, timestamp: Date.now(), transportId, controllerLabel });
         break;
       }
 
       case FireOneCmd.IDENTIFY: {
-        // Module responded to identify — parse as status
-        const status = parseStatusPayload(addr, frame.payload);
+        // Module responded to identify — parse as status, tag with controller.
+        const status = tagStatus(parseStatusPayload(addr, frame.payload));
         this.modules.set(addr, status);
-        this.emit({ type: 'module-discovered', moduleAddress: addr, data: status, timestamp: Date.now() });
+        this.emit({ type: 'module-discovered', moduleAddress: addr, data: status, timestamp: Date.now(), transportId, controllerLabel });
         break;
       }
 

@@ -27,7 +27,7 @@ export type AggregatedTransport =
   | 'direct_relay';
 
 export interface AggregatedModule {
-  /** Stable canonical key — `${model}#${address}` (model normalised). */
+  /** Stable canonical key — `${controllerId|'_'}::${model}#${address}` (model normalised). */
   key: string;
   address: number;
   model: FxkModel;
@@ -40,6 +40,10 @@ export interface AggregatedModule {
   igniterCount?: number;
   lastSeen: number;
   deviceName?: string;
+  /** Transport instance id that saw this module (XL4 vs XL2 differentiation). */
+  controllerId?: string;
+  /** Human-readable controller label (e.g. "XL4 Gateway"). */
+  controllerLabel?: string;
 }
 
 export type ModuleAggregatorEvent =
@@ -52,16 +56,17 @@ class ModuleAggregator {
   private _modules = new Map<string, AggregatedModule>();
   private _listeners = new Set<Listener>();
 
-  static keyFor(model: FxkModel, address: number): string {
+  static keyFor(model: FxkModel, address: number, controllerId?: string): string {
     const m = (model ?? 'Unknown').toString().toLowerCase();
-    return `${m}#${address}`;
+    const c = (controllerId ?? '_').toString();
+    return `${c}::${m}#${address}`;
   }
 
   upsert(input: Omit<AggregatedModule, 'key' | 'channels' | 'lastSeen'> & {
     channels?: number;
     lastSeen?: number;
   }): AggregatedModule {
-    const key = ModuleAggregator.keyFor(input.model, input.address);
+    const key = ModuleAggregator.keyFor(input.model, input.address, input.controllerId);
     const prev = this._modules.get(key);
     const next: AggregatedModule = {
       ...prev,
@@ -146,5 +151,7 @@ export function aggregatedToFireOneStatus(m: AggregatedModule): FireOneModuleSta
     model: m.model,
     transport: m.transport,
     deviceName: m.deviceName,
-  } as FireOneModuleStatus & { model?: FxkModel; transport?: AggregatedTransport; deviceName?: string };
+    controllerId: m.controllerId,
+    controllerLabel: m.controllerLabel,
+  } as FireOneModuleStatus;
 }

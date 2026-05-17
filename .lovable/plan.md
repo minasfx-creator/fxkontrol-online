@@ -1,92 +1,95 @@
 ## Objetivo
 
-Que o Pyro Console reconheça módulos **FXK** e **FXK-M1** em **qualquer transporte** (BLE / BLE-LR / USB / Wi-Fi WS / Wi-Fi Direct / 2-Wire / Art-Net), tratar **qualquer ESP32** detectado como módulo válido, **liberar o disparo real** para esses módulos e **remover páginas/bloqueios de compliance** que hoje pertencem só ao admin.
+Hoje `discoverModules()` despeja IDENTIFY no "melhor transporte" e o controller não guarda qual gateway (XL4 / XL2 / Wi-Fi Direct / RS-485 / 2-Wire / Art-Net) respondeu cada módulo IFXQM (IFMx-i32Q). O resultado: roster plano, módulo do XL2 some quando XL4 é prioritário, e o painel não consegue dizer "addr 7 vive sob o XL4-Gateway".
+
+Vamos:
+1. Varrer **cada transporte conectado** individualmente.
+2. Etiquetar cada módulo descoberto com o `controllerId` + label de origem (XL4 / XL2 / Wi-Fi Direct / RS-485 / etc.).
+3. Mostrar o roster **agrupado por controladora** no `FireOneModulesInline`.
+
+Sem mexer em safety (uiCommandGateway / SSM / FieldBus). Read-only de discovery.
 
 ---
 
-## 1 · Reconhecimento universal de módulos FXK / FXK-M1
+## Mudanças técnicas
 
-**Onde está hoje:** `useFireOneHardware` agrega `FireOneModuleStatus` (Map<addr,status>) vindos só de `fireoneController` (RS-485/serial). BLE/USB/WS/Wi-Fi-Direct (`fireoneModuleHardwareBridge`) e Art-Net (`ArtNetModulePanel`) e 2-Wire (`twoWireBusDiscovery`) emitem eventos próprios e **não populam** o mesmo Map. Por isso o `FireOneModulesInline` mostra vazio em qualquer transporte que não seja o XL4 cabeado. Não há campo `model` para FXK / FXK-M1 / IFMx-i32Q.
+### 1. `src/lib/fireoneTransport.ts`
+- `FireOneTransport` ganha `send(frame, opts?: { broadcast?: boolean })` opcional já no shape atual; adicionar método novo no manager **sem mexer no send legado**:
+  - `FireOneTransportManager.sendVia(transportId, frame)` — envia via transporte específico (usado pelo discover per-controller).
+  - `getConnectedTransports(): FireOneTransport[]` — lista filtrada para iterar no scan.
 
-**O que entregar:**
+### 2. `src/lib/fireoneProtocol.ts`
+- **Capturar origem do frame**: o handler `transportManager.on('data')` já recebe `transportId`. Encaminhar para `processIncoming(chunk, transportId)` → `handleFrame(frame, transportId)`. Hoje o `transportId` é descartado.
+- Estender `FireOneEvent` com `transportId?: string` (back-compat opcional).
+- Em `handleFrame`, no caso `IDENTIFY` / `STATUS`: gravar `status.transport = mapTransportType(t.type)` e `status.controllerId = transportId`, `status.controllerLabel = t.label` (ex: "XL4 Gateway", "RS-485 Cable"). Para WiFiDirect, usar `connectedDevice.label`/`deviceType` quando disponível.
+- Novo `discoverModules(maxAddr, opts?: { transportId?: string })`:
+  - Sem `opts.transportId`: itera todos `transports.connected` e dispara IDENTIFY 1..maxAddr **em cada um** com gap 50ms, marcando o destino via `sendVia`.
+  - Com `transportId`: escopo a um controlador (usado pela UI quando o usuário clica "rescan XL4").
+- `FireOneModuleStatus`: adicionar campos opcionais `controllerId?: string`, `controllerLabel?: string` (já tem `transport?`).
 
-- Estender `FireOneModuleStatus` com `model: 'FXK' | 'FXK-M1' | 'IFMx-i32Q' | 'ESP32-Generic'` e `transport: BridgeTransport | 'serial' | 'two_wire' | 'artnet'`.
-- Criar `src/lib/moduleAggregator.ts` (singleton `moduleAggregator`) que une as 4 fontes:
-  1. `fireoneController.discoveredModules` (RS-485)
-  2. `fireoneModuleHardwareBridge` (BLE / BLE-LR / USB / WS / Wi-Fi-Direct)
-  3. `artnetModuleService` (Art-Net)
-  4. `twoWireBusDiscovery` (CDS 2-wire)
-  Cada fonte chama `moduleAggregator.upsert({addr, transport, model, firmware, rssi, batt, ignCount, lastSeen})`. Identidade canônica = `${model}#${addr}` (alias por transporte → mesmo Map p/ não duplicar entre BLE+USB do mesmo módulo).
-- Detector de modelo em `inferFxkModel(name, fw, vidPid)`:
-  - prefixo `FXK-M1*` → `FXK-M1`
-  - prefixo `FXK*` ou `IFMx*` → `FXK` / `IFMx-i32Q`
-  - qualquer ESP32 (`ESP32-FXK*`, VID 0x303A, hostname `fxk-esp32.local`) sem prefixo conhecido → `ESP32-Generic` (tratado como módulo de 32 canais por padrão).
-- `useFireOneHardware().modules` passa a expor o agregado (sem mudar contrato Map, só fonte).
-- `FireOneModulesInline`: nova coluna **MODEL**, ícone por transporte (Cable/Radio/Wifi/Bluetooth/Two-Wire), header "Módulos FXK / FXK-M1 (N)". Empty state passa a "Nenhum módulo respondeu via BLE/USB/Wi-Fi/Art-Net/2-Wire ainda."
-- `useFireOneHardware().connectionPath` aceita `'ble' | 'usb' | 'websocket' | 'wifi_direct' | 'two_wire' | 'artnet'`.
+### 3. `src/lib/moduleAggregator.ts`
+- `AggregatedModule` ganha `controllerId?: string` e `controllerLabel?: string`.
+- `keyFor(model, address, controllerId?)` passa a usar `controllerId` quando presente → mesmo endereço atrás de XL4 e XL2 vira **duas linhas distintas** (que é o comportamento real).
+- `aggregatedToFireOneStatus` propaga os novos campos.
 
-## 2 · Liberar disparo real para FXK / FXK-M1 / ESP32 em qualquer transporte
+### 4. `src/hooks/useFireOneHardware.ts`
+- No subscribe do controller: ler `event.transportId` e gravar em `status.controllerId` / `controllerLabel`; chamar `moduleAggregator.upsert({ controllerId, controllerLabel, transport: <real>, ... })` em vez do `transport: 'serial'` hardcoded.
+- `discoverModules(maxAddr, opts?)` repassa `opts.transportId` ao controller.
 
-- Em `src/lib/pyroTransportPolicy.ts`:
-  - `PYRO_FIRE_PRIORITY = ['two_wire','serial','usb','websocket','wifi_direct','artnet','ble_lr','radio']` (BLE clássico continua banido p/ fire por jitter; BLE-LR liberado).
-  - `EXCLUSIVE_FAMILIES` adiciona `'fxk'`, `'fxk-m1'`, `'esp32-generic'`.
-  - `BANNED_FOR_REAL_FIRE` permanece apenas `ble` (clássico).
-- `selectBestPyroTransport('fxk-m1', available, 'real_operation')` passa a retornar transporte real disponível (não-null) p/ qualquer ESP32 conectado.
-- Roteamento no `uiCommandGateway` para FIRE: se `model ∈ {FXK, FXK-M1, ESP32-Generic}` → manda via melhor transporte do agregador (em vez de assumir RS-485). Hold-to-Confirm 800ms preservado.
+### 5. `src/components/editor/FireOneModulesInline.tsx`
+- Agrupar `rows` por `controllerLabel ?? transportLabel(m)`.
+- Header de cada grupo: ícone do transporte + label + contagem `(n)` + botão `rescan` específico daquele controlador (se `onRescan(controllerId)` for passado pelo pai).
+- Mantém comportamento read-only e o `maxRows` global (corte aplicado após o sort por grupo).
 
-## 3 · Remover páginas / blocos de compliance que hoje são só admin
-
-**Rotas/páginas a remover do app principal** (mover para `src/_admin/` para não quebrar imports, esconder do roteamento):
-- `/admin`, `/accreditation` (rotas removidas de `src/App.tsx` + lazy imports). Sidebar perde os itens.
-- `ManualComplianceMatrix.tsx` deixa de ser montado em `ReportsPanel`.
-- `ComplianceChecklist.tsx` removido do tab Reports.
-
-**Bloqueios "admin-only" desligados (mantendo Black Box e safety crítica):**
-- `OperationalModeGuard` deixa `'export'` aceitar `simulate|preview|validate|export|diagnostics|sync_read_only` (compliance gate vira **advisory badge**, não bloqueio).
-- `VerificationBar`: status `BLOCKED` por falha de compliance vira `ADVISORY` (cor amber, sem travar fire). E-STOP, ARM/DISARM, hold-to-confirm e SafetyBlackBox **continuam intocados** (regras safety-critical).
-- `ExportReadinessPanel` / `LockoutPanel` continuam exibindo, mas advisory: nada bloqueia export ou fire.
-
-**O que NÃO muda (escopo de safety crítico, fora do pedido):**
-- E-STOP global, hold-to-confirm 800ms, SafetyStateMachine, BlackBox, oath de produção, plano de show hash, audit trail.
-- `requestRealOperation()` continua exigindo Phase 2 grant fresco — apenas o roteamento de transporte é ampliado.
+### 6. Testes (Vitest)
+- `discoverModulesPerController.spec.ts`: stub do `TransportManager` com dois transports fake (id `xl4`, id `xl2`), `discoverModules()` deve chamar `sendVia('xl4', ...)` e `sendVia('xl2', ...)`, e os módulos respondidos por cada um devem aparecer com `controllerId` correto.
+- `moduleAggregator.controllerScope.spec.ts`: dois upserts com mesmo `model+address` mas `controllerId` diferente geram duas entries.
+- `fireOneModulesInline.grouping.spec.tsx`: dois mocks (controllerLabel "XL4 Gateway" addr 3 e "XL2 Gateway" addr 3) renderizam dois grupos com headers próprios.
 
 ---
 
-## Arquivos previstos
-
-**Novos**
-- `src/lib/moduleAggregator.ts` + `__tests__/moduleAggregator.spec.ts`
-- `src/lib/inferFxkModel.ts` + `__tests__/inferFxkModel.spec.ts`
-
-**Editar**
-- `src/lib/fireoneProtocol.ts` (campo `model`, `transport` em `FireOneModuleStatus`)
-- `src/lib/fireoneModuleHardwareBridge.ts` (emitir upsert no aggregator com modelo inferido)
-- `src/services/artnetModuleService.ts` (idem)
-- `src/lib/twoWireBusDiscovery.ts` (idem)
-- `src/hooks/useFireOneHardware.ts` (consumir `moduleAggregator`)
-- `src/components/editor/FireOneModulesInline.tsx` (coluna MODEL + ícone por transporte + empty state)
-- `src/lib/pyroTransportPolicy.ts` (prioridade ampliada, famílias FXK/M1/ESP32 exclusivas)
-- `src/core/hardware/OperationalModeGuard.ts` (compliance vira advisory)
-- `src/components/editor/VerificationBar.tsx` (BLOCKED por compliance → ADVISORY)
-- `src/components/editor/ReportsPanel.tsx` (drop ManualComplianceMatrix + ComplianceChecklist)
-- `src/App.tsx` + `src/layouts/MainLayout.tsx` (remover rotas /admin /accreditation do menu)
-
-**Mover (não deletar) p/ não quebrar memória**
-- `src/pages/Admin.tsx`, `src/pages/AccreditationDashboard.tsx`, `src/components/editor/ManualComplianceMatrix.tsx`, `src/components/editor/reports/ComplianceChecklist.tsx` → `src/_admin/`
+## Fora de escopo
+- Nada de mexer em `pyroTransportPolicy`, `uiCommandGateway`, SafetyStateMachine, ARM/FIRE/E-STOP.
+- Sem alterar protocolo de wire (mesmo IDENTIFY, mesmo frame format).
+- Sem mover Wi-Fi Direct para fora do TransportManager.
 
 ---
 
-## Validação
+## Diagrama do fluxo novo
 
-- Suite Vitest (espera +6 specs novas):
-  - aggregator dedupe cross-transport
-  - inferFxkModel para FXK / FXK-M1 / ESP32 / IFMx
-  - pyroTransportPolicy retorna transporte real para FXK-M1 em real_operation com BLE-LR ou Wi-Fi-Direct
-  - FireOneModulesInline render com 3 módulos heterogêneos (RS-485 + BLE + Art-Net)
-  - OperationalModeGuard: compliance fail não bloqueia export
-  - smoke test que `/admin` e `/accreditation` retornam 404
-- Manual: conectar BLE de fixture ESP32 → módulo aparece no `FireOneModulesInline` com badge "FXK · BLE"; ARM + Hold-Fire dispara via melhor transporte real.
+```text
+UI rescan ──► useFireOneHardware.discoverModules(opts?)
+                       │
+                       ▼
+       FireOneController.discoverModules
+                       │
+              ┌────────┴────────┐
+              ▼                 ▼
+        sendVia(xl4)        sendVia(xl2)    ... (per connected transport)
+              │                 │
+              ▼                 ▼
+        TransportMgr 'data' { data, transportId }
+              │
+              ▼
+       handleFrame(frame, transportId)
+              │
+              ▼
+   status { controllerId, controllerLabel, transport }
+              │
+   ┌──────────┴──────────┐
+   ▼                     ▼
+controller.modules   moduleAggregator.upsert
+              │
+              ▼
+   FireOneModulesInline → grouped roster
+```
 
-## Fora do escopo
+---
 
-- Reescrever firmware ESP32, mover compliance p/ módulo separado, novo design de admin. Tudo isso fica para uma rodada futura.
+## Arquivos tocados
+- `src/lib/fireoneTransport.ts` (+ `sendVia`, `getConnectedTransports`)
+- `src/lib/fireoneProtocol.ts` (discover per-controller, propaga transportId)
+- `src/lib/moduleAggregator.ts` (controllerId no key + fields)
+- `src/hooks/useFireOneHardware.ts` (propaga transportId)
+- `src/components/editor/FireOneModulesInline.tsx` (agrupa por controlador)
+- 3 specs novos

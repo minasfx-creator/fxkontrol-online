@@ -123,17 +123,24 @@ export function useFireOneHardware() {
           if (!status.model) {
             status.model = inferFxkModel({ name: status.serialNumber, firmware: status.firmwareVersion });
           }
+          // Resolve true transport from event (XL4/XL2/Wi-Fi Direct/serial…).
           if (!status.transport) status.transport = 'serial';
+          if (event.transportId && !status.controllerId) status.controllerId = event.transportId;
+          if (event.controllerLabel && !status.controllerLabel) status.controllerLabel = event.controllerLabel;
+
+          const aggTransport: any = status.transport ?? 'serial';
           // Mirror to aggregator so any cross-transport surface sees it too.
           moduleAggregator.upsert({
             address: status.moduleAddress,
             model: status.model ?? 'IFMx-i32Q',
-            transport: 'serial',
+            transport: aggTransport,
             firmware: status.firmwareVersion,
             battery: status.batteryVoltage,
             rssi: status.rssiDbm,
             igniterCount: status.igniters?.filter(i => i.connected).length,
             channels: status.igniters?.length || 32,
+            controllerId: status.controllerId,
+            controllerLabel: status.controllerLabel,
           });
           setState(prev => {
             const newModules = new Map(prev.modules);
@@ -359,10 +366,10 @@ export function useFireOneHardware() {
     await controller.requestContinuity(addr);
   }, [controller]);
 
-  const discoverModules = useCallback(async (maxAddr = FIREONE_MAX_MODULES) => {
+  const discoverModules = useCallback(async (maxAddr = FIREONE_MAX_MODULES, opts?: { transportId?: string }) => {
     setState(prev => ({ ...prev, scanning: true }));
     try {
-      await controller.discoverModules(maxAddr);
+      await controller.discoverModules(maxAddr, opts);
       await new Promise(r => setTimeout(r, maxAddr * 60));
     } finally {
       setState(prev => ({ ...prev, scanning: false }));
