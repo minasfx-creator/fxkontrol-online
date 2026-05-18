@@ -997,8 +997,9 @@ export class FireOneController {
       }
 
       case FireOneCmd.IDENTIFY: {
-        // Module responded to identify — parse as status, tag with controller.
+        // Module responded to identify — parse as status, tag with controller, infer model.
         const status = tagStatus(parseStatusPayload(addr, frame.payload));
+        status.model = inferModelFromIdentify(frame.payload, status.firmwareVersion);
         this.modules.set(addr, status);
         this.emit({ type: 'module-discovered', moduleAddress: addr, data: status, timestamp: Date.now(), transportId, controllerLabel });
         break;
