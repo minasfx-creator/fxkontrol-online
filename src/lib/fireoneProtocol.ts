@@ -343,6 +343,34 @@ export function parseStatusPayload(moduleAddr: number, payload: Uint8Array): Fir
 }
 
 // ═══════════════════════════════════════════════════════════
+// MODEL INFERENCE — IDENTIFY responses (XL4 → FXK-M1 etc.)
+// ═══════════════════════════════════════════════════════════
+
+import { inferFxkModel, type FxkModel } from '@/lib/inferFxkModel';
+
+/**
+ * Extract optional ASCII model-name suffix appended after the standard 40-byte
+ * status block in IDENTIFY responses (e.g. FXK-M1 firmware emits "FXK-M1\0"),
+ * then fall back to firmware-string heuristic via inferFxkModel().
+ *
+ * Honest: returns 'Unknown' when no signal matches — never guesses.
+ */
+export function inferModelFromIdentify(payload: Uint8Array, firmware?: string): FxkModel {
+  // Status block is 8 header bytes + 32 igniter bytes = 40 bytes. Anything
+  // beyond that is an optional vendor-defined model tag (printable ASCII).
+  let nameSuffix = '';
+  if (payload.length > 40) {
+    const tail = payload.subarray(40);
+    for (const b of tail) {
+      if (b === 0) break;
+      if (b >= 0x20 && b < 0x7f) nameSuffix += String.fromCharCode(b);
+      else break;
+    }
+  }
+  return inferFxkModel({ name: nameSuffix || null, firmware: firmware ?? null });
+}
+
+// ═══════════════════════════════════════════════════════════
 // COMMAND BUILDERS — convenience functions
 // ═══════════════════════════════════════════════════════════
 
