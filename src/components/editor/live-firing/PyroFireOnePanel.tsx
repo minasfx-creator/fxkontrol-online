@@ -107,15 +107,12 @@ export default function PyroFireOnePanel({
   const hardware = useFireOneHardware();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [pyroMode, setPyroMode] = useState<PyroMode>('manual');
-  const [modules, setModules] = useState<FieldModule[]>(() => {
-    const mods: FieldModule[] = [];
-    for (let i = 1; i <= 4; i++) mods.push(createSimModule(i, true, false));
-    for (let i = 5; i <= 6; i++) mods.push(createSimModule(i, true, true));
-    return mods;
-  });
+  // Honest hardware: NEVER seed fake/simulated modules. List starts empty
+  // and is populated only by real FireOne discovery via useFireOneHardware.
+  const [modules, setModules] = useState<FieldModule[]>([]);
   const [selectedModule, setSelectedModule] = useState(1);
   const [masterKeyOn, setMasterKeyOn] = useState(false);
-  const [simMode, setSimMode] = useState(true);
+  const [simMode, setSimMode] = useState(false);
   const [pyroFullscreen, setPyroFullscreen] = useState(false);
   const [artnetLinking, setArtnetLinking] = useState(false);
   const [artnetLinkedModules, setArtnetLinkedModules] = useState<Set<number>>(new Set());
