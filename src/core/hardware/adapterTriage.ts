@@ -120,6 +120,19 @@ export const ADAPTER_TRIAGE: ReadonlyArray<AdapterTriageEntry> = [
     requiredForSync: false,
   },
   {
+    id: 'fireone-xl4',
+    class: 'AWAITING_HANDSHAKE',
+    transport: 'serial_usb',
+    rationale:
+      'FireOne XL4+/XLII+/XL4-3 master controller (32ch). Aguarda IDENTIFY válido via USB-FTDI/RS-485 e firmware ≥ 5.00 no wizard de pareamento.',
+    nextAction: {
+      kind: 'route',
+      path: '/pairing/xl4',
+      label: 'Parear FireOne XL4+',
+    },
+    requiredForSync: false,
+  },
+  {
     id: 'fxk16-esp32s3',
     class: 'AWAITING_HANDSHAKE',
     transport: 'serial_usb',
@@ -177,6 +190,19 @@ export const ADAPTER_TRIAGE: ReadonlyArray<AdapterTriageEntry> = [
       kind: 'route',
       path: '/pairing/usb',
       label: 'Parear controlador host',
+    },
+    requiredForSync: false,
+  },
+  {
+    id: 'showven-m1',
+    class: 'AWAITING_HANDSHAKE',
+    transport: 'serial_usb',
+    rationale:
+      'Showven M1 / FXcommander Pro master controller (128 cues × 4 cenas, dual-band 433M/868M). Aguarda STATUS PBus válido @19200 8N1 e firmware ≥ V1.5 no wizard de pareamento.',
+    nextAction: {
+      kind: 'route',
+      path: '/pairing/m1',
+      label: 'Parear Showven M1',
     },
     requiredForSync: false,
   },

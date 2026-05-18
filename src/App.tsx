@@ -49,6 +49,7 @@ import NotFound from "./pages/NotFound";
 const Install = lazy(lazyRetry(() => import("./pages/Install")));
 const UsbPairingWizard = lazy(lazyRetry(() => import("./pages/UsbPairingWizard")));
 const BlePairingWizard = lazy(lazyRetry(() => import("./pages/BlePairingWizard")));
+const FireOneXL4PairingWizard = lazy(lazyRetry(() => import("./pages/FireOneXL4PairingWizard")));
 const PairingWizard = lazy(lazyRetry(() => import("./pages/PairingWizard")));
 const RealDiscoveryProbe = lazy(lazyRetry(() => import("./pages/RealDiscoveryProbe")));
 
@@ -72,6 +73,7 @@ const PerfBenchPage = lazy(lazyRetry(() => import("./pages/dev/PerfBench")));
 const EffectsLibrariesPage = lazy(lazyRetry(() => import("./pages/dev/EffectsLibraries")));
 
 const FXK16Hub = lazy(lazyRetry(() => import("./pages/dev/FXK16Hub")));
+const FXK32QHub = lazy(lazyRetry(() => import("./pages/dev/FXK32QHub")));
 const DevIndex = lazy(lazyRetry(() => import("./pages/dev/DevIndex")));
 
 // Office — consolidated productivity area (Etapa 1 do refactor 3-áreas)
@@ -202,6 +204,9 @@ function App() {
                     <Route path="/dev/fxk16" element={<FXK16Hub />} />
                     <Route path="/dev/fxk16-validate" element={<Navigate to="/dev/fxk16?tab=validate" replace />} />
                     <Route path="/dev/fxk16-calibrate" element={<Navigate to="/dev/fxk16?tab=calibrate" replace />} />
+                    {/* FXK32Q dev hub — Control (bench) + Snapshot (read-only adapter). */}
+                    <Route path="/dev/fxk32q" element={<FXK32QHub />} />
+                    <Route path="/dev/fxk32" element={<Navigate to="/dev/fxk32q" replace />} />
                     {/* SkyCanvas dev lab — variantes smoke / r3f / v2 sob um único
                         chunk lazy. Rotas legadas redirecionam preservando a variante. */}
                     <Route path="/dev/skycanvas-lab" element={<SkyCanvasLab />} />
@@ -295,6 +300,7 @@ function App() {
                       <Route path="/pairing/:transport" element={<PairingWizard />} />
                       <Route path="/pairing/usb" element={<UsbPairingWizard />} />
                       <Route path="/pairing/ble" element={<BlePairingWizard />} />
+                      <Route path="/pairing/xl4" element={<FireOneXL4PairingWizard />} />
                       <Route path="/field-test" element={isEnabled('module_pairing_mobilelink') ? <Navigate to="/field#field-test" replace /> : <Navigate to="/office" replace />} />
                       <Route path="/fxk16" element={isEnabled('module_pairing_mobilelink') ? <Navigate to="/field#fxk16" replace /> : <Navigate to="/office" replace />} />
 

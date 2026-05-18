@@ -10,6 +10,20 @@ const FILES = [
   'src/components/editor/DMXArtNetConsole.tsx',
   'src/components/editor/AddressingPanel.tsx',
   'src/components/safety/CueConflictsConsole.tsx',
+  'src/components/editor/live-firing/MobileLinkMode.tsx',
+  'src/components/dev/fxk32q/FXK32QAdapterPanel.tsx',
+];
+
+const HARDWARE_HONEST_FILES = [
+  'src/components/editor/live-firing/MobileLinkMode.tsx',
+];
+
+const HARDWARE_FORBIDDEN = [
+  /\bMath\.random\b/,
+  /\bhwSimulated\b/,
+  /\bcreateSimulatedModuleStatus\b/,
+  /'Modo simulação/,
+  /\(Simulado\)/,
 ];
 
 const FORBIDDEN = [
@@ -27,6 +41,15 @@ describe('mocksErradicated guard', () => {
       const src = readFileSync(resolve(process.cwd(), rel), 'utf8');
       for (const re of FORBIDDEN) {
         expect(src, `${rel} contains forbidden token ${re}`).not.toMatch(re);
+      }
+    });
+  }
+
+  for (const rel of HARDWARE_HONEST_FILES) {
+    it(`${rel} is free from simulated-hardware tokens`, () => {
+      const src = readFileSync(resolve(process.cwd(), rel), 'utf8');
+      for (const re of HARDWARE_FORBIDDEN) {
+        expect(src, `${rel} contains forbidden hardware token ${re}`).not.toMatch(re);
       }
     });
   }

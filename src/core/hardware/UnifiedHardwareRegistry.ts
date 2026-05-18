@@ -18,7 +18,9 @@ import { fxk16ModuleAdapter } from './adapters/FXK16ModuleAdapter';
 import { batteryMonitorAdapter } from './adapters/BatteryMonitorAdapter';
 import { artNetNodeAdapter } from './adapters/ArtNetNodeAdapter';
 import { fireOneProfileAdapter } from './adapters/FireOneProfileAdapter';
+import { fireOneXL4Adapter } from './adapters/FireOneXL4Adapter';
 import { dmxUniverseAdapter } from './adapters/DMXUniverseAdapter';
+import { showvenM1Adapter } from './adapters/ShowvenM1Adapter';
 
 class UnifiedHardwareRegistry {
   private _adapters = new Map<string, HardwareAdapter<unknown>>();
@@ -36,7 +38,9 @@ class UnifiedHardwareRegistry {
     this.registerAdapter(batteryMonitorAdapter);
     this.registerAdapter(artNetNodeAdapter);
     this.registerAdapter(fireOneProfileAdapter);
+    this.registerAdapter(fireOneXL4Adapter);
     this.registerAdapter(dmxUniverseAdapter);
+    this.registerAdapter(showvenM1Adapter);
 
     // Wire the real-only gate so it can resolve provenance for events.
     realOnlyGate.registerProvenanceLookup((id) => this._adapters.get(id)?.getProvenance());
