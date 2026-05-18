@@ -215,7 +215,7 @@ export default function PyroFireOnePanel({
       await hardware.discoverModules(30);
       toast.success(`Scan complete — ${hardware.modules.size} modules found`);
     } else {
-      toast.success(`SIM Scan — ${modules.filter(m => m.connected).length} modules online`);
+      toast.error('No FireOne hardware connected — pair a controller to scan');
     }
     setScanning(false);
   }, [hardware, modules]);
