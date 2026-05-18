@@ -76,29 +76,9 @@ interface IgniterState {
   misfire: boolean;
 }
 
-function createSimModule(addr: number, connected: boolean, wireless = false): FieldModule {
-  const rssi = wireless ? -(40 + Math.random() * 40) : undefined;
-  return {
-    address: addr,
-    connected,
-    armed: false,
-    batteryVoltage: connected ? 11.2 + Math.random() * 1.6 : 0,
-    signalStrength: connected ? 60 + Math.random() * 40 : 0,
-    temperature: connected ? 18 + Math.random() * 12 : 0,
-    connectionMode: wireless ? 'wireless' : 'wired',
-    rssiDbm: rssi,
-    wirelessChannel: wireless ? 1 + Math.floor(Math.random() * 16) : undefined,
-    packetLoss: wireless ? Math.floor(Math.random() * 5) : undefined,
-    linkQuality: wireless ? 80 + Math.floor(Math.random() * 20) : undefined,
-    igniters: Array.from({ length: 32 }, (_, i) => ({
-      position: i + 1,
-      connected: connected && Math.random() > 0.15,
-      fired: false,
-      resistance: connected ? (Math.random() > 0.15 ? 1.2 + Math.random() * 8 : 0) : 0,
-      misfire: false,
-    })),
-  };
-}
+// createSimModule() REMOVED — honest-hardware policy: no synthetic/simulated
+// modules are ever injected into the FireOne roster. Modules come exclusively
+// from real discovery via useFireOneHardware → moduleAggregator.
 
 export default function PyroFireOnePanel({
   fs, fireChannel, channels, pyroArm, dmxArm, handlePanic, artNetConnected, relayConnected, onArmChange,
@@ -107,15 +87,12 @@ export default function PyroFireOnePanel({
   const hardware = useFireOneHardware();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [pyroMode, setPyroMode] = useState<PyroMode>('manual');
-  const [modules, setModules] = useState<FieldModule[]>(() => {
-    const mods: FieldModule[] = [];
-    for (let i = 1; i <= 4; i++) mods.push(createSimModule(i, true, false));
-    for (let i = 5; i <= 6; i++) mods.push(createSimModule(i, true, true));
-    return mods;
-  });
+  // Honest hardware: NEVER seed fake/simulated modules. List starts empty
+  // and is populated only by real FireOne discovery via useFireOneHardware.
+  const [modules, setModules] = useState<FieldModule[]>([]);
   const [selectedModule, setSelectedModule] = useState(1);
   const [masterKeyOn, setMasterKeyOn] = useState(false);
-  const [simMode, setSimMode] = useState(true);
+  const [simMode, setSimMode] = useState(false);
   const [pyroFullscreen, setPyroFullscreen] = useState(false);
   const [artnetLinking, setArtnetLinking] = useState(false);
   const [artnetLinkedModules, setArtnetLinkedModules] = useState<Set<number>>(new Set());
@@ -218,7 +195,7 @@ export default function PyroFireOnePanel({
       await hardware.discoverModules(30);
       toast.success(`Scan complete — ${hardware.modules.size} modules found`);
     } else {
-      toast.success(`SIM Scan — ${modules.filter(m => m.connected).length} modules online`);
+      toast.error('No FireOne hardware connected — pair a controller to scan');
     }
     setScanning(false);
   }, [hardware, modules]);
