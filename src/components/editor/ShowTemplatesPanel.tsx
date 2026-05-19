@@ -131,13 +131,14 @@ export default function ShowTemplatesPanel({ onClose }: { onClose: () => void })
     return { label: 'HYPOTHESIS', cls: 'bg-cyan-500/20 text-cyan-400 border-cyan-500/40' };
   };
 
+  const filtered = filter === 'all' ? templates : templates.filter(t => t.category === filter);
 
   return (
     <div className="h-full flex flex-col bg-surface-0 border-l border-border/50">
       <div className="flex items-center justify-between px-3 py-2.5 border-b border-border/40">
         <div className="flex items-center gap-2">
           <FolderOpen className="w-4 h-4 text-primary" />
-          <span className="text-[10px] font-bold text-foreground uppercase tracking-[0.15em]">My Templates</span>
+          <span className="text-[10px] font-bold text-foreground uppercase tracking-[0.15em]">Show Templates</span>
         </div>
         <button onClick={onClose} className="text-muted-foreground hover:text-foreground">
           <X className="w-3.5 h-3.5" />
@@ -146,7 +147,7 @@ export default function ShowTemplatesPanel({ onClose }: { onClose: () => void })
 
       {/* Tabs */}
       <div className="flex border-b border-border/40">
-        {(['browse', 'save'] as const).map(t => (
+        {(['quick', 'browse', 'save'] as const).map(t => (
           <button
             key={t}
             onClick={() => setTab(t)}
@@ -154,10 +155,11 @@ export default function ShowTemplatesPanel({ onClose }: { onClose: () => void })
               tab === t ? 'text-primary border-b-2 border-primary' : 'text-muted-foreground hover:text-foreground'
             }`}
           >
-            {t === 'browse' ? 'Library' : 'Save Current'}
+            {t === 'quick' ? '⚡ Quick Deploy' : t === 'browse' ? 'Library' : 'Save Current'}
           </button>
         ))}
       </div>
+
 
       <div className="flex-1 overflow-y-auto p-3 space-y-3">
         {tab === 'browse' && (
