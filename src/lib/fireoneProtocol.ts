@@ -625,7 +625,24 @@ export class FireOneController {
   private readBuffer = new Uint8Array(0);
   /** Per-transport read buffer, so XL4 frames don't desync XL2 frames. */
   private readBuffers: Map<string, Uint8Array> = new Map();
-  private modules: Map<number, FireOneModuleStatus> = new Map();
+  /** Keyed by `${controllerId ?? '∅'}|${addr}` so two controllers (e.g. XL4
+   *  + XL2) can each hold their own module at the same numeric address
+   *  without overwriting each other's roster. */
+  private modules: Map<string, FireOneModuleStatus> = new Map();
+  private _moduleKey(addr: number, transportId?: string): string {
+    return `${transportId ?? '∅'}|${addr}`;
+  }
+  /** Resolve an existing entry by addr, preferring a matching controller and
+   *  falling back to any entry at that address (legacy single-transport). */
+  private _findModule(addr: number, transportId?: string): FireOneModuleStatus | undefined {
+    if (transportId) {
+      const k = this._moduleKey(addr, transportId);
+      const hit = this.modules.get(k);
+      if (hit) return hit;
+    }
+    for (const m of this.modules.values()) if (m.moduleAddress === addr) return m;
+    return undefined;
+  }
   private transportManager: TransportMgr;
   private hybridRouter: HybridTransportRouter | null = null;
   private _hybridMode = false;
