@@ -5,7 +5,9 @@ import { parseVDL } from '../vdlParser';
 describe('parseCakeSegment', () => {
   it('returns empty defaults for blank input', () => {
     expect(parseCakeSegment('')).toEqual({
-      label: '', body: '', htmOverride: -1, durOverride: -1,
+      label: '', body: '',
+      htmOverride: -1, durOverride: -1,
+      lftOverride: -1, dlyOverride: -1,
     });
   });
 
