@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { render, screen, act, cleanup } from '@testing-library/react';
+import { render, screen, act, cleanup, fireEvent } from '@testing-library/react';
 import { DetectedModulesPanel } from '@/components/editor/DetectedModulesPanel';
 import { moduleAggregator } from '@/lib/moduleAggregator';
 
