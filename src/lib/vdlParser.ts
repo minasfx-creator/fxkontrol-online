@@ -411,6 +411,7 @@ export function parseVDL(input: string): VDLResult {
     firingPattern: '', isAerial: false,
     multiColors: [], impliesTrail: false,
     fuseDelay: -1,
+    htmOverride: -1, fanAngleDeg: -1, cakeSegments: [],
   };
 
   if (!raw) return result;
