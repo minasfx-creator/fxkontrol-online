@@ -1,82 +1,102 @@
-# Refino de Realismo dos Fogos — 7 Gaps Concretos
+# Templates de Show — Refinados com Planos Reais
 
-## Por que parecem "irreais" hoje
+5 planos analisados; vou converter em templates determinísticos e adicionar o Mineirão estádio.
 
-O renderer real (`src/components/editor/skycanvas/FireworkRenderer.tsx`, 1716 linhas) usa `THREE.Points` com um shader Gaussiano radial. As geometrias estão certas (ring, heart, smiley, saturn, etc.), mas faltam os **7 elementos** que separam "estrela genérica que sobe e cai" de pirotecnia real:
+## Dados extraídos
 
-| # | Gap visual | Causa técnica | Existe no repo mas não wired? |
-|---|---|---|---|
-| 1 | Estrelas são bolhas redondas iguais | Gaussian sprite isotrópico, sem stretch | parcial |
-| 2 | Sem rastro de faíscas (sparks) atrás de cada estrela | `sparkTrailsGPU.ts` existe, não chamado | ✅ existe |
-| 3 | Cor "chapada" do início ao fim | Sem ramp blackbody temporal | ✅ `particleChemistry.thermalColor` |
-| 4 | "Break flash" inexistente ou fraco | Frame 0..2 do burst não tem HDR boost | parcial |
-| 5 | Sem fumaça residual no ponto de ruptura | `SmokeSystem` existe, só usado p/ ground smoke | ✅ `smokeSimulation.ts` |
-| 6 | Willow/Kamuro sem trilha contínua | Falta ribbon/MeshLine por estrela | ✅ `ribbonTrailRenderer.ts` |
-| 7 | Shapes (heart, smiley, ring) com densidade aleatória | Stars amostradas com `Math.random()` em vez de espaçamento uniforme | — |
-
-Todo o resto (silhuetas de mine, niagaraProfile glow, chemistry compounds, frustum culling, HDR boost combustion) já está rodando.
-
-## Plano em 3 passes (cada um isolável por flag, validável visualmente)
-
-### Pass 1 — Velocity Stretch + Break Flash (alto impacto, baixo custo)
-
-**Arquivo único editado:** `FireworkRenderer.tsx` (shader + setup do material)
-
-1. **Velocity stretch** no `STAR_VERTEX_SHADER`:
-   - Adicionar attribute `aVel` (vec3) já calculado nas velocidades existentes
-   - Ovalizar o sprite na direção da velocidade projetada em screen-space: `gl_PointSize` continua igual, mas no fragment shader o `gl_PointCoord` é rotacionado pelo ângulo `atan2(velScreen.y, velScreen.x)` e escalado em Y por `(1 + speedFactor * 0.8)`. Resultado: estrelas "riscam" o céu em vez de serem pontos circulares.
-   - Custo: zero (cálculo já é por-vértice)
-
-2. **Break Flash HDR**:
-   - Nova var `aBirthTime` (float). Nos primeiros `0.08s` após break: multiplicador `flash = exp(-age*40) * 8.0` adicionado ao `col` (HDR > 1.0 alimenta o bloom automaticamente)
-   - Pico ~3 frames @60fps, depois decai pra zero — exatamente como o flash químico real do composto BP no rompimento
-   - Custo: 1 atributo + 2 linhas no fragment
-
-3. **Cor temporal blackbody**:
-   - Importar `thermalColor` de `particleChemistry.ts` (já existe!)
-   - No JS, pré-computar 32 amostras da curva `whiteHot(3500K) → starColor → ember(1200K)` em uma `DataTexture` 32×1 RGBA
-   - Sampler no fragment: `vec3 baseCol = texture(uTempRamp, vec2(vLife, 0.5)).rgb`
-   - Custo: 1 texture sampler + DataTexture de 128 bytes
-
-**Flag:** `r_star_stretch_v2` (default ON após validação visual em `/dev/effect-preview`)
-**Tests:** 3 — atributos populados, ramp gerada determinística, fallback para shader v1 quando flag OFF
-
-### Pass 2 — Spark Trails (o "wow" visual mais importante)
-
-Wire de `sparkTrailsGPU.ts` no `FireworkRenderer`:
-
-1. Para cada `FireworkBurst` ativo, instanciar 1 `SparkTrailSystem` com `STAR_COUNT / 3` rastros (sub-amostragem — 1 em cada 3 estrelas tem trail, suficiente visualmente, terço do custo)
-2. Cada frame: passar posição/velocidade atuais do `Points` → o `sparkTrailsGPU` mantém ring buffer de 8 posições passadas por trail e renderiza como `BufferGeometry LineSegments` com material aditivo
-3. Cor do trail: `starColor * 0.6 * (1 - trailAge/0.4)` — esmaece em 400ms
-4. **Willow/Kamuro/Palm** pegam 100% de cobertura (efeito definidor); demais 33%
-
-**Flag:** `r_spark_trails` (default ON em desktop, OFF em mobile via `useDeviceTier`)
-**Budget guard:** auto-OFF se `useFrameBudget` p95 ≥ 35ms
-**Tests:** 4 — system criado por burst, dispose no unmount, sub-amostragem correta, mobile-OFF
-
-### Pass 3 — Break Puff + Shape Pearl Spacing
-
-1. **Break Puff de fumaça** — no instante do break, emitir 1 `SmokeSystem` puff (3-5 partículas, raio 0.8m, lifetime 8s, opacidade peak 0.4) no ponto de ruptura. Reaproveita `smokeSimulation.ts` que já está disposable-safe. Apenas para shells > 3" e sem chuva.
-
-2. **Pearl Spacing** nas geometrias de shape (heart, smiley, ring, saturn): trocar `Math.random()` por `i / STAR_COUNT` no parâmetro `t` da curva — distribui estrelas uniformemente ao longo da silhueta (como "colar de pérolas"). Mantém jitter pequeno (`±0.02 * sigma`) pra não ficar mecânico. Já testei mentalmente nas funções existentes em `buildPresetVelocities` — é uma troca de 1 linha por shape (heart/smiley/ring/double-ring/saturn-ring).
-
-**Flag:** `r_break_puff` (ON desktop) + `r_pearl_spacing` (ON sempre, é trivialmente melhor)
-**Tests:** 3 — puff só dispara em shell ≥ 3", pearl spacing determinístico, no-rain gate
-
-## Fora de escopo (deliberado)
-
-- **Não** vou reescrever `FireworkRenderer.tsx` — só editar shader + adicionar 1 ref pra sparkTrails + 1 ref pra puff
-- **Não** vou wire o Niagara emitter system inteiro — overkill, e o velocity stretch + spark trails já entregam 80% do realismo percebido
-- **Não** mexo em VDL pipeline, ECS, safety, workMode, ou qualquer coisa fora do shader/render de fogos
-- **Não** adiciono dependência nova
-
-## Resumo numérico
-
-| Pass | Arquivos editados | Arquivos novos | Tests | Custo GPU est. |
+| Plano | Formato | Cues | Duração | Insights |
 |---|---|---|---|---|
-| 1 | 1 (FireworkRenderer.tsx) | 0 | 3 | +0.3ms p/ 2k stars |
-| 2 | 1 (FireworkRenderer.tsx) | 0 | 4 | +1.2ms p/ 2k stars (auto-cap) |
-| 3 | 1 (FireworkRenderer.tsx) | 0 | 3 | +0.4ms p/ break |
-| **Total** | **1 arquivo** | **0** | **10** | **~2ms (budget 16.6ms@60fps)** |
+| **Réveillon BC** | Finale CSV completo | 85 | 410s | 6 posições (5 balsas + Emissário), Module/Slat/Pin, prefires reais (1.84–2.68s) por calibre |
+| **Acaiaca Recife 2017** | Plano por quadros | 29 quadros | ~14min | 3 balsas, calibres 2–7", padrões em V/W/retos |
+| **Itaguai 2022/23** | Plano por canais | 22 canais × 3 pontos | 36–45s/canal | Grades+tortas calibres 3–6" |
+| **Show da Virada** | DOCX descritivo | 30+ blocos | — | 10 pontos lineares, leques W, calibres 2–3" |
+| **Música 4** | Finale HTML print | — | — | Estrutura por shotTime/effectTime/pin/track |
 
-Posso aplicar Pass 1 primeiro pra você validar visualmente em `/dev/effect-preview` antes de seguir pros 2 e 3 — assim cada delta é reversível e você vê o ganho incremental.
+## Entregas
+
+### 1. Estender `ShowTemplate` (retrocompat)
+
+`src/lib/showTemplates.ts` ganha campos opcionais:
+```ts
+pyroCues?: TemplatePyroCue[];   // mapeia 1:1 para PyroCue
+positions?: TemplatePosition[]; // posições nomeadas com x/y/z/heading
+venue?: { name: string; gps?: { lat; lng; alt } };
+audioHint?: { bpm?: number; duration: number };
+provenance: 'real_script' | 'reconstructed' | 'marketing_hypothesis';
+sourceFile?: string;            // ex: "Réveillon_BC_firing_script.csv"
+```
+Tipos antigos continuam válidos (campos opcionais).
+
+### 2. Catálogo de templates reais — `src/data/realShowTemplates.ts`
+
+Cada template é função pura que retorna `Omit<ShowTemplate,'id'|'createdAt'>`:
+
+- **`reveillonBC()`** — 85 cues 1:1 do CSV, 6 posições (Balsa 1–5 + FG Emissário), provenance `real_script`. Audio hint 410s.
+- **`acaiacaRecife2017()`** — 29 quadros reconstruídos como cues sequenciais (3 posições × N calibres × tempo por quadro), provenance `reconstructed`.
+- **`itaguai2022()`** — 22 canais × 3 pontos, grades/tortas alocadas por timing 36–45s, provenance `reconstructed`.
+- **`showVirada10Pontos()`** — 10 posições lineares, blocos W de leques + tortas, provenance `reconstructed`.
+
+### 3. **Mineirão Estádio — `mineiraoStadium()` ⭐**
+
+Layout fiel ao Mineirão:
+- **Venue**: Belo Horizonte, GPS `lat=-19.8658, lng=-43.9706, alt=852m`
+- **Geometria** (eixo Y=norte, X=leste, Z=altura):
+  - Eixo longo do gramado: ~108m (N–S), eixo curto ~68m (L–O)
+  - Anel da cobertura: ~270m × 220m, altura 46m
+- **22 posições canônicas**:
+  - 4 cantos do gramado (`P1..P4`) — minas baixas + cake fan, h=0
+  - 4 meio-laterais arquibancada inferior (`P5..P8`), h=12m
+  - 8 pontos do anel da cobertura (`P9..P16`), h=46m, heading apontando p/ centro — bombas aéreas seguras
+  - 2 posições centrais (`P17, P18`) atrás de cada baliza, h=2m — cortinas/cascatas
+  - 4 cantos externos do estacionamento (`P19..P22`), h=0 — shells 5–6" maiores (longe da torcida)
+- **120 cues** em 3 atos (90s):
+  1. **Intro 0–20s**: anel da cobertura em wave (P9→P16) c/ Silver Mines
+  2. **Build 20–55s**: gramado em pulses (P1–P8) sincronizado a 110 BPM, alternando Peony 4"/Brocade 5"
+  3. **Climax 55–90s**: estacionamento externo (P19–P22) com Kamuro 12" + Horsetail 6", finale 20× Grand Peony em fan
+- **NFPA 1123 respeitado**: shells ≥5" SÓ nas posições externas (raio ≥70m da torcida); minas+cakes pequenos nas posições internas. Geofence de audiência cobrindo bowl inteiro.
+- **Audio hint**: 90s, sem BPM (hino).
+- **Provenance**: `reconstructed` (layout do estádio real, sequência cinematic original).
+
+### 4. UI — Quick Deploy no `ShowTemplatesPanel`
+
+Nova aba **"⚡ Quick Deploy"** (primeira):
+- Cards grandes com badge de provenance (real_script verde / reconstructed amber / marketing_hypothesis cyan)
+- Mostra venue + duração + nº cues + thumbnail
+- Botão único **"Deploy to Editor"** que:
+  1. `useProjectStore.setMetadata(...)` (venue, gps, duração)
+  2. `useProjectStore.setPositions(template.positions)`
+  3. `useProjectStore.setPyroCues(template.pyroCues)` (idempotente: substitui)
+  4. `useProjectStore.setCurrentTime(0)`
+  5. Toast: "Réveillon BC deployed — 85 cues / 6 posições / 410s"
+- Botão secundário "Merge" (não substitui, só anexa)
+
+Tab "Browse" mantém comportamento atual (user-saved).
+
+### 5. Testes — `src/lib/__tests__/realShowTemplates.spec.ts`
+
+- Cada built-in retorna ≥1 cue, ≥1 posição
+- Réveillon BC: exatos 85 cues, duração 410±1s, 6 posições
+- Mineirão: 120 cues, todas em posição existente, shells ≥5" só em P19–P22, todas dentro do geofence
+- Deploy é idempotente (rodar 2× = mesmo estado final)
+- Provenance preserved no metadata
+
+## Garantias
+
+- **Zero impacto safety**: tudo é `useProjectStore` (Show plane). CommandBus/SSM/uiCommandGateway/GlobalEStopButton intocados.
+- **Provenance honesta**: `real_script` só onde temos dados Finale exatos. `reconstructed` carimba os planos descritivos. Badge visível em cada card.
+- **Retrocompat**: localStorage existente segue válido (novos campos são opcionais).
+- **Mineirão NFPA-conforme**: shells grandes só nos cantos externos, geofence de audiência declarado.
+
+## Arquivos
+
+Novos:
+- `src/data/realShowTemplates.ts` (5 templates: Réveillon BC, Acaiacá Recife, Itaguai, Show da Virada, **Mineirão Estádio**)
+- `src/data/venues/mineiraoLayout.ts` (22 posições + geofence)
+- `src/lib/__tests__/realShowTemplates.spec.ts`
+- `public/reference/scripts/` (CSVs+HTML originais como auditoria, opcional)
+
+Editados:
+- `src/lib/showTemplates.ts` (+ campos opcionais no type, sem mexer no storage)
+- `src/components/editor/ShowTemplatesPanel.tsx` (+ aba Quick Deploy + Deploy/Merge buttons)
+
+Tempo: ~6 arquivos novos + 2 edições + 1 spec. Sem mudanças em renderer/safety/hardware.

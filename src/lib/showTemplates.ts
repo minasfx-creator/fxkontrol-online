@@ -6,6 +6,34 @@
 import type { DroneFormation } from '@/types/projectTypes';
 import type { SceneSettings } from '@/store/useSceneStore';
 
+export interface TemplatePosition {
+  id: string;
+  name: string;
+  type: 'pyro' | 'drone-pad' | 'light';
+  x: number; y: number; z: number;
+  heading: number; pitch: number; roll: number;
+  color: string;
+  section?: string;
+}
+
+export interface TemplatePyroCue {
+  id: string;
+  effectId: string;
+  startTime: number;
+  trackIndex: number;
+  position: { x: number; y: number; z: number };
+  positionId?: string;
+  positionName?: string;
+  notes?: string;
+}
+
+export type TemplateProvenance = 'real_script' | 'reconstructed' | 'marketing_hypothesis';
+
+export interface TemplateVenue {
+  name: string;
+  gps?: { lat: number; lng: number; alt?: number };
+}
+
 export interface ShowTemplate {
   id: string;
   name: string;
@@ -19,6 +47,13 @@ export interface ShowTemplate {
   formations: DroneFormation[];
   sceneSettings?: Partial<SceneSettings>;
   tags: string[];
+  // Optional richer template fields (real firing scripts)
+  pyroCues?: TemplatePyroCue[];
+  positions?: TemplatePosition[];
+  venue?: TemplateVenue;
+  audioHint?: { bpm?: number; duration: number };
+  provenance?: TemplateProvenance;
+  sourceFile?: string;
 }
 
 export type TemplateCategory = 'countdown' | 'celebration' | 'logo' | 'abstract' | 'patriotic' | 'holiday' | 'sports' | 'custom';
