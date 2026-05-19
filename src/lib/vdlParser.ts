@@ -25,6 +25,10 @@ import {
   parseExactCakeBody,
   type ExactTube,
 } from './vdlExactSimulationSyntax';
+import {
+  parseCakeDescription,
+  type CakeDescription,
+} from './vdlCakeDescriptions';
 
 export interface VDLResult {
   caliber: number;
@@ -81,6 +85,8 @@ export interface VDLResult {
   withModifiers: WithModifier[];
   // ── Exact Simulation Syntax: per-tube angles/labels/delays ──
   exactTubes: ExactTube[]; // populated only when `Cake, 1 Row (…/CAK)` detected
+  // ── Cake description structure (auxiliary/body/ingredients/rowSpecs) ──
+  cakeDescription: CakeDescription | null;
   // ── SuperVDL: Niagara fusion ──
   niagaraPreset?: string;           // matched Niagara preset ID
   niagaraProfile?: {
@@ -426,6 +432,7 @@ export function parseVDL(input: string): VDLResult {
     htmOverride: -1, fanAngleDeg: -1, cakeSegments: [],
     withModifiers: [],
     exactTubes: [],
+    cakeDescription: null,
   };
 
   if (!raw) return result;
@@ -482,6 +489,12 @@ export function parseVDL(input: string): VDLResult {
   if (exactBody !== null) {
     result.exactTubes = parseExactCakeBody(exactBody).tubes;
   }
+
+  // ── Cake description structure (auxiliary/body/ingredients/rowSpecs) ──
+  if (/\bcake\b/i.test(raw)) {
+    result.cakeDescription = parseCakeDescription(raw);
+  }
+
 
 
   // ── Parse angle offset (R45, L30, etc.) ──
