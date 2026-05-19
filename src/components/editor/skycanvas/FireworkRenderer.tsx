@@ -957,6 +957,15 @@ export const FireworkBurst = React.forwardRef<THREE.Group, {
       }
       pos[i * 3] = px; pos[i * 3 + 1] = py; pos[i * 3 + 2] = pz;
 
+      // Pass 1 (r_star_stretch_v2): analytical current velocity for shader
+      // stretch attribute. Drag uses generic dragCoeff (pattern-specific
+      // tweaks won't dramatically change visual direction); gravity adds
+      // downward component over time. Cheap — 3 mul/add per star.
+      const _decay = Math.exp(-dragCoeff * t);
+      particleBuffers.vels[i * 3]     = vx * _decay;
+      particleBuffers.vels[i * 3 + 1] = vy * _decay - GRAVITY * gravityMult * t;
+      particleBuffers.vels[i * 3 + 2] = vz * _decay;
+
       const flashIntensity = Math.max(0, 1 - starAge * 20);
       const emberPhase = Math.max(0, (starAge - 0.45) / 0.55);
       
