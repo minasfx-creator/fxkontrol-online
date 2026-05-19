@@ -72,23 +72,23 @@ describe('DetectedModulesPanel', () => {
       moduleAggregator.upsert({ address: 3, model: 'FXK', transport: 'usb', deviceName: 'gamma' });
     });
 
-    expect(screen.getAllByText(/ONLINE/i).length).toBe(3);
+    expect(screen.getAllByLabelText('status ONLINE').length).toBe(3);
 
     // Model filter: keep only FXK-M1
     fireEvent.click(screen.getByTestId('detected-modules-filter-model-FXK-M1'));
-    expect(screen.getAllByText(/ONLINE/i).length).toBe(1);
+    expect(screen.getAllByLabelText('status ONLINE').length).toBe(1);
     expect(screen.getByText(/alpha/)).toBeInTheDocument();
 
     // Clear and apply transport filter
     fireEvent.click(screen.getByTestId('detected-modules-clear-filters'));
     fireEvent.click(screen.getByTestId('detected-modules-filter-transport-serial'));
-    expect(screen.getAllByText(/ONLINE/i).length).toBe(1);
+    expect(screen.getAllByLabelText('status ONLINE').length).toBe(1);
     expect(screen.getByText(/beta/)).toBeInTheDocument();
 
     // Search by deviceName
     fireEvent.click(screen.getByTestId('detected-modules-clear-filters'));
     fireEvent.change(screen.getByTestId('detected-modules-search'), { target: { value: 'gamma' } });
-    expect(screen.getAllByText(/ONLINE/i).length).toBe(1);
+    expect(screen.getAllByLabelText('status ONLINE').length).toBe(1);
     expect(screen.getByText(/gamma/)).toBeInTheDocument();
 
     // No-match state
