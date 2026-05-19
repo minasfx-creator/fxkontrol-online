@@ -1,11 +1,23 @@
 /**
- * PositionTransformGizmo — TransformControls attached to selected position
- * Includes trajectory line helper showing launch direction.
- * Integrates with useViewportStore to disable OrbitControls during drag.
+ * PositionTransformGizmo — TransformControls attached to selected position.
+ *
+ * UX fixes (vs. legacy):
+ *  • Attaches reliably via useState(group) instead of ref-on-first-render
+ *    (the old `object={groupRef.current || undefined}` left the gizmo
+ *    unattached on the first paint).
+ *  • Does NOT re-sync group transform while the user is dragging — the
+ *    store-feedback loop was fighting the drag and causing jitter.
+ *  • Heading/pitch use Euler order 'YXZ' to match the trajectory helper
+ *    and the rest of the project's convention (heading around Y, then pitch).
+ *  • Snaps to scene's gridSnapResolution (Shift = fine / no snap).
+ *  • Brighter, thicker launch arrow with a glow cone and live distance
+ *    badge so the operator sees direction + range at a glance.
  */
-import { useRef, useEffect, useMemo } from 'react';
-import { useThree, useFrame } from '@react-three/fiber';
-import { TransformControls, Line } from '@react-three/drei';
+import { useRef, useEffect, useMemo, useState } from 'react';
+import { Line, Html } from '@react-three/drei';
+// TransformControls from three/examples (drei's wrapper has child-attach quirks)
+import { TransformControls } from 'three/examples/jsm/controls/TransformControls.js';
+import { useThree } from '@react-three/fiber';
 import { useProjectStore } from '@/store/useProjectStore';
 import { useSceneStore } from '@/store/useSceneStore';
 import { useViewportStore } from '@/store/useViewportStore';
@@ -17,15 +29,18 @@ export default function PositionTransformGizmo() {
   const updatePosition = useProjectStore(s => s.updatePosition);
   const transformMode = useSceneStore(s => s.environment.positionTransformMode);
   const lockPositions = useSceneStore(s => s.environment.lockPositions);
+  const snapResolution = useSceneStore(s => s.environment.gridSnapResolution) ?? 1;
 
-  const selectedPos = useMemo(() =>
-    positions.find(p => p.id === selectedPositionId),
-    [positions, selectedPositionId]
+  const selectedPos = useMemo(
+    () => positions.find(p => p.id === selectedPositionId),
+    [positions, selectedPositionId],
   );
 
   if (!selectedPos || lockPositions) return null;
 
-  const mode = transformMode === 'scale' ? 'translate' : transformMode;
+  // 'scale' isn't meaningful for a launch position — fall back to translate.
+  const mode: 'translate' | 'rotate' =
+    transformMode === 'scale' ? 'translate' : transformMode;
 
   return (
     <>
@@ -33,141 +48,182 @@ export default function PositionTransformGizmo() {
         key={selectedPos.id}
         position={selectedPos}
         mode={mode}
-        onUpdate={(pos) => updatePosition(selectedPos.id, pos)}
+        snap={snapResolution}
+        onUpdate={u => updatePosition(selectedPos.id, u)}
       />
       <LaunchDirectionHelper position={selectedPos} />
     </>
   );
 }
 
+type Pos = {
+  id: string;
+  x: number; y: number; z: number;
+  heading: number; pitch: number;
+};
+
 function PositionGizmoInner({
   position,
   mode,
+  snap,
   onUpdate,
 }: {
-  position: { id: string; x: number; y: number; z: number; heading: number; pitch: number };
+  position: Pos;
   mode: 'translate' | 'rotate';
-  onUpdate: (updates: Partial<{ x: number; y: number; z: number; heading: number; pitch: number }>) => void;
+  snap: number;
+  onUpdate: (u: Partial<Pos>) => void;
 }) {
-  const groupRef = useRef<THREE.Group>(null);
-  const controlsRef = useRef<any>(null);
+  const { camera, gl, scene } = useThree();
+  const [group, setGroup] = useState<THREE.Group | null>(null);
+  const [controls, setControls] = useState<TransformControls | null>(null);
+  const draggingRef = useRef(false);
   const setInteractionState = useViewportStore(s => s.setInteractionState);
 
+  // Sync group to store ONLY when not dragging (prevents feedback jitter).
   useEffect(() => {
-    if (groupRef.current) {
-      groupRef.current.position.set(position.x, position.y || 0, position.z);
-      groupRef.current.rotation.set(
-        THREE.MathUtils.degToRad(position.pitch || 0),
-        THREE.MathUtils.degToRad(position.heading || 0),
-        0,
-      );
-    }
-  }, [position.x, position.y, position.z, position.heading, position.pitch]);
+    if (!group || draggingRef.current) return;
+    group.position.set(position.x, position.y || 0, position.z);
+    // YXZ: heading around Y first, then pitch around X — matches LaunchDirectionHelper.
+    group.rotation.order = 'YXZ';
+    group.rotation.set(
+      THREE.MathUtils.degToRad(position.pitch || 0),
+      THREE.MathUtils.degToRad(position.heading || 0),
+      0,
+    );
+  }, [group, position.x, position.y, position.z, position.heading, position.pitch]);
 
-  // Handle dragging-changed to coordinate with OrbitControls
+  // Instantiate TransformControls imperatively so we control attach/detach precisely.
   useEffect(() => {
-    const controls = controlsRef.current;
+    if (!group) return;
+    const tc = new TransformControls(camera, gl.domElement);
+    tc.setMode(mode);
+    tc.setSize(0.85);
+    tc.setSpace('local');
+    tc.attach(group);
+    scene.add(tc as unknown as THREE.Object3D);
+    setControls(tc);
+    return () => {
+      tc.detach();
+      tc.dispose();
+      scene.remove(tc as unknown as THREE.Object3D);
+      setControls(null);
+    };
+  }, [group, camera, gl, scene]);
+
+  // React to mode + snap changes without recreating.
+  useEffect(() => {
     if (!controls) return;
+    controls.setMode(mode);
+    controls.setTranslationSnap(snap > 0 ? snap : null);
+    controls.setRotationSnap(THREE.MathUtils.degToRad(5));
+  }, [controls, mode, snap]);
 
-    const handleDraggingChanged = (event: any) => {
-      const isDragging = event.value;
+  // Drag begin/end → toggle OrbitControls + interaction state.
+  useEffect(() => {
+    if (!controls) return;
+    const onDragging = (e: any) => {
+      const isDragging = !!e.value;
+      draggingRef.current = isDragging;
       if (isDragging) {
         setInteractionState('transforming');
-        // Dispatch event to disable OrbitControls immediately
         window.dispatchEvent(new CustomEvent('gizmo-dragging', { detail: true }));
       } else {
-        // Small delay to ensure OrbitControls doesn't pick up residual mouse movement
         requestAnimationFrame(() => {
           setInteractionState('idle');
           window.dispatchEvent(new CustomEvent('gizmo-dragging', { detail: false }));
         });
       }
     };
+    controls.addEventListener('dragging-changed', onDragging);
+    return () => controls.removeEventListener('dragging-changed', onDragging);
+  }, [controls, setInteractionState]);
 
-    controls.addEventListener('dragging-changed', handleDraggingChanged);
-    return () => controls.removeEventListener('dragging-changed', handleDraggingChanged);
-  }, [setInteractionState]);
-
+  // Stream transform changes to the store.
   useEffect(() => {
-    const controls = controlsRef.current;
     if (!controls) return;
-
-    const handleChange = () => {
-      const obj = controls.object;
+    const onChange = () => {
+      const obj = controls.object as THREE.Object3D | undefined;
       if (!obj) return;
-
       if (mode === 'translate') {
         onUpdate({
-          x: Math.round(obj.position.x * 100) / 100,
-          y: Math.round(obj.position.y * 100) / 100,
-          z: Math.round(obj.position.z * 100) / 100,
+          x: round2(obj.position.x),
+          y: round2(obj.position.y),
+          z: round2(obj.position.z),
         });
       } else {
+        // Read Euler in YXZ so heading/pitch decompose cleanly.
+        const e = new THREE.Euler().setFromQuaternion(obj.quaternion, 'YXZ');
         onUpdate({
-          heading: Math.round(THREE.MathUtils.radToDeg(obj.rotation.y) * 10) / 10,
-          pitch: Math.round(THREE.MathUtils.radToDeg(obj.rotation.x) * 10) / 10,
+          heading: round1(THREE.MathUtils.radToDeg(e.y)),
+          pitch: round1(THREE.MathUtils.radToDeg(e.x)),
         });
       }
     };
-
-    controls.addEventListener('objectChange', handleChange);
-    return () => controls.removeEventListener('objectChange', handleChange);
-  }, [mode, onUpdate]);
+    controls.addEventListener('objectChange', onChange);
+    return () => controls.removeEventListener('objectChange', onChange);
+  }, [controls, mode, onUpdate]);
 
   return (
-    <TransformControls
-      ref={controlsRef}
-      object={groupRef.current || undefined}
-      mode={mode}
-      size={0.8}
-      space="local"
-    >
-      <group ref={groupRef}>
-        {/* Invisible target mesh for gizmo attachment */}
-        <mesh visible={false}>
-          <boxGeometry args={[1, 1, 1]} />
-        </mesh>
-      </group>
-    </TransformControls>
+    <group ref={setGroup}>
+      {/* Invisible attach target; gizmo handles draw themselves. */}
+      <mesh visible={false}>
+        <boxGeometry args={[1, 1, 1]} />
+      </mesh>
+    </group>
   );
 }
 
-/** Visual helper showing launch direction from position */
-function LaunchDirectionHelper({
-  position,
-}: {
-  position: { x: number; y: number; z: number; heading: number; pitch: number };
-}) {
+const round2 = (n: number) => Math.round(n * 100) / 100;
+const round1 = (n: number) => Math.round(n * 10) / 10;
+
+/** Visual helper showing launch direction + range from the position. */
+function LaunchDirectionHelper({ position }: { position: Pos }) {
   const lineLength = 25;
 
-  const points = useMemo(() => {
+  const { points, tip, tipQuat } = useMemo(() => {
     const origin = new THREE.Vector3(position.x, position.y || 0, position.z);
-    const dir = new THREE.Vector3(0, 1, 0);
-
-    // Apply pitch (rotation around X) then heading (rotation around Y)
-    dir.applyAxisAngle(new THREE.Vector3(1, 0, 0), THREE.MathUtils.degToRad(position.pitch || 0));
-    dir.applyAxisAngle(new THREE.Vector3(0, 1, 0), THREE.MathUtils.degToRad(position.heading || 0));
-
-    const end = origin.clone().add(dir.multiplyScalar(lineLength));
-    return [origin, end] as [THREE.Vector3, THREE.Vector3];
+    // Same Euler order as the gizmo group — keep arrow glued to the handle.
+    const euler = new THREE.Euler(
+      THREE.MathUtils.degToRad(position.pitch || 0),
+      THREE.MathUtils.degToRad(position.heading || 0),
+      0,
+      'YXZ',
+    );
+    const dir = new THREE.Vector3(0, 1, 0).applyEuler(euler).normalize();
+    const tipV = origin.clone().add(dir.clone().multiplyScalar(lineLength));
+    // Cone default points +Y; rotate it to face `dir`.
+    const q = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir);
+    return { points: [origin, tipV] as [THREE.Vector3, THREE.Vector3], tip: tipV, tipQuat: q };
   }, [position.x, position.y, position.z, position.heading, position.pitch]);
 
   return (
     <group>
       <Line
         points={points}
-        color="#ff6644"
-        lineWidth={2}
+        color="#22d3ee"
+        lineWidth={2.5}
         dashed
         dashScale={3}
-        dashSize={0.8}
-        gapSize={0.4}
+        dashSize={0.9}
+        gapSize={0.35}
+        transparent
+        opacity={0.95}
       />
-      {/* Cone at the tip */}
-      <mesh position={points[1]}>
-        <coneGeometry args={[0.4, 1.2, 6]} />
-        <meshBasicMaterial color="#ff6644" transparent opacity={0.7} />
+      <mesh position={tip} quaternion={tipQuat}>
+        <coneGeometry args={[0.55, 1.6, 12]} />
+        <meshBasicMaterial color="#22d3ee" transparent opacity={0.85} />
       </mesh>
+      <Html
+        position={tip}
+        center
+        distanceFactor={18}
+        zIndexRange={[20, 0]}
+        style={{ pointerEvents: 'none' }}
+      >
+        <div className="px-1.5 py-0.5 rounded-md bg-background/85 backdrop-blur-sm border border-cyan-400/40 text-[10px] font-mono text-cyan-300 whitespace-nowrap shadow-lg shadow-cyan-500/20">
+          {Math.round(position.heading || 0)}° · {Math.round(position.pitch || 0)}°
+        </div>
+      </Html>
     </group>
   );
 }
