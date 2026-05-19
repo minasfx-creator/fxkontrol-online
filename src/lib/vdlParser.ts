@@ -490,6 +490,12 @@ export function parseVDL(input: string): VDLResult {
     result.exactTubes = parseExactCakeBody(exactBody).tubes;
   }
 
+  // ── Cake description structure (auxiliary/body/ingredients/rowSpecs) ──
+  if (/\bcake\b/i.test(raw)) {
+    result.cakeDescription = parseCakeDescription(raw);
+  }
+
+
 
   // ── Parse angle offset (R45, L30, etc.) ──
   let angleMatch: RegExpExecArray | null;
