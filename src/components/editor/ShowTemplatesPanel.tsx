@@ -162,6 +162,49 @@ export default function ShowTemplatesPanel({ onClose }: { onClose: () => void })
 
 
       <div className="flex-1 overflow-y-auto p-3 space-y-3">
+        {tab === 'quick' && (
+          <div className="space-y-2">
+            <div className="text-[10px] text-muted-foreground leading-relaxed">
+              Deploys reais 1-clique. <span className="text-green-400 font-semibold">REAL SCRIPT</span> = importado de plano de fogo autêntico. <span className="text-amber-400 font-semibold">RECONSTRUCTED</span> = layout fiel, sequência derivada.
+            </div>
+            {REAL_SHOW_TEMPLATES.map((tpl, i) => {
+              const b = provBadge(tpl.provenance);
+              return (
+                <div key={i} className="bg-surface-1/60 rounded-md p-2.5 space-y-2 border border-border/30 hover:border-primary/30 transition-colors">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex-1 min-w-0">
+                      <div className="text-[11px] font-bold text-foreground truncate">{tpl.name}</div>
+                      <div className="text-[9px] text-muted-foreground leading-tight">{tpl.description}</div>
+                    </div>
+                    <Badge variant="outline" className={`text-[7px] px-1 py-0 font-bold border ${b.cls} shrink-0`}>{b.label}</Badge>
+                  </div>
+                  {tpl.venue && (
+                    <div className="flex items-center gap-1 text-[9px] text-muted-foreground font-mono">
+                      <MapPin className="w-2.5 h-2.5" />
+                      <span className="truncate">{tpl.venue.name}</span>
+                    </div>
+                  )}
+                  <div className="flex gap-2 text-[9px] text-muted-foreground font-mono">
+                    <span>{tpl.pyroCues?.length ?? 0} cues</span>
+                    <span>·</span>
+                    <span>{tpl.positions?.length ?? 0} pos</span>
+                    <span>·</span>
+                    <span>{tpl.duration}s</span>
+                  </div>
+                  <div className="flex gap-1">
+                    <Button size="sm" variant="default" onClick={() => handleDeployReal(tpl, 'replace')} className="flex-1 text-[9px] h-6">
+                      <Zap className="w-3 h-3 mr-1" /> Deploy
+                    </Button>
+                    <Button size="sm" variant="outline" onClick={() => handleDeployReal(tpl, 'merge')} className="text-[9px] h-6 px-2">
+                      Merge
+                    </Button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+
         {tab === 'browse' && (
           <>
             {/* Category filter — no emojis */}
