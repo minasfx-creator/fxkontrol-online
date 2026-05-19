@@ -673,6 +673,35 @@ export class FireOneController {
     return Array.from(this.modules.values()).sort((a, b) => a.moduleAddress - b.moduleAddress);
   }
 
+  /** Roster grouped per controller (XL4 / XL2 / Wi-Fi Direct / Art-Net / …).
+   *  Key is the transportId that answered IDENTIFY; value carries the
+   *  controller label + the addresses owned by that controller. Two
+   *  controllers may legitimately own the same numeric module address. */
+  getRosterByController(): Array<{
+    controllerId: string;
+    controllerLabel: string;
+    transport: FireOneModuleStatus['transport'];
+    modules: FireOneModuleStatus[];
+  }> {
+    const groups = new Map<string, FireOneModuleStatus[]>();
+    for (const m of this.modules.values()) {
+      const id = m.controllerId ?? '∅';
+      const list = groups.get(id) ?? [];
+      list.push(m);
+      groups.set(id, list);
+    }
+    return Array.from(groups.entries()).map(([controllerId, modules]) => {
+      modules.sort((a, b) => a.moduleAddress - b.moduleAddress);
+      const head = modules[0];
+      return {
+        controllerId,
+        controllerLabel: head?.controllerLabel ?? controllerId,
+        transport: head?.transport,
+        modules,
+      };
+    });
+  }
+
   on(listener: FireOneListener): () => void {
     this.listeners.push(listener);
     return () => { this.listeners = this.listeners.filter(l => l !== listener); };
