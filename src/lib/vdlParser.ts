@@ -19,6 +19,7 @@
  */
 
 import { parseCakeSegments } from './vdlCakeSegments';
+import { parseWithModifiers, type WithModifier } from './vdlWithModifiers';
 
 export interface VDLResult {
   caliber: number;
@@ -71,6 +72,8 @@ export interface VDLResult {
   htmOverride: number;       // HTM — per-effect height in meters override (top-level), -1 = not set
   fanAngleDeg: number;       // Cake-level "<N> Degrees" fan angle, -1 = not set
   cakeSegments: import('./vdlCakeSegments').CakeSegment[]; // per-ingredient {label, htm, dur, body}
+  // ── `With` clauses: extra mine / petal / tail / mixed-stars per-effect ──
+  withModifiers: WithModifier[];
   // ── SuperVDL: Niagara fusion ──
   niagaraPreset?: string;           // matched Niagara preset ID
   niagaraProfile?: {
@@ -414,6 +417,7 @@ export function parseVDL(input: string): VDLResult {
     multiColors: [], impliesTrail: false,
     fuseDelay: -1,
     htmOverride: -1, fanAngleDeg: -1, cakeSegments: [],
+    withModifiers: [],
   };
 
   if (!raw) return result;
@@ -612,6 +616,9 @@ export function parseVDL(input: string): VDLResult {
       result.pistilColor = pColor.hex;
     }
   }
+
+  // ── Parse `With …` / `w/ …` non-pistil clauses (mine / petal / tail / mixed) ──
+  result.withModifiers = parseWithModifiers(raw, VDL_COLORS_TABLE);
 
   // ── Parse type ──
   let foundType = false;
