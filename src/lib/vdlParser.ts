@@ -459,15 +459,12 @@ export function parseVDL(input: string): VDLResult {
   if (degMatchTop) result.fanAngleDeg = parseFloat(degMatchTop[1]);
 
   // ── Cake ingredient segments (per-segment HTM/DUR after `+`) ──
-  // Lazy import to avoid circular module init cost; pure parser, no side effects.
-  try {
-    const { parseCakeSegments } = require('./vdlCakeSegments') as typeof import('./vdlCakeSegments');
-    const parsed = parseCakeSegments(raw);
-    if (parsed.segments.length > 0) result.cakeSegments = parsed.segments;
-    if (parsed.fanAngleDeg >= 0 && result.fanAngleDeg < 0) result.fanAngleDeg = parsed.fanAngleDeg;
-  } catch {
-    // module not available in some test envs — leave defaults
+  const parsedCake = parseCakeSegments(raw);
+  if (parsedCake.segments.length > 0) result.cakeSegments = parsedCake.segments;
+  if (parsedCake.fanAngleDeg >= 0 && result.fanAngleDeg < 0) {
+    result.fanAngleDeg = parsedCake.fanAngleDeg;
   }
+
 
   // ── Parse angle offset (R45, L30, etc.) ──
   let angleMatch: RegExpExecArray | null;
