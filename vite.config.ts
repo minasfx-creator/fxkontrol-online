@@ -81,16 +81,6 @@ export default defineConfig(({ mode }) => ({
               networkTimeoutSeconds: 10,
             },
           },
-          {
-            urlPattern: /\/assets\/(three-core|r3f|ru-|postprocessing|vendor-export|vendor-tiles|recharts)/i,
-            handler: "NetworkFirst",
-            options: {
-              cacheName: "lazy-chunks",
-              expiration: { maxEntries: 30, maxAgeSeconds: 7 * 24 * 60 * 60 },
-              cacheableResponse: { statuses: [0, 200] },
-              networkTimeoutSeconds: 6,
-            },
-          },
         ],
       },
     }),
