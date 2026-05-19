@@ -360,6 +360,9 @@ const BODY_FIRING_PATTERNS: Record<string, string> = {
   'zipper': 'z-shape', 'z-shape': 'z-shape', 'bookend': 'bookend',
   'wipe': 'wipe', 'w-shape': 'w-shape', 'r-shape': 'x-shape',
   'peacock': 'x-shape', 'angle': 'angle', 'fan': 'fan',
+  // Placeholder-cake doc (May 29, 2024): FNR = fan-to-right-in-sequence
+  // (distinct from "fan" which implies simultaneous shots per row).
+  'fnr': 'fnr',
 };
 
 // ── Row firing pattern keywords (3-letter codes) ──
