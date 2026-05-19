@@ -24,6 +24,7 @@ import { parseVDL, vdlToEffect } from '@/lib/vdlParser';
 import { temporalFlicker, getFlickerParams, strobeFlicker, getCombustionHdrBoost } from '@/lib/pyroNoise';
 import { updateFrustum, isSphereInFrustum } from '@/lib/frustumCuller';
 import { clampNiagaraHDR, getNiagaraBudgets } from '@/lib/niagaraBlenderRules';
+import { isEnabled } from '@/lib/featureFlags';
 import { thermalColor, autoMatchFormulation } from '@/render_ultra/fireworks/particleChemistry';
 import { getBurstConfig, type BurstPattern } from '@/render_ultra/fireworks/burstSimulation';
 import {
@@ -124,9 +125,109 @@ const STAR_FRAGMENT_SHADER = `
   }
 `;
 
+// ── v2 Shader: velocity-stretched sprite + HDR break flash + ember ramp ──
+// Pass 1 of realism refinement. Projects current per-particle velocity into
+// screen-space to elongate the sprite along the motion vector ("riscar o céu"),
+// adds an exponential break-flash HDR boost in the first ~80ms after spawn,
+// and lerps the dying star color toward an amber ember tone.
+const STAR_VERTEX_SHADER_V2 = `
+  attribute float aSize;
+  attribute float aLife;
+  attribute vec3 aVel;
+  varying vec3 vColor;
+  varying float vLife;
+  varying float vSize;
+  varying vec2 vVelDir;
+  varying float vSpeedFactor;
+  void main() {
+    vColor = color;
+    vLife = aLife;
+    vSize = aSize;
+    vec4 mvPos = modelViewMatrix * vec4(position, 1.0);
+    // Project a small velocity offset into clip space to derive screen direction
+    vec4 mvVelEnd = modelViewMatrix * vec4(position + aVel * 0.04, 1.0);
+    vec4 clipP = projectionMatrix * mvPos;
+    vec4 clipE = projectionMatrix * mvVelEnd;
+    vec2 sp = clipP.xy / max(0.0001, clipP.w);
+    vec2 se = clipE.xy / max(0.0001, clipE.w);
+    vec2 d = se - sp;
+    float dlen = length(d);
+    vVelDir = dlen > 0.0001 ? d / dlen : vec2(0.0, 1.0);
+    vSpeedFactor = clamp(dlen * 65.0, 0.0, 1.0);
+    gl_PointSize = aSize * (6000.0 / -mvPos.z);
+    gl_PointSize = clamp(gl_PointSize, 0.5, 192.0);
+    gl_Position = clipP;
+  }
+`;
+
+const STAR_FRAGMENT_SHADER_V2 = `
+  varying vec3 vColor;
+  varying float vLife;
+  varying float vSize;
+  varying vec2 vVelDir;
+  varying float vSpeedFactor;
+
+  void main() {
+    vec2 uv = gl_PointCoord - 0.5;
+    // Velocity-aligned frame: stretch sprite along motion, squash across it
+    vec2 vT = vec2(-vVelDir.y, vVelDir.x);
+    vec2 uvAligned = vec2(dot(uv, vT), dot(uv, vVelDir));
+    float stretch = 1.0 + vSpeedFactor * 1.6;
+    uvAligned.x *= stretch;        // narrower across velocity
+    uvAligned.y /= stretch;        // longer along velocity
+    float dist = length(uvAligned);
+
+    float core = exp(-dist * dist * 80.0);
+    float inner = exp(-dist * dist * 25.0);
+    float outer = exp(-dist * dist * 8.0);
+    float alpha = core * 1.0 + inner * 0.7 + outer * 0.15;
+
+    vec3 whiteHot = vec3(1.18, 1.08, 0.90);
+    vec3 col = mix(vColor, whiteHot, core * 0.45);
+    col += vColor * outer * 0.35;
+
+    // Ember temperature ramp — dying stars warm toward amber
+    // (Planckian-locus inspired; chem layer still owns absolute brightness)
+    vec3 emberHue = vec3(1.0, 0.34, 0.08);
+    float emberMix = smoothstep(0.55, 0.95, vLife);
+    col = mix(col, emberHue * (0.45 + vColor.r * 0.55), emberMix * 0.55);
+
+    // Break flash — HDR pop in first ~80ms, decays exp(-life*35)*5.5
+    // Pushes color above 1.0 → bloom amplifies → perceived flash
+    float breakFlash = exp(-vLife * 35.0) * 5.5;
+    col += vColor * breakFlash + whiteHot * breakFlash * 0.45;
+
+    // Youth retention (preserved from v1)
+    float youth = max(0.0, 1.0 - vLife * 4.0);
+    col += mix(vColor, whiteHot, 0.4) * youth * 0.30;
+
+    float edge = 1.0 - smoothstep(0.42, 0.5, dist);
+    gl_FragColor = vec4(col, alpha * edge);
+  }
+`;
+
 let _starMaterialInstance: THREE.ShaderMaterial | null = null;
+let _starMaterialV2Instance: THREE.ShaderMaterial | null = null;
 let _starMaterialVersion = 0;
 function _sharedStarMaterial(): THREE.ShaderMaterial {
+  // Lazy: pick v2 shader at first call if flag is on, fall back otherwise.
+  // Singleton per-shader so we don't churn programs.
+  const useV2 = isEnabled('r_star_stretch_v2');
+  if (useV2) {
+    if (!_starMaterialV2Instance) {
+      _starMaterialV2Instance = new THREE.ShaderMaterial({
+        vertexShader: STAR_VERTEX_SHADER_V2,
+        fragmentShader: STAR_FRAGMENT_SHADER_V2,
+        vertexColors: true,
+        transparent: true,
+        depthWrite: false,
+        depthTest: true,
+        blending: THREE.AdditiveBlending,
+      });
+      _starMaterialVersion++;
+    }
+    return _starMaterialV2Instance;
+  }
   if (!_starMaterialInstance) {
     _starMaterialInstance = new THREE.ShaderMaterial({
       vertexShader: STAR_VERTEX_SHADER,
@@ -663,6 +764,10 @@ export const FireworkBurst = React.forwardRef<THREE.Group, {
       colors: new Float32Array(STAR_COUNT * 3),
       sizes: new Float32Array(STAR_COUNT),
       lives: new Float32Array(STAR_COUNT),
+      // Pass 1 (r_star_stretch_v2): current per-particle velocity, updated each
+      // frame in the physics loop and consumed by STAR_VERTEX_SHADER_V2 to
+      // elongate the sprite along the motion direction in screen space.
+      vels: new Float32Array(STAR_COUNT * 3),
       trailPos: new Float32Array(trailVertCount * 3),
       trailCol: new Float32Array(trailVertCount * 3),
       trailVertCount,
@@ -851,6 +956,15 @@ export const FireworkBurst = React.forwardRef<THREE.Group, {
         pz = dragPos(vz, t, dragCoeff) + w[2] * t * t * 0.3;
       }
       pos[i * 3] = px; pos[i * 3 + 1] = py; pos[i * 3 + 2] = pz;
+
+      // Pass 1 (r_star_stretch_v2): analytical current velocity for shader
+      // stretch attribute. Drag uses generic dragCoeff (pattern-specific
+      // tweaks won't dramatically change visual direction); gravity adds
+      // downward component over time. Cheap — 3 mul/add per star.
+      const _decay = Math.exp(-dragCoeff * t);
+      particleBuffers.vels[i * 3]     = vx * _decay;
+      particleBuffers.vels[i * 3 + 1] = vy * _decay - GRAVITY * gravityMult * t;
+      particleBuffers.vels[i * 3 + 2] = vz * _decay;
 
       const flashIntensity = Math.max(0, 1 - starAge * 20);
       const emberPhase = Math.max(0, (starAge - 0.45) / 0.55);
@@ -1209,6 +1323,9 @@ export const FireworkBurst = React.forwardRef<THREE.Group, {
     if (colAttr) { colAttr.array = cols; colAttr.needsUpdate = true; }
     if (sizeAttr) { sizeAttr.array = sizes; sizeAttr.needsUpdate = true; }
     if (lifeAttr) { lifeAttr.array = lives; lifeAttr.needsUpdate = true; }
+    // Pass 1: feed current velocities into vertex shader for stretch effect
+    const velAttr = pGeo.getAttribute('aVel') as THREE.BufferAttribute | undefined;
+    if (velAttr) { velAttr.array = particleBuffers.vels; velAttr.needsUpdate = true; }
 
     const lGeo = trailRef.current.geometry;
     const tPosAttr = lGeo.getAttribute('position') as THREE.BufferAttribute;
@@ -1227,6 +1344,7 @@ export const FireworkBurst = React.forwardRef<THREE.Group, {
           <bufferAttribute attach="attributes-color" args={[particleBuffers.colors, 3]} />
           <bufferAttribute attach="attributes-aSize" args={[particleBuffers.sizes, 1]} />
           <bufferAttribute attach="attributes-aLife" args={[particleBuffers.lives, 1]} />
+          <bufferAttribute attach="attributes-aVel" args={[particleBuffers.vels, 3]} />
         </bufferGeometry>
       </points>
       

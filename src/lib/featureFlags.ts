@@ -34,6 +34,14 @@ const FLAGS = {
   r_hdr_ember_tail: true,
   /** Ambient LightProbe driven by top-N luminous bursts */
   r_lightprobe_from_bursts: false,
+  /** Pass 1: velocity-stretched stars + HDR break flash + ember temperature ramp */
+  r_star_stretch_v2: true,
+  /** Pass 2: per-star spark trails wired from sparkTrailsGPU (desktop only) */
+  r_spark_trails: true,
+  /** Pass 3: residual smoke puff at break point (caliber ≥ 3", no rain) */
+  r_break_puff: true,
+  /** Pass 3: pearl-string spacing on shape geometries (heart/smiley/ring/saturn) */
+  r_pearl_spacing: true,
 } as const;
 
 export type FeatureFlag = keyof typeof FLAGS;
