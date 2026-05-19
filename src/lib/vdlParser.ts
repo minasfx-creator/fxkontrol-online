@@ -20,6 +20,11 @@
 
 import { parseCakeSegments } from './vdlCakeSegments';
 import { parseWithModifiers, type WithModifier } from './vdlWithModifiers';
+import {
+  extractExactCakeBody,
+  parseExactCakeBody,
+  type ExactTube,
+} from './vdlExactSimulationSyntax';
 
 export interface VDLResult {
   caliber: number;
@@ -74,6 +79,8 @@ export interface VDLResult {
   cakeSegments: import('./vdlCakeSegments').CakeSegment[]; // per-ingredient {label, htm, dur, body}
   // ── `With` clauses: extra mine / petal / tail / mixed-stars per-effect ──
   withModifiers: WithModifier[];
+  // ── Exact Simulation Syntax: per-tube angles/labels/delays ──
+  exactTubes: ExactTube[]; // populated only when `Cake, 1 Row (…/CAK)` detected
   // ── SuperVDL: Niagara fusion ──
   niagaraPreset?: string;           // matched Niagara preset ID
   niagaraProfile?: {
@@ -418,6 +425,7 @@ export function parseVDL(input: string): VDLResult {
     fuseDelay: -1,
     htmOverride: -1, fanAngleDeg: -1, cakeSegments: [],
     withModifiers: [],
+    exactTubes: [],
   };
 
   if (!raw) return result;
@@ -467,6 +475,12 @@ export function parseVDL(input: string): VDLResult {
   if (parsedCake.segments.length > 0) result.cakeSegments = parsedCake.segments;
   if (parsedCake.fanAngleDeg >= 0 && result.fanAngleDeg < 0) {
     result.fanAngleDeg = parsedCake.fanAngleDeg;
+  }
+
+  // ── Exact Simulation Syntax: `Cake, 1 Row (…/CAK)` per-tube bodies ──
+  const exactBody = extractExactCakeBody(raw);
+  if (exactBody !== null) {
+    result.exactTubes = parseExactCakeBody(exactBody).tubes;
   }
 
 
