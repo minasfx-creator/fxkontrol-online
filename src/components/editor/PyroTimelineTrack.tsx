@@ -175,7 +175,81 @@ export default function PyroTimelineTrack({
     return counts;
   }, [pyroItems]);
 
-  if (totalCues === 0) return null;
+  // Drop handler — accept firework effects dragged from EffectLibrary,
+  // create a TimelineItem on track 0 (PYRO SYS) at the drop X position.
+  const handleDragOver = useCallback((e: React.DragEvent) => {
+    if (!e.dataTransfer.types.includes('application/effect-id')) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'copy';
+    setIsDragOver(true);
+  }, []);
+  const handleDragLeave = useCallback((e: React.DragEvent) => {
+    if (!e.currentTarget.contains(e.relatedTarget as Node)) setIsDragOver(false);
+  }, []);
+  const handleDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragOver(false);
+    const effectId = e.dataTransfer.getData('application/effect-id');
+    if (!effectId) return;
+    const effect = getEffectById(effectId);
+    if (!effect || effect.type !== 'firework') return;
+    const rect = e.currentTarget.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const time = snapToBeatTime(Math.max(0, x / pixelsPerSecond), bpm, snapToBeat, pixelsPerSecond);
+
+    const targetIds = selectedPositionIds.length > 0
+      ? selectedPositionIds.filter(id => positions.find(p => p.id === id)?.type === 'pyro')
+      : selectedPositionId && positions.find(p => p.id === selectedPositionId)?.type === 'pyro'
+        ? [selectedPositionId]
+        : [];
+
+    if (targetIds.length > 0) {
+      targetIds.forEach((posId, i) => {
+        const pos = positions.find(p => p.id === posId);
+        if (!pos) return;
+        addTimelineItem({
+          id: `tl-${Date.now()}-${Math.random().toString(36).slice(2, 6)}-${i}`,
+          effectId: effect.id, startTime: time, trackIndex: 0,
+          position: { x: pos.x, y: pos.y, z: pos.z },
+          positionId: posId, positionName: pos.name,
+        });
+      });
+    } else {
+      addTimelineItem({
+        id: `tl-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+        effectId: effect.id, startTime: time, trackIndex: 0,
+        position: { x: (Math.random() - 0.5) * 16, y: effect.heightMeters ?? 60, z: (Math.random() - 0.5) * 8 },
+      });
+    }
+  }, [pixelsPerSecond, bpm, snapToBeat, addTimelineItem, positions, selectedPositionId, selectedPositionIds]);
+
+  // Empty state — render a thin drop strip so the user can always drop here.
+  if (totalCues === 0) {
+    return (
+      <div className="border-b border-border/50">
+        <div className="flex items-center border-b border-border/30">
+          <div className="w-28 flex-shrink-0 flex items-center px-3 py-1 border-r border-border/50 bg-surface-1 gap-1">
+            <Flame className="h-3 w-3 text-accent/60 mr-1" />
+            <span className="text-[10px] font-medium text-accent/60 uppercase tracking-wider">Pyro Cues</span>
+          </div>
+          <div
+            className={cn(
+              "flex-1 h-7 flex items-center px-3 transition-colors",
+              isDragOver ? "bg-accent/15 ring-1 ring-inset ring-accent/40" : "bg-surface-0/30"
+            )}
+            onDragOver={handleDragOver}
+            onDragLeave={handleDragLeave}
+            onDrop={handleDrop}
+          >
+            <span className="text-[9px] font-mono text-muted-foreground/60">
+              {isDragOver ? '↓ Solte para adicionar fogo' : 'Arraste efeitos da biblioteca aqui'}
+            </span>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
 
   return (
     <div className="border-b border-border/50">
