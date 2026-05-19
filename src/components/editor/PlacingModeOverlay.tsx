@@ -15,7 +15,7 @@ export default React.memo(function PlacingModeOverlay() {
   const typeColor = isPyro ? 'hsl(25, 95%, 55%)' : 'hsl(190, 100%, 50%)';
 
   return (
-    <div className="absolute inset-0 z-40 pointer-events-none flex flex-col items-center justify-center animate-fade-in">
+    <div className="absolute inset-0 z-30 pointer-events-none flex flex-col items-center justify-center animate-fade-in">
       {/* Type badge */}
       <div
         className="mb-4 px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-[0.15em]"

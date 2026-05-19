@@ -22,35 +22,36 @@ const VIEW_PRESETS: { id: ViewPreset; label: string; shortLabel: string; icon: t
   { id: 'iso', label: 'Isometric', shortLabel: 'Iso', icon: Box },
 ];
 
-function BarButton({ 
-  active, onClick, title, children, className 
-}: { 
-  active?: boolean; onClick: () => void; title: string; children: React.ReactNode; className?: string 
+function BarButton({
+  active, onClick, title, children, className
+}: {
+  active?: boolean; onClick: () => void; title: string; children: React.ReactNode; className?: string
 }) {
+  // Tooltip via native `title` attr — avoids one TooltipProvider per button (perf + a11y).
   return (
-    <TooltipProvider delayDuration={300}>
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <button
-            onClick={onClick}
-            className={cn(
-              'h-7 px-1.5 sm:px-2 rounded-md text-[10px] font-medium flex items-center gap-1 transition-all border',
-              active
-                ? 'bg-primary/15 text-primary border-primary/30'
-                : 'bg-transparent text-muted-foreground border-transparent hover:bg-muted/40 hover:text-foreground hover:border-border/30',
-              className
-            )}
-          >
-            {children}
-          </button>
-        </TooltipTrigger>
-        <TooltipContent side="bottom" className="text-[10px]">
-          {title}
-        </TooltipContent>
-      </Tooltip>
-    </TooltipProvider>
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <button
+          onClick={onClick}
+          aria-label={title}
+          className={cn(
+            'h-7 px-1.5 sm:px-2 rounded-md text-[10px] font-medium flex items-center gap-1 transition-all border',
+            active
+              ? 'bg-primary/15 text-primary border-primary/30'
+              : 'bg-transparent text-muted-foreground border-transparent hover:bg-muted/40 hover:text-foreground hover:border-border/30',
+            className
+          )}
+        >
+          {children}
+        </button>
+      </TooltipTrigger>
+      <TooltipContent side="bottom" className="text-[10px]">
+        {title}
+      </TooltipContent>
+    </Tooltip>
   );
 }
+
 
 function Separator() {
   return <div className="w-px h-5 bg-border/30 mx-0.5 hidden sm:block" />;
@@ -85,7 +86,9 @@ export default function ViewportBar() {
   const modeLabel = modeLabels[editorMode] || editorMode;
 
   return (
-    <div className="absolute top-2 left-1/2 -translate-x-1/2 z-30 flex items-center gap-0.5 bg-card/85 backdrop-blur-xl border border-border/25 rounded-xl px-1.5 sm:px-2 py-1 shadow-lg select-none max-w-[95vw] overflow-x-auto scrollbar-none">
+    <TooltipProvider delayDuration={300}>
+    <div role="toolbar" aria-label="Viewport controls" className="absolute top-2 left-1/2 -translate-x-1/2 z-40 flex items-center gap-0.5 glass-hud-md px-1.5 sm:px-2 py-1 select-none max-w-[95vw] overflow-x-auto scrollbar-none">
+
       {/* Mode chip */}
       <div className={cn(
         'h-6 px-2 sm:px-2.5 rounded-md text-[9px] font-semibold uppercase tracking-wider flex items-center gap-1 mr-0.5 sm:mr-1 shrink-0',
@@ -153,5 +156,7 @@ export default function ViewportBar() {
         <Mountain className="w-3.5 h-3.5" />
       </BarButton>
     </div>
+    </TooltipProvider>
   );
 }
+

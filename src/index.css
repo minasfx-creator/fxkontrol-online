@@ -445,6 +445,37 @@
 .scrollbar-thin::-webkit-scrollbar-thumb { background: hsl(var(--border) / 0.3); border-radius: 2px; }
 .scrollbar-thin::-webkit-scrollbar-thumb:hover { background: hsl(var(--border) / 0.5); }
 
+/* ===== Viewport Overlay Z-Index Map (canonical) =====
+   z-[9999] → GlobalEStopButton (sagrado, NUNCA mover)
+   z-50     → overlays portal (modais, RadialMenu)
+   z-45     → CommandStatusIndicators
+   z-40     → SelectionModeBar, ViewportBar, TelemetryBar
+   z-30     → PlacingModeOverlay, GoogleTilesLoadingOverlay, AROverlayPanel
+   z-20     → ARCompassHUD, GeoHUD, PerformanceHUD, MobileHUD
+   z-10     → HUDCrosshairs, ARScanEffect, gizmo HTML pills
+   =================================================== */
+
+/* ===== Glass HUD Medium — overlays do viewport 3D ===== */
+.glass-hud-md {
+  background: hsl(220 18% 6% / 0.14);
+  backdrop-filter: blur(16px) saturate(140%);
+  -webkit-backdrop-filter: blur(16px) saturate(140%);
+  border: 1px solid hsl(190 70% 58% / 0.22);
+  box-shadow:
+    0 8px 24px -8px hsl(220 30% 1% / 0.55),
+    inset 0 1px 0 hsl(190 70% 70% / 0.06),
+    0 0 12px -4px hsl(190 70% 58% / 0.18);
+  border-radius: var(--radius);
+}
+.glass-hud-md.is-pressed { transform: translateY(1px); }
+@media (prefers-reduced-transparency: reduce) {
+  .glass-hud-md {
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    background: hsl(220 18% 6% / 0.92);
+  }
+}
+
 /* ===== Apple × Tactical Glass System ===== */
 .glass-hud {
   background: rgba(8, 10, 16, 0.88);

@@ -17,7 +17,7 @@ export default React.memo(function ARCompassHUD() {
   const cardinals: Record<number, string> = { 0: 'N', 90: 'E', 180: 'S', 270: 'W' };
 
   return (
-    <div className="absolute top-14 right-4 z-[35] pointer-events-none select-none">
+    <div className="absolute top-14 right-4 z-20 pointer-events-none select-none glass-hud-md p-1">
       <svg width="96" height="96" viewBox="0 0 96 96" className="drop-shadow-lg">
         {/* Outer ring */}
         <circle cx="48" cy="48" r="44" fill="none" stroke="hsl(var(--fxk-cyan) / 0.2)" strokeWidth="1" />
