@@ -432,6 +432,7 @@ export function parseVDL(input: string): VDLResult {
     htmOverride: -1, fanAngleDeg: -1, cakeSegments: [],
     withModifiers: [],
     exactTubes: [],
+    cakeDescription: null,
   };
 
   if (!raw) return result;
