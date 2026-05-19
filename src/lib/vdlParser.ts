@@ -425,6 +425,7 @@ export function parseVDL(input: string): VDLResult {
     fuseDelay: -1,
     htmOverride: -1, fanAngleDeg: -1, cakeSegments: [],
     withModifiers: [],
+    exactTubes: [],
   };
 
   if (!raw) return result;
