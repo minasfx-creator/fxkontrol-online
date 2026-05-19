@@ -100,12 +100,12 @@ function PositionGizmoInner({
     tc.setSize(0.85);
     tc.setSpace('local');
     tc.attach(group);
-    scene.add(tc);
+    scene.add(tc as unknown as THREE.Object3D);
     setControls(tc);
     return () => {
       tc.detach();
       tc.dispose();
-      scene.remove(tc);
+      scene.remove(tc as unknown as THREE.Object3D);
       setControls(null);
     };
   }, [group, camera, gl, scene]);
