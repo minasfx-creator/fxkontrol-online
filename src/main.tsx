@@ -13,15 +13,27 @@ const isChunkLoadError = (msg: string) =>
   /Importing a module script failed|Failed to fetch dynamically imported module|error loading dynamically imported module/i.test(
     msg || "",
   );
-const recoverFromStaleChunk = () => {
+const hardReloadCacheBust = () => {
+  const url = new URL(window.location.href);
+  url.searchParams.set("__fxk_cb", Date.now().toString(36));
+  window.location.replace(url.toString());
+};
+const recoverFromStaleChunk = async () => {
   if (sessionStorage.getItem("__fxk_chunk_reload")) return;
   sessionStorage.setItem("__fxk_chunk_reload", "1");
-  if (typeof caches !== "undefined") {
-    caches.keys().then((names) => Promise.all(names.map((n) => caches.delete(n)))).finally(() => {
-      window.location.reload();
-    });
-  } else {
-    window.location.reload();
+  try {
+    if ("serviceWorker" in navigator) {
+      const regs = await navigator.serviceWorker.getRegistrations();
+      await Promise.all(regs.map((r) => r.unregister()));
+    }
+    if (typeof caches !== "undefined") {
+      const names = await caches.keys();
+      await Promise.all(names.map((n) => caches.delete(n)));
+    }
+  } catch {
+    /* ignore */
+  } finally {
+    hardReloadCacheBust();
   }
 };
 window.addEventListener("error", (e) => {
