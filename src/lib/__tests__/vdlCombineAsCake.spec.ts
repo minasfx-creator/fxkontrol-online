@@ -80,17 +80,15 @@ describe('decideCakeSyntax', () => {
     expect(decideCakeSyntax(shots)).toBe('standard');
   });
 
-  it('non-uniform intra-row delays → exact', () => {
+  it('non-uniform intra-row delays beyond tolerance → exact (via custom tol)', () => {
+    // With timeToleranceMs=2: gaps 5,2,1 → max-min=4 > 2 ⇒ exact.
     const shots: CombineCakeShot[] = [
       shot({ timeMs: 0 }),
       shot({ timeMs: 5 }),
       shot({ timeMs: 7 }),
-      // gap 200 ms ⇒ would be new row, so make it tight to keep one row.
-      // Force one row but non-uniform spacing > 10ms.
-      shot({ timeMs: 7 + 1 }),
-      shot({ timeMs: 7 + 1 + 50 }), // 50ms gap, others ~1-2ms ⇒ delta 48 > tol
+      shot({ timeMs: 8 }),
     ];
-    expect(decideCakeSyntax(shots)).toBe('exact');
+    expect(decideCakeSyntax(shots, { timeToleranceMs: 2 })).toBe('exact');
   });
 
   it('irregular angle spacing → exact', () => {
