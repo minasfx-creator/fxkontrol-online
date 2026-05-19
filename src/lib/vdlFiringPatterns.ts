@@ -275,9 +275,12 @@ export function computeRowFiring(opts: RowPatternOptions): TubeFiring[] {
     const delays = new Array<number>(n).fill(0);
     if (canon === 'VSS') {
       // Sequence of symmetric pairs from center outward.
-      const center = (n - 1) / 2;
+      // For even N the two center tubes share offset 0; pairs expand outward integer-stepped.
+      const halfFloat = (n - 1) / 2;
       for (let i = 0; i < n; i++) {
-        delays[i] = Math.round(Math.abs(i - center)) * spacing;
+        const raw = Math.abs(i - halfFloat);
+        const step = n % 2 === 0 ? Math.max(0, raw - 0.5) : raw;
+        delays[i] = Math.round(step) * spacing;
       }
     }
     return make(angles, delays);
