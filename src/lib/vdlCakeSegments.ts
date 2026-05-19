@@ -66,11 +66,16 @@ const DEGREES_REGEX = /(\d+\.?\d*)\s*Degrees?\b/i;
 
 /**
  * Parse a single cake-ingredient text fragment (already split on `+`).
- * Strips `(label)`, `<N> HTM` and `<N> DUR` and returns the residual body.
+ * Strips `(label)`, `<N> HTM`, `<N> DUR`, `<N> LFT`, `<N> DLY`
+ * and returns the residual body.
  */
 export function parseCakeSegment(fragment: string): CakeSegment {
   if (!fragment || !fragment.trim()) {
-    return { label: '', body: '', htmOverride: -1, durOverride: -1 };
+    return {
+      label: '', body: '',
+      htmOverride: -1, durOverride: -1,
+      lftOverride: -1, dlyOverride: -1,
+    };
   }
   let body = fragment;
 
@@ -98,11 +103,31 @@ export function parseCakeSegment(fragment: string): CakeSegment {
     body = body.replace(DUR_REGEX, ' ');
   }
 
+  // LFT override — per-segment aerial lift time (seconds).
+  let lftOverride = -1;
+  const lftMatch = body.match(LFT_REGEX);
+  if (lftMatch) {
+    lftOverride = parseFloat(lftMatch[1]);
+    body = body.replace(LFT_REGEX, ' ');
+  }
+
+  // DLY override — per-segment delay before simulation (seconds).
+  let dlyOverride = -1;
+  const dlyMatch = body.match(DLY_REGEX);
+  if (dlyMatch) {
+    dlyOverride = parseFloat(dlyMatch[1]);
+    body = body.replace(DLY_REGEX, ' ');
+  }
+
   return {
     label,
     body: body.replace(/\s+/g, ' ').trim(),
     htmOverride,
     durOverride,
+    lftOverride,
+    dlyOverride,
+  };
+}
   };
 }
 
