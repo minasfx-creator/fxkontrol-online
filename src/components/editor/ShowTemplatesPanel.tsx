@@ -105,7 +105,32 @@ export default function ShowTemplatesPanel({ onClose }: { onClose: () => void })
     input.click();
   };
 
-  const filtered = filter === 'all' ? templates : templates.filter(t => t.category === filter);
+  const handleDeployReal = (tpl: RealShowTemplate, mode: 'replace' | 'merge' = 'replace') => {
+    const positions = tpl.positions ?? [];
+    const cues = tpl.pyroCues ?? [];
+    if (positions.length === 0 && cues.length === 0) { toast.error('Template vazio'); return; }
+    if (mode === 'replace') {
+      // Soft replace: nuke current pyro positions+timeline by adding fresh ones with namespaced IDs
+      currentTimelineItems.forEach(it => useProjectStore.getState().removeTimelineItem(it.id));
+      currentPositions.filter(p => p.type === 'pyro').forEach(p => useProjectStore.getState().removePosition(p.id));
+    }
+    positions.forEach(p => addPosition({ ...p, section: tpl.name }));
+    cues.forEach(c => addTimelineItem({
+      id: c.id, effectId: c.effectId, startTime: c.startTime, trackIndex: c.trackIndex,
+      position: c.position, positionId: c.positionId, positionName: c.positionName, notes: c.notes,
+    }));
+    setDuration(Math.max(tpl.duration, 30));
+    setCurrentTime(0);
+    setProjectName(tpl.name);
+    toast.success(`${tpl.name} · ${cues.length} cues / ${positions.length} posições / ${tpl.duration}s`);
+  };
+
+  const provBadge = (p?: string) => {
+    if (p === 'real_script') return { label: 'REAL SCRIPT', cls: 'bg-green-500/20 text-green-400 border-green-500/40' };
+    if (p === 'reconstructed') return { label: 'RECONSTRUCTED', cls: 'bg-amber-500/20 text-amber-400 border-amber-500/40' };
+    return { label: 'HYPOTHESIS', cls: 'bg-cyan-500/20 text-cyan-400 border-cyan-500/40' };
+  };
+
 
   return (
     <div className="h-full flex flex-col bg-surface-0 border-l border-border/50">
