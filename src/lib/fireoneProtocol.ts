@@ -625,7 +625,24 @@ export class FireOneController {
   private readBuffer = new Uint8Array(0);
   /** Per-transport read buffer, so XL4 frames don't desync XL2 frames. */
   private readBuffers: Map<string, Uint8Array> = new Map();
-  private modules: Map<number, FireOneModuleStatus> = new Map();
+  /** Keyed by `${controllerId ?? '∅'}|${addr}` so two controllers (e.g. XL4
+   *  + XL2) can each hold their own module at the same numeric address
+   *  without overwriting each other's roster. */
+  private modules: Map<string, FireOneModuleStatus> = new Map();
+  private _moduleKey(addr: number, transportId?: string): string {
+    return `${transportId ?? '∅'}|${addr}`;
+  }
+  /** Resolve an existing entry by addr, preferring a matching controller and
+   *  falling back to any entry at that address (legacy single-transport). */
+  private _findModule(addr: number, transportId?: string): FireOneModuleStatus | undefined {
+    if (transportId) {
+      const k = this._moduleKey(addr, transportId);
+      const hit = this.modules.get(k);
+      if (hit) return hit;
+    }
+    for (const m of this.modules.values()) if (m.moduleAddress === addr) return m;
+    return undefined;
+  }
   private transportManager: TransportMgr;
   private hybridRouter: HybridTransportRouter | null = null;
   private _hybridMode = false;
@@ -654,6 +671,35 @@ export class FireOneController {
 
   get discoveredModules(): FireOneModuleStatus[] {
     return Array.from(this.modules.values()).sort((a, b) => a.moduleAddress - b.moduleAddress);
+  }
+
+  /** Roster grouped per controller (XL4 / XL2 / Wi-Fi Direct / Art-Net / …).
+   *  Key is the transportId that answered IDENTIFY; value carries the
+   *  controller label + the addresses owned by that controller. Two
+   *  controllers may legitimately own the same numeric module address. */
+  getRosterByController(): Array<{
+    controllerId: string;
+    controllerLabel: string;
+    transport: FireOneModuleStatus['transport'];
+    modules: FireOneModuleStatus[];
+  }> {
+    const groups = new Map<string, FireOneModuleStatus[]>();
+    for (const m of this.modules.values()) {
+      const id = m.controllerId ?? '∅';
+      const list = groups.get(id) ?? [];
+      list.push(m);
+      groups.set(id, list);
+    }
+    return Array.from(groups.entries()).map(([controllerId, modules]) => {
+      modules.sort((a, b) => a.moduleAddress - b.moduleAddress);
+      const head = modules[0];
+      return {
+        controllerId,
+        controllerLabel: head?.controllerLabel ?? controllerId,
+        transport: head?.transport,
+        modules,
+      };
+    });
   }
 
   on(listener: FireOneListener): () => void {
@@ -965,17 +1011,18 @@ export class FireOneController {
       if (transportTag) s.transport = transportTag;
       return s;
     };
+    const key = this._moduleKey(addr, transportId);
 
     switch (frame.command) {
       case FireOneCmd.STATUS: {
         const status = tagStatus(parseStatusPayload(addr, frame.payload));
-        this.modules.set(addr, status);
+        this.modules.set(key, status);
         this.emit({ type: 'status-update', moduleAddress: addr, data: status, timestamp: Date.now(), transportId, controllerLabel });
         break;
       }
 
       case FireOneCmd.CONTINUITY: {
-        const status = this.modules.get(addr);
+        const status = this._findModule(addr, transportId);
         if (status) {
           // Update igniter continuity from payload
           for (let i = 0; i < Math.min(32, frame.payload.length); i++) {
@@ -986,7 +1033,7 @@ export class FireOneController {
               status.igniters[i].resistance = (byte & 0x1F) * 0.5; // Fixed: × 0.5 for 0–15.5Ω range
             }
           }
-          this.modules.set(addr, { ...status, lastSeen: Date.now() });
+          this.modules.set(key, { ...status, lastSeen: Date.now() });
         }
         this.emit({ type: 'continuity-result', moduleAddress: addr, data: frame.payload, timestamp: Date.now(), transportId, controllerLabel });
         break;
@@ -994,31 +1041,31 @@ export class FireOneController {
 
       case FireOneCmd.FIRE: {
         const igniterPos = frame.payload[0] ?? 0;
-        const module = this.modules.get(addr);
+        const module = this._findModule(addr, transportId);
         if (module) {
           const ig = module.igniters.find(i => i.position === igniterPos);
           if (ig) ig.fired = true;
-          this.modules.set(addr, { ...module, lastSeen: Date.now() });
+          this.modules.set(key, { ...module, lastSeen: Date.now() });
         }
         this.emit({ type: 'fire-confirm', moduleAddress: addr, data: { igniterPos }, timestamp: Date.now(), transportId, controllerLabel });
         break;
       }
 
       case FireOneCmd.ARM: {
-        const module = this.modules.get(addr);
+        const module = this._findModule(addr, transportId);
         if (module) {
           module.armed = true;
-          this.modules.set(addr, { ...module, lastSeen: Date.now() });
+          this.modules.set(key, { ...module, lastSeen: Date.now() });
         }
         this.emit({ type: 'arm-confirm', moduleAddress: addr, data: { armed: true }, timestamp: Date.now(), transportId, controllerLabel });
         break;
       }
 
       case FireOneCmd.DISARM: {
-        const module = this.modules.get(addr);
+        const module = this._findModule(addr, transportId);
         if (module) {
           module.armed = false;
-          this.modules.set(addr, { ...module, lastSeen: Date.now() });
+          this.modules.set(key, { ...module, lastSeen: Date.now() });
         }
         this.emit({ type: 'arm-confirm', moduleAddress: addr, data: { armed: false }, timestamp: Date.now(), transportId, controllerLabel });
         break;
@@ -1028,15 +1075,15 @@ export class FireOneController {
         // Module responded to identify — parse as status, tag with controller, infer model.
         const status = tagStatus(parseStatusPayload(addr, frame.payload));
         status.model = inferModelFromIdentify(frame.payload, status.firmwareVersion);
-        this.modules.set(addr, status);
+        this.modules.set(key, status);
         this.emit({ type: 'module-discovered', moduleAddress: addr, data: status, timestamp: Date.now(), transportId, controllerLabel });
         break;
       }
 
       case FireOneCmd.HEARTBEAT: {
-        const module = this.modules.get(addr);
+        const module = this._findModule(addr, transportId);
         if (module) {
-          this.modules.set(addr, { ...module, lastSeen: Date.now() });
+          this.modules.set(key, { ...module, lastSeen: Date.now() });
         }
         this.emit({ type: 'heartbeat', moduleAddress: addr, data: null, timestamp: Date.now() });
         break;
@@ -1055,13 +1102,13 @@ export class FireOneController {
 
       case FireOneCmd.MODULE_CONFIG: {
         const config = parseModuleConfig(frame.payload);
-        const module = this.modules.get(addr);
+        const module = this._findModule(addr, transportId);
         if (module) {
           module.serialNumber = config.serialNumber;
           module.dmxUniverse = config.dmxUniverse;
           module.wireless = config.wireless;
           module.firmwareVersion = config.firmwareVersion;
-          this.modules.set(addr, { ...module, lastSeen: Date.now() });
+          this.modules.set(key, { ...module, lastSeen: Date.now() });
         }
         this.emit({ type: 'config-response', moduleAddress: addr, data: config, timestamp: Date.now() });
         break;
@@ -1069,7 +1116,7 @@ export class FireOneController {
 
       case FireOneCmd.WIRELESS_STATUS: {
         const ws = parseWirelessStatus(frame.payload);
-        const module = this.modules.get(addr);
+        const module = this._findModule(addr, transportId);
         if (module) {
           const prevMode = module.connectionMode;
           module.rssiDbm = ws.rssiDbm;
@@ -1078,7 +1125,7 @@ export class FireOneController {
           module.linkQuality = ws.linkQuality;
           module.connectionMode = ws.mode;
           module.wireless = ws.mode !== 'wired';
-          this.modules.set(addr, { ...module, lastSeen: Date.now() });
+          this.modules.set(key, { ...module, lastSeen: Date.now() });
           // Detect fallback transition
           if (prevMode === 'wireless' && ws.mode === 'fallback') {
             this.emit({ type: 'wireless-fallback', moduleAddress: addr, data: ws, timestamp: Date.now() });
@@ -1097,10 +1144,10 @@ export class FireOneController {
       case FireOneCmd.VERIFY_ULTRAFIRE: {
         // Module reports UltraFire verification result
         const verified = (frame.payload[0] ?? 0) === ACK;
-        const module = this.modules.get(addr);
+        const module = this._findModule(addr, transportId);
         if (module) {
           module.ultraFireVerified = verified;
-          this.modules.set(addr, { ...module, lastSeen: Date.now() });
+          this.modules.set(key, { ...module, lastSeen: Date.now() });
         }
         this.emit({ type: 'ultrafire-verify', moduleAddress: addr, data: { verified }, timestamp: Date.now() });
         break;
