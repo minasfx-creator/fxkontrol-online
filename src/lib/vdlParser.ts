@@ -25,6 +25,10 @@ import {
   parseExactCakeBody,
   type ExactTube,
 } from './vdlExactSimulationSyntax';
+import {
+  parseCakeDescription,
+  type CakeDescription,
+} from './vdlCakeDescriptions';
 
 export interface VDLResult {
   caliber: number;
