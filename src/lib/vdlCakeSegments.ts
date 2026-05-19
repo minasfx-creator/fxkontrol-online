@@ -59,6 +59,8 @@ export interface CakeSegmentParseResult {
 const LABEL_REGEX = /^\s*\(([a-z])\)\s*/i;
 const HTM_REGEX = /(\d+\.?\d*)\s*HTM\b/i;
 const DUR_REGEX = /(\d+\.?\d*)\s*DUR\b/i;
+const LFT_REGEX = /(\d+\.?\d*)\s*LFT\b/i;
+const DLY_REGEX = /(\d+\.?\d*)\s*DLY\b/i;
 // Degrees must follow a number; ignore "180 Degrees Fan" vs the bare word.
 const DEGREES_REGEX = /(\d+\.?\d*)\s*Degrees?\b/i;
 
