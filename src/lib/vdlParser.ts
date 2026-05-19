@@ -79,6 +79,8 @@ export interface VDLResult {
   cakeSegments: import('./vdlCakeSegments').CakeSegment[]; // per-ingredient {label, htm, dur, body}
   // ── `With` clauses: extra mine / petal / tail / mixed-stars per-effect ──
   withModifiers: WithModifier[];
+  // ── Exact Simulation Syntax: per-tube angles/labels/delays ──
+  exactTubes: ExactTube[]; // populated only when `Cake, 1 Row (…/CAK)` detected
   // ── SuperVDL: Niagara fusion ──
   niagaraPreset?: string;           // matched Niagara preset ID
   niagaraProfile?: {
