@@ -47,7 +47,7 @@ describe('VDL Colors — Table 1', () => {
   for (const row of TABLE_1) {
     it(`${row.name} → ${row.hex} (impliesTrail=${row.impliesTrail})`, () => {
       const vdl = parseVDL(`${row.name} Peony`);
-      expect(vdl.color.toLowerCase()).toBe(row.hex.toLowerCase());
+      expect(vdl.colors[0]?.toLowerCase()).toBe(row.hex.toLowerCase());
       expect(vdl.impliesTrail).toBe(row.impliesTrail);
     });
   }
@@ -56,7 +56,7 @@ describe('VDL Colors — Table 1', () => {
     for (const name of ['Charcoal Tip', 'Gamboge Tip', 'Gold Tip', 'Silver Tip']) {
       const vdl = parseVDL(`${name} Peony`);
       expect(vdl.impliesTrail).toBe(false);
-      expect(vdl.color).toMatch(/^#[0-9a-fA-F]{6}$/);
+      expect(vdl.colors[0]).toMatch(/^#[0-9a-fA-F]{6}$/);
     }
   });
 });
