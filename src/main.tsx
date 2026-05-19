@@ -36,6 +36,10 @@ const recoverFromStaleChunk = async () => {
     hardReloadCacheBust();
   }
 };
+document.addEventListener("vite:preloadError", (event) => {
+  event.preventDefault();
+  recoverFromStaleChunk();
+});
 window.addEventListener("error", (e) => {
   if (isChunkLoadError(e.message)) recoverFromStaleChunk();
 });
