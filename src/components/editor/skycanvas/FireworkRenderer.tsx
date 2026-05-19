@@ -1344,6 +1344,7 @@ export const FireworkBurst = React.forwardRef<THREE.Group, {
           <bufferAttribute attach="attributes-color" args={[particleBuffers.colors, 3]} />
           <bufferAttribute attach="attributes-aSize" args={[particleBuffers.sizes, 1]} />
           <bufferAttribute attach="attributes-aLife" args={[particleBuffers.lives, 1]} />
+          <bufferAttribute attach="attributes-aVel" args={[particleBuffers.vels, 3]} />
         </bufferGeometry>
       </points>
       
