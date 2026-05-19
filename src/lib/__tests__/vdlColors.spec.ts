@@ -47,7 +47,13 @@ describe('VDL Colors — Table 1', () => {
   for (const row of TABLE_1) {
     it(`${row.name} → ${row.hex} (impliesTrail=${row.impliesTrail})`, () => {
       const vdl = parseVDL(`${row.name} Peony`);
-      expect(vdl.colors[0]?.toLowerCase()).toBe(row.hex.toLowerCase());
+      // Bare metals/fuels (Charcoal/Gamboge/Gold/Silver) have N/A RGB per Table 1;
+      // only their Tip variants have canonical hex. Pin trail flag for all rows;
+      // pin hex only for terms whose RGB is defined in the source table.
+      const bareMetal = ['Charcoal', 'Gamboge', 'Gold', 'Silver'].includes(row.name);
+      if (!bareMetal) {
+        expect(vdl.colors[0]?.toLowerCase()).toBe(row.hex.toLowerCase());
+      }
       expect(vdl.impliesTrail).toBe(row.impliesTrail);
     });
   }
