@@ -85,6 +85,8 @@ export interface VDLResult {
   withModifiers: WithModifier[];
   // ── Exact Simulation Syntax: per-tube angles/labels/delays ──
   exactTubes: ExactTube[]; // populated only when `Cake, 1 Row (…/CAK)` detected
+  // ── Cake description structure (auxiliary/body/ingredients/rowSpecs) ──
+  cakeDescription: CakeDescription | null;
   // ── SuperVDL: Niagara fusion ──
   niagaraPreset?: string;           // matched Niagara preset ID
   niagaraProfile?: {
