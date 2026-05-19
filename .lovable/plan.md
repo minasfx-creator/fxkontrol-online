@@ -1,95 +1,82 @@
-## Objetivo
+# Refino de Realismo dos Fogos — 7 Gaps Concretos
 
-Hoje `discoverModules()` despeja IDENTIFY no "melhor transporte" e o controller não guarda qual gateway (XL4 / XL2 / Wi-Fi Direct / RS-485 / 2-Wire / Art-Net) respondeu cada módulo IFXQM (IFMx-i32Q). O resultado: roster plano, módulo do XL2 some quando XL4 é prioritário, e o painel não consegue dizer "addr 7 vive sob o XL4-Gateway".
+## Por que parecem "irreais" hoje
 
-Vamos:
-1. Varrer **cada transporte conectado** individualmente.
-2. Etiquetar cada módulo descoberto com o `controllerId` + label de origem (XL4 / XL2 / Wi-Fi Direct / RS-485 / etc.).
-3. Mostrar o roster **agrupado por controladora** no `FireOneModulesInline`.
+O renderer real (`src/components/editor/skycanvas/FireworkRenderer.tsx`, 1716 linhas) usa `THREE.Points` com um shader Gaussiano radial. As geometrias estão certas (ring, heart, smiley, saturn, etc.), mas faltam os **7 elementos** que separam "estrela genérica que sobe e cai" de pirotecnia real:
 
-Sem mexer em safety (uiCommandGateway / SSM / FieldBus). Read-only de discovery.
+| # | Gap visual | Causa técnica | Existe no repo mas não wired? |
+|---|---|---|---|
+| 1 | Estrelas são bolhas redondas iguais | Gaussian sprite isotrópico, sem stretch | parcial |
+| 2 | Sem rastro de faíscas (sparks) atrás de cada estrela | `sparkTrailsGPU.ts` existe, não chamado | ✅ existe |
+| 3 | Cor "chapada" do início ao fim | Sem ramp blackbody temporal | ✅ `particleChemistry.thermalColor` |
+| 4 | "Break flash" inexistente ou fraco | Frame 0..2 do burst não tem HDR boost | parcial |
+| 5 | Sem fumaça residual no ponto de ruptura | `SmokeSystem` existe, só usado p/ ground smoke | ✅ `smokeSimulation.ts` |
+| 6 | Willow/Kamuro sem trilha contínua | Falta ribbon/MeshLine por estrela | ✅ `ribbonTrailRenderer.ts` |
+| 7 | Shapes (heart, smiley, ring) com densidade aleatória | Stars amostradas com `Math.random()` em vez de espaçamento uniforme | — |
 
----
+Todo o resto (silhuetas de mine, niagaraProfile glow, chemistry compounds, frustum culling, HDR boost combustion) já está rodando.
 
-## Mudanças técnicas
+## Plano em 3 passes (cada um isolável por flag, validável visualmente)
 
-### 1. `src/lib/fireoneTransport.ts`
-- `FireOneTransport` ganha `send(frame, opts?: { broadcast?: boolean })` opcional já no shape atual; adicionar método novo no manager **sem mexer no send legado**:
-  - `FireOneTransportManager.sendVia(transportId, frame)` — envia via transporte específico (usado pelo discover per-controller).
-  - `getConnectedTransports(): FireOneTransport[]` — lista filtrada para iterar no scan.
+### Pass 1 — Velocity Stretch + Break Flash (alto impacto, baixo custo)
 
-### 2. `src/lib/fireoneProtocol.ts`
-- **Capturar origem do frame**: o handler `transportManager.on('data')` já recebe `transportId`. Encaminhar para `processIncoming(chunk, transportId)` → `handleFrame(frame, transportId)`. Hoje o `transportId` é descartado.
-- Estender `FireOneEvent` com `transportId?: string` (back-compat opcional).
-- Em `handleFrame`, no caso `IDENTIFY` / `STATUS`: gravar `status.transport = mapTransportType(t.type)` e `status.controllerId = transportId`, `status.controllerLabel = t.label` (ex: "XL4 Gateway", "RS-485 Cable"). Para WiFiDirect, usar `connectedDevice.label`/`deviceType` quando disponível.
-- Novo `discoverModules(maxAddr, opts?: { transportId?: string })`:
-  - Sem `opts.transportId`: itera todos `transports.connected` e dispara IDENTIFY 1..maxAddr **em cada um** com gap 50ms, marcando o destino via `sendVia`.
-  - Com `transportId`: escopo a um controlador (usado pela UI quando o usuário clica "rescan XL4").
-- `FireOneModuleStatus`: adicionar campos opcionais `controllerId?: string`, `controllerLabel?: string` (já tem `transport?`).
+**Arquivo único editado:** `FireworkRenderer.tsx` (shader + setup do material)
 
-### 3. `src/lib/moduleAggregator.ts`
-- `AggregatedModule` ganha `controllerId?: string` e `controllerLabel?: string`.
-- `keyFor(model, address, controllerId?)` passa a usar `controllerId` quando presente → mesmo endereço atrás de XL4 e XL2 vira **duas linhas distintas** (que é o comportamento real).
-- `aggregatedToFireOneStatus` propaga os novos campos.
+1. **Velocity stretch** no `STAR_VERTEX_SHADER`:
+   - Adicionar attribute `aVel` (vec3) já calculado nas velocidades existentes
+   - Ovalizar o sprite na direção da velocidade projetada em screen-space: `gl_PointSize` continua igual, mas no fragment shader o `gl_PointCoord` é rotacionado pelo ângulo `atan2(velScreen.y, velScreen.x)` e escalado em Y por `(1 + speedFactor * 0.8)`. Resultado: estrelas "riscam" o céu em vez de serem pontos circulares.
+   - Custo: zero (cálculo já é por-vértice)
 
-### 4. `src/hooks/useFireOneHardware.ts`
-- No subscribe do controller: ler `event.transportId` e gravar em `status.controllerId` / `controllerLabel`; chamar `moduleAggregator.upsert({ controllerId, controllerLabel, transport: <real>, ... })` em vez do `transport: 'serial'` hardcoded.
-- `discoverModules(maxAddr, opts?)` repassa `opts.transportId` ao controller.
+2. **Break Flash HDR**:
+   - Nova var `aBirthTime` (float). Nos primeiros `0.08s` após break: multiplicador `flash = exp(-age*40) * 8.0` adicionado ao `col` (HDR > 1.0 alimenta o bloom automaticamente)
+   - Pico ~3 frames @60fps, depois decai pra zero — exatamente como o flash químico real do composto BP no rompimento
+   - Custo: 1 atributo + 2 linhas no fragment
 
-### 5. `src/components/editor/FireOneModulesInline.tsx`
-- Agrupar `rows` por `controllerLabel ?? transportLabel(m)`.
-- Header de cada grupo: ícone do transporte + label + contagem `(n)` + botão `rescan` específico daquele controlador (se `onRescan(controllerId)` for passado pelo pai).
-- Mantém comportamento read-only e o `maxRows` global (corte aplicado após o sort por grupo).
+3. **Cor temporal blackbody**:
+   - Importar `thermalColor` de `particleChemistry.ts` (já existe!)
+   - No JS, pré-computar 32 amostras da curva `whiteHot(3500K) → starColor → ember(1200K)` em uma `DataTexture` 32×1 RGBA
+   - Sampler no fragment: `vec3 baseCol = texture(uTempRamp, vec2(vLife, 0.5)).rgb`
+   - Custo: 1 texture sampler + DataTexture de 128 bytes
 
-### 6. Testes (Vitest)
-- `discoverModulesPerController.spec.ts`: stub do `TransportManager` com dois transports fake (id `xl4`, id `xl2`), `discoverModules()` deve chamar `sendVia('xl4', ...)` e `sendVia('xl2', ...)`, e os módulos respondidos por cada um devem aparecer com `controllerId` correto.
-- `moduleAggregator.controllerScope.spec.ts`: dois upserts com mesmo `model+address` mas `controllerId` diferente geram duas entries.
-- `fireOneModulesInline.grouping.spec.tsx`: dois mocks (controllerLabel "XL4 Gateway" addr 3 e "XL2 Gateway" addr 3) renderizam dois grupos com headers próprios.
+**Flag:** `r_star_stretch_v2` (default ON após validação visual em `/dev/effect-preview`)
+**Tests:** 3 — atributos populados, ramp gerada determinística, fallback para shader v1 quando flag OFF
 
----
+### Pass 2 — Spark Trails (o "wow" visual mais importante)
 
-## Fora de escopo
-- Nada de mexer em `pyroTransportPolicy`, `uiCommandGateway`, SafetyStateMachine, ARM/FIRE/E-STOP.
-- Sem alterar protocolo de wire (mesmo IDENTIFY, mesmo frame format).
-- Sem mover Wi-Fi Direct para fora do TransportManager.
+Wire de `sparkTrailsGPU.ts` no `FireworkRenderer`:
 
----
+1. Para cada `FireworkBurst` ativo, instanciar 1 `SparkTrailSystem` com `STAR_COUNT / 3` rastros (sub-amostragem — 1 em cada 3 estrelas tem trail, suficiente visualmente, terço do custo)
+2. Cada frame: passar posição/velocidade atuais do `Points` → o `sparkTrailsGPU` mantém ring buffer de 8 posições passadas por trail e renderiza como `BufferGeometry LineSegments` com material aditivo
+3. Cor do trail: `starColor * 0.6 * (1 - trailAge/0.4)` — esmaece em 400ms
+4. **Willow/Kamuro/Palm** pegam 100% de cobertura (efeito definidor); demais 33%
 
-## Diagrama do fluxo novo
+**Flag:** `r_spark_trails` (default ON em desktop, OFF em mobile via `useDeviceTier`)
+**Budget guard:** auto-OFF se `useFrameBudget` p95 ≥ 35ms
+**Tests:** 4 — system criado por burst, dispose no unmount, sub-amostragem correta, mobile-OFF
 
-```text
-UI rescan ──► useFireOneHardware.discoverModules(opts?)
-                       │
-                       ▼
-       FireOneController.discoverModules
-                       │
-              ┌────────┴────────┐
-              ▼                 ▼
-        sendVia(xl4)        sendVia(xl2)    ... (per connected transport)
-              │                 │
-              ▼                 ▼
-        TransportMgr 'data' { data, transportId }
-              │
-              ▼
-       handleFrame(frame, transportId)
-              │
-              ▼
-   status { controllerId, controllerLabel, transport }
-              │
-   ┌──────────┴──────────┐
-   ▼                     ▼
-controller.modules   moduleAggregator.upsert
-              │
-              ▼
-   FireOneModulesInline → grouped roster
-```
+### Pass 3 — Break Puff + Shape Pearl Spacing
 
----
+1. **Break Puff de fumaça** — no instante do break, emitir 1 `SmokeSystem` puff (3-5 partículas, raio 0.8m, lifetime 8s, opacidade peak 0.4) no ponto de ruptura. Reaproveita `smokeSimulation.ts` que já está disposable-safe. Apenas para shells > 3" e sem chuva.
 
-## Arquivos tocados
-- `src/lib/fireoneTransport.ts` (+ `sendVia`, `getConnectedTransports`)
-- `src/lib/fireoneProtocol.ts` (discover per-controller, propaga transportId)
-- `src/lib/moduleAggregator.ts` (controllerId no key + fields)
-- `src/hooks/useFireOneHardware.ts` (propaga transportId)
-- `src/components/editor/FireOneModulesInline.tsx` (agrupa por controlador)
-- 3 specs novos
+2. **Pearl Spacing** nas geometrias de shape (heart, smiley, ring, saturn): trocar `Math.random()` por `i / STAR_COUNT` no parâmetro `t` da curva — distribui estrelas uniformemente ao longo da silhueta (como "colar de pérolas"). Mantém jitter pequeno (`±0.02 * sigma`) pra não ficar mecânico. Já testei mentalmente nas funções existentes em `buildPresetVelocities` — é uma troca de 1 linha por shape (heart/smiley/ring/double-ring/saturn-ring).
+
+**Flag:** `r_break_puff` (ON desktop) + `r_pearl_spacing` (ON sempre, é trivialmente melhor)
+**Tests:** 3 — puff só dispara em shell ≥ 3", pearl spacing determinístico, no-rain gate
+
+## Fora de escopo (deliberado)
+
+- **Não** vou reescrever `FireworkRenderer.tsx` — só editar shader + adicionar 1 ref pra sparkTrails + 1 ref pra puff
+- **Não** vou wire o Niagara emitter system inteiro — overkill, e o velocity stretch + spark trails já entregam 80% do realismo percebido
+- **Não** mexo em VDL pipeline, ECS, safety, workMode, ou qualquer coisa fora do shader/render de fogos
+- **Não** adiciono dependência nova
+
+## Resumo numérico
+
+| Pass | Arquivos editados | Arquivos novos | Tests | Custo GPU est. |
+|---|---|---|---|---|
+| 1 | 1 (FireworkRenderer.tsx) | 0 | 3 | +0.3ms p/ 2k stars |
+| 2 | 1 (FireworkRenderer.tsx) | 0 | 4 | +1.2ms p/ 2k stars (auto-cap) |
+| 3 | 1 (FireworkRenderer.tsx) | 0 | 3 | +0.4ms p/ break |
+| **Total** | **1 arquivo** | **0** | **10** | **~2ms (budget 16.6ms@60fps)** |
+
+Posso aplicar Pass 1 primeiro pra você validar visualmente em `/dev/effect-preview` antes de seguir pros 2 e 3 — assim cada delta é reversível e você vê o ganho incremental.
