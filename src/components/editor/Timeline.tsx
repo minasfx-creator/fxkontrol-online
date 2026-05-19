@@ -2,7 +2,6 @@ import React, { useRef, useState, useCallback, useMemo, useEffect } from 'react'
 import { Play, Pause, SkipBack, SkipForward, Square, Trash2, ZoomIn, ZoomOut, Magnet, Copy, GripVertical, Zap, Sparkles, ChevronDown, ChevronRight, Clock, Move, Crosshair, Link2, Unlink, Scissors, ClipboardPaste, Eye, EyeOff, Headphones } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useProjectStore } from '@/store/useProjectStore';
-import { EFFECT_LIBRARY } from '@/data/effectLibrary';
 import { getEffectById } from '@/data/effectsLibraries/lookup';
 import { useLaserPreviewStore } from '@/store/useLaserPreviewStore';
 import useGenerativeStore from '@/store/useGenerativeStore';
@@ -434,10 +433,16 @@ function TimelineTrackRow({
         });
       });
     } else {
+      // No position selected — for fireworks spawn in the sky at the effect's
+      // nominal burst height so the render actually shows up. Drones/lights
+      // keep a mid-altitude default.
+      const skyY = effect.type === 'firework'
+        ? (effect.heightMeters ?? 60)
+        : 5 + Math.random() * 10;
       addTimelineItem({
         id: `tl-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
         effectId: effect.id, startTime: time, trackIndex,
-        position: { x: (Math.random() - 0.5) * 16, y: effect.type === 'firework' ? 0 : 5 + Math.random() * 10, z: (Math.random() - 0.5) * 8 },
+        position: { x: (Math.random() - 0.5) * 16, y: skyY, z: (Math.random() - 0.5) * 8 },
       });
     }
   }, [pixelsPerSecond, duration, trackIndex, addTimelineItem, bpm, snapToBeat, positions, selectedPositionId, selectedPositionIds]);
