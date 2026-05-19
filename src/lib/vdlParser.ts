@@ -18,6 +18,8 @@
  *   - Type-aware prefire/duration/height per Finale Manual Table 2
  */
 
+import { parseCakeSegments } from './vdlCakeSegments';
+
 export interface VDLResult {
   caliber: number;
   caliberMM: number;
@@ -65,6 +67,10 @@ export interface VDLResult {
   multiColors: string[][];   // & separated multi-color groups
   impliesTrail: boolean;     // color implies trail of sparks
   fuseDelay: number;         // FD — visco fuse delay (distinct from prefire), -1 = not set
+  // ── HTM / Degrees (cake header per-effect height + fan angle) ──
+  htmOverride: number;       // HTM — per-effect height in meters override (top-level), -1 = not set
+  fanAngleDeg: number;       // Cake-level "<N> Degrees" fan angle, -1 = not set
+  cakeSegments: import('./vdlCakeSegments').CakeSegment[]; // per-ingredient {label, htm, dur, body}
   // ── SuperVDL: Niagara fusion ──
   niagaraPreset?: string;           // matched Niagara preset ID
   niagaraProfile?: {
@@ -407,6 +413,7 @@ export function parseVDL(input: string): VDLResult {
     firingPattern: '', isAerial: false,
     multiColors: [], impliesTrail: false,
     fuseDelay: -1,
+    htmOverride: -1, fanAngleDeg: -1, cakeSegments: [],
   };
 
   if (!raw) return result;
@@ -441,6 +448,23 @@ export function parseVDL(input: string): VDLResult {
   if (durMatch) result.durOverride = parseFloat(durMatch[1]);
   const fdMatch = raw.match(FD_REGEX);
   if (fdMatch) result.fuseDelay = parseFloat(fdMatch[1]);
+
+  // ── HTM (per-effect height) / Degrees (cake fan angle) — canonical Finale VDL ──
+  const htmMatchTop = raw.match(/(\d+\.?\d*)\s*HTM\b/i);
+  if (htmMatchTop) {
+    result.htmOverride = parseFloat(htmMatchTop[1]);
+    result.height = result.htmOverride; // HTM takes precedence over "<N>m" at top level
+  }
+  const degMatchTop = raw.match(/(\d+\.?\d*)\s*Degrees?\b/i);
+  if (degMatchTop) result.fanAngleDeg = parseFloat(degMatchTop[1]);
+
+  // ── Cake ingredient segments (per-segment HTM/DUR after `+`) ──
+  const parsedCake = parseCakeSegments(raw);
+  if (parsedCake.segments.length > 0) result.cakeSegments = parsedCake.segments;
+  if (parsedCake.fanAngleDeg >= 0 && result.fanAngleDeg < 0) {
+    result.fanAngleDeg = parsedCake.fanAngleDeg;
+  }
+
 
   // ── Parse angle offset (R45, L30, etc.) ──
   let angleMatch: RegExpExecArray | null;
@@ -677,6 +701,12 @@ export function parseVDL(input: string): VDLResult {
   if (result.durOverride >= 0) {
     result.duration = result.durOverride;
   }
+
+  // ── Apply HTM override (Finale spec: HTM specifies per-effect height) ──
+  if (result.htmOverride >= 0) {
+    result.height = result.htmOverride;
+  }
+
 
   // ── Apply adjustment scaling (compound stacking) ──
   const adjFactors: Partial<Record<AdjFactor, number>> = {};
