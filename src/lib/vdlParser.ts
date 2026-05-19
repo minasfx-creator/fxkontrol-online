@@ -702,6 +702,12 @@ export function parseVDL(input: string): VDLResult {
     result.duration = result.durOverride;
   }
 
+  // ── Apply HTM override (Finale spec: HTM specifies per-effect height) ──
+  if (result.htmOverride >= 0) {
+    result.height = result.htmOverride;
+  }
+
+
   // ── Apply adjustment scaling (compound stacking) ──
   const adjFactors: Partial<Record<AdjFactor, number>> = {};
   for (const adjName of result.adjustments) {
