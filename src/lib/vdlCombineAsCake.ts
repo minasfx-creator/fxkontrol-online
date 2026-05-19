@@ -94,7 +94,7 @@ export interface DecideCakeSyntaxOptions {
  *   - Group shots by timeMs into rows (cluster gap > tolerance).
  *   - Within each row, verify uniform inter-tube spacing.
  *
- * Pattern-name matching (STR/STL/FN*/...) is decided downstream; this
+ * Pattern-name matching (STR/STL/FN-family/...) is decided downstream; this
  * helper returns 'standard' only if uniformity holds, which is the
  * necessary precondition documented by the source material.
  */
