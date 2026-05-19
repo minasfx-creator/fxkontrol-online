@@ -15,6 +15,7 @@
  */
 import { useRef, useEffect, useMemo, useState } from 'react';
 import { Line, Html } from '@react-three/drei';
+// TransformControls from three/examples (drei's wrapper has child-attach quirks)
 import { TransformControls } from 'three/examples/jsm/controls/TransformControls.js';
 import { useThree } from '@react-three/fiber';
 import { useProjectStore } from '@/store/useProjectStore';
