@@ -122,7 +122,7 @@ describe('Finale Effect Data — interpolation', () => {
     ];
     const mid = sampleRgb(s, 500);
     expect((mid >> 16) & 0xff).toBe(128); // R: 255→0
-    expect((mid >> 8)  & 0xff).toBe(127); // G: 0→255 (rounded)
+    expect((mid >> 8)  & 0xff).toBe(128); // G: 0→255
     expect(mid & 0xff).toBe(0);
   });
 });
