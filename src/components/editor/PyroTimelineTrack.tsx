@@ -3,12 +3,21 @@
  * Shows pyro cues as colored bars grouped by formation, synchronized with the main timeline.
  * Each bar represents a timeline item (pyro effect) with color-coded category indicators.
  */
-import { useMemo, useState, useRef, useEffect } from 'react';
+import { useMemo, useState, useRef, useEffect, useCallback } from 'react';
 import { useProjectStore } from '@/store/useProjectStore';
 import { type TimelineItem } from '@/types/projectTypes';
-import { EFFECT_LIBRARY, type Effect } from '@/data/effectLibrary';
+import { type Effect } from '@/data/effectLibrary';
+import { getEffectById } from '@/data/effectsLibraries/lookup';
 import { cn } from '@/lib/utils';
 import { Flame, ChevronDown, ChevronRight } from 'lucide-react';
+
+function snapToBeatTime(time: number, bpm: number | null, snapEnabled: boolean, pixelsPerSecond: number): number {
+  if (!snapEnabled || !bpm) return time;
+  const beatInterval = 60 / bpm;
+  const nearestBeat = Math.round(time / beatInterval) * beatInterval;
+  const threshold = 8 / pixelsPerSecond;
+  return Math.abs(time - nearestBeat) < threshold ? nearestBeat : time;
+}
 
 
 /** Color map for pyro part types */
@@ -77,18 +86,25 @@ export default function PyroTimelineTrack({
   const currentTime = useProjectStore(s => s.currentTime);
   const selectTimelineItem = useProjectStore(s => s.selectTimelineItem);
   const selectedTimelineItemId = useProjectStore(s => s.selectedTimelineItemId);
+  const addTimelineItem = useProjectStore(s => s.addTimelineItem);
+  const bpm = useProjectStore(s => s.bpm);
+  const snapToBeat = useProjectStore(s => s.snapToBeat);
+  const positions = useProjectStore(s => s.positions);
+  const selectedPositionId = useProjectStore(s => s.selectedPositionId);
+  const selectedPositionIds = useProjectStore(s => s.selectedPositionIds);
   const [expanded, setExpanded] = useState(true);
+  const [isDragOver, setIsDragOver] = useState(false);
 
   // Get all pyro timeline items (firework type)
   const pyroItems = useMemo(() => {
     return timelineItems
       .filter(item => {
-        const effect = EFFECT_LIBRARY.find(e => e.id === item.effectId);
+        const effect = getEffectById(item.effectId);
         return effect?.type === 'firework';
       })
       .map(item => ({
         item,
-        effect: EFFECT_LIBRARY.find(e => e.id === item.effectId)!,
+        effect: getEffectById(item.effectId)!,
       }))
       .sort((a, b) => a.item.startTime - b.item.startTime);
   }, [timelineItems]);
