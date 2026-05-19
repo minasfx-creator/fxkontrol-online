@@ -1,11 +1,12 @@
 import { useRef, useEffect, useState, useCallback } from 'react';
 import { Upload, Music, Zap, Volume2, VolumeX, GripHorizontal, Minus, Plus, Flag, Trash2 } from 'lucide-react';
 import { useProjectStore } from '@/store/useProjectStore';
-import { EFFECT_LIBRARY } from '@/data/effectLibrary';
+import { getEffectById } from '@/data/effectsLibraries/lookup';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
+import { getAudioControl, setAudioMuted, subscribeAudioControl } from '@/lib/audioControl';
 
 function detectBPM(audioBuffer: AudioBuffer): number {
   const data = audioBuffer.getChannelData(0);
@@ -89,13 +90,11 @@ export default function AudioWaveform({ pixelsPerSecond }: { pixelsPerSecond: nu
   const [waveformData, setWaveformData] = useState<Float32Array | null>(null);
   const [uploading, setUploading] = useState(false);
   const [beats, setBeats] = useState<number[]>([]);
-  const [muted, setMuted] = useState(false);
-  const [volume, setVolume] = useState(0.8);
+  const [muted, setMutedLocal] = useState<boolean>(() => getAudioControl().muted);
   const [trackHeight, setTrackHeight] = useState(MIN_HEIGHT);
   const [isResizing, setIsResizing] = useState(false);
 
   const audioContextRef = useRef<AudioContext | null>(null);
-  const audioRef = useRef<HTMLAudioElement | null>(null);
   const resizeStartY = useRef(0);
   const resizeStartH = useRef(0);
 
@@ -125,55 +124,20 @@ export default function AudioWaveform({ pixelsPerSecond }: { pixelsPerSecond: nu
   const shrink = useCallback(() => setTrackHeight(h => Math.max(MIN_HEIGHT, h - HEIGHT_STEP)), []);
   const grow = useCallback(() => setTrackHeight(h => Math.min(MAX_HEIGHT, h + HEIGHT_STEP)), []);
 
-  // Create / configure <audio> element
+  // Mirror shared audio control mute → local UI state
   useEffect(() => {
-    if (!audioUrl) return;
-    const audio = new Audio(audioUrl);
-    audio.preload = 'auto';
-    audio.volume = muted ? 0 : volume;
-    audio.playbackRate = playbackSpeed;
-    audioRef.current = audio;
+    return subscribeAudioControl((ctrl) => setMutedLocal(ctrl.muted));
+  }, []);
 
-    return () => {
-      audio.pause();
-      audio.src = '';
-      audioRef.current = null;
-    };
-  }, [audioUrl]);
+  const toggleMute = useCallback(() => {
+    const next = !getAudioControl().muted;
+    setAudioMuted(next);
+  }, []);
 
-  // Sync volume / mute
-  useEffect(() => {
-    if (audioRef.current) audioRef.current.volume = muted ? 0 : volume;
-  }, [muted, volume]);
-
-  // Sync playback speed
-  useEffect(() => {
-    if (audioRef.current) audioRef.current.playbackRate = playbackSpeed;
-  }, [playbackSpeed]);
-
-  // Sync play / pause
-  useEffect(() => {
-    const audio = audioRef.current;
-    if (!audio) return;
-
-    if (isPlaying) {
-      if (Math.abs(audio.currentTime - currentTime) > 0.15) {
-        audio.currentTime = currentTime;
-      }
-      audio.play().catch(() => {});
-    } else {
-      audio.pause();
-    }
-  }, [isPlaying]);
-
-  // Sync seek (when user clicks timeline)
-  useEffect(() => {
-    const audio = audioRef.current;
-    if (!audio || isPlaying) return;
-    if (Math.abs(audio.currentTime - currentTime) > 0.15) {
-      audio.currentTime = currentTime;
-    }
-  }, [currentTime, isPlaying]);
+  // NOTE: <audio> element + play/pause/seek/volume/rate are owned by
+  // <AudioEngine /> (headless, mounted at the page root). This component is
+  // pure visualization so playback survives Timeline collapse / unmount.
+  void playbackSpeed; void isPlaying; void currentTime; // referenced only for redraw deps below
 
   // Load and decode audio for waveform + BPM
   const loadAudio = useCallback(async (url: string) => {
