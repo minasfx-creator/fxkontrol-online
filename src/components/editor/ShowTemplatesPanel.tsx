@@ -16,8 +16,15 @@ import { toast } from 'sonner';
 export default function ShowTemplatesPanel({ onClose }: { onClose: () => void }) {
     const droneFormations = useProjectStore(s => s.droneFormations);
   const addDroneFormation = useProjectStore(s => s.addDroneFormation);
+  const addPosition = useProjectStore(s => s.addPosition);
+  const addTimelineItem = useProjectStore(s => s.addTimelineItem);
+  const setDuration = useProjectStore(s => s.setDuration);
+  const setCurrentTime = useProjectStore(s => s.setCurrentTime);
+  const setProjectName = useProjectStore(s => s.setProjectName);
+  const currentPositions = useProjectStore(s => s.positions);
+  const currentTimelineItems = useProjectStore(s => s.timelineItems);
   const [templates, setTemplates] = useState<ShowTemplate[]>([]);
-  const [tab, setTab] = useState<'browse' | 'save'>('browse');
+  const [tab, setTab] = useState<'quick' | 'browse' | 'save'>('quick');
   const [saveName, setSaveName] = useState('');
   const [saveDesc, setSaveDesc] = useState('');
   const [saveCategory, setSaveCategory] = useState<TemplateCategory>('custom');
