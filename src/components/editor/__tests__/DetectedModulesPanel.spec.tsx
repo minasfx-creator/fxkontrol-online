@@ -39,9 +39,9 @@ describe('DetectedModulesPanel', () => {
       });
     });
 
-    expect(screen.getByText(/FXK-M1/i)).toBeInTheDocument();
-    expect(screen.getByText(/IFMx-i32Q/i)).toBeInTheDocument();
-    expect(screen.getAllByText(/ONLINE/i).length).toBeGreaterThanOrEqual(2);
+    expect(screen.getAllByText(/FXK-M1/i).length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText(/IFMx-i32Q/i).length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByLabelText('status ONLINE').length).toBe(2);
     expect(screen.getAllByText(/XL4 Gateway/i).length).toBeGreaterThanOrEqual(2);
   });
 
