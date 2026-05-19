@@ -6,10 +6,11 @@ import {
   TEMPLATE_CATEGORIES,
   type ShowTemplate, type TemplateCategory,
 } from '@/lib/showTemplates';
+import { REAL_SHOW_TEMPLATES, type RealShowTemplate } from '@/data/realShowTemplates';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { X, Save, Download, Upload, Trash2, FolderOpen, Plus } from 'lucide-react';
+import { X, Save, Download, Upload, Trash2, FolderOpen, Plus, Zap, MapPin } from 'lucide-react';
 import { toast } from 'sonner';
 
 export default function ShowTemplatesPanel({ onClose }: { onClose: () => void }) {
