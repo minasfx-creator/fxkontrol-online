@@ -128,8 +128,6 @@ export function parseCakeSegment(fragment: string): CakeSegment {
     dlyOverride,
   };
 }
-  };
-}
 
 /**
  * Parse a full cake VDL string. Splits ingredients on `+` (the canonical
