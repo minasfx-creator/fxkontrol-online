@@ -477,6 +477,12 @@ export function parseVDL(input: string): VDLResult {
     result.fanAngleDeg = parsedCake.fanAngleDeg;
   }
 
+  // ── Exact Simulation Syntax: `Cake, 1 Row (…/CAK)` per-tube bodies ──
+  const exactBody = extractExactCakeBody(raw);
+  if (exactBody !== null) {
+    result.exactTubes = parseExactCakeBody(exactBody).tubes;
+  }
+
 
   // ── Parse angle offset (R45, L30, etc.) ──
   let angleMatch: RegExpExecArray | null;
