@@ -447,6 +447,26 @@ export function parseVDL(input: string): VDLResult {
   const fdMatch = raw.match(FD_REGEX);
   if (fdMatch) result.fuseDelay = parseFloat(fdMatch[1]);
 
+  // ── HTM (per-effect height) / Degrees (cake fan angle) — canonical Finale VDL ──
+  const htmMatchTop = raw.match(/(\d+\.?\d*)\s*HTM\b/i);
+  if (htmMatchTop) {
+    result.htmOverride = parseFloat(htmMatchTop[1]);
+    result.height = result.htmOverride; // HTM takes precedence over "<N>m" at top level
+  }
+  const degMatchTop = raw.match(/(\d+\.?\d*)\s*Degrees?\b/i);
+  if (degMatchTop) result.fanAngleDeg = parseFloat(degMatchTop[1]);
+
+  // ── Cake ingredient segments (per-segment HTM/DUR after `+`) ──
+  // Lazy import to avoid circular module init cost; pure parser, no side effects.
+  try {
+    const { parseCakeSegments } = require('./vdlCakeSegments') as typeof import('./vdlCakeSegments');
+    const parsed = parseCakeSegments(raw);
+    if (parsed.segments.length > 0) result.cakeSegments = parsed.segments;
+    if (parsed.fanAngleDeg >= 0 && result.fanAngleDeg < 0) result.fanAngleDeg = parsed.fanAngleDeg;
+  } catch {
+    // module not available in some test envs — leave defaults
+  }
+
   // ── Parse angle offset (R45, L30, etc.) ──
   let angleMatch: RegExpExecArray | null;
   ANGLE_RIGHT_REGEX.lastIndex = 0;
