@@ -65,6 +65,10 @@ export interface VDLResult {
   multiColors: string[][];   // & separated multi-color groups
   impliesTrail: boolean;     // color implies trail of sparks
   fuseDelay: number;         // FD — visco fuse delay (distinct from prefire), -1 = not set
+  // ── HTM / Degrees (cake header per-effect height + fan angle) ──
+  htmOverride: number;       // HTM — per-effect height in meters override (top-level), -1 = not set
+  fanAngleDeg: number;       // Cake-level "<N> Degrees" fan angle, -1 = not set
+  cakeSegments: import('./vdlCakeSegments').CakeSegment[]; // per-ingredient {label, htm, dur, body}
   // ── SuperVDL: Niagara fusion ──
   niagaraPreset?: string;           // matched Niagara preset ID
   niagaraProfile?: {
