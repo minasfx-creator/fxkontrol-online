@@ -5,6 +5,35 @@ import { initWebVitals } from "@/lib/webVitals";
 
 createRoot(document.getElementById("root")!).render(<App />);
 
+// ── Dynamic chunk-load recovery ──
+// "Importing a module script failed" / "Failed to fetch dynamically imported module"
+// happens when the HTML references a chunk hash that no longer exists on the CDN
+// (typical right after a redeploy). Reload once to pick up fresh hashes.
+const isChunkLoadError = (msg: string) =>
+  /Importing a module script failed|Failed to fetch dynamically imported module|error loading dynamically imported module/i.test(
+    msg || "",
+  );
+const recoverFromStaleChunk = () => {
+  if (sessionStorage.getItem("__fxk_chunk_reload")) return;
+  sessionStorage.setItem("__fxk_chunk_reload", "1");
+  if (typeof caches !== "undefined") {
+    caches.keys().then((names) => Promise.all(names.map((n) => caches.delete(n)))).finally(() => {
+      window.location.reload();
+    });
+  } else {
+    window.location.reload();
+  }
+};
+window.addEventListener("error", (e) => {
+  if (isChunkLoadError(e.message)) recoverFromStaleChunk();
+});
+window.addEventListener("unhandledrejection", (e) => {
+  const msg = (e.reason && (e.reason.message || String(e.reason))) || "";
+  if (isChunkLoadError(msg)) recoverFromStaleChunk();
+});
+// Clear the guard after a successful render-stable window so future deploys can recover again.
+setTimeout(() => sessionStorage.removeItem("__fxk_chunk_reload"), 30_000);
+
 // Initialize Web Vitals RUM instrumentation
 initWebVitals();
 
