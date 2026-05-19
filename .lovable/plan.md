@@ -1,102 +1,119 @@
-# Templates de Show — Refinados com Planos Reais
+# Refino UI/UX — Overlays do Viewport 3D
 
-5 planos analisados; vou converter em templates determinísticos e adicionar o Mineirão estádio.
+Escopo travado pelas suas escolhas: **overlays do viewport** (chrome flutuante por cima do canvas Three.js), glass **médio**, limpeza de **imports/dead code**, auditoria focada de **leaks + z-index + nested buttons**.
 
-## Dados extraídos
+Tudo fora dessa lista (Toolbar, painéis laterais, Timeline, telas mobile dedicadas, FieldMode) **não muda**.
 
-| Plano | Formato | Cues | Duração | Insights |
-|---|---|---|---|---|
-| **Réveillon BC** | Finale CSV completo | 85 | 410s | 6 posições (5 balsas + Emissário), Module/Slat/Pin, prefires reais (1.84–2.68s) por calibre |
-| **Acaiaca Recife 2017** | Plano por quadros | 29 quadros | ~14min | 3 balsas, calibres 2–7", padrões em V/W/retos |
-| **Itaguai 2022/23** | Plano por canais | 22 canais × 3 pontos | 36–45s/canal | Grades+tortas calibres 3–6" |
-| **Show da Virada** | DOCX descritivo | 30+ blocos | — | 10 pontos lineares, leques W, calibres 2–3" |
-| **Música 4** | Finale HTML print | — | — | Estrutura por shotTime/effectTime/pin/track |
+---
 
-## Entregas
+## 1. Token novo: `.glass-hud-md`
 
-### 1. Estender `ShowTemplate` (retrocompat)
+Adiciono UMA classe utilitária em `src/index.css` (não toco tokens existentes — `.glass`, `.glass-hud`, `.glass-premium` ficam intactos para não quebrar nada):
 
-`src/lib/showTemplates.ts` ganha campos opcionais:
-```ts
-pyroCues?: TemplatePyroCue[];   // mapeia 1:1 para PyroCue
-positions?: TemplatePosition[]; // posições nomeadas com x/y/z/heading
-venue?: { name: string; gps?: { lat; lng; alt } };
-audioHint?: { bpm?: number; duration: number };
-provenance: 'real_script' | 'reconstructed' | 'marketing_hypothesis';
-sourceFile?: string;            // ex: "Réveillon_BC_firing_script.csv"
+```css
+.glass-hud-md {
+  background: hsl(220 18% 6% / 0.14);              /* surface 14% */
+  backdrop-filter: blur(16px) saturate(140%);
+  -webkit-backdrop-filter: blur(16px) saturate(140%);
+  border: 1px solid hsl(190 70% 58% / 0.22);       /* cyan-dessat 22% */
+  box-shadow:
+    0 8px 24px -8px hsl(220 30% 1% / 0.55),
+    inset 0 1px 0 hsl(190 70% 70% / 0.06),
+    0 0 12px -4px hsl(190 70% 58% / 0.18);          /* halo cyan leve */
+  border-radius: var(--radius);
+}
+.glass-hud-md.is-pressed { transform: translateY(1px); }
+@media (prefers-reduced-transparency: reduce) {
+  .glass-hud-md { backdrop-filter: none; background: hsl(220 18% 6% / 0.92); }
+}
 ```
-Tipos antigos continuam válidos (campos opcionais).
 
-### 2. Catálogo de templates reais — `src/data/realShowTemplates.ts`
+Sem inline `bg-card/90 backdrop-blur-md` espalhado: troca por `.glass-hud-md` nos componentes-alvo.
 
-Cada template é função pura que retorna `Omit<ShowTemplate,'id'|'createdAt'>`:
+---
 
-- **`reveillonBC()`** — 85 cues 1:1 do CSV, 6 posições (Balsa 1–5 + FG Emissário), provenance `real_script`. Audio hint 410s.
-- **`acaiacaRecife2017()`** — 29 quadros reconstruídos como cues sequenciais (3 posições × N calibres × tempo por quadro), provenance `reconstructed`.
-- **`itaguai2022()`** — 22 canais × 3 pontos, grades/tortas alocadas por timing 36–45s, provenance `reconstructed`.
-- **`showVirada10Pontos()`** — 10 posições lineares, blocos W de leques + tortas, provenance `reconstructed`.
+## 2. Componentes do escopo (overlays)
 
-### 3. **Mineirão Estádio — `mineiraoStadium()` ⭐**
+Auditar e refinar — **só estes**:
 
-Layout fiel ao Mineirão:
-- **Venue**: Belo Horizonte, GPS `lat=-19.8658, lng=-43.9706, alt=852m`
-- **Geometria** (eixo Y=norte, X=leste, Z=altura):
-  - Eixo longo do gramado: ~108m (N–S), eixo curto ~68m (L–O)
-  - Anel da cobertura: ~270m × 220m, altura 46m
-- **22 posições canônicas**:
-  - 4 cantos do gramado (`P1..P4`) — minas baixas + cake fan, h=0
-  - 4 meio-laterais arquibancada inferior (`P5..P8`), h=12m
-  - 8 pontos do anel da cobertura (`P9..P16`), h=46m, heading apontando p/ centro — bombas aéreas seguras
-  - 2 posições centrais (`P17, P18`) atrás de cada baliza, h=2m — cortinas/cascatas
-  - 4 cantos externos do estacionamento (`P19..P22`), h=0 — shells 5–6" maiores (longe da torcida)
-- **120 cues** em 3 atos (90s):
-  1. **Intro 0–20s**: anel da cobertura em wave (P9→P16) c/ Silver Mines
-  2. **Build 20–55s**: gramado em pulses (P1–P8) sincronizado a 110 BPM, alternando Peony 4"/Brocade 5"
-  3. **Climax 55–90s**: estacionamento externo (P19–P22) com Kamuro 12" + Horsetail 6", finale 20× Grand Peony em fan
-- **NFPA 1123 respeitado**: shells ≥5" SÓ nas posições externas (raio ≥70m da torcida); minas+cakes pequenos nas posições internas. Geofence de audiência cobrindo bowl inteiro.
-- **Audio hint**: 90s, sem BPM (hino).
-- **Provenance**: `reconstructed` (layout do estádio real, sequência cinematic original).
+| Arquivo | Mudança |
+|---|---|
+| `SelectionModeBar.tsx` | substitui `bg-card/90 backdrop-blur-md border-border/40` pelo `.glass-hud-md`; converte cor hardcoded `SECTION_COLORS` para `style={{...}}` (já está, mantém); fix **possível listener leak** no `keydown` handler (verifico via re-read) |
+| `TelemetryBar.tsx` | glass-hud-md no container; remove imports não usados |
+| `ViewportBar.tsx` | glass-hud-md; consolida chips em `<div role="group">` |
+| `ViewportNavControls.tsx` | glass + tooltip via `<button title>` (sem Radix Tooltip aninhado) |
+| `ARCompassHUD.tsx` | glass-hud-md; remove magic numbers em const |
+| `HUDCrosshairs.tsx` | só limpa imports; visual já é mira pura |
+| `RadialMenu.tsx` | glass-hud-md no anel; **verifica nested button em Radix** (memória) |
+| `PerformanceHUD.tsx` | glass + collapse animation; corrige `setInterval` sem cleanup se houver |
+| `GeoHUD.tsx` | glass-hud-md |
+| `PlacingModeOverlay.tsx` | glass + halo cyan no banner |
+| `GoogleTilesLoadingOverlay.tsx` | glass-hud-md + barra de progresso `--status-sync` |
+| `CommandStatusIndicators.tsx` | glass; agrupa chips |
+| `PositionTransformGizmo.tsx` (Html badge) | só o pill `heading°·pitch°` herda `.glass-hud-md`; gizmo 3D não muda |
+| `ARScanEffect.tsx` | dead-code sweep apenas |
+| `AROverlayPanel.tsx` | glass-hud-md no painel flutuante |
+| `MobileHUD.tsx` | glass; respeita safe-area iOS |
 
-### 4. UI — Quick Deploy no `ShowTemplatesPanel`
+`SelectionStatusBar.tsx` fica fora (é statusbar inferior, não overlay viewport — ela tem refino separado se você quiser depois).
 
-Nova aba **"⚡ Quick Deploy"** (primeira):
-- Cards grandes com badge de provenance (real_script verde / reconstructed amber / marketing_hypothesis cyan)
-- Mostra venue + duração + nº cues + thumbnail
-- Botão único **"Deploy to Editor"** que:
-  1. `useProjectStore.setMetadata(...)` (venue, gps, duração)
-  2. `useProjectStore.setPositions(template.positions)`
-  3. `useProjectStore.setPyroCues(template.pyroCues)` (idempotente: substitui)
-  4. `useProjectStore.setCurrentTime(0)`
-  5. Toast: "Réveillon BC deployed — 85 cues / 6 posições / 410s"
-- Botão secundário "Merge" (não substitui, só anexa)
+---
 
-Tab "Browse" mantém comportamento atual (user-saved).
+## 3. Auditoria focada de bugs (read-only primeiro, fix depois)
 
-### 5. Testes — `src/lib/__tests__/realShowTemplates.spec.ts`
+Faço um sweep com `rg` sobre os 16 arquivos acima procurando:
 
-- Cada built-in retorna ≥1 cue, ≥1 posição
-- Réveillon BC: exatos 85 cues, duração 410±1s, 6 posições
-- Mineirão: 120 cues, todas em posição existente, shells ≥5" só em P19–P22, todas dentro do geofence
-- Deploy é idempotente (rodar 2× = mesmo estado final)
-- Provenance preserved no metadata
+**(a) Listener / timer leaks** — padrão `addEventListener` / `setInterval` / `setTimeout` sem cleanup no return do `useEffect`. Para cada hit:
+- timers → migrar pra `useInterval` / `useTimeout` do `src/hooks/useInterval.ts` (canônico da memória).
+- listeners → `useRef` + `removeEventListener` no return.
 
-## Garantias
+**(b) Z-index conflitos** — mapeio os z-index hoje:
+- `GlobalEStopButton`: `z-[9999]` (sagrado, não toco).
+- `SelectionModeBar`: `z-40`.
+- Outros: variados (`z-10`, `z-50`, inline).
+- Padronizo num bloco comentado no topo de `src/index.css`:
+  ```
+  /* Z-Index Map (viewport overlays):
+     50  → modais (createPortal)
+     45  → RadialMenu, CommandStatusIndicators
+     40  → SelectionModeBar, ViewportBar, TelemetryBar
+     30  → PlacingModeOverlay, GoogleTilesLoadingOverlay
+     20  → HUDs (Compass, Geo, Performance)
+     10  → Crosshairs, AR effects
+  */
+  ```
+- Aplico nos componentes do escopo.
 
-- **Zero impacto safety**: tudo é `useProjectStore` (Show plane). CommandBus/SSM/uiCommandGateway/GlobalEStopButton intocados.
-- **Provenance honesta**: `real_script` só onde temos dados Finale exatos. `reconstructed` carimba os planos descritivos. Badge visível em cada card.
-- **Retrocompat**: localStorage existente segue válido (novos campos são opcionais).
-- **Mineirão NFPA-conforme**: shells grandes só nos cantos externos, geofence de audiência declarado.
+**(c) Nested interactive (Radix)** — `rg "CollapsibleTrigger|DialogTrigger|PopoverTrigger" src/components/editor/{lista-acima}.tsx -A 5` e reporto cada `<button>` aninhado sem `asChild`. Fix: extrair onClick para o trigger pai ou usar `asChild`.
 
-## Arquivos
+**(d) Keyboard traps** — `useEffect` com `keydown` global que não checa `e.target instanceof HTMLInputElement` (já vi um certo em `SelectionModeBar` — ele já checa, ótimo; vou validar os outros).
 
-Novos:
-- `src/data/realShowTemplates.ts` (5 templates: Réveillon BC, Acaiacá Recife, Itaguai, Show da Virada, **Mineirão Estádio**)
-- `src/data/venues/mineiraoLayout.ts` (22 posições + geofence)
-- `src/lib/__tests__/realShowTemplates.spec.ts`
-- `public/reference/scripts/` (CSVs+HTML originais como auditoria, opcional)
+**(e) Imports não usados + dead code** — passo `tsc --noEmit` mental + `rg "^import" arquivo` cruzando com uso. Removo o que sobrar. Sem mover arquivos, sem refactor de assinatura.
 
-Editados:
-- `src/lib/showTemplates.ts` (+ campos opcionais no type, sem mexer no storage)
-- `src/components/editor/ShowTemplatesPanel.tsx` (+ aba Quick Deploy + Deploy/Merge buttons)
+---
 
-Tempo: ~6 arquivos novos + 2 edições + 1 spec. Sem mudanças em renderer/safety/hardware.
+## 4. Verificação ao final
+
+- `bun run build` (typecheck implícito).
+- `bunx vitest run` — confirmar que nada quebrou (suite atual ~1k+ tests).
+- Screenshot do `/index` (preview atual) antes/depois pra você ver o glass aplicado.
+- Lista textual dos bugs encontrados (categorizados por a/b/c/d/e) e quais foram corrigidos vs. apenas reportados.
+
+---
+
+## Fora de escopo (explícito)
+
+- Nada de mudar tokens canônicos (`--ds-*`, `--field-*`, `--status-*`).
+- Nada de tocar `GlobalEStopButton`, `MainLayout`, `uiCommandGateway`, safety state.
+- Nada de migrar cores hardcoded fora dos 16 arquivos (você escolheu só "imports/dead code" pra limpeza).
+- Sem testes novos (você escolheu auditoria sem teste extra).
+- Sem mexer em FieldViewMode/FieldMode — alto contraste outdoor preservado.
+
+## Critério de pronto
+
+1. 16 overlays usando `.glass-hud-md` consistentemente.
+2. Z-index map documentado e aplicado.
+3. Lista de bugs entregue (com diff aplicado para os triviais).
+4. `bun run build` verde, suite verde.
+
+Posso prosseguir?
