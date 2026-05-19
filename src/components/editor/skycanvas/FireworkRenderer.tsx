@@ -1323,6 +1323,9 @@ export const FireworkBurst = React.forwardRef<THREE.Group, {
     if (colAttr) { colAttr.array = cols; colAttr.needsUpdate = true; }
     if (sizeAttr) { sizeAttr.array = sizes; sizeAttr.needsUpdate = true; }
     if (lifeAttr) { lifeAttr.array = lives; lifeAttr.needsUpdate = true; }
+    // Pass 1: feed current velocities into vertex shader for stretch effect
+    const velAttr = pGeo.getAttribute('aVel') as THREE.BufferAttribute | undefined;
+    if (velAttr) { velAttr.array = particleBuffers.vels; velAttr.needsUpdate = true; }
 
     const lGeo = trailRef.current.geometry;
     const tPosAttr = lGeo.getAttribute('position') as THREE.BufferAttribute;
