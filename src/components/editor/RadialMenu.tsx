@@ -204,9 +204,10 @@ export default function RadialMenu() {
   return (
     <div
       ref={menuRef}
-      className="fixed z-[9999] pointer-events-none"
+      className="fixed z-50 pointer-events-none"
       style={{ left: 0, top: 0, width: '100vw', height: '100vh' }}
     >
+
       <svg
         className="absolute pointer-events-none"
         style={{ left: menu.x - 200, top: menu.y - 200 }}

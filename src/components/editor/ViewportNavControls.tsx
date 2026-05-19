@@ -14,7 +14,7 @@ export default function ViewportNavControls() {
   ];
 
   return (
-    <div className="fixed right-4 bottom-1/3 z-30 bg-surface-1/80 backdrop-blur-sm rounded-xl border border-border/30 shadow-lg">
+    <div className="fixed right-4 bottom-1/3 z-20 glass-hud-md">
       <div className="flex flex-col gap-1 p-1">
         {NAV_BUTTONS.map(({ icon: Icon, title, action }) => (
           <button
@@ -31,3 +31,4 @@ export default function ViewportNavControls() {
     </div>
   );
 }
+

@@ -49,25 +49,21 @@ export default React.memo(function GoogleTilesLoadingOverlay() {
   const isReady = state === 'ready';
 
   return (
-    <div className="absolute bottom-24 left-1/2 -translate-x-1/2 z-40 pointer-events-none">
+    <div className="absolute bottom-24 left-1/2 -translate-x-1/2 z-30 pointer-events-none">
       <div
         className={`
-          flex flex-col rounded-xl border backdrop-blur-xl
+          flex flex-col glass-hud-md
           transition-all duration-500 pointer-events-auto
           ${isReady && !showDebug ? 'opacity-60 scale-95' : 'opacity-100 scale-100'}
         `}
         style={{
-          background: isError
-            ? 'hsla(0, 60%, 15%, 0.9)'
-            : 'hsla(240, 10%, 6%, 0.9)',
-          borderColor: isError
-            ? 'hsla(0, 70%, 45%, 0.3)'
-            : isReady
-              ? 'hsla(142, 70%, 45%, 0.3)'
-              : 'hsla(210, 70%, 50%, 0.2)',
+          ...(isError ? { background: 'hsla(0, 60%, 15%, 0.85)', borderColor: 'hsla(0, 70%, 45%, 0.35)' }
+            : isReady ? { borderColor: 'hsla(142, 70%, 45%, 0.35)' }
+            : {}),
           minWidth: '260px',
         }}
       >
+
         {/* Main status row */}
         <div className="flex items-center gap-3 px-4 py-2.5">
           {isError ? (

@@ -21,7 +21,7 @@ export default function ARScanEffect() {
   if (!visible) return null;
 
   return (
-    <div className="absolute inset-0 z-[36] pointer-events-none overflow-hidden">
+    <div className="absolute inset-0 z-10 pointer-events-none overflow-hidden">
       <div className="absolute left-0 right-0 h-[2px] ar-scan-line" />
       <style>{`
         .ar-scan-line {

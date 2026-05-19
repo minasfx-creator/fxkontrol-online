@@ -61,7 +61,7 @@ export default function SelectionModeBar() {
   if (editorMode !== 'select') return null;
 
   return (
-    <div className="absolute top-3 left-3 z-40 flex items-center gap-0.5 bg-card/90 backdrop-blur-md border border-border/40 rounded-lg px-1 py-0.5 shadow-xl">
+    <div className="absolute top-3 left-3 z-40 flex items-center gap-0.5 glass-hud-md px-1 py-0.5">
       {modes.map(({ id, icon: Icon, label, shortcut }) => (
         <button
           key={id}
