@@ -18,6 +18,8 @@
  *   - Type-aware prefire/duration/height per Finale Manual Table 2
  */
 
+import { parseCakeSegments } from './vdlCakeSegments';
+
 export interface VDLResult {
   caliber: number;
   caliberMM: number;
