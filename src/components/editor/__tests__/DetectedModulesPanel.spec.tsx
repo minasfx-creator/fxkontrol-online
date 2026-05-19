@@ -63,4 +63,36 @@ describe('DetectedModulesPanel', () => {
     act(() => { vi.advanceTimersByTime(15_000); });
     expect(screen.getByLabelText('status OFFLINE')).toBeInTheDocument();
   });
+
+  it('filters by model, transport and free-text search', () => {
+    render(<DetectedModulesPanel />);
+    act(() => {
+      moduleAggregator.upsert({ address: 1, model: 'FXK-M1', transport: 'artnet', deviceName: 'alpha' });
+      moduleAggregator.upsert({ address: 2, model: 'IFMx-i32Q', transport: 'serial', deviceName: 'beta' });
+      moduleAggregator.upsert({ address: 3, model: 'FXK', transport: 'usb', deviceName: 'gamma' });
+    });
+
+    expect(screen.getAllByText(/ONLINE/i).length).toBe(3);
+
+    // Model filter: keep only FXK-M1
+    fireEvent.click(screen.getByTestId('detected-modules-filter-model-FXK-M1'));
+    expect(screen.getAllByText(/ONLINE/i).length).toBe(1);
+    expect(screen.getByText(/alpha/)).toBeInTheDocument();
+
+    // Clear and apply transport filter
+    fireEvent.click(screen.getByTestId('detected-modules-clear-filters'));
+    fireEvent.click(screen.getByTestId('detected-modules-filter-transport-serial'));
+    expect(screen.getAllByText(/ONLINE/i).length).toBe(1);
+    expect(screen.getByText(/beta/)).toBeInTheDocument();
+
+    // Search by deviceName
+    fireEvent.click(screen.getByTestId('detected-modules-clear-filters'));
+    fireEvent.change(screen.getByTestId('detected-modules-search'), { target: { value: 'gamma' } });
+    expect(screen.getAllByText(/ONLINE/i).length).toBe(1);
+    expect(screen.getByText(/gamma/)).toBeInTheDocument();
+
+    // No-match state
+    fireEvent.change(screen.getByTestId('detected-modules-search'), { target: { value: 'zzz-nope' } });
+    expect(screen.getByTestId('detected-modules-no-match')).toBeInTheDocument();
+  });
 });
