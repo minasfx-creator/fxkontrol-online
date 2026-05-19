@@ -764,6 +764,10 @@ export const FireworkBurst = React.forwardRef<THREE.Group, {
       colors: new Float32Array(STAR_COUNT * 3),
       sizes: new Float32Array(STAR_COUNT),
       lives: new Float32Array(STAR_COUNT),
+      // Pass 1 (r_star_stretch_v2): current per-particle velocity, updated each
+      // frame in the physics loop and consumed by STAR_VERTEX_SHADER_V2 to
+      // elongate the sprite along the motion direction in screen space.
+      vels: new Float32Array(STAR_COUNT * 3),
       trailPos: new Float32Array(trailVertCount * 3),
       trailCol: new Float32Array(trailVertCount * 3),
       trailVertCount,
