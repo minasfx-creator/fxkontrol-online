@@ -515,6 +515,9 @@ function Index() {
         )}
       </div>
 
+      {/* ─── Headless: Audio playback engine (mounted once; survives Timeline collapse / viewport maximize) ─── */}
+      <AudioEngine />
+
       {/* ─── Layer 1: Top Bar (z-50) ─────────────────── */}
       <div className="absolute top-0 left-0 right-0 z-50">
         <CrashRecoveryBanner />
