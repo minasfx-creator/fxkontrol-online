@@ -55,12 +55,12 @@ describe('DetectedModulesPanel', () => {
         lastSeen: Date.now(),
       });
     });
-    expect(screen.getByText(/ONLINE/i)).toBeInTheDocument();
+    expect(screen.getByLabelText('status ONLINE')).toBeInTheDocument();
 
     act(() => { vi.advanceTimersByTime(6_000); });
-    expect(screen.getByText(/STALE/i)).toBeInTheDocument();
+    expect(screen.getByLabelText('status STALE')).toBeInTheDocument();
 
     act(() => { vi.advanceTimersByTime(15_000); });
-    expect(screen.getByText(/OFFLINE/i)).toBeInTheDocument();
+    expect(screen.getByLabelText('status OFFLINE')).toBeInTheDocument();
   });
 });
