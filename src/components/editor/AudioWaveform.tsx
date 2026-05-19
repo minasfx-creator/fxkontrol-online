@@ -157,7 +157,7 @@ export default function AudioWaveform({ pixelsPerSecond }: { pixelsPerSecond: nu
         const store = useProjectStore.getState();
         // Only extend — never shrink below current items
         const maxItemEnd = store.timelineItems.reduce((max, item) => {
-          const effect = EFFECT_LIBRARY.find(e => e.id === item.effectId);
+          const effect = getEffectById(item.effectId);
           return Math.max(max, item.startTime + (effect?.duration ?? 3));
         }, 0);
         const newDuration = Math.max(audioDuration, maxItemEnd);
@@ -396,7 +396,7 @@ export default function AudioWaveform({ pixelsPerSecond }: { pixelsPerSecond: nu
           {audioUrl && (
             <button
               className="text-muted-foreground hover:text-foreground"
-              onClick={() => setMuted(!muted)}
+              onClick={toggleMute}
               title={muted ? 'Unmute' : 'Mute'}
             >
               {muted ? <VolumeX className="h-3 w-3" /> : <Volume2 className="h-3 w-3" />}
