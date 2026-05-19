@@ -109,12 +109,15 @@ export function decideCakeSyntax(
   const timeTol = opts.timeToleranceMs ?? COMBINE_AS_CAKE_TIME_TOLERANCE_MS;
 
   const sorted = [...shots].sort((a, b) => a.timeMs - b.timeMs);
-  // Cluster into rows: a new row starts when the inter-shot gap exceeds the
-  // largest intra-row gap by more than `timeTol` (simple monotone heuristic).
+  // Cluster into rows: split when the gap between consecutive shots is
+  // dramatically larger than the local intra-row cadence. We use a fixed
+  // row-gap threshold of max(10 * timeTol, 50 ms) so intra-row uniformity
+  // can still be violated (and detected) without forcing a split.
+  const rowGapThreshold = Math.max(timeTol * 10, 50);
   const rows: CombineCakeShot[][] = [[sorted[0]]];
   for (let i = 1; i < sorted.length; i++) {
     const gap = sorted[i].timeMs - sorted[i - 1].timeMs;
-    if (gap <= timeTol) {
+    if (gap <= rowGapThreshold) {
       rows[rows.length - 1].push(sorted[i]);
     } else {
       rows.push([sorted[i]]);
