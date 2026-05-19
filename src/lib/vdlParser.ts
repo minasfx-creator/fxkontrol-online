@@ -20,6 +20,11 @@
 
 import { parseCakeSegments } from './vdlCakeSegments';
 import { parseWithModifiers, type WithModifier } from './vdlWithModifiers';
+import {
+  extractExactCakeBody,
+  parseExactCakeBody,
+  type ExactTube,
+} from './vdlExactSimulationSyntax';
 
 export interface VDLResult {
   caliber: number;
