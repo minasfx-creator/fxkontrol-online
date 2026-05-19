@@ -109,20 +109,44 @@ export default function ShowTemplatesPanel({ onClose }: { onClose: () => void })
     const positions = tpl.positions ?? [];
     const cues = tpl.pyroCues ?? [];
     if (positions.length === 0 && cues.length === 0) { toast.error('Template vazio'); return; }
-    if (mode === 'replace') {
-      // Soft replace: nuke current pyro positions+timeline by adding fresh ones with namespaced IDs
-      currentTimelineItems.forEach(it => useProjectStore.getState().removeTimelineItem(it.id));
-      currentPositions.filter(p => p.type === 'pyro').forEach(p => useProjectStore.getState().removePosition(p.id));
-    }
-    positions.forEach(p => addPosition({ ...p, section: tpl.name }));
-    cues.forEach(c => addTimelineItem({
-      id: c.id, effectId: c.effectId, startTime: c.startTime, trackIndex: c.trackIndex,
-      position: c.position, positionId: c.positionId, positionName: c.positionName, notes: c.notes,
+
+    // Stamp unique suffix so re-deploys / merges never collide on id
+    const stamp = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`;
+    const posIdMap = new Map<string, string>();
+    const newPositions = positions.map(p => {
+      const nid = `${p.id}__${stamp}`;
+      posIdMap.set(p.id, nid);
+      return { ...p, id: nid, section: tpl.name };
+    });
+    const newItems = cues.map(c => ({
+      id: `${c.id}__${stamp}`,
+      effectId: c.effectId,
+      startTime: c.startTime,
+      trackIndex: c.trackIndex ?? 0,
+      position: c.position,
+      positionId: c.positionId ? posIdMap.get(c.positionId) ?? c.positionId : undefined,
+      positionName: c.positionName,
+      notes: c.notes,
     }));
-    setDuration(Math.max(tpl.duration, 30));
-    setCurrentTime(0);
-    setProjectName(tpl.name);
-    toast.success(`${tpl.name} · ${cues.length} cues / ${positions.length} posições / ${tpl.duration}s`);
+
+    // ATOMIC store mutation — single set() so React renders once with everything visible.
+    useProjectStore.setState((s) => {
+      const keepPositions = mode === 'replace'
+        ? s.positions.filter(p => p.type !== 'pyro')
+        : s.positions;
+      const keepItems = mode === 'replace'
+        ? s.timelineItems.filter(i => i.trackIndex !== 0) // wipe firework/sfx track only
+        : s.timelineItems;
+      return {
+        positions: [...keepPositions, ...newPositions],
+        timelineItems: [...keepItems, ...newItems],
+        duration: Math.max(s.duration, tpl.duration, 30),
+        currentTime: 0,
+        projectName: tpl.name,
+      };
+    });
+
+    toast.success(`${tpl.name} · ${newItems.length} cues / ${newPositions.length} posições / ${tpl.duration}s`);
   };
 
   const provBadge = (p?: string) => {
