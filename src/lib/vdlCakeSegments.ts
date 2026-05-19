@@ -37,12 +37,16 @@
 export interface CakeSegment {
   /** ingredient label (e.g. 'a', 'b') stripped from leading `(x)`; '' if none */
   label: string;
-  /** segment body after stripping `(label)`, HTM, DUR; whitespace-trimmed */
+  /** segment body after stripping `(label)`, HTM, DUR, LFT, DLY; whitespace-trimmed */
   body: string;
   /** -1 if not specified */
   htmOverride: number;
   /** -1 if not specified */
   durOverride: number;
+  /** -1 if not specified — per-segment LFT (aerial lift time, seconds) */
+  lftOverride: number;
+  /** -1 if not specified — per-segment DLY (delay before sim, seconds) */
+  dlyOverride: number;
 }
 
 export interface CakeSegmentParseResult {
