@@ -982,17 +982,18 @@ export class FireOneController {
       if (transportTag) s.transport = transportTag;
       return s;
     };
+    const key = this._moduleKey(addr, transportId);
 
     switch (frame.command) {
       case FireOneCmd.STATUS: {
         const status = tagStatus(parseStatusPayload(addr, frame.payload));
-        this.modules.set(addr, status);
+        this.modules.set(key, status);
         this.emit({ type: 'status-update', moduleAddress: addr, data: status, timestamp: Date.now(), transportId, controllerLabel });
         break;
       }
 
       case FireOneCmd.CONTINUITY: {
-        const status = this.modules.get(addr);
+        const status = this._findModule(addr, transportId);
         if (status) {
           // Update igniter continuity from payload
           for (let i = 0; i < Math.min(32, frame.payload.length); i++) {
@@ -1003,7 +1004,7 @@ export class FireOneController {
               status.igniters[i].resistance = (byte & 0x1F) * 0.5; // Fixed: × 0.5 for 0–15.5Ω range
             }
           }
-          this.modules.set(addr, { ...status, lastSeen: Date.now() });
+          this.modules.set(key, { ...status, lastSeen: Date.now() });
         }
         this.emit({ type: 'continuity-result', moduleAddress: addr, data: frame.payload, timestamp: Date.now(), transportId, controllerLabel });
         break;
@@ -1011,31 +1012,31 @@ export class FireOneController {
 
       case FireOneCmd.FIRE: {
         const igniterPos = frame.payload[0] ?? 0;
-        const module = this.modules.get(addr);
+        const module = this._findModule(addr, transportId);
         if (module) {
           const ig = module.igniters.find(i => i.position === igniterPos);
           if (ig) ig.fired = true;
-          this.modules.set(addr, { ...module, lastSeen: Date.now() });
+          this.modules.set(key, { ...module, lastSeen: Date.now() });
         }
         this.emit({ type: 'fire-confirm', moduleAddress: addr, data: { igniterPos }, timestamp: Date.now(), transportId, controllerLabel });
         break;
       }
 
       case FireOneCmd.ARM: {
-        const module = this.modules.get(addr);
+        const module = this._findModule(addr, transportId);
         if (module) {
           module.armed = true;
-          this.modules.set(addr, { ...module, lastSeen: Date.now() });
+          this.modules.set(key, { ...module, lastSeen: Date.now() });
         }
         this.emit({ type: 'arm-confirm', moduleAddress: addr, data: { armed: true }, timestamp: Date.now(), transportId, controllerLabel });
         break;
       }
 
       case FireOneCmd.DISARM: {
-        const module = this.modules.get(addr);
+        const module = this._findModule(addr, transportId);
         if (module) {
           module.armed = false;
-          this.modules.set(addr, { ...module, lastSeen: Date.now() });
+          this.modules.set(key, { ...module, lastSeen: Date.now() });
         }
         this.emit({ type: 'arm-confirm', moduleAddress: addr, data: { armed: false }, timestamp: Date.now(), transportId, controllerLabel });
         break;
@@ -1045,15 +1046,15 @@ export class FireOneController {
         // Module responded to identify — parse as status, tag with controller, infer model.
         const status = tagStatus(parseStatusPayload(addr, frame.payload));
         status.model = inferModelFromIdentify(frame.payload, status.firmwareVersion);
-        this.modules.set(addr, status);
+        this.modules.set(key, status);
         this.emit({ type: 'module-discovered', moduleAddress: addr, data: status, timestamp: Date.now(), transportId, controllerLabel });
         break;
       }
 
       case FireOneCmd.HEARTBEAT: {
-        const module = this.modules.get(addr);
+        const module = this._findModule(addr, transportId);
         if (module) {
-          this.modules.set(addr, { ...module, lastSeen: Date.now() });
+          this.modules.set(key, { ...module, lastSeen: Date.now() });
         }
         this.emit({ type: 'heartbeat', moduleAddress: addr, data: null, timestamp: Date.now() });
         break;
@@ -1072,13 +1073,13 @@ export class FireOneController {
 
       case FireOneCmd.MODULE_CONFIG: {
         const config = parseModuleConfig(frame.payload);
-        const module = this.modules.get(addr);
+        const module = this._findModule(addr, transportId);
         if (module) {
           module.serialNumber = config.serialNumber;
           module.dmxUniverse = config.dmxUniverse;
           module.wireless = config.wireless;
           module.firmwareVersion = config.firmwareVersion;
-          this.modules.set(addr, { ...module, lastSeen: Date.now() });
+          this.modules.set(key, { ...module, lastSeen: Date.now() });
         }
         this.emit({ type: 'config-response', moduleAddress: addr, data: config, timestamp: Date.now() });
         break;
@@ -1086,7 +1087,7 @@ export class FireOneController {
 
       case FireOneCmd.WIRELESS_STATUS: {
         const ws = parseWirelessStatus(frame.payload);
-        const module = this.modules.get(addr);
+        const module = this._findModule(addr, transportId);
         if (module) {
           const prevMode = module.connectionMode;
           module.rssiDbm = ws.rssiDbm;
@@ -1095,7 +1096,7 @@ export class FireOneController {
           module.linkQuality = ws.linkQuality;
           module.connectionMode = ws.mode;
           module.wireless = ws.mode !== 'wired';
-          this.modules.set(addr, { ...module, lastSeen: Date.now() });
+          this.modules.set(key, { ...module, lastSeen: Date.now() });
           // Detect fallback transition
           if (prevMode === 'wireless' && ws.mode === 'fallback') {
             this.emit({ type: 'wireless-fallback', moduleAddress: addr, data: ws, timestamp: Date.now() });
@@ -1114,10 +1115,10 @@ export class FireOneController {
       case FireOneCmd.VERIFY_ULTRAFIRE: {
         // Module reports UltraFire verification result
         const verified = (frame.payload[0] ?? 0) === ACK;
-        const module = this.modules.get(addr);
+        const module = this._findModule(addr, transportId);
         if (module) {
           module.ultraFireVerified = verified;
-          this.modules.set(addr, { ...module, lastSeen: Date.now() });
+          this.modules.set(key, { ...module, lastSeen: Date.now() });
         }
         this.emit({ type: 'ultrafire-verify', moduleAddress: addr, data: { verified }, timestamp: Date.now() });
         break;
