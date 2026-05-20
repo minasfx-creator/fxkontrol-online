@@ -101,21 +101,36 @@ const FILL_TRACK = 7;
 const SCENE_PALETTES: ReadonlyArray<{
   name: string;
   opener: string;          // effect played once at scene start
-  fillers: string[];       // rotated for gap-filling
+  fillers: string[];       // rotated for gap-filling (5+ for freshness)
   accent: string;          // mid-scene accent
 }> = [
-  { name: 'gold-comets',   opener: 'mine-01', fillers: ['comet-01', 'comet-02', 'peon-01'], accent: 'shell-01' },
-  { name: 'silver-rain',   opener: 'mine-02', fillers: ['comet-02', 'peon-02', 'comet-01'], accent: 'shell-02' },
-  { name: 'red-peonies',   opener: 'mine-05', fillers: ['peon-03', 'peon-01', 'comet-01'], accent: 'shell-03' },
-  { name: 'blue-mortar',   opener: 'mort-01', fillers: ['peon-04', 'comet-02', 'peon-02'], accent: 'shell-05' },
-  { name: 'green-bursts',  opener: 'mort-03', fillers: ['peon-05', 'peon-03', 'comet-01'], accent: 'shell-08' },
-  { name: 'purple-stars',  opener: 'mine-01', fillers: ['peon-02', 'peon-04', 'comet-02'], accent: 'shell-17' },
-  { name: 'crackling',     opener: 'mort-04', fillers: ['comet-01', 'peon-01', 'comet-02'], accent: 'shell-09' },
-  { name: 'kamuro-gold',   opener: 'mine-05', fillers: ['peon-05', 'comet-02', 'peon-03'], accent: 'shell-17' },
+  { name: 'gold-comets',     opener: 'mine-01', fillers: ['comet-01', 'comet-02', 'peon-01', 'spark-01', 'tr-01'],     accent: 'shell-01' },
+  { name: 'silver-rain',     opener: 'mine-02', fillers: ['comet-02', 'peon-02', 'spark-02', 'comet-01', 'fl-01'],     accent: 'shell-02' },
+  { name: 'red-peonies',     opener: 'mine-05', fillers: ['peon-03', 'peon-01', 'dah-01', 'comet-01', 'sat-01'],       accent: 'shell-03' },
+  { name: 'blue-mortar',     opener: 'mort-01', fillers: ['peon-04', 'bc-01', 'comet-02', 'peon-02', 'fl-02'],         accent: 'shell-05' },
+  { name: 'green-bursts',    opener: 'mort-03', fillers: ['peon-05', 'peon-06', 'comet-01', 'dah-02', 'fan-01'],       accent: 'shell-08' },
+  { name: 'purple-stars',    opener: 'mine-01', fillers: ['peon-02', 'peon-04', 'comet-02', 'sat-02', 'spw-01'],       accent: 'shell-17' },
+  { name: 'crackling',       opener: 'mort-04', fillers: ['comet-01', 'peon-01', 'spark-01', 'mb-01', 'tr-02'],        accent: 'shell-09' },
+  { name: 'kamuro-gold',     opener: 'mine-05', fillers: ['peon-05', 'peon-07', 'comet-02', 'fl-03', 'dah-03'],        accent: 'shell-17' },
+  { name: 'cocoon-trails',   opener: 'mine-03', fillers: ['coc-01', 'coc-02', 'comet-01', 'tr-03', 'peon-06'],         accent: 'shell-04' },
+  { name: 'dahlia-bloom',    opener: 'mort-02', fillers: ['dah-01', 'dah-02', 'peon-08', 'comet-02', 'fan-02'],        accent: 'shell-06' },
+  { name: 'pearl-ring',      opener: 'mine-04', fillers: ['aring-01', 'aring-02', 'peon-02', 'comet-01', 'mb-02'],     accent: 'shell-07' },
+  { name: 'heart-strobe',    opener: 'mine-06', fillers: ['ht-01', 'ht-02', 'comet-02', 'peon-03', 'sfx-01'],          accent: 'shell-14' },
+  { name: 'mini-burst',      opener: 'mort-04', fillers: ['mburst-01', 'mburst-02', 'comet-01', 'spark-02', 'peon-04'], accent: 'shell-15' },
+  { name: 'girandola',       opener: 'mine-02', fillers: ['gir-01', 'gir-02', 'gir-03', 'comet-02', 'spw-02'],         accent: 'shell-16' },
+  { name: 'twin-fountains',  opener: 'mine-01', fillers: ['fl-01', 'fl-02', 'comet-01', 'peon-01', 'spw-03'],          accent: 'shell-18' },
+  { name: 'niagara-veil',    opener: 'mort-03', fillers: ['niagara-01', 'niagara-02', 'comet-02', 'peon-05', 'tr-03'], accent: 'shell-20' },
 ];
 
 function paletteForScene(sceneIdx: number) {
   return SCENE_PALETTES[sceneIdx % SCENE_PALETTES.length];
+}
+
+// Pick a filler index that interlocks scene+global counter so consecutive
+// scenes never repeat the same filler sequence (freshness shuffle).
+function pickFiller(palette: { fillers: string[] }, sceneIdx: number, globalCount: number) {
+  const idx = (globalCount + sceneIdx * 2 + 1) % palette.fillers.length;
+  return palette.fillers[idx];
 }
 
 /**
