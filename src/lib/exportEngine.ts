@@ -939,7 +939,7 @@ export function exportFinaleFiringCSV(
     const coords = [x, y, z, heading, pitch, 0, 0, 0, 0].map(fmtCoord).join(' ');
     const duration = item.durationOverride ?? effect?.duration ?? 0;
     const effectName = effect?.name ?? item.effectId;
-    const caliber = effect?.caliberMm ? `${effect.caliberMm}mm` : '';
+    const caliber = effect?.caliber ? `${effect.caliber}mm` : '';
     const posName = pos?.name ?? item.positionName ?? '';
     const category = 'Cakes';
     const moduleAddr = item.universe ?? '';
