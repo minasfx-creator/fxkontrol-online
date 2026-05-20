@@ -35,13 +35,12 @@ describe('thermalGradient', () => {
 });
 
 describe('sparkChildEmitter', () => {
-  let rng: () => number;
-  beforeEachIdx();
-  function beforeEachIdx() {
+  function mkRng() {
     let i = 0;
     const seq = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 0.05, 0.15, 0.25, 0.35, 0.45];
-    rng = () => seq[(i++) % seq.length];
+    return () => seq[(i++) % seq.length];
   }
+  const rng = mkRng();
 
   it('emits up to N sparks and respects capacity', () => {
     const p = createSparkPool(4);
