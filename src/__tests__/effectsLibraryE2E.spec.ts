@@ -31,15 +31,10 @@ const HEX_RE = /^#[0-9a-fA-F]{6}$/;
  * Both cases require an explicit decision. Do not append blindly.
  */
 const KNOWN_UNROUTED: ReadonlySet<string> = new Set([
-  // Drones — type='drone' has no 3D renderer yet (pending drone-light system).
-  'drone-01', 'drone-02', 'drone-03', 'drone-04', 'drone-05', 'drone-06',
-  // Drone formations — placeholders; rendered as LightPoint until choreography engine ships.
-  'form-01', 'form-02', 'form-03', 'form-04', 'form-05', 'form-06', 'form-08',
-  // Architectural lights without beamType — fallback to LightPoint by design.
-  'aring-01', 'aring-02', 'light-05', 'light-06',
-
-
-
+  // Baseline ZEROED in optimization round: drones/formations/strobes now route
+  // explicitly to LightPoint (QuadcopterModel — a real 3D renderer with pulse +
+  // drift, not a fallback). Architectural lights without beamType also route to
+  // LightPoint. Any new entry here means the router has a real gap.
 ]);
 
 describe('effects library — full E2E pipeline+spawn coverage', () => {
