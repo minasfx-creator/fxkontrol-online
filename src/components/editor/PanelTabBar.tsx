@@ -255,7 +255,7 @@ export default function PanelTabBar({ activePanel, onTogglePanel }: PanelTabBarP
           </div>
         )}
 
-        <ScrollArea className="flex-1">
+        <ScrollArea className="flex-1 min-h-0 overscroll-contain">
           <div
             ref={containerRef}
             className="flex flex-col items-center py-2 gap-0"
