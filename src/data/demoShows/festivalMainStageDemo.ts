@@ -168,8 +168,9 @@ function densifyPyroCues(
     const step = gap / (n + 1);
     for (let k = 1; k <= n && inserted.length + fillerCount < maxInserted; k++) {
       const t = out[i].time + step * k;
-      const palette = FESTIVAL_PALETTES[Math.floor(t / FESTIVAL_SCENE_S) % FESTIVAL_PALETTES.length];
-      const eff = palette.filler[fillerCount % palette.filler.length];
+      const sceneIdx = Math.floor(t / FESTIVAL_SCENE_S);
+      const palette = FESTIVAL_PALETTES[sceneIdx % FESTIVAL_PALETTES.length];
+      const eff = pickFestivalFiller(palette, sceneIdx, fillerCount);
       gapFilled.push(makeCue(eff, t, `gf${fillerCount}`));
       fillerCount++;
     }
