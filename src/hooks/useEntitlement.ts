@@ -43,17 +43,17 @@ export function useEntitlement() {
       return;
     }
     const [planRow, catalog] = await Promise.all([
-      supabase
+      db
         .from("subscription_features")
         .select("plan_key, expires_at")
         .eq("user_id", user.id)
         .maybeSingle(),
-      supabase
+      db
         .from("entitlements")
         .select("plan_key, features, limits"),
     ]);
     const plan = (planRow.data?.plan_key as PlanKey | undefined) ?? "free";
-    const row = catalog.data?.find((r) => r.plan_key === plan);
+    const row = catalog.data?.find((r: { plan_key: string }) => r.plan_key === plan);
     setState({
       loading: false,
       plan,
@@ -94,7 +94,7 @@ export async function trackPlgEvent(
   try {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
-    await supabase.from("plg_events").insert({
+    await db.from("plg_events").insert({
       user_id: user.id,
       event_type,
       feature: feature ?? null,
