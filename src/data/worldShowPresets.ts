@@ -1437,6 +1437,28 @@ export const WORLD_SHOW_PRESETS: WorldShowPreset[] = [
   },
 ];
 
+// ── Apply scene-themed densifier to every world show ──
+// Each `generate` is wrapped to inject thematic openers per 20s scene
+// and gap-fill so the max interval between explosions is <= 1s.
+// `stats.cues` is recomputed by sampling the wrapped generator once.
+WORLD_SHOW_PRESETS.forEach((preset) => {
+  const originalGenerate = preset.generate;
+  const wrapped: typeof originalGenerate = () => {
+    const { positions, timelineItems } = originalGenerate();
+    return {
+      positions,
+      timelineItems: densifyAndThemeTimeline(positions, timelineItems, preset.duration),
+    };
+  };
+  preset.generate = wrapped;
+  try {
+    const sample = wrapped();
+    preset.stats = { ...preset.stats, cues: sample.timelineItems.length };
+  } catch {
+    // keep declared stats on failure
+  }
+});
+
 export const CONTINENT_LABELS: Record<string, string> = {
   americas: '🌎 Américas',
   europe: '🌍 Europa',
