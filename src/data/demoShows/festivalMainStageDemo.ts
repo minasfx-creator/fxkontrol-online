@@ -90,6 +90,82 @@ function pyroCues(): PyroCue[] {
     });
   }
 
+  return densifyPyroCues(out, mines, FESTIVAL_DEMO_DURATION_S);
+}
+
+// Scene-themed densifier mirror of worldShowPresets:
+// - 20s scenes with rotating effect palette
+// - Max gap 1s between consecutive cues (fills with palette effects)
+const FESTIVAL_SCENE_S = 20;
+const FESTIVAL_MAX_GAP_S = 1.0;
+const FESTIVAL_PALETTES = [
+  { opener: 'mine_8s_gold',   accent: 'mine_4s_gold',   filler: ['mine_2s_silver', 'mine_2s_gold'] },
+  { opener: 'mine_8s_silver', accent: 'mine_4s_silver', filler: ['mine_2s_gold',   'mine_2s_silver'] },
+  { opener: 'mine_8s_gold',   accent: 'mine_4s_red',    filler: ['mine_2s_red',    'mine_2s_silver'] },
+  { opener: 'mine_8s_silver', accent: 'mine_4s_blue',   filler: ['mine_2s_blue',   'mine_2s_gold'] },
+];
+
+function densifyPyroCues(
+  cues: PyroCue[],
+  anchors: StageAnchor[],
+  durationS: number,
+  maxInserted = 600,
+): PyroCue[] {
+  if (anchors.length === 0) return cues;
+  const out = [...cues].sort((a, b) => a.time - b.time);
+  const inserted: PyroCue[] = [];
+  let posCursor = 0;
+  const nextAnchor = () => anchors[(posCursor++) % anchors.length];
+
+  const makeCue = (effectId: string, time: number, tag: string): PyroCue => {
+    const a = nextAnchor();
+    const idx = anchors.indexOf(a);
+    return {
+      id: `pyro-fill-${tag}-${time.toFixed(2)}`,
+      time,
+      positionId: a.id,
+      module: Math.floor(idx / 8),
+      channel: idx % 16,
+      effectId,
+      fuseDelay: 0,
+      caliber: 50,
+      elevation: 90,
+      heading: 0,
+      position: { x: a.position[0], y: a.position[1], z: a.position[2] },
+      notes: 'demo:scene-fill',
+    };
+  };
+
+  // Scene openers (where sparse)
+  const sceneCount = Math.ceil(durationS / FESTIVAL_SCENE_S);
+  for (let s = 0; s < sceneCount && inserted.length < maxInserted; s++) {
+    const start = s * FESTIVAL_SCENE_S;
+    const end = Math.min(start + FESTIVAL_SCENE_S, durationS);
+    const palette = FESTIVAL_PALETTES[s % FESTIVAL_PALETTES.length];
+    const inScene = out.filter(c => c.time >= start && c.time < end);
+    if (inScene.length < 2) {
+      inserted.push(makeCue(palette.opener, start + 0.05, `op${s}`));
+      inserted.push(makeCue(palette.accent, start + FESTIVAL_SCENE_S * 0.5, `ac${s}`));
+    }
+  }
+  out.push(...inserted);
+  out.sort((a, b) => a.time - b.time);
+
+  // Gap fill
+  let fillerCount = 0;
+  const gapFilled: PyroCue[] = [];
+  for (let i = 0; i < out.length - 1; i++) {
+    let t = out[i].time + FESTIVAL_MAX_GAP_S;
+    while (out[i + 1].time - t > FESTIVAL_MAX_GAP_S && inserted.length + fillerCount < maxInserted) {
+      const palette = FESTIVAL_PALETTES[Math.floor(t / FESTIVAL_SCENE_S) % FESTIVAL_PALETTES.length];
+      const eff = palette.filler[fillerCount % palette.filler.length];
+      gapFilled.push(makeCue(eff, t, `gf${fillerCount}`));
+      fillerCount++;
+      t += FESTIVAL_MAX_GAP_S;
+    }
+  }
+  out.push(...gapFilled);
+  out.sort((a, b) => a.time - b.time);
   return out;
 }
 
