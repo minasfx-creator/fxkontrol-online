@@ -45,6 +45,7 @@ export default defineConfig(({ mode }) => ({
           "**/postprocessing-core-*.js",
           "**/three-core-*.js",
           "**/r3f-*.js",
+          "**/drei-*.js",
           "**/vendor-tiles-*.js",
           "**/vendor-markdown-*.js",
           "**/recharts-*.js",
@@ -123,7 +124,8 @@ export default defineConfig(({ mode }) => ({
           // ── vendor chunks ──
           const vendorChunks: Record<string, string[]> = {
             'three-core': ['three'],
-            'r3f': ['@react-three/fiber', '@react-three/drei'],
+            'r3f': ['@react-three/fiber'],
+            'drei': ['@react-three/drei'],
             'postprocessing': ['@react-three/postprocessing'],
             'postprocessing-core': ['postprocessing'],
             'recharts': ['recharts'],
