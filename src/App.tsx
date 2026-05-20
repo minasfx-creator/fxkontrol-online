@@ -25,6 +25,7 @@ const FieldTest = lazy(() => import("./pages/FieldTest"));
 const Settings = lazy(() => import("./pages/Settings"));
 const FestivalStageDemo = lazy(() => import("./pages/FestivalStageDemo"));
 const PairingTwoWire = lazy(() => import("./pages/PairingTwoWire"));
+const InternalDocs = lazy(() => import("./pages/InternalDocs"));
 
 const queryClient = new QueryClient();
 
@@ -71,6 +72,8 @@ function App() {
                   <Route path="/settings" element={<Settings />} />
                   <Route path="/festival-stage-demo" element={<FestivalStageDemo />} />
                   <Route path="/pairing/two-wire" element={<PairingTwoWire />} />
+                  <Route path="/docs/internal" element={<InternalDocs />} />
+                  <Route path="/docs/internal/:slug" element={<InternalDocs />} />
                 </Route>
                 <Route path="*" element={<NotFound />} />
               </Routes>

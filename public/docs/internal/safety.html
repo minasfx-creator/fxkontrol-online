@@ -1,0 +1,446 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>FXKONTROL 2 — Checklist de Segurança & Conformidade | Confidencial</title>
+  <meta name="generator" content="Rabbit Universal Execution Agent">
+  <link rel="stylesheet" href="fxk-docs.css">
+  <link rel="stylesheet" href="fxk-safety-compliance.css">
+</head>
+<body>
+  <header class="app-header container">
+    <div class="brandline">
+      <div class="title">FXKONTROL 2 — Checklist de Segurança & Conformidade</div>
+      <span class="badge">Confidencial — Uso interno</span>
+    </div>
+    <div class="subtitle">Anexo operacional ao Relatório Abrangente v1 • Versão 1.0 • 14 de maio de 2026</div>
+    <div class="hero">
+      <div class="media" aria-hidden="true"></div>
+      <div class="overlay" aria-hidden="true"></div>
+      <div class="caption container">
+        <h1 class="title">Máquina de Estados • Evidências • Auditoria</h1>
+        <p class="muted">StateMachine IDLE → ARMED → FIRING • BlackBox/Audit Trail • Perímetros e Fallout Zones • Pré/Pós-ação</p>
+        <div class="chips">
+          <span class="chip">Dark Mode First</span>
+          <span class="chip">Quiet Luxury</span>
+          <span class="chip">Retro-futurismo</span>
+        </div>
+      </div>
+    </div>
+    <div class="toc">
+      <div class="toc-head container">
+        <strong>Sumário</strong>
+        <span class="muted">Navegue pelas seções</span>
+      </div>
+      <div class="toc-body">
+        <a href="#escopo"><span>1</span> Escopo e premissas</a>
+        <a href="#maquina"><span>2</span> Máquina de Estados (IDLE→ARMED→FIRING)</a>
+        <a href="#checklists"><span>3</span> Checklists operacionais (pré/execução/pós)</a>
+        <a href="#matriz"><span>4</span> Matriz de Evidências e Coleta</a>
+        <a href="#perimetros"><span>5</span> Perímetros & Fallout Zones</a>
+        <a href="#auditoria"><span>6</span> Auditoria contínua (BlackBox)</a>
+        <a href="#mapeamento"><span>7</span> Mapeamento regulatório (referência)</a>
+        <a href="#relatorio"><span>8</span> Relatório de Verificação (template)</a>
+        <a href="#anexos"><span>+</span> Anexos operacionais</a>
+      </div>
+    </div>
+    <div class="actions no-print">
+      <button class="btn" onclick="window.print()">Imprimir PDF</button>
+      <a class="btn secondary" href="#relatorio">Ir ao Relatório</a>
+    </div>
+  </header>
+
+  <main class="container">
+    <section id="escopo">
+      <h2 class="section-title">1) Escopo e premissas</h2>
+      <p class="lead">Este documento operacional estrutura o modelo mínimo de segurança e conformidade do FXKONTROL 2 para eventos ao vivo com sistemas críticos. Usa referências normativas como guia e mantém itens nacionais específicos <strong>A confirmar</strong>.</p>
+      <div class="cards">
+        <article class="card">
+          <h3>Premissas</h3>
+          <ul>
+            <li>Fluxo de segurança invariável: <span class="mono">IDLE → ARMED → FIRING</span>.</li>
+            <li>Paywalls e exportações físicas dependem de validações de segurança e conformidade.</li>
+            <li>Auditoria contínua (BlackBox) durante ensaios e execução.</li>
+          </ul>
+        </article>
+        <article class="card">
+          <h3>Escopo</h3>
+          <ul>
+            <li>Checklists pré, durante e pós-ação.</li>
+            <li>Matriz de evidências assinável e exportável.</li>
+            <li>Perímetros, geofencing e <em>fallout zones</em>.</li>
+          </ul>
+        </article>
+        <article class="card">
+          <h3>Limites</h3>
+          <p>Preços, limites regionais, retenção estendida de logs e parâmetros nacionais (Brasil): <strong>A confirmar</strong>.</p>
+        </article>
+      </div>
+    </section>
+
+    <section id="maquina">
+      <h2 class="section-title">2) Máquina de Estados (IDLE → ARMED → FIRING)</h2>
+      <p class="lead">Transições condicionadas por intertravamentos de hardware/software e checagens de continuidade, refletidas na UI e registradas em trilha de auditoria.</p>
+      <div class="kbar">
+        <span class="state safe"><span class="dot"></span>IDLE</span>
+        <span class="state armed"><span class="dot"></span>ARMED</span>
+        <span class="state firing"><span class="dot"></span>FIRING</span>
+      </div>
+      <table class="table">
+        <thead>
+          <tr>
+            <th>Transição</th>
+            <th>Condições mínimas</th>
+            <th>Reflexo na UI</th>
+            <th>Registro/Evidência</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>IDLE → ARMED</strong></td>
+            <td>
+              <ul>
+                <li>Intertravamentos OK: <span class="mono">arm_key</span>, <span class="mono">software_enable</span>, <span class="mono">manual_mode</span> conforme política.</li>
+                <li>Checagem de continuidade aprovada (tensão/linhas coerentes).</li>
+                <li>Perímetro validado no projeto atual.</li>
+              </ul>
+            </td>
+            <td>Banner de status “ARMED”; bloqueio de edição estrutural crítica.</td>
+            <td>Eventos no BlackBox: <span class="mono">safety.transition</span>, <span class="mono">continuity.pass</span>, <span class="mono">perimeter.verified</span>.</td>
+          </tr>
+          <tr>
+            <td><strong>ARMED → FIRING</strong></td>
+            <td>
+              <ul>
+                <li>Ausência de <span class="mono">estop</span> ativo.</li>
+                <li>Checklist pré-disparo completo e assinado.</li>
+                <li>Sem erros críticos em telemetria (sandbox não permite exportação física).</li>
+              </ul>
+            </td>
+            <td>Indicador “FIRING” com destaque controlado e bloqueios de risco.</td>
+            <td>Eventos no BlackBox: <span class="mono">firing.start</span>, <span class="mono">audit.snapshot</span>.</td>
+          </tr>
+          <tr>
+            <td><strong>Qualquer → IDLE</strong></td>
+            <td>
+              <ul>
+                <li>Acionamento de <span class="mono">estop</span> ou término de execução.</li>
+                <li>Rotina de descarregamento/segurança aplicada.</li>
+              </ul>
+            </td>
+            <td>Estado “IDLE” e aviso de revisão pós-ação disponível.</td>
+            <td>Eventos: <span class="mono">firing.stop</span>, <span class="mono">safety.reset</span>, <span class="mono">post.review.ready</span>.</td>
+          </tr>
+        </tbody>
+      </table>
+      <div class="callout caution">Controles puramente no cliente são insuficientes. Exportações físicas e ações críticas devem falhar no servidor quando requisitos de segurança/compliance não forem atendidos.</div>
+    </section>
+
+    <section id="checklists">
+      <h2 class="section-title">3) Checklists operacionais</h2>
+      <p class="lead">Conjuntos mínimos de verificação para cada fase. Campos de assinatura, data e evidências inclusos.</p>
+      <div class="cards">
+        <article class="card checklist-card">
+          <h3>3.1 Pré-ação (antes de ARMED)</h3>
+          <ul class="checklist">
+            <li><label><input type="checkbox"> Perímetro e <em>fallout zones</em> verificados e salvos no projeto.</label></li>
+            <li><label><input type="checkbox"> Intertravamentos lidos: <span class="mono">arm_key</span>, <span class="mono">software_enable</span>, <span class="mono">manual_mode</span>.</label></li>
+            <li><label><input type="checkbox"> Checagem de continuidade aprovada (valores de referência: <strong>A confirmar</strong>).</label></li>
+            <li><label><input type="checkbox"> Plano de execução revisado; <span class="mono">estop</span> testado.</label></li>
+            <li><label><input type="checkbox"> BlackBox ativo e armazenamento disponível.</label></li>
+          </ul>
+          <div class="sig-row">
+            <div class="sig-box"><strong>Responsável Técnico</strong><br><span class="muted">Nome e assinatura</span></div>
+            <div class="sig-box"><strong>Data/Hora</strong><br><span class="muted">ISO 8601</span></div>
+            <div class="sig-box"><strong>ID Sessão/BlackBox</strong><br><span class="muted mono">A confirmar</span></div>
+          </div>
+        </article>
+        <article class="card checklist-card">
+          <h3>3.2 Execução (FIRING)</h3>
+          <ul class="checklist">
+            <li><label><input type="checkbox"> Sem alertas críticos em telemetria.</label></li>
+            <li><label><input type="checkbox"> Geofencing ativo (drones) e zonas de exclusão respeitadas.</label></li>
+            <li><label><input type="checkbox"> Supervisão contínua do <span class="mono">estop</span> e logs de auditoria.</label></li>
+          </ul>
+          <div class="sig-row">
+            <div class="sig-box"><strong>Operador Líder</strong><br><span class="muted">Nome e assinatura</span></div>
+            <div class="sig-box"><strong>AHJ/Observador</strong><br><span class="muted">Nome/credencial</span></div>
+            <div class="sig-box"><strong>Carimbo temporal</strong><br><span class="muted mono">A confirmar</span></div>
+          </div>
+        </article>
+        <article class="card checklist-card">
+          <h3>3.3 Pós-ação</h3>
+          <ul class="checklist">
+            <li><label><input type="checkbox"> Rotina de descarregamento concluída; sistema em <span class="mono">IDLE</span>.</label></li>
+            <li><label><input type="checkbox"> Export de laudo com hash do BlackBox e evidências anexas.</label></li>
+            <li><label><input type="checkbox"> Incidentes/near-miss registrados e assinados.</label></li>
+          </ul>
+          <div class="sig-row">
+            <div class="sig-box"><strong>Responsável Pós-ação</strong><br><span class="muted">Nome e assinatura</span></div>
+            <div class="sig-box"><strong>Data/Hora</strong><br><span class="muted mono">A confirmar</span></div>
+            <div class="sig-box"><strong>Referência do Relatório</strong><br><span class="muted mono">A confirmar</span></div>
+          </div>
+        </article>
+      </div>
+    </section>
+
+    <section id="matriz">
+      <h2 class="section-title">4) Matriz de Evidências e Coleta</h2>
+      <p class="lead">Tabela de requisitos, evidências mínimas, referência regulatória (de alto nível) e como coletar/exportar no FXKONTROL.</p>
+      <table class="table matrix">
+        <thead>
+          <tr>
+            <th>Requisito</th>
+            <th>Evidência mínima</th>
+            <th>Referência (guia)</th>
+            <th>Coleta/Exportação</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Perímetros e zonas de exclusão</td>
+            <td>Polígonos salvos + captura/print da sobreposição</td>
+            <td>NFPA 1123/1126; EASA/SORA (cenário específico)</td>
+            <td>UI: <em>PerimeterEditor</em> e <em>SafetyOverlay</em>; export PDF</td>
+            <td><span class="status-pill ok">Pronto</span></td>
+          </tr>
+          <tr>
+            <td>Checagem de continuidade</td>
+            <td>Log de continuidade aprovado + carimbo temporal</td>
+            <td>Boas práticas elétricas (aplicação pirotécnica)</td>
+            <td>Registro: <span class="mono">continuity.pass</span> no BlackBox</td>
+            <td><span class="status-pill warn">Pendente</span></td>
+          </tr>
+          <tr>
+            <td>Auditoria/BlackBox ativo</td>
+            <td>ID do BlackBox + hash de integridade</td>
+            <td>Exigência de rastreabilidade (AHJ)</td>
+            <td>Export JSON + PDF resumido</td>
+            <td><span class="status-pill ok">Pronto</span></td>
+          </tr>
+          <tr>
+            <td>Geofencing (drones)</td>
+            <td>Mapa com cerca virtual + log de imposição</td>
+            <td>FAA Part 107 (e isenções); EASA/SORA</td>
+            <td>Relatório de geofencing e trilha de eventos</td>
+            <td><span class="status-pill warn">Pendente</span></td>
+          </tr>
+          <tr>
+            <td>Assinaturas e responsabilidades</td>
+            <td>Assinaturas digitais/físicas e identificação</td>
+            <td>Prática comum de AHJ</td>
+            <td>Campos de assinatura no PDF</td>
+            <td><span class="status-pill ok">Pronto</span></td>
+          </tr>
+        </tbody>
+      </table>
+      <div class="callout note">Parâmetros locais do Brasil e retenção estendida de logs: <strong>A confirmar</strong>.</div>
+    </section>
+
+    <section id="perimetros">
+      <h2 class="section-title">5) Perímetros & Fallout Zones</h2>
+      <p class="lead">Definição visual e documentação de áreas de exclusão e projeção de resíduos (fallout) como parte do plano.</p>
+      <div class="cards">
+        <article class="card">
+          <h3>UI e dados</h3>
+          <ul>
+            <li>Sobreposição visual: <em>SafetyOverlay</em> e camada <em>FalloutZones</em>.</li>
+            <li>Editor geográfico: <em>PerimeterEditor</em> com polígonos e rótulos.</li>
+            <li>Exportação: relatório com miniaturas e metadados.</li>
+          </ul>
+        </article>
+        <article class="card">
+          <h3>Notas regulatórias</h3>
+          <p>Aplicar referências de alto nível: NFPA 1123 (exibições externas) e 1126 (perto de público). Cálculos e parâmetros numéricos específicos: <strong>A confirmar</strong>.</p>
+        </article>
+      </div>
+    </section>
+
+    <section id="auditoria">
+      <h2 class="section-title">6) Auditoria contínua (BlackBox)</h2>
+      <p class="lead">Registro ininterrupto de eventos críticos do EventBus para verificação e pós-ação.</p>
+      <div class="cards">
+        <article class="card">
+          <h3>Eventos mínimos</h3>
+          <ul class="clean">
+            <li><span class="mono">safety.transition</span> (estado/condição)</li>
+            <li><span class="mono">continuity.pass|fail</span></li>
+            <li><span class="mono">perimeter.verified</span></li>
+            <li><span class="mono">firing.start|stop</span></li>
+            <li><span class="mono">audit.snapshot</span></li>
+          </ul>
+        </article>
+        <article class="card">
+          <h3>Exemplo de bloco (JSON)</h3>
+          <pre class="mono payload">{
+  "event": "safety.transition",
+  "from": "IDLE",
+  "to": "ARMED",
+  "ts": "2026-05-14T22:10:00Z",
+  "session_id": "bbx_abc123",
+  "perimeter_verified": true
+}</pre>
+          <p class="muted">Retenção estendida, criptografia e políticas de acesso: <strong>A confirmar</strong>.</p>
+        </article>
+      </div>
+    </section>
+
+    <section id="mapeamento">
+      <h2 class="section-title">7) Mapeamento regulatório (referência)</h2>
+      <p class="lead">Relação de alto nível entre requisitos e relatórios do FXKONTROL. Itens nacionais (Brasil): <strong>A confirmar</strong>.</p>
+      <table class="table">
+        <thead>
+          <tr>
+            <th>Norma/Guia</th>
+            <th>Aplicação</th>
+            <th>Como evidenciamos</th>
+            <th>Observações</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>NFPA 1123</td>
+            <td>Exibições pirotécnicas externas</td>
+            <td>Relatório de perímetros e <em>fallout zones</em> + checklist</td>
+            <td>Parâmetros numéricos: <strong>A confirmar</strong></td>
+          </tr>
+          <tr>
+            <td>NFPA 1126</td>
+            <td>Pirotecnia perante audiência próxima</td>
+            <td>Checklist indoor e mitigação registrada</td>
+            <td>Integração com laudos de local</td>
+          </tr>
+          <tr>
+            <td>FAA Part 107</td>
+            <td>Operações com UAS (shows de drones)</td>
+            <td>Relatório de geofencing e trilha de decisão</td>
+            <td>Isenções aplicáveis (ex.: 107.29, 107.35) — referência</td>
+          </tr>
+          <tr>
+            <td>EASA/SORA</td>
+            <td>Avaliação de risco específica</td>
+            <td>Exportação de evidências por cenário/OSOs</td>
+            <td>Classificação SAIL por missão</td>
+          </tr>
+          <tr>
+            <td>Regras Brasil</td>
+            <td>Normas e processos locais</td>
+            <td>Seção dedicada</td>
+            <td><strong>A confirmar</strong></td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section id="relatorio">
+      <h2 class="section-title">8) Relatório de Verificação (template assinável)</h2>
+      <p class="lead">Documento exportável com campos de identificação, checagens, evidências e assinaturas.</p>
+      <div class="report">
+        <div class="form-grid">
+          <div class="form-field"><label>Evento/Projeto</label><input type="text" placeholder="Nome do projeto"></div>
+          <div class="form-field"><label>Local/Endereço</label><input type="text" placeholder="A confirmar"></div>
+          <div class="form-field"><label>Data</label><input type="text" placeholder="AAAA-MM-DD"></div>
+          <div class="form-field"><label>Responsável Técnico</label><input type="text" placeholder="Nome completo"></div>
+          <div class="form-field"><label>AHJ/Autoridade</label><input type="text" placeholder="Nome/órgão"></div>
+          <div class="form-field"><label>ID BlackBox</label><input type="text" placeholder="bbx_..."></div>
+          <div class="form-field full"><label>Hash de integridade</label><input type="text" class="mono" placeholder="sha256: A confirmar"></div>
+        </div>
+        <table class="table">
+          <thead>
+            <tr>
+              <th>Item</th>
+              <th>Verificação</th>
+              <th>Evidência</th>
+              <th>Resultado</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Perímetro e fallout</td>
+              <td>Polígonos salvos e revisados</td>
+              <td>Miniaturas + metadados</td>
+              <td><span class="status-pill ok">OK</span></td>
+            </tr>
+            <tr>
+              <td>Continuidade</td>
+              <td>Leitura aprovada</td>
+              <td>Log <span class="mono">continuity.pass</span></td>
+              <td><span class="status-pill ok">OK</span></td>
+            </tr>
+            <tr>
+              <td>Intertravamentos</td>
+              <td><span class="mono">arm_key/software_enable</span></td>
+              <td>Snapshot auditável</td>
+              <td><span class="status-pill warn">Pendente</span></td>
+            </tr>
+          </tbody>
+        </table>
+        <div class="sig-row">
+          <div class="sig-box"><strong>Assinatura — Responsável Técnico</strong></div>
+          <div class="sig-box"><strong>Assinatura — AHJ</strong></div>
+          <div class="sig-box"><strong>Data/Hora</strong></div>
+        </div>
+        <div class="callout warning">Observação: parâmetros específicos do Brasil, retenção estendida e integrações de assinatura digital: <strong>A confirmar</strong>.</div>
+      </div>
+    </section>
+
+    <section id="anexos">
+      <h2 class="section-title">Anexos operacionais</h2>
+      <div class="cards">
+        <article class="card">
+          <h3>A1) Formulário — Checagem de continuidade</h3>
+          <div class="form-grid">
+            <div class="form-field"><label>logic_voltage</label><input type="text" placeholder="A confirmar"></div>
+            <div class="form-field"><label>field_voltage</label><input type="text" placeholder="A confirmar"></div>
+            <div class="form-field"><label>source_mux</label><input type="text" placeholder="A confirmar"></div>
+            <div class="form-field full"><label>Observações</label><input type="text" placeholder="Notas"></div>
+          </div>
+          <p class="muted">Valores de referência e tolerâncias: <strong>A confirmar</strong>.</p>
+        </article>
+        <article class="card">
+          <h3>A2) Dicionário mínimo de eventos</h3>
+          <table class="table">
+            <thead>
+              <tr>
+                <th>Evento</th>
+                <th>Descrição</th>
+                <th>Chaves</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><span class="mono">safety.transition</span></td>
+                <td>Mudança de estado da máquina de segurança</td>
+                <td><span class="mono">from, to, ts, session_id</span></td>
+              </tr>
+              <tr>
+                <td><span class="mono">continuity.pass|fail</span></td>
+                <td>Resultado da checagem de continuidade</td>
+                <td><span class="mono">ts, session_id, details</span></td>
+              </tr>
+              <tr>
+                <td><span class="mono">perimeter.verified</span></td>
+                <td>Perímetro/zonas verificados</td>
+                <td><span class="mono">project_id, ts</span></td>
+              </tr>
+              <tr>
+                <td><span class="mono">firing.start|stop</span></td>
+                <td>Execução iniciada/encerrada</td>
+                <td><span class="mono">ts, session_id</span></td>
+              </tr>
+            </tbody>
+          </table>
+        </article>
+      </div>
+      <div class="page-break"></div>
+    </section>
+  </main>
+
+  <footer class="page-footer container">
+    <div>FXKONTROL 2 — Checklist de Segurança & Conformidade • Confidencial • 14 de maio de 2026</div>
+    <div class="muted">Este anexo usa referências normativas (NFPA 1123/1126, FAA Part 107, EASA/SORA) de forma orientativa. Itens nacionais (Brasil) permanecem “A confirmar”.</div>
+  </footer>
+</body>
+</html>
