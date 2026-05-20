@@ -45,6 +45,7 @@ export default defineConfig(({ mode }) => ({
           "**/postprocessing-core-*.js",
           "**/three-core-*.js",
           "**/r3f-*.js",
+          "**/drei-*.js",
           "**/vendor-tiles-*.js",
           "**/vendor-markdown-*.js",
           "**/recharts-*.js",
