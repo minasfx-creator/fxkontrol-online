@@ -1752,6 +1752,25 @@ export function TimelineEffects() {
           </group>
         );
 
+        // Showven SFX vendor pack + lancework set-piece routing.
+        // Heuristic by Effect.name (Finale catalog descriptions include vendor codes).
+        if (pt === 'sfx' || (effect.type === 'sfx' && !pt)) {
+          const nm = (effect.name || '').toUpperCase();
+          if (nm.includes('SBOOM') || nm.includes('SONIC BOOM') || nm.includes('SMOKE JET') || nm.includes('FOG JET')) {
+            return <FogMachineEffect key={item.id} position={pos} color={effect.color} progress={progress} spread={8 + (scaledHeight || 4)} />;
+          }
+          if (nm.includes('FLAMER') || nm.includes('SVCFLM') || nm.includes('FLAME')) {
+            return <FlameEffect key={item.id} position={pos} color={effect.color} progress={progress} height={scaledHeight || 6} />;
+          }
+          // Default SFX (Sparkular, generic spark devices) → Gerb (upward spark fountain).
+          return <GerbEffect key={item.id} position={pos} color={effect.color} progress={progress} height={scaledHeight || 5} caliber={caliber} formulationId={effFormulationId} />;
+        }
+
+        // Lancework / static set-pieces — render as a sustained flame surrogate
+        // until a dedicated SetPieceEffect ships.
+        if (pt === 'set_piece') {
+          return <FlameEffect key={item.id} position={pos} color={effect.color} progress={progress} height={scaledHeight || 4} />;
+        }
 
         if (effect.type === 'firework') return (
           <FireworkBurst 
