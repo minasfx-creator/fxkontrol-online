@@ -1,67 +1,81 @@
-# Importar Show ANIVERSARIO_ANGRA + Exports completos (JSON / CSV / VVIZ)
+## Escopo (3 frentes paralelas, ordenadas por risco)
 
-## Objetivo
-1. Adicionar o show **ANIVERSARIO_ANGRA** (do CSV anexado) como um **seed demo carregável** no editor, igual ao `festivalMainStageDemo`.
-2. Garantir 3 botões de exportação completos a partir do show carregado: **JSON canônico**, **CSV Finale 3D (FIRING_HEADER/FIRING_DATA)** e **.VVIZ** (X/Y/Z/Heading).
-
-> Os 3 arquivos anexados (.fir Access DB, .fin zip Finale, .csv firing-list) descrevem o **mesmo show**. O `.csv` é a fonte canônica legível (111 linhas, 109 cues, 2 posições P-01/P-02, módulos fireone_fm 01–04, ~3:30 de duração). `.fir` e `.fin` são binários proprietários e ficam fora de escopo de parse.
+Os 4 HTMLs analisados (Relatório v1, Matriz PLG, Roadmap 12m, Checklist Safety) convergem num único pedido técnico: **transformar capacidades hoje abertas em gates server-side**. Hoje a tabela `subscriptions` (Paddle) existe mas **nada no app a consulta** — `useSubscription`, `has_active_subscription` e `useEntitlement` não estão em uso, e nenhuma rota comercial (`/pricing`, `/comercial`, `/strategy`) está montada em `App.tsx` (memória estava desatualizada).
 
 ---
 
-## O que será criado
+### Frente 1 — Paywall PLG inquebrável (núcleo)
 
-### 1. Seed do show (parse do CSV → ShowPlan)
-- **`scripts/build-aniversario-angra.mjs`** — script Node que lê o CSV anexado e gera:
-  - **`src/data/demoShows/aniversarioAngra.generated.json`** — array de cues normalizado (time, posName, module, slat, pin, effectName, caliber, prefire, duration, x/y/z, vdl, notes).
-- **`src/data/demoShows/aniversarioAngraDemo.ts`** — análogo a `festivalMainStageDemo.ts`:
-  - `ANIVERSARIO_ANGRA_ID`, `ANIVERSARIO_ANGRA_DURATION_S` (≈ 220s, baseado no último `eventTime + duration`).
-  - `buildAniversarioAngraShow(): ShowPlan` montando `positions` (P-01, P-02 a partir das coords X Y Z do CSV), `pyroCues` (1 por linha FIRING_DATA_ROW), `hardwareConfig` com 4 módulos `fireone_fm` (01–04), 32 pinos, slat=1.
-  - `ANIVERSARIO_ANGRA_MANIFEST` com `provenance: 'pilot'` (vem de show real do usuário).
+**1.1 Schema (migration única)**
+- Nova tabela `public.entitlements` (canônica por plano):
+  `plan_key text PK` ('free' | 'pro' | 'enterprise'), `features jsonb`, `limits jsonb`
+  Seed: free = `{artnet_universes:1, drones_sim:50, fir_export:false, mavlink:false, smpte:false, blackbox_export:false, ai_choreo_runs_month:5}`, pro = 10x, enterprise = ilimitado.
+- Nova tabela `public.subscription_features` (cache derivado, 1:1 com user): `user_id PK`, `plan_key`, `expires_at`, `synced_at`. Trigger `AFTER INSERT/UPDATE on subscriptions` recomputa.
+- Função SECURITY DEFINER `public.user_plan_key(uid uuid) returns text`, `public.user_has_feature(uid uuid, feat text) returns bool`, `public.user_within_limit(uid uuid, lim text, val int) returns bool`.
+- Custom JWT hook `public.jwt_plan_claims(event jsonb)` injetando `plan_key` + `features` no token via `before_user_signed_in` (configurada via `configure_auth` se suportado; senão lemos de `subscription_features` no frontend e edge functions).
 
-### 2. Registro no menu de Demos
-- **`src/data/demoShows/index.ts`** (novo): exporta lista `DEMO_SHOWS` com `festivalMainStageDemo` + `aniversarioAngra`.
-- **`src/components/editor/DemoShowMenu.tsx`** (novo): dropdown “Carregar Show Demo” na `Toolbar` do editor. Ao escolher, chama um helper que popula `useProjectStore` (positions, timelineItems convertidos do `pyroCues`, duration, projectName).
+**1.2 RLS gates nas operações críticas existentes**
+- `projects.insert`: free → CHECK count <= 3 via `user_within_limit`.
+- Nova tabela `export_jobs` (kind: 'fir'|'mavlink'|'skyc'|'vviz'|'csv', status, payload_url): policy INSERT exige `user_has_feature(auth.uid(), kind || '_export')`.
+- Refator dos exporters atuais (`exportEngine.ts`, `firingSystemExports.ts`, `goldenShowExport.ts`) para passar por edge function `request-export` que **(a)** insere em `export_jobs` (RLS rejeita server-side se sem feature) **(b)** gera o blob **(c)** retorna signed URL do bucket `go-live-evidence`. Falha no servidor, nunca na UI.
 
-### 3. Exports completos unificados
-Hoje existem peças separadas. Vou unificar em um único menu “**Exportar Show Completo**” no header do editor com 3 ações:
+**1.3 Edge functions com guard**
+- `_shared/requireFeature.ts`: helper que lê JWT, chama `user_has_feature`, retorna 402 padronizado.
+- Aplicado em `request-export`, e nas chamadas LLM (`xai-generate`, etc.) cobrindo `ai_choreo_runs_month`.
 
-| Ação | Função usada | Arquivo |
-|---|---|---|
-| **JSON canônico** | nova `exportFullShowJSON(plan)` em `src/lib/exportEngine.ts` (serializa ShowPlan + timelineItems + positions + trajectories + droneFormations + metadata + versão de schema) | `<show>.fxk.json` |
-| **CSV Finale 3D** | nova `exportFinaleFiringCSV(plan)` em `src/lib/exportEngine.ts` que emite cabeçalho `FIRING_HEADER_ROW` exato do anexo (28 colunas) + uma linha `FIRING_DATA_ROW` por pyroCue, montando a coluna `Coordinates` no formato `X Y Z h p r sx sy sz` com 6 casas decimais | `<show>.firing.csv` |
-| **.VVIZ** | já existe `exportVVIZ(...)` (X/Y/Z/Heading) — apenas adicionar entrada no novo menu reusando `VVIZExportDialog` | `<show>.vviz` |
+**1.4 UI**
+- `src/hooks/useEntitlement.ts` (puro UX, jamais autoridade): lê `subscription_features`, expõe `{plan, has(feat), within(lim,val), upgradeUrl}`.
+- `<Paywall feature="fir_export">` wrapper que renderiza child OU upsell card com CTA → `/pricing` (futura).
+- Aplicado em: botão Export Skybrush, Export FireOne, Export MAVLink, Export BlackBox PDF, Art-Net universes >1, sliders de drones >50.
+- Banner global `PlanStatusChip` na `GlobalSafetyBar` (chip cinza `FREE` / amber `PAST_DUE` / verde `PRO`).
 
-- **`src/components/editor/ExportShowMenu.tsx`** (novo): DropdownMenu com as 3 opções e ícones (`FileJson`, `FileSpreadsheet`, `Box`). Substitui/complementa o botão VVIZ isolado.
-
-### 4. Testes mínimos
-- **`src/data/demoShows/__tests__/aniversarioAngra.spec.ts`** — verifica: total de cues = 109, positions includes `P-01` e `P-02` com `x≈-49.15` e `x≈51.85`, módulos 01–04, duração coerente.
-- **`src/lib/__tests__/exportFinaleFiringCSV.spec.ts`** — round-trip parse do CSV gerado tem mesmo número de linhas que o seed e cabeçalho idêntico ao do anexo.
+**1.5 Telemetria de paywall**
+- Tabela `plg_events` (`event_type`, `feature`, `plan_key`, `created_at`). Insert via RPC `track_plg_event`. Eventos: `paywall.shown`, `paywall.clicked`, `feature.gated`, `upgrade.intent`.
 
 ---
 
-## Arquivos tocados
+### Frente 2 — Demo show "Araruama" (drones)
 
-**Criados**
-- `scripts/build-aniversario-angra.mjs`
-- `src/data/demoShows/aniversarioAngra.generated.json`
-- `src/data/demoShows/aniversarioAngraDemo.ts`
-- `src/data/demoShows/index.ts`
-- `src/components/editor/DemoShowMenu.tsx`
-- `src/components/editor/ExportShowMenu.tsx`
-- `src/data/demoShows/__tests__/aniversarioAngra.spec.ts`
-- `src/lib/__tests__/exportFinaleFiringCSV.spec.ts`
+Mesmo padrão dos demos Angra/Festival:
+- `scripts/build-araruama.mjs` — script auxiliar (extrai narrativa do vídeo via descrição manual no JSON-seed, sem dependência de mídia em runtime).
+- `src/data/demoShows/araruama.generated.json` — formações (intro lakeshore wave → letreiro "ARARUAMA" → bandeira RJ → finale), ~120 drones, ~180s.
+- `src/data/demoShows/araruamaDemo.ts` — builder `ShowPlan` (provenance: `marketing_hypothesis`, claim badge).
+- Registro em `DEMO_SHOWS` (`src/data/demoShows/index.ts`) — aparece no menu Demos da Toolbar.
+- Test snapshot em `__tests__/araruama.spec.ts`.
 
-**Editados**
-- `src/lib/exportEngine.ts` — adicionar `exportFullShowJSON` + `exportFinaleFiringCSV`.
-- `src/components/editor/Toolbar.tsx` — montar `DemoShowMenu` + `ExportShowMenu` (remover botão VVIZ isolado se existir, ou reusar dialog dentro do novo menu).
+Nota: o `.mp4` é referência criativa só; **não fica em runtime**, só uso para extrair beats das formações (informo via comentários no .ts).
 
-## Fora de escopo
-- Parse de `.fir` (MS Access Jet DB) e `.fin` (Finale ZIP) binários — fica para rodada futura.
-- Importar o vídeo `TESTE_FINALE_drones.mp4` (sem pipeline de vídeo no editor hoje).
-- Mudanças em safety/workMode/CommandBus — todos os exports rodam pela `ExportCoordinator` existente e respeitam readiness gates.
-- Redesign visual — só novos componentes seguindo DS tokens (`ds-*`, `bg-background`, `border-border/30`).
+---
 
-## Riscos
-- CSV usa caliber em milímetros (`44mm`) e polegadas (`3"`) misturado — o parser do script normaliza para mm (3" = 75mm).
-- `Coordinates` do Finale tem 9 floats; só os 3 primeiros (X Y Z) são posicionais — heading vem da coluna `Angles` (vazia no CSV anexo, default 0).
-- O VDL na coluna `Animation Description` é descritivo; mantido como string em `notes` (não re-parseado).
+### Frente 3 — Docs internos servidos
+
+- Copio os 4 HTMLs (`fxk-report.html`, `fxk-plg-matrix.html`, `fxk-roadmap.html`, `fxk-safety-compliance.html`) para `public/docs/internal/`.
+- Nova rota autenticada `/docs/internal/:slug` → `src/pages/InternalDocs.tsx` renderiza via `<iframe sandbox>` (isola CSS dos HTMLs do design system).
+- Index `/docs/internal` lista os 4 com cards.
+- Sidebar ganha item "Docs" (ícone `BookOpen`) → linka ao index. Visível só para `has_role(admin)` ou `plan_key in ('pro','enterprise')`.
+
+---
+
+### Out of scope (não toco)
+
+- Renderer 3D, GPGPU, Show3DEngine, FXK16 bridge, CommandBus, Safety StateMachine, workMode, BlackBox.
+- Nenhuma migração de rotas existentes; nenhuma remoção de página.
+- VVIZ math, VDL parser, Finale libs.
+- Templates de show Itaguaí (continuam pendentes do plano anterior).
+
+---
+
+### Ordem de execução
+
+1. Migration única (Frente 1.1 + 1.2 schema) + seed.
+2. Edge functions `request-export` + `_shared/requireFeature`.
+3. Hook `useEntitlement` + componente `Paywall` + chip.
+4. Refator dos botões Export para usar `Paywall` + `request-export`.
+5. Demo Araruama (Frente 2) — independente.
+6. Rotas `/docs/internal/*` (Frente 3) — independente.
+
+### Critério de pronto
+- Free user no DevTools tentando POST `/functions/v1/request-export?kind=fir` recebe **402** mesmo bypassando UI.
+- `console.log('checking RLS')` em DB confirma que `INSERT` em `export_jobs` falha sem feature.
+- Demo Araruama aparece no menu Demos e carrega `ShowPlan` válido.
+- `/docs/internal/report` renderiza o HTML completo dentro do MainLayout.
