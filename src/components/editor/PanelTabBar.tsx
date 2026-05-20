@@ -216,7 +216,7 @@ export default function PanelTabBar({ activePanel, onTogglePanel }: PanelTabBarP
           </button>
         </div>
         {searchOpen && (
-          <div className="px-1.5 py-1.5 border-b border-border/8">
+          <div className="flex-shrink-0 px-1.5 py-1.5 border-b border-border/8">
             <input
               type="text"
               placeholder="..."
