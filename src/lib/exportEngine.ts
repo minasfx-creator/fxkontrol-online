@@ -836,6 +836,147 @@ export function exportFormationsToKML(
 </kml>`;
 }
 
+// ─── Full Show — JSON canonical ──────────────────────────────────────
+
+export const FULL_SHOW_SCHEMA = 'fxk.show.v1';
+
+export interface FullShowSnapshot {
+  projectName: string;
+  duration: number;
+  positions: Position[];
+  timelineItems: TimelineItem[];
+  trajectories: Trajectory[];
+  droneFormations: DroneFormation[];
+}
+
+export function exportFullShowJSON(snap: FullShowSnapshot): string {
+  return JSON.stringify(
+    {
+      schema: FULL_SHOW_SCHEMA,
+      exportedAt: new Date().toISOString(),
+      project: {
+        name: snap.projectName,
+        durationS: snap.duration,
+      },
+      counts: {
+        positions: snap.positions.length,
+        cues: snap.timelineItems.length,
+        trajectories: snap.trajectories.length,
+        droneFormations: snap.droneFormations.length,
+      },
+      positions: snap.positions,
+      timelineItems: snap.timelineItems,
+      trajectories: snap.trajectories,
+      droneFormations: snap.droneFormations,
+    },
+    null,
+    2,
+  );
+}
+
+// ─── Full Show — Finale 3D firing CSV (FIRING_HEADER/FIRING_DATA) ────
+
+export const FINALE_FIRING_HEADER_COLUMNS = [
+  'FIRING_HEADER_ROW',
+  'Time Cue Number',
+  'Ignition Event Time',
+  'Number Of Devices',
+  'Duration',
+  'Coordinates',
+  'Chain Identifier',
+  'Lockout Identifier',
+  'Device Delay',
+  'Prefire Delay',
+  'Effect Name',
+  'Caliber',
+  'Category',
+  'Angles',
+  'Position Name',
+  'Animation Description',
+  'Module Description',
+  'Module Address',
+  'Slat Address',
+  'Pin Address',
+  'Firing Notes',
+  'Product ID',
+  'Manufacturer Product ID',
+  'Animation ID',
+  'Location Primary',
+  'Location Secondary',
+  'Price Per Device',
+  'Mortar Caliber',
+  'Track Identifier',
+] as const;
+
+function fmtCoord(n: number): string {
+  return (Math.round(n * 1_000_000) / 1_000_000).toFixed(6);
+}
+
+export function exportFinaleFiringCSV(
+  timelineItems: TimelineItem[],
+  positions: Position[],
+): string {
+  const pyro = timelineItems
+    .filter((i) => {
+      const e = EFFECT_LIBRARY.find((x) => x.id === i.effectId);
+      return !e || e.type === 'firework';
+    })
+    .sort((a, b) => a.startTime - b.startTime);
+
+  const lines: string[] = [];
+  lines.push(FINALE_FIRING_HEADER_COLUMNS.join(','));
+
+  for (const item of pyro) {
+    const effect = EFFECT_LIBRARY.find((e) => e.id === item.effectId);
+    const pos = positions.find(
+      (p) => p.id === (item.positionId ?? item.positionName) || p.name === item.positionName,
+    );
+    const x = item.position.x;
+    const y = item.position.y;
+    const z = item.position.z;
+    const heading = item.cueHeading ?? pos?.heading ?? 0;
+    const pitch = item.cuePitch ?? pos?.pitch ?? 0;
+    const coords = [x, y, z, heading, pitch, 0, 0, 0, 0].map(fmtCoord).join(' ');
+    const duration = item.durationOverride ?? effect?.duration ?? 0;
+    const effectName = effect?.name ?? item.effectId;
+    const caliber = effect?.caliber ? `${effect.caliber}mm` : '';
+    const posName = pos?.name ?? item.positionName ?? '';
+    const category = 'Cakes';
+    const moduleAddr = item.universe ?? '';
+    const slatAddr = item.rack ?? '';
+    const pinAddr = item.tube ?? '';
+
+    const row = [
+      'FIRING_DATA_ROW',
+      '',
+      (Math.round(item.startTime * 1000) / 1000).toFixed(3),
+      '1',
+      duration.toFixed(2),
+      coords,
+      '',
+      '',
+      '0.0',
+      '0.0',
+      csvCell(effectName),
+      csvCell(caliber),
+      csvCell(category),
+      '',
+      csvCell(posName),
+      csvCell(item.notes ?? ''),
+      'fireone_fm',
+      csvCell(String(moduleAddr).padStart(2, '0')),
+      csvCell(String(slatAddr)),
+      csvCell(String(pinAddr).padStart(2, '0')),
+      '',
+      csvCell(effectName),
+      '', '', '', '', '', '', '',
+    ];
+    lines.push(row.join(','));
+  }
+
+  return lines.join('\n');
+}
+
 // ─── Download Helper ─────────────────────────────────────────────────
 
 export function downloadFile(content: string, filename: string, mimeType: string) {
