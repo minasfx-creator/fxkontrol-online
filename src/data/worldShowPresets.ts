@@ -190,7 +190,7 @@ function densifyAndThemeTimeline(
   const pushFiller = (t: number) => {
     const sceneIdx = Math.floor(t / SCENE_LENGTH_S);
     const palette = paletteForScene(sceneIdx);
-    const filler = palette.fillers[fillerCount % palette.fillers.length];
+    const filler = pickFiller(palette, sceneIdx, fillerCount);
     const p = nextPos();
     gapFilled.push(cue(uid(), filler, t, FILL_TRACK, { x: p.x, y: p.y, z: p.z }, p.id));
     fillerCount++;
