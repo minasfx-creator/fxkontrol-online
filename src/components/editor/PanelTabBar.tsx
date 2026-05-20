@@ -197,7 +197,15 @@ export default function PanelTabBar({ activePanel, onTogglePanel }: PanelTabBarP
 
   return (
     <TooltipProvider delayDuration={200}>
-      <div className="w-[52px] flex-shrink-0 border-l border-border/10 flex flex-col" style={{ background: 'hsl(var(--card))' }}>
+      <div
+        className="w-[52px] flex-shrink-0 h-full min-h-0 border-l border-primary/8 flex flex-col"
+        style={{
+          background: 'rgba(8, 10, 14, 0.72)',
+          backdropFilter: 'blur(32px) saturate(1.6)',
+          WebkitBackdropFilter: 'blur(32px) saturate(1.6)',
+          boxShadow: 'inset 1px 0 0 rgba(255,255,255,0.04)',
+        }}
+      >
         {/* Search toggle */}
         <div className="flex items-center justify-center py-1.5 border-b border-border/8">
           <button
