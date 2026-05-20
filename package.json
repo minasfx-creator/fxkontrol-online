@@ -10,7 +10,9 @@
     "lint": "eslint .",
     "preview": "vite preview",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "test:e2e:effects": "vitest run src/__tests__/effectsLibraryE2E.spec.ts --reporter=verbose",
+    "test:e2e:effects:watch": "vitest src/__tests__/effectsLibraryE2E.spec.ts"
   },
   "dependencies": {
     "3d-tiles-renderer": "^0.4.4",

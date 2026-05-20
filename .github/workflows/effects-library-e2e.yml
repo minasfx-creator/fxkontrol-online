@@ -1,0 +1,54 @@
+name: Effects Library E2E
+
+# Runs effectsLibraryE2E.spec.ts (full catalog routing + spawn coverage) on
+# every push and PR. Build fails if KNOWN_UNROUTED regresses or any effect
+# falls back to an unrouted renderer. This is the canonical regression gate
+# for the effects pipeline — never disable without renderer wiring review.
+
+on:
+  push:
+    branches: ['**']
+    paths:
+      - 'src/__tests__/effectsLibraryE2E.spec.ts'
+      - 'src/lib/effectRouter.ts'
+      - 'src/lib/vdl*.ts'
+      - 'src/lib/finale*.ts'
+      - 'src/data/effectsLibraries/**'
+      - 'src/data/fwsimBuiltinPresets.ts'
+      - 'src/data/finalePresetMap.ts'
+      - 'src/components/editor/skycanvas/FireworkRenderer.tsx'
+      - 'src/render/silhouettes/**'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'bun.lockb'
+      - 'vitest.config.ts'
+      - '.github/workflows/effects-library-e2e.yml'
+  pull_request:
+    branches: ['**']
+  workflow_dispatch:
+
+concurrency:
+  group: effects-e2e-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  e2e:
+    name: effects-library-e2e
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci --no-audit --no-fund
+
+      - name: Run effectsLibraryE2E (full catalog regression gate)
+        run: npx vitest run src/__tests__/effectsLibraryE2E.spec.ts --reporter=verbose
+
+      - name: Run full vitest suite
+        run: npm test -- --reporter=dot
