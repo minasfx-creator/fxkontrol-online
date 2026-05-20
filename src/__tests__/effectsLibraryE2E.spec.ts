@@ -37,15 +37,9 @@ const KNOWN_UNROUTED: ReadonlySet<string> = new Set([
   'form-01', 'form-02', 'form-03', 'form-04', 'form-05', 'form-06', 'form-08',
   // Architectural lights without beamType — fallback to LightPoint by design.
   'aring-01', 'aring-02', 'light-05', 'light-06',
-  // Finale lancework — set_piece SFX, awaiting SetPieceEffect wiring in TimelineEffects.
-  'fin-44-lancework',
-  // Showven SFX cassettes — type=sfx partType=sfx, vendor pack pending dedicated renderer.
+  // SHV1188 Circle Flamer is partType=other_effect (not sfx) — pending dedicated mapping.
   'fl-showven-SHV1188',
-  'fl-showven-SHV3005', 'fl-showven-SHV3019', 'fl-showven-SHV3105',
-  'fl-showven-SHV3300', 'fl-showven-SHV3302', 'fl-showven-SHV3304',
-  'fl-showven-SHV3306', 'fl-showven-SHV3308', 'fl-showven-SHV3310',
-  'fl-showven-SHV3312', 'fl-showven-SHV3314', 'fl-showven-SHV3317',
-  'fl-showven-SHV3500', 'fl-showven-SHV3501',
+
 ]);
 
 describe('effects library — full E2E pipeline+spawn coverage', () => {
