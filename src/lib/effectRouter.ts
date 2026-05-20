@@ -98,17 +98,21 @@ export function routeEffect(effect: Effect): RouterDecision {
   // 4c) Lancework / static set-pieces → Flame surrogate.
   if (pt === 'set_piece') return ok('flame', 20, 'partType=set_piece (flame surrogate)');
 
+  // 4d) Drones, formations, strobes → LightPoint = QuadcopterModel (REAL renderer,
+  // not a fallback). LightPoint dispatches to <QuadcopterModel/> which is a real
+  // 3D mesh with pulse + drift. Formations render as a single drone instance
+  // until choreography engine ships (honest-pilot claim).
+  if (pt === 'drone' || pt === 'formation' || pt === 'strobe') {
+    return ok('light-point', 1, `partType=${pt} → QuadcopterModel`);
+  }
+  if (t === 'drone') return ok('light-point', 1, 'type=drone → QuadcopterModel');
+  if (t === 'light') return ok('light-point', 1, 'type=light (no beamType) → QuadcopterModel');
 
   // 5) type-level fallbacks (1756..1775)
   if (t === 'firework') {
     const pat = effect.pattern;
     if (!pat || SHELL_PATTERNS.has(pat)) return ok('firework-burst', 80, `type=firework pattern=${pat || '(default peony)'}`);
     return ok('firework-burst', 80, `type=firework pattern=${pat} (unknown pattern but still routed)`);
-  }
-
-  // Drone or unrouted light: real codepath renders LightPoint
-  if (t === 'drone' || t === 'light') {
-    return { kind: 'light-point', expectedSpawn: 1, isFallback: true, reason: `type=${t} → LightPoint fallback (no renderer)` };
   }
 
   // SFX / laser without explicit mapping → fallback
