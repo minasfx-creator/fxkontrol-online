@@ -99,11 +99,18 @@ function pyroCues(): PyroCue[] {
 const FESTIVAL_SCENE_S = 20;
 const FESTIVAL_MAX_GAP_S = 1.0;
 const FESTIVAL_PALETTES = [
-  { opener: 'mine_8s_gold',   accent: 'mine_4s_gold',   filler: ['mine_2s_silver', 'mine_2s_gold'] },
-  { opener: 'mine_8s_silver', accent: 'mine_4s_silver', filler: ['mine_2s_gold',   'mine_2s_silver'] },
-  { opener: 'mine_8s_gold',   accent: 'mine_4s_red',    filler: ['mine_2s_red',    'mine_2s_silver'] },
-  { opener: 'mine_8s_silver', accent: 'mine_4s_blue',   filler: ['mine_2s_blue',   'mine_2s_gold'] },
+  { opener: 'mine_8s_gold',   accent: 'mine_4s_gold',   filler: ['mine_2s_silver', 'mine_2s_gold',   'co2_blast_2s',  'mine_2s_red'] },
+  { opener: 'mine_8s_silver', accent: 'mine_4s_silver', filler: ['mine_2s_gold',   'mine_2s_silver', 'mine_2s_blue',  'co2_blast_2s'] },
+  { opener: 'mine_8s_gold',   accent: 'mine_4s_red',    filler: ['mine_2s_red',    'mine_2s_silver', 'mine_2s_gold',  'co2_blast_2s'] },
+  { opener: 'mine_8s_silver', accent: 'mine_4s_blue',   filler: ['mine_2s_blue',   'mine_2s_gold',   'co2_blast_2s',  'mine_2s_silver'] },
+  { opener: 'mine_8s_gold',   accent: 'mine_4s_green',  filler: ['mine_2s_green',  'mine_2s_gold',   'mine_2s_silver','co2_blast_2s'] },
+  { opener: 'mine_8s_silver', accent: 'mine_4s_purple', filler: ['mine_2s_purple', 'mine_2s_silver', 'co2_blast_2s',  'mine_2s_red'] },
 ];
+
+// Interlock scene index with global counter for freshness across scenes.
+function pickFestivalFiller(palette: typeof FESTIVAL_PALETTES[number], sceneIdx: number, count: number) {
+  return palette.filler[(count + sceneIdx * 2 + 1) % palette.filler.length];
+}
 
 function densifyPyroCues(
   cues: PyroCue[],
@@ -161,8 +168,9 @@ function densifyPyroCues(
     const step = gap / (n + 1);
     for (let k = 1; k <= n && inserted.length + fillerCount < maxInserted; k++) {
       const t = out[i].time + step * k;
-      const palette = FESTIVAL_PALETTES[Math.floor(t / FESTIVAL_SCENE_S) % FESTIVAL_PALETTES.length];
-      const eff = palette.filler[fillerCount % palette.filler.length];
+      const sceneIdx = Math.floor(t / FESTIVAL_SCENE_S);
+      const palette = FESTIVAL_PALETTES[sceneIdx % FESTIVAL_PALETTES.length];
+      const eff = pickFestivalFiller(palette, sceneIdx, fillerCount);
       gapFilled.push(makeCue(eff, t, `gf${fillerCount}`));
       fillerCount++;
     }
