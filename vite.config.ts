@@ -123,7 +123,8 @@ export default defineConfig(({ mode }) => ({
           // ── vendor chunks ──
           const vendorChunks: Record<string, string[]> = {
             'three-core': ['three'],
-            'r3f': ['@react-three/fiber', '@react-three/drei'],
+            'r3f': ['@react-three/fiber'],
+            'drei': ['@react-three/drei'],
             'postprocessing': ['@react-three/postprocessing'],
             'postprocessing-core': ['postprocessing'],
             'recharts': ['recharts'],
