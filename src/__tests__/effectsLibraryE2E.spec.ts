@@ -37,8 +37,8 @@ const KNOWN_UNROUTED: ReadonlySet<string> = new Set([
   'form-01', 'form-02', 'form-03', 'form-04', 'form-05', 'form-06', 'form-08',
   // Architectural lights without beamType — fallback to LightPoint by design.
   'aring-01', 'aring-02', 'light-05', 'light-06',
-  // SHV1188 Circle Flamer is partType=other_effect (not sfx) — pending dedicated mapping.
-  'fl-showven-SHV1188',
+
+
 
 ]);
 
