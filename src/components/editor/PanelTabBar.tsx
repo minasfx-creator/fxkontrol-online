@@ -230,7 +230,7 @@ export default function PanelTabBar({ activePanel, onTogglePanel }: PanelTabBarP
 
         {/* Favorites */}
         {favoriteItems.length > 0 && !searchQuery && (
-          <div className="flex flex-col items-center gap-[2px] py-1.5 border-b border-primary/10">
+          <div className="flex-shrink-0 flex flex-col items-center gap-[2px] py-1.5 border-b border-primary/10">
             {favoriteItems.map(({ id, label, icon: Icon }) => (
               <Tooltip key={id}>
                 <TooltipTrigger asChild>
