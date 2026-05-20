@@ -81,6 +81,135 @@ function alternating(
 }
 
 // ═══════════════════════════════════════════════════════════════
+// Scene-based densifier
+// ─────────────────────────────────────────────────────────────────
+// Splits the show into 20s "scenes". Each scene gets a coherent
+// effect palette (rotating thematic kits). Then ensures the max
+// gap between any two consecutive cues is <= MAX_GAP_S by inserting
+// thematic filler cues from the current scene's palette.
+//
+// Non-destructive: original cues are preserved (effectId/track/etc.).
+// Inserted cues use trackIndex=7 ("scene fill") to keep phase tracks clean.
+// ═══════════════════════════════════════════════════════════════
+
+const SCENE_LENGTH_S = 20;
+const MAX_GAP_S = 1.0;
+const FILL_TRACK = 7;
+
+// Thematic palettes — each palette is a coherent visual "mood"
+// (small/medium effects suitable as scene fillers, not finale shells).
+const SCENE_PALETTES: ReadonlyArray<{
+  name: string;
+  opener: string;          // effect played once at scene start
+  fillers: string[];       // rotated for gap-filling
+  accent: string;          // mid-scene accent
+}> = [
+  { name: 'gold-comets',   opener: 'mine-01', fillers: ['comet-01', 'comet-02', 'peon-01'], accent: 'shell-01' },
+  { name: 'silver-rain',   opener: 'mine-02', fillers: ['comet-02', 'peon-02', 'comet-01'], accent: 'shell-02' },
+  { name: 'red-peonies',   opener: 'mine-05', fillers: ['peon-03', 'peon-01', 'comet-01'], accent: 'shell-03' },
+  { name: 'blue-mortar',   opener: 'mort-01', fillers: ['peon-04', 'comet-02', 'peon-02'], accent: 'shell-05' },
+  { name: 'green-bursts',  opener: 'mort-03', fillers: ['peon-05', 'peon-03', 'comet-01'], accent: 'shell-08' },
+  { name: 'purple-stars',  opener: 'mine-01', fillers: ['peon-02', 'peon-04', 'comet-02'], accent: 'shell-17' },
+  { name: 'crackling',     opener: 'mort-04', fillers: ['comet-01', 'peon-01', 'comet-02'], accent: 'shell-09' },
+  { name: 'kamuro-gold',   opener: 'mine-05', fillers: ['peon-05', 'comet-02', 'peon-03'], accent: 'shell-17' },
+];
+
+function paletteForScene(sceneIdx: number) {
+  return SCENE_PALETTES[sceneIdx % SCENE_PALETTES.length];
+}
+
+/**
+ * Densify + theme a timeline.
+ * - Adds a thematic opener at each 20s scene boundary.
+ * - Fills any gap > MAX_GAP_S with rotating filler effects from the scene palette.
+ * - Caps total cues to avoid blowing past hardware budgets.
+ */
+function densifyAndThemeTimeline(
+  positions: Position[],
+  items: TimelineItem[],
+  totalDurationS: number,
+  opts: { maxInsertedCues?: number } = {},
+): TimelineItem[] {
+  if (positions.length === 0 || totalDurationS <= 0) return items;
+  const maxInserted = opts.maxInsertedCues ?? 1200;
+
+  // 1) Sort + clone the existing cues.
+  const out = [...items].sort((a, b) => a.startTime - b.startTime);
+  const inserted: TimelineItem[] = [];
+
+  let posCursor = 0;
+  const nextPos = () => {
+    const p = positions[posCursor % positions.length];
+    posCursor++;
+    return p;
+  };
+
+  // 2) Inject one opener + one accent per 20s scene if scene is sparse.
+  const sceneCount = Math.ceil(totalDurationS / SCENE_LENGTH_S);
+  for (let s = 0; s < sceneCount; s++) {
+    if (inserted.length >= maxInserted) break;
+    const sceneStart = s * SCENE_LENGTH_S;
+    const sceneEnd = Math.min((s + 1) * SCENE_LENGTH_S, totalDurationS);
+    const palette = paletteForScene(s);
+    const inScene = out.filter(c => c.startTime >= sceneStart && c.startTime < sceneEnd);
+    if (inScene.length < 2) {
+      // Opener at scene start (small subset of positions for clarity)
+      const openerPositions = positions.length > 4 ? positions.filter((_, i) => i % 3 === 0) : positions;
+      openerPositions.forEach((p, i) => {
+        inserted.push(cue(uid(), palette.opener, sceneStart + i * 0.08, FILL_TRACK,
+          { x: p.x, y: p.y, z: p.z }, p.id));
+      });
+      // Accent halfway through
+      const p = nextPos();
+      inserted.push(cue(uid(), palette.accent, sceneStart + SCENE_LENGTH_S * 0.5, FILL_TRACK,
+        { x: p.x, y: p.y, z: p.z }, p.id));
+    }
+  }
+
+  // 3) Merge + re-sort, then fill any gap > MAX_GAP_S.
+  out.push(...inserted);
+  out.sort((a, b) => a.startTime - b.startTime);
+
+  const gapFilled: TimelineItem[] = [];
+  let fillerCount = 0;
+  for (let i = 0; i < out.length - 1; i++) {
+    const a = out[i];
+    const b = out[i + 1];
+    let t = a.startTime + MAX_GAP_S;
+    while (b.startTime - t > MAX_GAP_S && fillerCount + inserted.length < maxInserted) {
+      const sceneIdx = Math.floor(t / SCENE_LENGTH_S);
+      const palette = paletteForScene(sceneIdx);
+      const filler = palette.fillers[fillerCount % palette.fillers.length];
+      const p = nextPos();
+      gapFilled.push(cue(uid(), filler, t, FILL_TRACK,
+        { x: p.x, y: p.y, z: p.z }, p.id));
+      fillerCount++;
+      t += MAX_GAP_S;
+    }
+  }
+
+  // Also fill the tail (after last cue up to duration - 2s).
+  const last = out[out.length - 1];
+  if (last && totalDurationS - last.startTime > MAX_GAP_S) {
+    let t = last.startTime + MAX_GAP_S;
+    while (t < totalDurationS - 1 && fillerCount + inserted.length < maxInserted) {
+      const sceneIdx = Math.floor(t / SCENE_LENGTH_S);
+      const palette = paletteForScene(sceneIdx);
+      const filler = palette.fillers[fillerCount % palette.fillers.length];
+      const p = nextPos();
+      gapFilled.push(cue(uid(), filler, t, FILL_TRACK,
+        { x: p.x, y: p.y, z: p.z }, p.id));
+      fillerCount++;
+      t += MAX_GAP_S;
+    }
+  }
+
+  out.push(...gapFilled);
+  out.sort((a, b) => a.startTime - b.startTime);
+  return out;
+}
+
+// ═══════════════════════════════════════════════════════════════
 // 1. COPACABANA — Rio de Janeiro
 // ═══════════════════════════════════════════════════════════════
 function generateCopacabana() {
