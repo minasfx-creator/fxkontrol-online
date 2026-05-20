@@ -1639,8 +1639,26 @@ export function TimelineEffects() {
   // Update frustum once per render (not per-burst)
   updateFrustum(camera);
 
+  // Collect ALL drone/formation/strobe items for instanced rendering (1 draw call vs N).
+  const droneFieldItems: DroneFieldItem[] = useMemo(() => {
+    const out: DroneFieldItem[] = [];
+    for (const e of cappedEffects) {
+      const pt = e.effect.partType;
+      if (pt === 'drone' || pt === 'formation' || pt === 'strobe' || e.effect.type === 'drone') {
+        const terrainOffset = getHeight(e.resolvedPos.x, e.resolvedPos.z);
+        out.push({
+          id: e.item.id,
+          position: [e.resolvedPos.x, e.resolvedPos.y + terrainOffset, e.resolvedPos.z],
+          color: e.effect.color,
+        });
+      }
+    }
+    return out;
+  }, [cappedEffects, getHeight]);
+
   return (
     <>
+      <InstancedDroneField items={droneFieldItems} />
       {cappedEffects.map(({ item, effect, progress, inPrefire, prefireProgress, caliber, resolvedPos, effectScale, effectBrightness, launchHeading, launchPitch }) => {
         const terrainOffset = getHeight(resolvedPos.x, resolvedPos.z);
         const pos: [number, number, number] = [resolvedPos.x, resolvedPos.y + terrainOffset, resolvedPos.z];
