@@ -9,13 +9,6 @@ export type PanelId = 'script' | 'wind' | 'reports' | 'racks' | 'addressing' | '
 
 export const PANEL_SECTIONS: { title: string; icon: typeof Route; items: { id: PanelId; label: string; icon: typeof Route; shortcut?: string }[] }[] = [
   {
-    title: '★ Comando',
-    icon: Target,
-    items: [
-      { id: 'showcommander', label: 'Show Commander', icon: Target, shortcut: 'Q' },
-    ],
-  },
-  {
     title: 'Posições',
     icon: MapPin,
     items: [
@@ -52,7 +45,6 @@ export const PANEL_SECTIONS: { title: string; icon: typeof Route; items: { id: P
       { id: 'trajectory', label: 'Trajetórias', icon: Navigation },
       { id: 'transitions', label: 'Transições', icon: ArrowRightLeft },
       { id: 'collisions', label: 'Colisões', icon: Crosshair },
-      { id: 'boids', label: 'Boids', icon: Orbit },
     ],
   },
   {
@@ -66,15 +58,10 @@ export const PANEL_SECTIONS: { title: string; icon: typeof Route; items: { id: P
       { id: 'bluetooth', label: 'Bluetooth BLE', icon: Radio },
       { id: 'nfc', label: 'NFC Pair', icon: Zap },
       { id: 'smpte', label: 'SMPTE/LTC', icon: Timer },
-      { id: 'mavlink', label: 'MAVLink', icon: Radio },
       { id: 'lasercontrol', label: 'Laser Control', icon: Zap },
       { id: 'livefiring', label: 'Live SFX', icon: Sparkles },
-      { id: 'mobilelink', label: 'Mobile Link', icon: Cable },
-      { id: 'linkmonitor', label: 'Link Monitor', icon: MonitorPlay },
-      { id: 'remotecontrol', label: 'Remote Control', icon: Play },
       { id: 'ma3', label: 'grandMA3', icon: Sliders },
       { id: 'sacnmonitor', label: 'sACN Monitor', icon: Activity },
-      { id: 'diagnostic', label: 'Diagnóstico', icon: Bug, shortcut: 'D' },
       { id: 'qastudio', label: 'QA Studio', icon: BarChart3 },
     ],
   },
@@ -101,7 +88,6 @@ export const PANEL_SECTIONS: { title: string; icon: typeof Route; items: { id: P
     icon: Package,
     items: [
       { id: 'controllers', label: 'Controladores', icon: Cpu },
-      { id: 'connections', label: 'Conexões HW', icon: Cable },
       { id: 'radio', label: 'Rádio USB', icon: Radio },
       { id: 'fieldmap', label: 'Field Map', icon: Map },
       { id: 'racks', label: 'Racks', icon: Package },
@@ -130,9 +116,9 @@ export const PANEL_SECTIONS: { title: string; icon: typeof Route; items: { id: P
       { id: 'firing', label: 'Export Disparo', icon: Download, shortcut: 'X' },
       { id: 'video', label: 'Gravação', icon: Video, shortcut: 'V' },
       { id: 'share', label: 'Compartilhar', icon: Share2 },
-      { id: 'aroverlay', label: 'AR Overlay', icon: Camera },
       { id: 'approval', label: 'Aprovação', icon: MessageSquare },
       { id: 'models', label: 'Modelos 3D', icon: Box },
+      { id: 'diagnostic', label: 'Diagnóstico', icon: Bug, shortcut: 'D' },
     ],
   },
   {
@@ -144,7 +130,6 @@ export const PANEL_SECTIONS: { title: string; icon: typeof Route; items: { id: P
       { id: 'maps', label: 'Google Maps', icon: Globe },
       { id: 'weather', label: 'Clima', icon: Cloud },
       { id: 'soundlevel', label: 'Nível Sonoro', icon: Volume2 },
-      { id: 'particles', label: 'Partículas', icon: Atom },
       { id: 'audience', label: 'Audiência', icon: FileBarChart },
       { id: 'safety', label: 'Segurança NFPA', icon: Shield, shortcut: 'F' },
       { id: 'showsettings', label: 'Config. Show', icon: Settings2 },
