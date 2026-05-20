@@ -12,7 +12,14 @@ import React, { useEffect, useMemo, useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { useRenderQualityTier } from '@/render_ultra/stability/useRenderQualityTier';
-import { isFeatureEnabled } from '@/lib/featureFlags';
+// r_instanced_drones flag — local default ON. Override via localStorage.fxk.flag.r_instanced_drones=0
+function isInstancedDronesEnabled(): boolean {
+  try {
+    if (typeof window === 'undefined') return true;
+    const v = window.localStorage.getItem('fxk.flag.r_instanced_drones');
+    return v !== '0' && v !== 'false';
+  } catch { return true; }
+}
 
 export interface DroneFieldItem {
   id: string;
