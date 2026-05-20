@@ -38,7 +38,7 @@ const _color = new THREE.Color();
 
 export default function InstancedDroneField({ items, maxInstances = 10_000 }: Props) {
   // Feature flag — default ON. Caller can disable via `r_instanced_drones`.
-  const enabled = isFeatureEnabled('r_instanced_drones' as never, true);
+  const enabled = isInstancedDronesEnabled();
   const tier = useRenderQualityTier();
 
   if (!enabled || items.length === 0) return null;
