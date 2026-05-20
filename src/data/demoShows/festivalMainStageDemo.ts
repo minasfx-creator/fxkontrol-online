@@ -155,13 +155,16 @@ function densifyPyroCues(
   let fillerCount = 0;
   const gapFilled: PyroCue[] = [];
   for (let i = 0; i < out.length - 1; i++) {
-    let t = out[i].time + FESTIVAL_MAX_GAP_S;
-    while (out[i + 1].time - t > FESTIVAL_MAX_GAP_S && inserted.length + fillerCount < maxInserted) {
+    const gap = out[i + 1].time - out[i].time;
+    if (gap <= FESTIVAL_MAX_GAP_S) continue;
+    const n = Math.ceil(gap / FESTIVAL_MAX_GAP_S) - 1;
+    const step = gap / (n + 1);
+    for (let k = 1; k <= n && inserted.length + fillerCount < maxInserted; k++) {
+      const t = out[i].time + step * k;
       const palette = FESTIVAL_PALETTES[Math.floor(t / FESTIVAL_SCENE_S) % FESTIVAL_PALETTES.length];
       const eff = palette.filler[fillerCount % palette.filler.length];
       gapFilled.push(makeCue(eff, t, `gf${fillerCount}`));
       fillerCount++;
-      t += FESTIVAL_MAX_GAP_S;
     }
   }
   out.push(...gapFilled);
