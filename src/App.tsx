@@ -26,6 +26,7 @@ const Settings = lazy(() => import("./pages/Settings"));
 const FestivalStageDemo = lazy(() => import("./pages/FestivalStageDemo"));
 const PairingTwoWire = lazy(() => import("./pages/PairingTwoWire"));
 const InternalDocs = lazy(() => import("./pages/InternalDocs"));
+const EffectsE2EHarness = lazy(() => import("./pages/dev/EffectsE2EHarness"));
 
 const queryClient = new QueryClient();
 
@@ -74,6 +75,7 @@ function App() {
                   <Route path="/pairing/two-wire" element={<PairingTwoWire />} />
                   <Route path="/docs/internal" element={<InternalDocs />} />
                   <Route path="/docs/internal/:slug" element={<InternalDocs />} />
+                  <Route path="/dev/effects-e2e" element={<EffectsE2EHarness />} />
                 </Route>
                 <Route path="*" element={<NotFound />} />
               </Routes>
