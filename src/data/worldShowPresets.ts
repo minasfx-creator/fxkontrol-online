@@ -172,35 +172,37 @@ function densifyAndThemeTimeline(
 
   const gapFilled: TimelineItem[] = [];
   let fillerCount = 0;
+  const pushFiller = (t: number) => {
+    const sceneIdx = Math.floor(t / SCENE_LENGTH_S);
+    const palette = paletteForScene(sceneIdx);
+    const filler = palette.fillers[fillerCount % palette.fillers.length];
+    const p = nextPos();
+    gapFilled.push(cue(uid(), filler, t, FILL_TRACK, { x: p.x, y: p.y, z: p.z }, p.id));
+    fillerCount++;
+  };
+
   for (let i = 0; i < out.length - 1; i++) {
-    const a = out[i];
-    const b = out[i + 1];
-    let t = a.startTime + MAX_GAP_S;
-    while (b.startTime - t > MAX_GAP_S && fillerCount + inserted.length < maxInserted) {
-      const sceneIdx = Math.floor(t / SCENE_LENGTH_S);
-      const palette = paletteForScene(sceneIdx);
-      const filler = palette.fillers[fillerCount % palette.fillers.length];
-      const p = nextPos();
-      gapFilled.push(cue(uid(), filler, t, FILL_TRACK,
-        { x: p.x, y: p.y, z: p.z }, p.id));
-      fillerCount++;
-      t += MAX_GAP_S;
+    const gap = out[i + 1].startTime - out[i].startTime;
+    if (gap <= MAX_GAP_S) continue;
+    // n fillers split the gap into (n+1) equal segments, each <= MAX_GAP_S.
+    const n = Math.ceil(gap / MAX_GAP_S) - 1;
+    const step = gap / (n + 1);
+    for (let k = 1; k <= n && fillerCount + inserted.length < maxInserted; k++) {
+      pushFiller(out[i].startTime + step * k);
     }
   }
 
-  // Also fill the tail (after last cue up to duration - 2s).
+  // Tail: from last cue to duration - 0.5s
   const last = out[out.length - 1];
-  if (last && totalDurationS - last.startTime > MAX_GAP_S) {
-    let t = last.startTime + MAX_GAP_S;
-    while (t < totalDurationS - 1 && fillerCount + inserted.length < maxInserted) {
-      const sceneIdx = Math.floor(t / SCENE_LENGTH_S);
-      const palette = paletteForScene(sceneIdx);
-      const filler = palette.fillers[fillerCount % palette.fillers.length];
-      const p = nextPos();
-      gapFilled.push(cue(uid(), filler, t, FILL_TRACK,
-        { x: p.x, y: p.y, z: p.z }, p.id));
-      fillerCount++;
-      t += MAX_GAP_S;
+  if (last) {
+    const tailEnd = totalDurationS - 0.5;
+    const tailGap = tailEnd - last.startTime;
+    if (tailGap > MAX_GAP_S) {
+      const n = Math.ceil(tailGap / MAX_GAP_S) - 1;
+      const step = tailGap / (n + 1);
+      for (let k = 1; k <= n && fillerCount + inserted.length < maxInserted; k++) {
+        pushFiller(last.startTime + step * k);
+      }
     }
   }
 
