@@ -25,6 +25,7 @@ import { temporalFlicker, getFlickerParams, strobeFlicker, getCombustionHdrBoost
 import { updateFrustum, isSphereInFrustum } from '@/lib/frustumCuller';
 import { clampNiagaraHDR, getNiagaraBudgets } from '@/lib/niagaraBlenderRules';
 import { isEnabled } from '@/lib/featureFlags';
+import InstancedDroneField, { type DroneFieldItem } from './InstancedDroneField';
 import { thermalColor, autoMatchFormulation } from '@/render_ultra/fireworks/particleChemistry';
 import { getBurstConfig, type BurstPattern } from '@/render_ultra/fireworks/burstSimulation';
 import {
@@ -1638,8 +1639,26 @@ export function TimelineEffects() {
   // Update frustum once per render (not per-burst)
   updateFrustum(camera);
 
+  // Collect ALL drone/formation/strobe items for instanced rendering (1 draw call vs N).
+  const droneFieldItems: DroneFieldItem[] = useMemo(() => {
+    const out: DroneFieldItem[] = [];
+    for (const e of cappedEffects) {
+      const pt = e.effect.partType;
+      if (pt === 'drone' || pt === 'formation' || pt === 'strobe' || e.effect.type === 'drone') {
+        const terrainOffset = getHeight(e.resolvedPos.x, e.resolvedPos.z);
+        out.push({
+          id: e.item.id,
+          position: [e.resolvedPos.x, e.resolvedPos.y + terrainOffset, e.resolvedPos.z],
+          color: e.effect.color,
+        });
+      }
+    }
+    return out;
+  }, [cappedEffects, getHeight]);
+
   return (
     <>
+      <InstancedDroneField items={droneFieldItems} />
       {cappedEffects.map(({ item, effect, progress, inPrefire, prefireProgress, caliber, resolvedPos, effectScale, effectBrightness, launchHeading, launchPitch }) => {
         const terrainOffset = getHeight(resolvedPos.x, resolvedPos.z);
         const pos: [number, number, number] = [resolvedPos.x, resolvedPos.y + terrainOffset, resolvedPos.z];
@@ -1772,11 +1791,10 @@ export function TimelineEffects() {
           return <FlameEffect key={item.id} position={pos} color={effect.color} progress={progress} height={scaledHeight || 4} />;
         }
 
-        // Drones / formations / strobes → LightPoint = QuadcopterModel
-        // (intentional real renderer, not a fallback). Formations render as a
-        // single drone instance until a choreography engine ships.
+        // Drones / formations / strobes → rendered above via <InstancedDroneField/>
+        // (1 draw call for all). Skip per-item LightPoint here.
         if (pt === 'drone' || pt === 'formation' || pt === 'strobe' || effect.type === 'drone') {
-          return <LightPoint key={item.id} position={pos} color={effect.color} />;
+          return null;
         }
 
         if (effect.type === 'firework') return (

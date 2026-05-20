@@ -1,132 +1,76 @@
-# Plano — Realismo de Fogos + Library 3D
+# Otimização de Geometria 3D — FX KONTROL
 
-## 0. Confirmação de escopo
+Achados da investigação (não toque sem ler):
 
-- **Build**: nada a fazer. O `vite.config.ts` atual não importa os 3 plugins citados (`precache-guard`, `bundle-budget`, `sitemap`) e o dev-server não loga erro. Pulado conforme sua resposta.
-- **FireOne / XL4 / FXK-M1 / Modbus / moduleAggregator / FireOneModulesInline**: preservados como estão. Tocaremos só renderer e Library. Zero mudança em safety, hardware ou comando.
-- **Target GPU**: GTX 1660+. Novo flag `fxk.flag.render_quality` (`cinema` | `balanced` | `eco`) com **default `cinema`** no perfil alvo, auto-degrada em iGPU detectada via `WEBGL_debug_renderer_info`.
+- **Drones em show real (`FireworkRenderer.tsx` linhas 1460–1801)**: cada drone renderiza como `<LightPoint>` individual (sprite additivo + drift Y + pulso 4Hz). Com 10k drones = 10k componentes React + 10k draw calls. **Esse é o gargalo real.**
+- **`InstancedDroneSwarm.tsx`** já existe e usa `THREE.InstancedMesh`, mas só é consumido por `BoidsVisualizer` e `DroneChoreography` (telas auxiliares). Show playback NÃO usa.
+- **`RenderStabilityController` NÃO existe** no repo (a pesquisa que você colou assumiu que existe). Vou criar do zero.
+- **`DRACOLoader`/`KTX2Loader`/`MeshoptDecoder` não estão registrados** em lugar nenhum. Uploads do `user_library_assets` hoje vão como GLB cru. Adicionar decoders no client + script `gltf-transform` no upload é ganho imediato.
+- `Show3DEngine` já tem disposal correto (memo M5), então só plugar novos sistemas sem leak.
 
----
+## Rodada 1 — RenderStabilityController + Geometry Budget
 
-## 1. Fogos — pipeline cinematográfico
+Criar `src/render_ultra/stability/renderStabilityController.ts`:
+- Singleton observador de `requestAnimationFrame` com janela móvel 60 frames (p50/p95/p99 ms).
+- Tier autodegrade `cinema → balanced → eco` (reusar `renderQualityCaps()` já criado no `featureFlags.ts`).
+- Triggers: p95 > 22ms por 60f → degradar; p95 < 14ms por 300f + tier não-cinema → tentar subir 1 nível.
+- Hook `useRenderQualityTier()` para componentes lerem o tier corrente reativamente.
+- API `geometryBudget.register({ id, triangles, textureBytes })` + `geometryBudget.report()` para validar uploads e cenas.
+- Limites canônicos: `MAX_TRIANGLES_PER_ASSET=50_000`, `MAX_TEXTURE_DIM=2048`, `MAX_VRAM_SCENE_MB=512`.
 
-Trabalho concentrado em `src/components/editor/skycanvas/FireworkRenderer.tsx`, `src/render_ultra/fireworks/*` e shaders existentes (`cinemaBurstShader`, `cinemaSmokeShader`, `sparkTrailsGPU`, `ribbonTrailRenderer`, `softParticleShader`). Tudo opt-in via flags já reservadas na memória (`r_silhouette_all`, `r_soft_particles`, `r_hdr_ember_tail`, `r_lightprobe_from_bursts`) — agora promovidas a ON no perfil `cinema`.
+Criar `docs/HARDENING_RENDER_ENGINE3D.md` com os limites acima + checklist de upload + receita Draco/KTX2.
 
-### 1.1 Trails + sparks secundárias (prioridade que você marcou)
-- Cometas do `BurstSimulation` ganham **ribbon trail** GPU (`ribbonTrailRenderer`) com largura modulada por velocidade (1.4→0.2 px) e cor herdada do blackbody T (branco quente → âmbar → carmim).
-- **Child sparks**: cada partícula primária com `lifeRatio>0.55 && Math.random()<spawnRate` emite 2–4 sparks pequenos via pool pré-alocado (zero-GC, reaproveita slots livres no `ParticlePool`). Sparks usam `additive` blending e decay 220 ms.
-- Decay térmico: novo helper `thermalGradient(T)` reusando Planckian Locus já presente em `cinemaBurstShader` — agora aplicado também aos trails e sparks.
+Plugar chip `RENDER` na `GlobalSafetyBar` (ao lado do `BUDGET` ECS existente): mostra `cinema|balanced|eco · p95Xms`.
 
-### 1.2 Smoke + wind physics
-- Pluma volumétrica pós-burst: ativa `smokeSimulation.ts` + `computeSmokeTurbulence.ts` com **curl noise 3D** (já existe, hoje desligado no FireworkRenderer). Spawn = 1 puff por burst principal, sigma 1.8 m, lifespan 4–6 s, drag exponencial `exp(-1.21·dt)`, buoyancy proporcional ao `lifeRatio` (memória `r3-pass2-skybrush-smoke`).
-- Wind sample reaproveita `WindFieldSystem` já consumido em `BallisticSolver`. Adiciono `windSystem` opcional ao path de smoke (hoje só partículas o consomem).
-- Soft-particles ON (`softParticleShader.ts`) para evitar hard-edges contra terreno e palco.
+Testes: `renderStabilityController.spec.ts` — degradação, recuperação histerese, geometry budget overshoot.
 
-### 1.3 HDR + post-processing
-- Garantir que `Show3DEngine` rode com `WebGLRenderer({ outputColorSpace: SRGBColorSpace, toneMapping: ACESFilmicToneMapping })`. Hoje está parcial.
-- Habilitar EffectComposer com:
-  - **Bloom anamórfico** (`@react-three/postprocessing` já no bundle `postprocessing`) — threshold 0.9, intensity 1.2 cinema / 0.7 balanced.
-  - **Halation laranja** (`halation.ts` em `render_ultra/postprocessing/`).
-  - **Lens flare** procedural (`lensFlare.ts`) — só na partícula mais brilhante por burst, custo O(N_bursts).
-  - **ACES hue-preserving highlight** (`acesHuePreserve.ts`).
-- Tudo já existe em `src/render_ultra/postprocessing/*` mas nunca foi montado — vou plugar no `FireworkRenderer` atrás da flag `cinema`.
+## Rodada 2 — InstancedMesh para Drones em Show Playback
 
-### 1.4 Performance
-- Hard caps por perfil:
-  - `cinema`: 24 bursts simultâneos, 6k partículas, smoke ON, post-FX completo.
-  - `balanced`: 16 / 3k / smoke ON / só bloom+halation.
-  - `eco`: 10 / 1.5k / sem smoke / sem post-FX.
-- Auto-degrade quando p95 frame > 22 ms por 60 frames consecutivos (já temos `useFrameBudget`).
-- Sem regressões nos contratos: `cueFlash`, `renderFrame` continuam idênticos.
+Criar `src/components/editor/skycanvas/InstancedDroneField.tsx`:
+- 1 `<instancedMesh args={[geom, mat, MAX=10_000]}>` com geometria compartilhada (cone+body baixo-poly ~120 tris) ou Points + shader em `eco`.
+- Atributos instanciados via `InstancedBufferAttribute`: `aColor` (vec3), `aPhase` (float p/ pulso), `aActive` (float 0/1).
+- Material `MeshBasicMaterial` (additive blend) + `onBeforeCompile` injetando pulso 4Hz reaproveitando shader atual do `LightPoint`.
+- Update por frame: 1 `setMatrixAt` + `instanceMatrix.needsUpdate=true`. Zero realloc, pool fixo, compaction soft (active=0 → escala 0).
+- LOD: tier `eco` cai pra Points puros (BufferGeometry de vértices), `balanced/cinema` mantém instancedMesh com mesh.
 
-### 1.5 Tests
-- `firework-realism-pass1.spec.ts` ampliado para pass 2: cobre spawn de sparks, lifecycle de smoke puff, ribbon vertex count, caps por perfil.
-- Manter os 5/5 testes verdes existentes.
+Em `FireworkRenderer.tsx` (linhas 1775–1801):
+- Coletar todos `items` de drone num único array.
+- Trocar `items.map(... <LightPoint/>)` por `<InstancedDroneField items={droneItems} />`.
+- Manter `LightPoint` como fallback path (flag `r_instanced_drones`, default ON).
 
----
+Testes: `instancedDroneField.spec.ts` — N items vira 1 draw call; matrix update determinístico; eco vira Points.
 
-## 2. Library de Assets (todas as 3 opções que você escolheu)
+## Rodada 3 — Pipeline gltf-transform (Draco + KTX2 + LOD)
 
-Trabalho em `useMyLibrary.ts` + `AssetMarketplaceBrowser.tsx` (UI) + novo `LibraryDrawer.tsx`.
+**Client (descompressão)**:
+- `src/render_ultra/loaders/optimizedGLTFLoader.ts`: `GLTFLoader` + `DRACOLoader` (`/draco/`) + `KTX2Loader` (`/basis/`) + `MeshoptDecoder`.
+- Servir `public/draco/` e `public/basis/` (copiar `three/examples/jsm/libs/draco/*` e `basis/*` no build).
+- Substituir todos `useGLTF` da library por hook `useOptimizedGLTF` que registra triângulos+textureBytes no `geometryBudget` (rodada 1).
 
-### 2.1 Preview 3D inline
-- Mini `<Canvas>` R3F dentro de cada card de asset 3D (.glb/.gltf/.fbx). Auto-rotate 8 s/volta, OrbitControls desabilitado, fundo Vantablack, key+rim lights.
-- Loader: `useGLTF` com Suspense + skeleton. Dispose on unmount (`useEffect` cleanup) — sem leak (memória `M5 Three Disposal`).
-- Thumb estática (já existe `thumbnail_base64`) usada como `<img>` fallback até o GLB carregar.
+**Edge Function `optimize-library-asset`**:
+- Recebe `{ asset_id }`, baixa do bucket `assets`, roda pipeline via npm `@gltf-transform/core` + `@gltf-transform/functions`:
+  - `dedup()` → `prune()` → `weld()` → `simplify({ ratio: 0.6, error: 0.001 })` para LOD1+LOD2.
+  - `draco({ method: 'edgebreaker' })` em mesh data.
+  - `textureCompress({ targetFormat: 'ktx2', quality: 'uastc' })` (substituir imagens >512px).
+- Salva `<asset>.optimized.glb` no bucket, adiciona colunas `optimized_url`, `original_bytes`, `optimized_bytes`, `triangle_count`, `vram_estimate_bytes` em `user_library_assets` (migração separada).
+- `useOptimizedGLTF` prefere `optimized_url` quando disponível, cai pro original com warning.
 
-### 2.2 Busca + categorias + tags
-- Nova tabela `user_library_assets` ganha colunas: `category text` (`prop` | `texture` | `particle` | `model3d` | `audio` | `other`), `description text`, e índice GIN em `tags`.
-- UI ganha barra de busca textual (case-insensitive, full-text local com `Array.filter`), filtro multi-tag (chips), e tabs por categoria.
-- Migração Supabase com RLS preservada (owner-only).
+**UI**: chip "Optimized · 87% smaller · 12k tris" no `LibraryAssetCard` (Rodada 2 anterior).
 
-### 2.3 Drag-and-drop pro viewport
-- Card vira `draggable` com `dataTransfer.setData('application/x-fxk-asset', JSON.stringify({id,name,category,file_path}))`.
-- `Show3DEngine` host (`SkyCanvas` / `ShowEngineHost`) ganha `onDragOver` + `onDrop` handlers. Drop em prop/model3d:
-  - Resolve URL signed do bucket `assets`.
-  - Raycast XZ no terreno (memória `Terrain Sync`) → posiciona objeto.
-  - Adiciona a `useProjectStore` como `SceneObject` com source `library:<asset.id>`.
-- Audio/texture/particle: drop no painel correspondente (não no viewport), com guard de tipo.
+Testes: `optimizedGLTFLoader.spec.ts` — registro no budget; edge function dry-run via mock.
 
-### 2.4 Upload melhorado
-- Botão "Adicionar" abre dialog com:
-  - Drop-zone (drag&drop também na entrada).
-  - Captura automática de thumb: para `.glb` renderiza off-screen R3F 256×256; para imagem usa `createImageBitmap` + canvas downscale.
-  - Auto-detecta categoria por extensão.
-- Progress bar real (Supabase Storage suporta via `XMLHttpRequest` wrapper).
+## Ordem de entrega
 
----
+1. Rodada 1 (stability + budget + HARDENING doc) — base para as outras
+2. Rodada 2 (InstancedDroneField) — ganho visível imediato em show
+3. Rodada 3 (pipeline gltf-transform) — DB migration + edge function + client
 
-## 3. Arquivos previstos
+## Não-objetos
 
-### Editar
-- `src/components/editor/skycanvas/FireworkRenderer.tsx` — plug ribbon+sparks+smoke+post-FX, ler flag de qualidade.
-- `src/render_ultra/fireworks/burstSimulation.ts` — emissão de child sparks, atomização do pool.
-- `src/render_ultra/fireworks/smokeSimulation.ts` — aceitar `windSystem` injetado.
-- `src/orchestration/EngineProvider.tsx` ou `Show3DEngine` host — montar EffectComposer.
-- `src/hooks/useMyLibrary.ts` — novos campos (`category`, `description`), filtros, search.
-- `src/components/editor/AssetMarketplaceBrowser.tsx` — preview 3D inline, busca, tags, drag handlers.
-- `src/components/editor/skycanvas/SkyCanvas3D.tsx` (ou host equivalente) — drop handlers no viewport.
-- `src/lib/featureFlags.ts` — registrar `render_quality` + promover flags `r_*` no perfil cinema.
+- Não tocar em `uiCommandGateway`, `SafetyStateMachine`, `CommandBus`, `FieldBus`, FireOne, XL4, FXK-M1, Modbus, `moduleAggregator`, `FireOneModulesInline`.
+- Não trocar versões de Three/R3F/Drei (já em 0.169/8.18/9.122).
+- Não alterar `LightPoint` em outros caminhos (sprites de cue, efeitos isolados) — só substituir o map de drones em show.
 
-### Criar
-- `src/render_ultra/fireworks/sparkChildEmitter.ts` (helper puro).
-- `src/render_ultra/postprocessing/fireworkComposer.ts` (composer factory por perfil).
-- `src/components/editor/library/LibraryAssetCard.tsx` (card com preview 3D).
-- `src/components/editor/library/LibrarySearchBar.tsx` (busca+filtros).
-- `src/lib/libraryDragDrop.ts` (encode/decode payload + drop resolver).
-- `src/__tests__/firework-realism-pass2.spec.ts`.
-- `src/__tests__/libraryDragDrop.spec.ts`.
+## Aprovação
 
-### Migração DB
-```sql
-ALTER TABLE public.user_library_assets
-  ADD COLUMN IF NOT EXISTS category text DEFAULT 'other',
-  ADD COLUMN IF NOT EXISTS description text;
-CREATE INDEX IF NOT EXISTS idx_user_library_assets_tags_gin
-  ON public.user_library_assets USING GIN(tags);
-CREATE INDEX IF NOT EXISTS idx_user_library_assets_category
-  ON public.user_library_assets(category);
-```
-RLS existente (owner-only) é preservada.
-
----
-
-## 4. Não-objetivos (explícitos)
-
-- Nada de mudar safety/SSM/uiCommandGateway/CommandBus.
-- Sem nova rota ou mudança em sidebar.
-- Sem alteração em FireOne, XL4, FXK-M1, Modbus, moduleAggregator, FireOneModulesInline.
-- Sem nova dependência npm (tudo já existe: `@react-three/postprocessing`, `@react-three/drei`, etc.).
-- Sem rebuild do PWA cache strategy.
-
----
-
-## 5. Ordem de execução
-
-1. Migração DB (sem dependência de código).
-2. Library — backend + UI + drag&drop (entrega independente, sem mexer em fogos).
-3. Fogos — pipeline + flag + post-FX.
-4. Testes pass-2 + atualização do guard E2E (manter 397 routed + nenhum regressão em `KNOWN_UNROUTED 33`).
-5. Smoke test no `/dev/effects-e2e` e `/dev/skycanvas-2`.
-
-Posso começar?
+Posso começar pela Rodada 1 (stability + budget + doc), entregar, validar build, e seguir Rodada 2 e 3 em mensagens separadas — ou ir nas 3 em sequência. Sua escolha.
