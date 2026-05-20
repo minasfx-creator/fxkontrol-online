@@ -42,6 +42,8 @@ const FLAGS = {
   r_break_puff: true,
   /** Pass 3: pearl-string spacing on shape geometries (heart/smiley/ring/saturn) */
   r_pearl_spacing: true,
+  /** Render quality cinema-default opt-in. Consumers use renderQuality() / renderQualityCaps(). */
+  render_quality_cinema: true,
 } as const;
 
 export type FeatureFlag = keyof typeof FLAGS;
@@ -52,4 +54,73 @@ export function isEnabled(flag: FeatureFlag): boolean {
 
 export function getFlags(): Readonly<typeof FLAGS> {
   return FLAGS;
+}
+
+// ─── Render quality tier ─────────────────────────────────────────
+// Override via localStorage `fxk.flag.render_quality` = cinema|balanced|eco.
+// Auto-degrades on integrated GPUs.
+export type RenderQuality = 'cinema' | 'balanced' | 'eco';
+
+const RQ_KEY = 'fxk.flag.render_quality';
+let _detectedTier: RenderQuality | null = null;
+
+function detectGpuTier(): RenderQuality {
+  if (_detectedTier) return _detectedTier;
+  if (typeof window === 'undefined' || typeof document === 'undefined') {
+    return (_detectedTier = 'balanced');
+  }
+  try {
+    const canvas = document.createElement('canvas');
+    const gl = (canvas.getContext('webgl2') || canvas.getContext('webgl')) as WebGLRenderingContext | null;
+    if (!gl) return (_detectedTier = 'eco');
+    const ext = gl.getExtension('WEBGL_debug_renderer_info') as { UNMASKED_RENDERER_WEBGL: number } | null;
+    const renderer = ext ? String(gl.getParameter(ext.UNMASKED_RENDERER_WEBGL) || '') : '';
+    const lower = renderer.toLowerCase();
+    if (/(intel|iris|uhd graphics|adreno|mali|apple gpu|swiftshader)/.test(lower)) {
+      return (_detectedTier = 'balanced');
+    }
+    return (_detectedTier = 'cinema');
+  } catch {
+    return (_detectedTier = 'balanced');
+  }
+}
+
+export function renderQuality(): RenderQuality {
+  if (typeof window !== 'undefined') {
+    try {
+      const ov = window.localStorage.getItem(RQ_KEY);
+      if (ov === 'cinema' || ov === 'balanced' || ov === 'eco') return ov;
+    } catch {/* ignore */}
+  }
+  return detectGpuTier();
+}
+
+export function setRenderQuality(q: RenderQuality | null): void {
+  if (typeof window === 'undefined') return;
+  try {
+    if (q === null) window.localStorage.removeItem(RQ_KEY);
+    else window.localStorage.setItem(RQ_KEY, q);
+  } catch {/* ignore */}
+}
+
+export interface RenderQualityCaps {
+  maxBursts: number;
+  maxParticles: number;
+  smokeEnabled: boolean;
+  bloom: boolean;
+  halation: boolean;
+  lensFlare: boolean;
+  sparkChildren: boolean;
+}
+
+export function renderQualityCaps(q: RenderQuality = renderQuality()): RenderQualityCaps {
+  switch (q) {
+    case 'cinema':
+      return { maxBursts: 24, maxParticles: 6000, smokeEnabled: true, bloom: true, halation: true, lensFlare: true, sparkChildren: true };
+    case 'balanced':
+      return { maxBursts: 16, maxParticles: 3000, smokeEnabled: true, bloom: true, halation: true, lensFlare: false, sparkChildren: true };
+    case 'eco':
+    default:
+      return { maxBursts: 10, maxParticles: 1500, smokeEnabled: false, bloom: false, halation: false, lensFlare: false, sparkChildren: false };
+  }
 }
