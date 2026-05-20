@@ -1,6 +1,11 @@
 import { useEffect, useState, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 
+// Supabase generated types lag behind new tables (entitlements, subscription_features, plg_events).
+// We narrow runtime data manually; cast `from()` calls until types regenerate.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const db = supabase as any;
+
 export type PlanKey = "free" | "pro" | "enterprise";
 export type Features = Record<string, boolean>;
 export type Limits = Record<string, number>;
