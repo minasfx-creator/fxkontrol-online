@@ -207,7 +207,7 @@ export default function PanelTabBar({ activePanel, onTogglePanel }: PanelTabBarP
         }}
       >
         {/* Search toggle */}
-        <div className="flex items-center justify-center py-1.5 border-b border-border/8">
+        <div className="flex-shrink-0 flex items-center justify-center py-1.5 border-b border-border/8">
           <button
             onClick={() => setSearchOpen(!searchOpen)}
             className={cn("w-8 h-8 flex items-center justify-center rounded-lg transition-colors", searchOpen ? "bg-primary/12 text-primary" : "text-muted-foreground/40 hover:text-muted-foreground/70")}
