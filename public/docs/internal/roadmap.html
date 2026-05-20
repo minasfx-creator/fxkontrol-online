@@ -1,0 +1,415 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>FXKONTROL 2 — Roadmap de 12 Meses & KPIs | Confidencial</title>
+  <meta name="generator" content="Rabbit Universal Execution Agent">
+  <link rel="stylesheet" href="fxk-docs.css">
+  <link rel="stylesheet" href="fxk-roadmap.css">
+</head>
+<body>
+  <header class="app-header container">
+    <div class="brandline">
+      <div class="title">FXKONTROL 2 — Roadmap de 12 Meses & KPIs</div>
+      <span class="badge">Confidencial — Uso interno</span>
+    </div>
+    <div class="subtitle">Anexo operacional ao Relatório Abrangente v1 • Versão 1.0 • 14 de maio de 2026</div>
+    <div class="hero">
+      <div class="media" role="img" aria-label="Banner roadmap em tema escuro" style="background-image:url('https:\/\/rabbitagents.com.br\/assets\/placeholders\/rabbit-placeholder-1920x1080.jpg')"></div>
+      <div class="overlay" aria-hidden="true"></div>
+      <div class="caption container">
+        <h1 class="title">Marcos trimestrais conectados a PLG, Conformidade e Onboarding com IA</h1>
+        <p class="muted">RLS\/Stripe Sync • Safety & Compliance • TTV ideal < 5 min • Tema escuro pronto para impressão</p>
+        <div class="chips">
+          <span class="chip">Monetização PLG</span>
+          <span class="chip">Conformidade & Segurança</span>
+          <span class="chip">Onboarding com IA</span>
+        </div>
+      </div>
+    </div>
+    <div class="toc">
+      <div class="toc-head container">
+        <strong>Sumário</strong>
+        <span class="muted">Navegue pelas seções</span>
+      </div>
+      <div class="toc-body">
+        <a href="#escopo"><span>1</span> Escopo e diretrizes</a>
+        <a href="#timeline"><span>2</span> Timeline de 12 meses (macro)</a>
+        <a href="#q1"><span>3</span> Roadmap Q1 — Monetização PLG (RLS\/Stripe Sync)</a>
+        <a href="#q2"><span>4</span> Roadmap Q2 — Conformidade & Segurança</a>
+        <a href="#q3"><span>5</span> Roadmap Q3 — Onboarding com IA</a>
+        <a href="#q4"><span>6</span> Roadmap Q4 — Consumo e Expansão</a>
+        <a href="#kpis"><span>7</span> KPIs mínimos (adoção, ativação, expansão)</a>
+        <a href="#riscos"><span>8</span> Dependências, riscos e “A confirmar”</a>
+        <a href="#anexos"><span>+</span> Anexos: templates de acompanhamento</a>
+      </div>
+    </div>
+    <div class="actions no-print">
+      <button class="btn" onclick="window.print()">Imprimir PDF</button>
+      <a class="btn secondary" href="#timeline">Ver timeline</a>
+    </div>
+  </header>
+
+  <main class="container">
+    <section id="escopo">
+      <h2 class="section-title">1) Escopo e diretrizes</h2>
+      <p class="lead">Organização do roadmap em quatro trimestres, alinhando: (1) Monetização PLG (RLS\/Stripe Sync), (2) Conformidade e segurança operacional, (3) Onboarding com IA para TTV ideal &lt; 5 min. ARR-alvo de US$ 1 mi e churn &lt; 5% como princípios orientadores. Metas numéricas específicas: <strong>A confirmar</strong>.</p>
+      <div class="cards">
+        <article class="card">
+          <h3>Princípios</h3>
+          <ul>
+            <li>Paywalls inquebráveis no servidor (RLS + claims JWT + Stripe Sync).</li>
+            <li>Segurança operacional refletida em UI e relatórios assináveis.</li>
+            <li>Onboarding com IA conduzindo ao Aha Moment em minutos.</li>
+          </ul>
+        </article>
+        <article class="card">
+          <h3>Premissas de KPI</h3>
+          <ul>
+            <li>Medir TTV do <span class="mono">onboarding.start<\/span> ao <span class="mono">aha.reached<\/span>.</li>
+            <li>Ativação: <span class="mono">project.create<\/span> → <span class="mono">mesh.import.success<\/span> → <span class="mono">sim.run_basic<\/span>.</li>
+            <li>Expansão: conversão para Enterprise e uso de exportações físicas.</li>
+          </ul>
+        </article>
+        <article class="card">
+          <h3>Limitações</h3>
+          <p>Preços, metas regionais, limites de consumo, retenção estendida de logs e normas brasileiras detalhadas: <strong>A confirmar</strong>.</p>
+        </article>
+      </div>
+    </section>
+
+    <section id="timeline">
+      <h2 class="section-title">2) Timeline de 12 meses (macro)</h2>
+      <p class="lead">Visão de alto nível dos marcos por trimestre. A sequência Q1→Q4 representa meses 0–12 do programa.</p>
+      <div class="q-grid">
+        <div class="q-card">
+          <header>Q1 <span class="pill">Monetização PLG<\/span><\/header>
+          <ul>
+            <li>RLS ativo em recursos críticos<\/li>
+            <li>Stripe Sync confiável (webhooks + preenchimento histórico)<\/li>
+            <li>Claims JWT refletindo status financeiro<\/li>
+          <\/ul>
+        <\/div>
+        <div class="q-card">
+          <header>Q2 <span class="pill">Conformidade<\/span><\/header>
+          <ul>
+            <li>Safety StateMachine endurecida<\/li>
+            <li>BlackBox contínuo + laudo assinável<\/li>
+            <li>Perímetros e Fallout Zones (relatório)<\/li>
+          <\/ul>
+        <\/div>
+        <div class="q-card">
+          <header>Q3 <span class="pill">Onboarding IA<\/span><\/header>
+          <ul>
+            <li>Personalização por perfil (Joi)<\/li>
+            <li>Telemetria de Aha Moment<\/li>
+            <li>Conteúdos de UI contextuais<\/li>
+          <\/ul>
+        <\/div>
+        <div class="q-card">
+          <header>Q4 <span class="pill">Consumo & Expansão<\/span><\/header>
+          <ul>
+            <li>Camada de consumo (uso adicional)<\/li>
+            <li>Maturidade de exportações físicas<\/li>
+            <li>Retenção e expansão por assento\/uso<\/li>
+          <\/ul>
+        <\/div>
+      <\/div>
+      <div class="swimlanes">
+        <div class="lane"><span class="lane-title">PLG (RLS\/Stripe)<\/span><div class="lane-bar plg" aria-label="Q1–Q4 com pico em Q1 e Q4"><\/div><\/div>
+        <div class="lane"><span class="lane-title">Safety & Compliance<\/span><div class="lane-bar safety" aria-label="Q2 foco principal"><\/div><\/div>
+        <div class="lane"><span class="lane-title">Onboarding com IA<\/span><div class="lane-bar onboarding" aria-label="Q3 foco principal"><\/div><\/div>
+      <\/div>
+      <p class="muted">Calendário exato, janelas de release e marcos internos: <strong>A confirmar<\/strong>.<\/p>
+    </section>
+
+    <section id="q1">
+      <h2 class="section-title">3) Q1 — Monetização PLG (RLS\/Stripe Sync)</h2>
+      <p class="lead">Objetivo: tornar inegociável o modelo de negócios pela autoridade no servidor.</p>
+      <table class="table">
+        <thead>
+          <tr>
+            <th>Entregas-chave<\/th>
+            <th>Critérios de pronto<\/th>
+            <th>Dependências<\/th>
+            <th>KPIs (adoção\/ativação\/expansão)<\/th>
+          <\/tr>
+        <\/thead>
+        <tbody>
+          <tr>
+            <td>
+              • Políticas RLS para exportações físicas, IA intensiva e logs sensíveis.<br>
+              • Stripe Sync: webhooks em tempo real + backfill de assinaturas.<br>
+              • Claims JWT refletindo plano e status financeiro.<br>
+              • Trilha de auditoria de negações por política (server-side).
+            <\/td>
+            <td>
+              • Operações críticas falham no servidor sem assinatura ativa.<br>
+              • Logs de decisão com correlação de <span class="mono">auth.jwt()<\/span>.<br>
+              • Testes de bypass client-side sem sucesso.
+            <\/td>
+            <td>
+              • Integração de faturamento ativa — <strong>A confirmar<\/strong>.<br>
+              • Mapeamento de recursos críticos (catálogo) — <strong>A confirmar<\/strong>.
+            <\/td>
+            <td>
+              • % sessões com <span class="mono">onboarding.start<\/span>.<br>
+              • % usuários com <span class="mono">project.create<\/span>.<br>
+              • Início de conversão para Enterprise (meta numérica: <strong>A confirmar<\/strong>).
+            <\/td>
+          <\/tr>
+        <\/tbody>
+      <\/table>
+      <div class="callout note">Preços e limites de consumo permanecem <strong>A confirmar<\/strong> (modelo híbrido assinatura + consumo).<\/div>
+    </section>
+
+    <section id="q2">
+      <h2 class="section-title">4) Q2 — Conformidade & Segurança</h2>
+      <p class="lead">Objetivo: evidenciar segurança operacional e preparar aprovações por autoridade competente (AHJ).</p>
+      <table class="table">
+        <thead>
+          <tr>
+            <th>Entregas-chave<\/th>
+            <th>Critérios de pronto<\/th>
+            <th>Dependências<\/th>
+            <th>KPIs (adoção\/ativação\/expansão)<\/th>
+          <\/tr>
+        <\/thead>
+        <tbody>
+          <tr>
+            <td>
+              • Safety StateMachine endurecida: <span class="mono">IDLE → ARMED → FIRING<\/span>.<br>
+              • BlackBox contínuo com export JSON + PDF.<br>
+              • Editor de perímetros e <em>Fallout Zones<\/em> com relatório assinável.<br>
+              • Template de verificação (campos de assinatura, data, evidências).
+            <\/td>
+            <td>
+              • Export de laudo com hash e carimbo temporal.<br>
+              • Bloqueio de FIRING sem checklist completo.<br>
+              • Indicadores de estado coerentes na UI.
+            <\/td>
+            <td>
+              • Parâmetros normativos locais (Brasil) — <strong>A confirmar<\/strong>.<br>
+              • Política de retenção de logs — <strong>A confirmar<\/strong>.
+            <\/td>
+            <td>
+              • % projetos com checklist completo.<br>
+              • Uso de relatórios de perímetro.<br>
+              • Sinal de confiança (adoção de laudos) — metas: <strong>A confirmar<\/strong>.
+            <\/td>
+          <\/tr>
+        <\/tbody>
+      <\/table>
+      <div class="callout success">Conformidade robusta habilita <em>value-based pricing<\/em> e reduz risco operacional.<\/div>
+    </section>
+
+    <section id="q3">
+      <h2 class="section-title">5) Q3 — Onboarding com IA (TTV ideal &lt; 5 min)</h2>
+      <p class="lead">Objetivo: personalizar a jornada, reduzir atritos e acelerar o Aha Moment.</p>
+      <table class="table">
+        <thead>
+          <tr>
+            <th>Entregas-chave<\/th>
+            <th>Critérios de pronto<\/th>
+            <th>Dependências<\/th>
+            <th>KPIs (adoção\/ativação\/expansão)<\/th>
+          <\/tr>
+        <\/thead>
+        <tbody>
+          <tr>
+            <td>
+              • Perfis iniciais e triagem de intenção (Joi).<br>
+              • Fluxo mínimo: projeto → import malha 3D → simulação básica.<br>
+              • Telemetria de ativação e Aha (<span class="mono">aha.reached<\/span>).<br>
+              • Conteúdos de UI e mensagens contextuais (copys padrão).
+            <\/td>
+            <td>
+              • TTV mediano ideal &lt; 5 min (cenários principais).<br>
+              • Queda no uso de ajuda por seção ao longo do tempo.<br>
+              • Jornada reproduzível com sandbox quando offline.
+            <\/td>
+            <td>
+              • Integrações de importação de malha — <strong>A confirmar<\/strong>.<br>
+              • Catálogo de templates e presets — <strong>A confirmar<\/strong>.
+            <\/td>
+            <td>
+              • Taxa de ativação: % que completam <span class="mono">sim.run_basic<\/span>.<br>
+              • TTV (p50\/p90) — metas numéricas: <strong>A confirmar<\/strong>.<br>
+              • Conversão para Enterprise influenciada por Aha.
+            <\/td>
+          <\/tr>
+        <\/tbody>
+      <\/table>
+      <div class="callout warning">Integrações externas e limites de tamanho de malha: <strong>A confirmar<\/strong>.<\/div>
+    </section>
+
+    <section id="q4">
+      <h2 class="section-title">6) Q4 — Camada de consumo e expansão</h2>
+      <p class="lead">Objetivo: habilitar mecanismos de consumo graduado e consolidar expansão e retenção.</p>
+      <table class="table">
+        <thead>
+          <tr>
+            <th>Entregas-chave<\/th>
+            <th>Critérios de pronto<\/th>
+            <th>Dependências<\/th>
+            <th>KPIs (adoção\/ativação\/expansão)<\/th>
+          <\/tr>
+        <\/thead>
+        <tbody>
+          <tr>
+            <td>
+              • Limiares de uso conectados ao faturamento (consumo).<br>
+              • Maturidade de exportações físicas (picos em dia de show).<br>
+              • Relatórios executivos de uso e expansão (por assento\/uso).
+            <\/td>
+            <td>
+              • Cobrança por consumo refletida em claims e RLS.<br>
+              • Dashboards de uso sem discrepâncias com Stripe.<br>
+              • SLAs de exportação definidos — <strong>A confirmar<\/strong>.
+            <\/td>
+            <td>
+              • Políticas de retenção e storage — <strong>A confirmar<\/strong>.<br>
+              • Modelos de consumo por recurso — <strong>A confirmar<\/strong>.
+            <\/td>
+            <td>
+              • Receita por uso adicional (indicador).<br>
+              • Expansão por conta (assentos\/uso).<br>
+              • Retenção com churn &lt; 5%.
+            <\/td>
+          <\/tr>
+        <\/tbody>
+      <\/table>
+      <div class="callout note">Faixas de preço e franquias por região: <strong>A confirmar<\/strong>.<\/div>
+    </section>
+
+    <section id="kpis">
+      <h2 class="section-title">7) KPIs mínimos por dimensão</h2>
+      <p class="lead">Definições qualitativas e eventos de telemetria associados. Metas numéricas específicas: <strong>A confirmar</strong>.</p>
+      <table class="table">
+        <thead>
+          <tr>
+            <th>Dimensão<\/th>
+            <th>KPI mínimo<\/th>
+            <th>Medição (evento\/fórmula)<\/th>
+            <th>Observações<\/th>
+          <\/tr>
+        <\/thead>
+        <tbody>
+          <tr>
+            <td>Adoção<\/td>
+            <td>Taxa de início de onboarding<\/td>
+            <td><span class="mono">onboarding.start \/ sessões<\/span><\/td>
+            <td>Segmentar por perfil (DMX, Drone, Laser\/Vídeo).<\/td>
+          <\/tr>
+          <tr>
+            <td>Ativação<\/td>
+            <td>Funil 3 passos concluído<\/td>
+            <td><span class="mono">project.create → mesh.import.success → sim.run_basic<\/span><\/td>
+            <td>Meta de TTV ideal &lt; 5 min (p50).<\/td>
+          <\/tr>
+          <tr>
+            <td>Valor (Aha)<\/td>
+            <td>% com <span class="mono">aha.reached<\/span><\/td>
+            <td>Confirmação explícita do usuário<\/td>
+            <td>Correlacionar com conversão para Enterprise.<\/td>
+          <\/tr>
+          <tr>
+            <td>Expansão<\/td>
+            <td>Uso de exportações físicas<\/td>
+            <td>Contagem de exports permitidas por RLS<\/td>
+            <td>Relacionar a shows executados (picos).<\/td>
+          <\/tr>
+          <tr>
+            <td>Financeiro<\/td>
+            <td>ARR e consumo incremental<\/td>
+            <td>Relatório Stripe Sync vs. uso agregado<\/td>
+            <td>Alinhado ao ARR-alvo de US$ 1 mi (indicador).<\/td>
+          <\/tr>
+          <tr>
+            <td>Retenção<\/td>
+            <td>Churn mensalizado<\/td>
+            <td>Contas canceladas \/ base ativa<\/td>
+            <td>Objetivo estrutural: &lt; 5%.<\/td>
+          <\/tr>
+          <tr>
+            <td>Conformidade<\/td>
+            <td>Projetos com laudo assinável<\/td>
+            <td>Export de relatório + hash do BlackBox<\/td>
+            <td>Parâmetros locais (Brasil): <strong>A confirmar<\/strong>.<\/td>
+          <\/tr>
+        <\/tbody>
+      <\/table>
+    </section>
+
+    <section id="riscos">
+      <h2 class="section-title">8) Dependências, riscos e itens “A confirmar”</h2>
+      <div class="cards">
+        <article class="card">
+          <h3>Dependências externas</h3>
+          <ul>
+            <li>Integrações de faturamento e webhooks: <strong>A confirmar</strong>.</li>
+            <li>Integrações de malha 3D e catálogos de locais: <strong>A confirmar</strong>.</li>
+            <li>Políticas de retenção de logs e requisitos nacionais (Brasil): <strong>A confirmar</strong>.</li>
+          </ul>
+        </article>
+        <article class="card">
+          <h3>Riscos</h3>
+          <ul>
+            <li>Brechas caso RLS não cubra todos os fluxos de acesso.</li>
+            <li>Experiência degradada em baixa luminosidade por contraste inadequado.</li>
+            <li>Atrasos por dependência de fornecedores externos.</li>
+          </ul>
+        </article>
+        <article class="card">
+          <h3>Mitigações</h3>
+          <ul>
+            <li>Testes de penetração em políticas RLS e simulações de bypass.</li>
+            <li>Revisões de UX em contextos escuros e <span class="mono">prefers-reduced-motion</span>.</li>
+            <li>Planos alternativos de importação (templates genéricos) e sandbox offline.</li>
+          </ul>
+        </article>
+      </div>
+    </section>
+
+    <section id="anexos">
+      <h2 class="section-title">Anexos — Templates de acompanhamento</h2>
+      <div class="cards">
+        <article class="card">
+          <h3>Template — OKRs trimestrais</h3>
+          <table class="table">
+            <thead>
+              <tr><th>Objetivo</th><th>Resultado-chave</th><th>Métrica</th><th>Status</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>Endurecer paywalls</td><td>Falhas server-side sem assinatura</td><td>Taxa de tentativas negadas</td><td>Em andamento</td></tr>
+              <tr><td>Reduzir TTV</td><td>p50 &lt; 5 min</td><td>TTV mediano</td><td>A confirmar</td></tr>
+              <tr><td>Laudos confiáveis</td><td>100% projetos críticos com relatório</td><td>% projetos com laudo</td><td>A confirmar</td></tr>
+            </tbody>
+          </table>
+        </article>
+        <article class="card">
+          <h3>Template — Métricas operacionais</h3>
+          <table class="table">
+            <thead>
+              <tr><th>KPI</th><th>Fonte</th><th>Periodicidade</th><th>Meta</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>Adoção (onboarding.start)</td><td>Telemetria</td><td>Semanal</td><td>A confirmar</td></tr>
+              <tr><td>Ativação (sim.run_basic)</td><td>Telemetria</td><td>Semanal</td><td>A confirmar</td></tr>
+              <tr><td>Conversão Enterprise</td><td>Stripe Sync</td><td>Mensal</td><td>A confirmar</td></tr>
+              <tr><td>Churn</td><td>Stripe Sync</td><td>Mensal</td><td>< 5%</td></tr>
+            </tbody>
+          </table>
+        </article>
+      </div>
+      <div class="callout note">Todos os valores não fornecidos neste projeto permanecem <strong>A confirmar</strong> e devem ser definidos em conjunto com Produto e Finanças.</div>
+    </section>
+  </main>
+
+  <footer class="page-footer container">
+    <div>FXKONTROL 2 — Roadmap de 12 Meses & KPIs • Confidencial • 14 de maio de 2026</div>
+    <div class="muted">Documento alinhado ao tema fxk-docs.css; pronto para impressão A4. Itens “A confirmar” dependem de integrações e decisões futuras.</div>
+  </footer>
+</body>
+</html>

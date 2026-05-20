@@ -1,0 +1,207 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>FXKONTROL 2 — Matriz de Monetização PLG &amp; Gate de Funcionalidades | Confidencial</title>
+  <meta name="generator" content="Rabbit Universal Execution Agent">
+  <link rel="stylesheet" href="fxk-docs.css">
+  <link rel="stylesheet" href="fxk-plg-matrix.css">
+</head>
+<body>
+  <header class="app-header container">
+    <div class="brandline">
+      <div class="title">FXKONTROL 2 — Matriz de Monetização PLG &amp; Gate de Funcionalidades</div>
+      <span class="badge">Confidencial — Uso interno</span>
+    </div>
+    <div class="subtitle">Documento complementar ao Relatório Abrangente v1 • Versão 1.0 • 14 de maio de 2026</div>
+    <div class="hero">
+      <div class="media" aria-hidden="true"></div>
+      <div class="overlay" aria-hidden="true"></div>
+      <div class="caption container">
+        <h1 class="title">Paywalls inquebráveis para o EventOS SaaS</h1>
+        <p class="muted">RLS/JWT/Stripe Sync • Camadas: Freemium, Enterprise e Consumo • Preços e limites de consumo: <strong>A confirmar</strong></p>
+        <div class="chips">
+          <span class="chip">RLS/Stripe Sync</span>
+          <span class="chip">Dark Mode First</span>
+          <span class="chip">Quiet Luxury</span>
+          <span class="chip">Retro-futurismo</span>
+        </div>
+      </div>
+    </div>
+    <div class="toc">
+      <div class="toc-head container">
+        <strong>Sumário</strong>
+        <span class="muted">Navegue pelas seções</span>
+      </div>
+      <div class="toc-body">
+        <a href="#escopo"><span>1</span> Escopo e premissas</a>
+        <a href="#matriz"><span>2</span> Matriz PLG de funcionalidades e limites</a>
+        <a href="#gatilhos"><span>3</span> Gatilhos de upgrade e Aha Moment</a>
+        <a href="#politica"><span>4</span> Política de acesso (conceitual) — RLS/JWT/Stripe</a>
+        <a href="#seguranca"><span>5</span> Avisos de segurança e compliance</a>
+        <a href="#excecoes"><span>6</span> Notas de exceção e “A confirmar”</a>
+      </div>
+    </div>
+    <div class="actions no-print">
+      <button class="btn" onclick="window.print()">Imprimir PDF</button>
+      <a class="btn secondary" href="#matriz">Ir para a Matriz</a>
+    </div>
+  </header>
+
+  <main class="container">
+    <section id="escopo">
+      <h2 class="section-title">1) Escopo e premissas</h2>
+      <p class="lead">Este anexo operacional detalha camadas, limites funcionais, gatilhos de upgrade e estados de acesso para paywalls inquebráveis. Usa exclusivamente os números fornecidos; demais valores permanecem “A confirmar”.</p>
+      <div class="callout note">Controles puramente client-side são insuficientes. A autoridade do acesso reside no banco de dados via RLS referenciando claims JWT sincronizadas ao Stripe.</div>
+      <div class="legend">
+        <span class="chip pyro">Pirotecnia</span>
+        <span class="chip dmx">DMX/Art-Net</span>
+        <span class="chip drone">Drones</span>
+        <span class="chip video">Mídia/Projeção</span>
+        <span class="chip audio">SMPTE/Áudio</span>
+        <span class="chip laser">Laser</span>
+      </div>
+    </section>
+
+    <section id="matriz">
+      <h2 class="section-title">2) Matriz PLG de funcionalidades e limites</h2>
+      <p class="lead">Mapeamento entre Freemium, Enterprise e Consumo, com foco em valor percebido rápido e barreiras comerciais robustas.</p>
+      <table class="table matrix-table">
+        <thead>
+          <tr>
+            <th>Domínio</th>
+            <th>Freemium</th>
+            <th>Enterprise (assinatura)</th>
+            <th>Consumo (uso adicional)</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>Simulação 3D &amp; Editor</strong> <span class="chip dmx">DMX</span> <span class="chip drone">Drone</span> <span class="chip laser">Laser</span></td>
+            <td>1 universo DMX; até 50 drones simulados; timeline linear simples.</td>
+            <td>Art-Net 4 multiuniverso; simulação ampliada; física avançada de lasers.</td>
+            <td>Escala extra de simulações pesadas e render jobs: <strong>A confirmar</strong>.</td>
+          </tr>
+          <tr>
+            <td><strong>IA &amp; Edge Functions</strong></td>
+            <td>Acesso ao assistente “Joi” para suporte básico e onboarding.</td>
+            <td>Execução ilimitada de rotinas como <span class="mono">video-choreo-ai</span> e <span class="mono">generate-formation</span>.</td>
+            <td>Excesso de execuções/tempo de CPU/GPU em nuvem: <strong>A confirmar</strong>.</td>
+          </tr>
+          <tr>
+            <td><strong>Integração &amp; Exportação física</strong> <span class="chip pyro">Piro</span> <span class="chip drone">Drone</span> <span class="chip audio">SMPTE</span></td>
+            <td>Telemetria em tela (sandbox); sem compilação externa.</td>
+            <td>Exportação <span class="mono">FireOne (.fir)</span>, empacotamento <span class="mono">MAVLink</span>, sincronização <span class="mono">SMPTE LTC</span>.</td>
+            <td>Limites de exportações/mês e bursts em dia de show: <strong>A confirmar</strong>.</td>
+          </tr>
+          <tr>
+            <td><strong>Conformidade &amp; Auditoria</strong></td>
+            <td>Resumo de colisões e verificações manuais básicas.</td>
+            <td>Auditoria automática de perímetros/“fallout zones”, BlackBox contínuo e audit trail assinável.</td>
+            <td>Armazenamento de logs prolongado e retenção avançada: <strong>A confirmar</strong>.</td>
+          </tr>
+        </tbody>
+      </table>
+      <p class="muted matrix-notes">Observações: preços, limites regionais e políticas de consumo estão “A confirmar”. A execução física permanece o principal gatilho econômico.</p>
+    </section>
+
+    <section id="gatilhos">
+      <h2 class="section-title">3) Gatilhos de upgrade e indicadores de valor (Aha Moment)</h2>
+      <div class="cards">
+        <article class="card">
+          <h3>Gatilhos operacionais</h3>
+          <ul class="clean">
+            <li>Solicitar mais de 1 universo DMX ou exceder 50 drones na simulação.</li>
+            <li>Tentar exportar <span class="mono">FireOne (.fir)</span>, <span class="mono">MAVLink</span> ou sincronizar <span class="mono">SMPTE</span>.</li>
+            <li>Invocar rotinas de IA intensivas além do onboarding (“Joi”).</li>
+            <li>Habilitar BlackBox/Audit Trail completo e relatórios de perímetros.</li>
+          </ul>
+        </article>
+        <article class="card">
+          <h3>Indicadores de valor (Aha)</h3>
+          <ul class="clean">
+            <li>Primeira simulação reproduzível concluída.</li>
+            <li>Relatório rápido compartilhável gerado.</li>
+            <li>Detecção automática de risco/perímetro funcionando.</li>
+          </ul>
+          <p class="muted">TTV ideal: menor que 5 minutos até o primeiro Aha Moment.</p>
+        </article>
+        <article class="card">
+          <h3>Estado de acesso (conceitual)</h3>
+          <div class="status-grid">
+            <div class="status-card"><span class="dot"></span><strong>Somente simulação</strong><p>Freemium. Sem exportação física.</p></div>
+            <div class="status-card armed"><span class="dot"></span><strong>Assinatura ativa</strong><p>Enterprise habilita exportações e IA intensiva.</p></div>
+            <div class="status-card firing"><span class="dot"></span><strong>Execução de show</strong><p>Enterprise + validações de segurança/compliance.</p></div>
+          </div>
+        </article>
+      </div>
+    </section>
+
+    <section id="politica">
+      <h2 class="section-title">4) Política de acesso (conceitual) — RLS/JWT/Stripe</h2>
+      <div class="cards">
+        <article class="card">
+          <h3>Fluxo de autoridade</h3>
+          <ol>
+            <li>Stripe sincroniza plano/status e metadados para tabelas seguras.</li>
+            <li>Claims específicas são injetadas no JWT do usuário autenticado.</li>
+            <li>RLS avalia <span class="mono">auth.jwt()</span> em cada SELECT/INSERT sensível.</li>
+            <li>Sem autorização válida, a operação falha no servidor (não no cliente).</li>
+          </ol>
+        </article>
+        <article class="card">
+          <h3>Pseudo-políticas (ilustrativas)</h3>
+          <pre class="mono pseudo">-- Conceitual: não prescritivo
+POLICY exportacoes_fisicas
+  IF jwt.plan = 'enterprise' AND jwt.status = 'active'
+  THEN allow
+  ELSE deny;
+
+POLICY edge_functions_intensivas
+  IF jwt.plan = 'enterprise'
+  THEN allow
+  ELSE deny;</pre>
+          <p class="muted">Finalidade didática: expressar a autoridade no servidor. Implementação real: a confirmar pelo time técnico.</p>
+        </article>
+      </div>
+    </section>
+
+    <section id="seguranca">
+      <h2 class="section-title">5) Avisos de segurança e compliance</h2>
+      <div class="callout caution">
+        Exportação física e controle de hardware exigem: (i) conta verificada; (ii) checklist completo (NFPA/FAA/EASA de referência, Brasil: A confirmar); (iii) validações da Safety StateMachine <span class="mono">IDLE → ARMED → FIRING</span>; (iv) assinatura do responsável e BlackBox ativo.
+      </div>
+      <div class="cards">
+        <article class="card">
+          <h3>Bloqueios mínimos</h3>
+          <ul class="clean">
+            <li>Negar exportações quando <span class="mono">jwt.status</span> != ativo.</li>
+            <li>Negar <em>edge functions</em> intensivas sem assinatura válida.</li>
+            <li>Exigir evidências de perímetros e “fallout zones” antes de permitir FIRING.</li>
+          </ul>
+        </article>
+        <article class="card">
+          <h3>Registros e auditoria</h3>
+          <p>BlackBox contínuo durante ensaios e execução; relatórios assináveis para autoridades competentes (AHJ).</p>
+        </article>
+      </div>
+    </section>
+
+    <section id="excecoes">
+      <h2 class="section-title">6) Notas de exceção e “A confirmar”</h2>
+      <ul>
+        <li>Preços por camada, franquias e limites regionais: <strong>A confirmar</strong>.</li>
+        <li>Políticas de retenção de logs e armazenamento estendido: <strong>A confirmar</strong>.</li>
+        <li>Integrações específicas de importação de malha 3D e catálogos: <strong>A confirmar</strong>.</li>
+        <li>Detalhamento regulatório brasileiro: <strong>A confirmar</strong>.</li>
+      </ul>
+    </section>
+  </main>
+
+  <footer class="page-footer container">
+    <div>FXKONTROL 2 — Matriz PLG &amp; Gate de Funcionalidades • Confidencial • 14 de maio de 2026</div>
+    <div class="muted">Documento complementar; usa exclusivamente os números fornecidos. Itens “A confirmar” dependem de decisão futura.</div>
+  </footer>
+</body>
+</html>
