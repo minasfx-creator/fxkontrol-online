@@ -567,11 +567,17 @@ export default function Toolbar({ onOpenPanel, isMaximized, onToggleMaximize }: 
             { label: 'Twinmotion / 3D', icon: Building2, onClick: () => setTwinmotionOpen(true) },
             { label: 'Asset Marketplace', icon: Store, onClick: () => setMarketplaceOpen(true) },
           ]} />
+          <DropdownMenu label="Demos" icon={FileJson} items={[
+            { label: 'Festival Main Stage', icon: FileJson, onClick: () => handleLoadDemoShow('festival-main-stage-demo') },
+            { label: 'Aniversário Angra (110 cues)', icon: FileJson, onClick: () => handleLoadDemoShow('aniversario-angra-2024') },
+          ]} />
           <DropdownMenu label="Export" icon={Download} items={[
             { label: 'Export Manager...', icon: FileBarChart, onClick: () => setExportModalOpen(true) },
+            { label: 'Show Completo (JSON)', icon: FileJson, onClick: handleExportFullJSON },
+            { label: 'CSV Finale 3D (Firing)', icon: Download, onClick: handleExportFinaleFiringCSV },
             { label: '.vviz (Finale 3D)', icon: FileJson, onClick: () => setVvizExportOpen(true) },
             { label: '.skyc (SkyCreator)', icon: Download, onClick: handleExportSkyc },
-            { label: 'Firing CSV', icon: Download, onClick: handleExportFiringCSV },
+            { label: 'Firing CSV (legacy)', icon: Download, onClick: handleExportFiringCSV },
           ]} />
         </div>
       )}
