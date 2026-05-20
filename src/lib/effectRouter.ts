@@ -83,6 +83,22 @@ export function routeEffect(effect: Effect): RouterDecision {
   // 4) partType rocket
   if (pt === 'rocket') return ok('rocket', 80, 'partType=rocket');
 
+  // 4b) Showven SFX vendor pack — name-based heuristic (mirrors FireworkRenderer).
+  const nm = (effect.name || '').toUpperCase();
+  if (pt === 'sfx' || (t === 'sfx' && !pt)) {
+    if (nm.includes('SBOOM') || nm.includes('SONIC BOOM') || nm.includes('SMOKE JET') || nm.includes('FOG JET')) {
+      return ok('fog', 1, 'sfx + SBOOM/smoke-jet');
+    }
+    if (nm.includes('FLAMER') || nm.includes('SVCFLM') || nm.includes('FLAME')) {
+      return ok('flame', 30, 'sfx + flamer');
+    }
+    return ok('gerb', 40, 'sfx default (sparkular/gerb surrogate)');
+  }
+
+  // 4c) Lancework / static set-pieces → Flame surrogate.
+  if (pt === 'set_piece') return ok('flame', 20, 'partType=set_piece (flame surrogate)');
+
+
   // 5) type-level fallbacks (1756..1775)
   if (t === 'firework') {
     const pat = effect.pattern;
