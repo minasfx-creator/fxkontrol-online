@@ -72,6 +72,8 @@ function App() {
                   <Route path="/settings" element={<Settings />} />
                   <Route path="/festival-stage-demo" element={<FestivalStageDemo />} />
                   <Route path="/pairing/two-wire" element={<PairingTwoWire />} />
+                  <Route path="/docs/internal" element={<InternalDocs />} />
+                  <Route path="/docs/internal/:slug" element={<InternalDocs />} />
                 </Route>
                 <Route path="*" element={<NotFound />} />
               </Routes>
