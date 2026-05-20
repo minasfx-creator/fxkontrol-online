@@ -25,6 +25,7 @@ const FieldTest = lazy(() => import("./pages/FieldTest"));
 const Settings = lazy(() => import("./pages/Settings"));
 const FestivalStageDemo = lazy(() => import("./pages/FestivalStageDemo"));
 const PairingTwoWire = lazy(() => import("./pages/PairingTwoWire"));
+const InternalDocs = lazy(() => import("./pages/InternalDocs"));
 
 const queryClient = new QueryClient();
 
