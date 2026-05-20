@@ -1791,11 +1791,10 @@ export function TimelineEffects() {
           return <FlameEffect key={item.id} position={pos} color={effect.color} progress={progress} height={scaledHeight || 4} />;
         }
 
-        // Drones / formations / strobes → LightPoint = QuadcopterModel
-        // (intentional real renderer, not a fallback). Formations render as a
-        // single drone instance until a choreography engine ships.
+        // Drones / formations / strobes → rendered above via <InstancedDroneField/>
+        // (1 draw call for all). Skip per-item LightPoint here.
         if (pt === 'drone' || pt === 'formation' || pt === 'strobe' || effect.type === 'drone') {
-          return <LightPoint key={item.id} position={pos} color={effect.color} />;
+          return null;
         }
 
         if (effect.type === 'firework') return (
