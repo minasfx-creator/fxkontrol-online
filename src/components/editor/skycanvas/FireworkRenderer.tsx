@@ -26,6 +26,8 @@ import { updateFrustum, isSphereInFrustum } from '@/lib/frustumCuller';
 import { clampNiagaraHDR, getNiagaraBudgets } from '@/lib/niagaraBlenderRules';
 import { isEnabled } from '@/lib/featureFlags';
 import InstancedDroneField, { type DroneFieldItem } from './InstancedDroneField';
+import InstancedFireworks from '@/components/fireworks/InstancedFireworks';
+import { fireworksBurstBus } from '@/render_ultra/fireworks/fireworksBurstBus';
 import { thermalColor, autoMatchFormulation } from '@/render_ultra/fireworks/particleChemistry';
 import { getBurstConfig, type BurstPattern } from '@/render_ultra/fireworks/burstSimulation';
 import {
