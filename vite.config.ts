@@ -106,8 +106,17 @@ export default defineConfig(({ mode }) => ({
     // Smaller chunks = better caching & parallel loading
     chunkSizeWarningLimit: 600,
     cssCodeSplit: true,
-    // Minification
-    minify: 'esbuild',
+    // Minification — terser in prod to drop console/debugger; esbuild in dev for speed
+    minify: mode === 'production' ? 'terser' : 'esbuild',
+    terserOptions: mode === 'production' ? {
+      compress: {
+        // Keep console.warn/error for prod diagnostics; drop log/info/debug/trace noise
+        pure_funcs: ['console.log', 'console.info', 'console.debug', 'console.trace'],
+        drop_debugger: true,
+        passes: 2,
+      },
+      format: { comments: false },
+    } : undefined,
     rollupOptions: {
       output: {
         // Stable chunk names for long-term caching
