@@ -279,7 +279,7 @@ export default function InstancedFireworks({
       }
     });
     return off;
-  }, [buffers, N, caps.minParticlesPerBurst, smokeData, SMOKE_N]);
+  }, [buffers, N, caps, smokeData, SMOKE_N]);
 
   // ── Per-frame integrator ──
   useFrame((_state, deltaRaw) => {
