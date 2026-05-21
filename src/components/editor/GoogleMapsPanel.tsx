@@ -14,9 +14,18 @@ import { pushLog } from './ViewportTerminal';
 function loadGoogleMapsScript(apiKey: string): Promise<void> {
   return new Promise((resolve, reject) => {
     if ((window as any).google?.maps) { resolve(); return; }
-    const existing = document.getElementById('google-maps-script');
+    const existing = document.getElementById('google-maps-script') as HTMLScriptElement | null;
     if (existing) {
-      existing.addEventListener('load', () => resolve());
+      // If the existing script already loaded, google.maps would be set above.
+      // Otherwise wait for it once, with cleanup, plus an error guard.
+      const onLoad = () => { cleanup(); resolve(); };
+      const onError = () => { cleanup(); reject(new Error('Failed to load Google Maps')); };
+      const cleanup = () => {
+        existing.removeEventListener('load', onLoad);
+        existing.removeEventListener('error', onError);
+      };
+      existing.addEventListener('load', onLoad, { once: true });
+      existing.addEventListener('error', onError, { once: true });
       return;
     }
     const script = document.createElement('script');
@@ -29,6 +38,7 @@ function loadGoogleMapsScript(apiKey: string): Promise<void> {
     document.head.appendChild(script);
   });
 }
+
 
 const METERS_TO_LAT = 1 / 111320;
 function metersToLng(lat: number) {
