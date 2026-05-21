@@ -106,7 +106,9 @@ export default function DockBar() {
           ref={dockRef}
           className={cn(
             "pointer-events-auto dock-3d-glass rounded-2xl flex items-end",
-            isMobile ? "px-1 py-1.5 gap-0" : "px-2.5 py-1.5 gap-0.5"
+            isMobile
+              ? "px-1 py-1.5 gap-0 max-w-[calc(100vw-16px)] overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden snap-x snap-mandatory"
+              : "px-2.5 py-1.5 gap-0.5"
           )}
           onMouseMove={isMobile ? undefined : handleDockMouseMove}
           onMouseLeave={isMobile ? undefined : handleDockMouseLeave}
