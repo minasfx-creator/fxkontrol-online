@@ -4,7 +4,6 @@ import { type DroneFormation } from '@/types/projectTypes';
 import { interpolateColor, type ColorTransitionMode } from '@/lib/colorInterpolation';
 import InstancedDroneSwarm from './InstancedDroneSwarm';
 import TransitionParticles from './TransitionParticles';
-import LightTrails from './LightTrails';
 
 // Pre-allocated result array to avoid per-frame GC
 let _positionsCache: { x: number; y: number; z: number; color: string }[] = [];
@@ -187,7 +186,6 @@ export default function DroneChoreography() {
   return (
     <>
       <InstancedDroneSwarm positions={positions} scale={0.6} />
-      <LightTrails dronePositions={positions} intensity={0.4} />
       <TransitionParticles />
     </>
   );
