@@ -213,8 +213,15 @@ export default function InstancedFireworks({
   // ── Burst dispatcher ──
   useEffect(() => {
     const off = fireworksBurstBus.on((req: BurstRequest) => {
-      const intensity = Math.max(0.2, Math.min(2, req.intensity ?? 1));
-      const count = Math.max(caps.minParticlesPerBurst, Math.floor(420 * intensity));
+      // Tier-aware intensity: stability controller degrades the tier and the
+      // burstIntensityScale shrinks count/speed/smoke proportionally.
+      const requested = Math.max(0.2, Math.min(2, req.intensity ?? 1));
+      const intensity = requested * caps.burstIntensityScale;
+      const rawCount = Math.floor(420 * intensity);
+      const count = Math.min(
+        caps.maxParticlesPerBurst,
+        Math.max(caps.minParticlesPerBurst, rawCount),
+      );
       const [cx, cy, cz] = req.position;
       const [r, g, b] = req.color ?? [1.0, 0.85, 0.55];
 
@@ -250,8 +257,11 @@ export default function InstancedFireworks({
       }
 
       // smoke puff at origin
-      if (smokeData && SMOKE_N > 0) {
-        const sCount = Math.max(2, Math.floor(8 * intensity));
+      if (smokeData && SMOKE_N > 0 && caps.maxSmokePerBurst > 0) {
+        const sCount = Math.min(
+          caps.maxSmokePerBurst,
+          Math.max(2, Math.floor(8 * intensity)),
+        );
         for (let i = 0; i < sCount; i++) {
           const sIdx = smokeData.cursor.v;
           smokeData.cursor.v = (smokeData.cursor.v + 1) % SMOKE_N;
