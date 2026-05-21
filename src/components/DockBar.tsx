@@ -157,8 +157,8 @@ export default function DockBar() {
                       
                       className={cn(
                         "relative flex flex-col items-center justify-center rounded-xl transition-all",
-                        "active:scale-90",
-                        isMobile ? "w-14 h-16 gap-0.5" : "w-11 h-11",
+                        "active:scale-90 shrink-0",
+                        isMobile ? "w-14 h-16 gap-0.5 snap-center" : "w-11 h-11",
                         isActive ? "dock-item-active" : "hover:bg-white/[0.04]"
                       )}
                       style={{
