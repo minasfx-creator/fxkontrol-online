@@ -26,6 +26,8 @@ import { updateFrustum, isSphereInFrustum } from '@/lib/frustumCuller';
 import { clampNiagaraHDR, getNiagaraBudgets } from '@/lib/niagaraBlenderRules';
 import { isEnabled } from '@/lib/featureFlags';
 import InstancedDroneField, { type DroneFieldItem } from './InstancedDroneField';
+import InstancedFireworks from '@/components/fireworks/InstancedFireworks';
+import { fireworksBurstBus } from '@/render_ultra/fireworks/fireworksBurstBus';
 import { thermalColor, autoMatchFormulation } from '@/render_ultra/fireworks/particleChemistry';
 import { getBurstConfig, type BurstPattern } from '@/render_ultra/fireworks/burstSimulation';
 import {
@@ -1656,8 +1658,49 @@ export function TimelineEffects() {
     return out;
   }, [cappedEffects, getHeight]);
 
+  // Rising-edge dispatch into the visual-only fireworksBurstBus.
+  // Mounts a single InstancedFireworks renderer (1 draw call cores/trails/smoke)
+  // and fires one burst per cue when it transitions from prefire → break.
+  const firedRef = useRef<Map<string, number>>(new Map());
+  const fireworksBusEnabled = isEnabled('fireworks_instanced_bus');
+  useEffect(() => {
+    if (!fireworksBusEnabled) return;
+    const map = firedRef.current;
+    const seen = new Set<string>();
+    for (const e of cappedEffects) {
+      const id = e.item.id;
+      seen.add(id);
+      const pt = e.effect.partType;
+      const isShellish = pt === 'shell' || pt === 'single_shot' || pt === 'rocket' || pt === 'mine' || pt === 'cake';
+      if (!isShellish) continue;
+      if (e.inPrefire) continue;
+      if (e.progress <= 0) continue;
+      const prev = map.get(id);
+      if (prev === e.item.startTime) continue;
+      map.set(id, e.item.startTime);
+      // hex → rgb 0..1
+      const hex = (e.effect.color || '#ffb347').replace('#', '');
+      const n = parseInt(hex.length === 3 ? hex.split('').map(c => c + c).join('') : hex, 16);
+      const r = ((n >> 16) & 255) / 255;
+      const g = ((n >> 8) & 255) / 255;
+      const b = (n & 255) / 255;
+      const burstPos: [number, number, number] = [e.resolvedPos.x, e.resolvedPos.y, e.resolvedPos.z];
+      const intensity = Math.max(0.6, Math.min(2, (e.caliber || 4) / 4));
+      fireworksBurstBus.fire({
+        position: burstPos,
+        color: [r, g, b],
+        intensity,
+        cueId: id,
+        kind: pt === 'mine' ? 'mine' : pt === 'cake' ? 'comet' : 'shell',
+      });
+    }
+    // GC dead cue ids (timeline edits / rewind)
+    for (const k of map.keys()) if (!seen.has(k)) map.delete(k);
+  }, [cappedEffects, fireworksBusEnabled]);
+
   return (
     <>
+      {fireworksBusEnabled && <InstancedFireworks />}
       <InstancedDroneField items={droneFieldItems} />
       {cappedEffects.map(({ item, effect, progress, inPrefire, prefireProgress, caliber, resolvedPos, effectScale, effectBrightness, launchHeading, launchPitch }) => {
         const terrainOffset = getHeight(resolvedPos.x, resolvedPos.z);

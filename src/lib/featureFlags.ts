@@ -44,6 +44,8 @@ const FLAGS = {
   r_pearl_spacing: true,
   /** Render quality cinema-default opt-in. Consumers use renderQuality() / renderQualityCaps(). */
   render_quality_cinema: true,
+  /** Mount InstancedFireworks renderer + dispatch shell bursts via fireworksBurstBus. */
+  fireworks_instanced_bus: true,
 } as const;
 
 export type FeatureFlag = keyof typeof FLAGS;
