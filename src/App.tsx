@@ -9,6 +9,7 @@ import MainLayout from "@/layouts/MainLayout";
 import PageTransitionOverlay from "@/components/ui/PageTransitionOverlay";
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
+const Install = lazy(() => import("./pages/Install"));
 
 // Dashboard lazy-loaded — it's 658 lines with heavy imports
 const Dashboard = lazy(() => import("./pages/Dashboard"));
@@ -59,6 +60,7 @@ function App() {
             <PageTransitionOverlay />
             <Suspense fallback={<div className="min-h-[100dvh] w-full flex items-center justify-center bg-background"><div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" /></div>}>
               <Routes>
+                <Route path="/install" element={<Install />} />
                 <Route path="/auth" element={<AuthRoute><Auth /></AuthRoute>} />
                 <Route element={<ProtectedRoute><MainLayout /></ProtectedRoute>}>
                   <Route path="/" element={<Dashboard />} />
