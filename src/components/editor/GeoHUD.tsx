@@ -69,10 +69,12 @@ export function GeoHUDPanel() {
     : 'hsl(142, 76%, 50%)';
 
   return (
-    <div className="absolute bottom-2 left-2 z-20 pointer-events-none select-none">
+    <div className="absolute bottom-2 left-2 z-30 pointer-events-none select-none">
       <div
-        className="glass-hud-md"
+        className="rounded-md border backdrop-blur-md"
         style={{
+          background: 'hsla(220, 20%, 8%, 0.88)',
+          borderColor: 'hsla(220, 20%, 25%, 0.5)',
           padding: '8px 10px',
           fontFamily: 'ui-monospace, "JetBrains Mono", monospace',
           fontSize: '10px',
@@ -81,7 +83,6 @@ export function GeoHUDPanel() {
           minWidth: '200px',
         }}
       >
-
         <div style={{ fontSize: '8px', fontWeight: 700, letterSpacing: '0.12em', color: 'hsla(142, 76%, 50%, 0.8)', marginBottom: '4px' }}>
           <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
             <MapPin size={9} /> GEO HUD

@@ -20,7 +20,6 @@ import BoxSelectOverlay from '@/components/editor/BoxSelectOverlay';
 import SelectionModeBar from '@/components/editor/SelectionModeBar';
 import RadialMenu from '@/components/editor/RadialMenu';
 import EngineProvider from '@/orchestration/EngineProvider';
-import AudioEngine from '@/components/editor/AudioEngine';
 import LiveCard from '@/components/editor/LiveCard';
 
 // ── Lazy helper — one-liner for 80+ panels ──
@@ -514,9 +513,6 @@ function Index() {
           </div>
         )}
       </div>
-
-      {/* ─── Headless: Audio playback engine (mounted once; survives Timeline collapse / viewport maximize) ─── */}
-      <AudioEngine />
 
       {/* ─── Layer 1: Top Bar (z-50) ─────────────────── */}
       <div className="absolute top-0 left-0 right-0 z-50">

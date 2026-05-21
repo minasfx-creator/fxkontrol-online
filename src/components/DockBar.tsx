@@ -106,9 +106,7 @@ export default function DockBar() {
           ref={dockRef}
           className={cn(
             "pointer-events-auto dock-3d-glass rounded-2xl flex items-end",
-            isMobile
-              ? "px-1 py-1.5 gap-0 max-w-[calc(100vw-16px)] overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden snap-x snap-mandatory"
-              : "px-2.5 py-1.5 gap-0.5"
+            isMobile ? "px-1 py-1.5 gap-0" : "px-2.5 py-1.5 gap-0.5"
           )}
           onMouseMove={isMobile ? undefined : handleDockMouseMove}
           onMouseLeave={isMobile ? undefined : handleDockMouseLeave}
@@ -157,8 +155,8 @@ export default function DockBar() {
                       
                       className={cn(
                         "relative flex flex-col items-center justify-center rounded-xl transition-all",
-                        "active:scale-90 shrink-0",
-                        isMobile ? "w-14 h-16 gap-0.5 snap-center" : "w-11 h-11",
+                        "active:scale-90",
+                        isMobile ? "w-14 h-16 gap-0.5" : "w-11 h-11",
                         isActive ? "dock-item-active" : "hover:bg-white/[0.04]"
                       )}
                       style={{

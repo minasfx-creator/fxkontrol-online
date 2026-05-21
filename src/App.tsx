@@ -9,7 +9,6 @@ import MainLayout from "@/layouts/MainLayout";
 import PageTransitionOverlay from "@/components/ui/PageTransitionOverlay";
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
-const Install = lazy(() => import("./pages/Install"));
 
 // Dashboard lazy-loaded — it's 658 lines with heavy imports
 const Dashboard = lazy(() => import("./pages/Dashboard"));
@@ -26,8 +25,6 @@ const FieldTest = lazy(() => import("./pages/FieldTest"));
 const Settings = lazy(() => import("./pages/Settings"));
 const FestivalStageDemo = lazy(() => import("./pages/FestivalStageDemo"));
 const PairingTwoWire = lazy(() => import("./pages/PairingTwoWire"));
-const InternalDocs = lazy(() => import("./pages/InternalDocs"));
-const EffectsE2EHarness = lazy(() => import("./pages/dev/EffectsE2EHarness"));
 
 const queryClient = new QueryClient();
 
@@ -56,11 +53,10 @@ function App() {
         <TooltipProvider>
           <Toaster />
           <Sonner />
-          <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+          <BrowserRouter>
             <PageTransitionOverlay />
             <Suspense fallback={<div className="min-h-[100dvh] w-full flex items-center justify-center bg-background"><div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" /></div>}>
               <Routes>
-                <Route path="/install" element={<Install />} />
                 <Route path="/auth" element={<AuthRoute><Auth /></AuthRoute>} />
                 <Route element={<ProtectedRoute><MainLayout /></ProtectedRoute>}>
                   <Route path="/" element={<Dashboard />} />
@@ -75,9 +71,6 @@ function App() {
                   <Route path="/settings" element={<Settings />} />
                   <Route path="/festival-stage-demo" element={<FestivalStageDemo />} />
                   <Route path="/pairing/two-wire" element={<PairingTwoWire />} />
-                  <Route path="/docs/internal" element={<InternalDocs />} />
-                  <Route path="/docs/internal/:slug" element={<InternalDocs />} />
-                  <Route path="/dev/effects-e2e" element={<EffectsE2EHarness />} />
                 </Route>
                 <Route path="*" element={<NotFound />} />
               </Routes>

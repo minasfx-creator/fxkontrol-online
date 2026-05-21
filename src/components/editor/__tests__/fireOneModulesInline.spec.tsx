@@ -28,26 +28,26 @@ afterEach(() => cleanup());
 describe('FireOneModulesInline', () => {
   it('shows hint when not connected', () => {
     render(<FireOneModulesInline modules={new Map()} isConnected={false} />);
-    expect(screen.getByText(/Conecte .*para enxergar módulos/i)).toBeTruthy();
+    expect(screen.getByText(/Conecte o controlador/)).toBeTruthy();
   });
 
   it('shows empty state when connected but no modules answered', () => {
     render(<FireOneModulesInline modules={new Map()} isConnected />);
-    expect(screen.getByText(/Nenhum módulo respondeu/i)).toBeTruthy();
+    expect(screen.getByText(/IDENTIFY ainda/)).toBeTruthy();
   });
 
-  it('lists modules sorted by address with igniter live count', () => {
-    // Same controllerId/connectionMode → single controller group with both rows.
+  it('lists modules sorted by address with mode + igniter live count', () => {
     const map = new Map<number, FireOneModuleStatus>([
-      [3, mod(3)],
+      [3, mod(3, { connectionMode: 'wireless', rssiDbm: -82 })],
       [1, mod(1)],
     ]);
     render(<FireOneModulesInline modules={map} isConnected />);
     const rows = screen.getAllByRole('row');
-    // header + 2 data rows
+    // header + 2
     expect(rows.length).toBe(3);
     expect(rows[1].textContent).toContain('1');
     expect(rows[2].textContent).toContain('3');
+    expect(rows[2].textContent).toContain('WL');
     expect(rows[1].textContent).toContain('8/32');
   });
 

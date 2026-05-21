@@ -45,7 +45,6 @@ export default defineConfig(({ mode }) => ({
           "**/postprocessing-core-*.js",
           "**/three-core-*.js",
           "**/r3f-*.js",
-          "**/drei-*.js",
           "**/vendor-tiles-*.js",
           "**/vendor-markdown-*.js",
           "**/recharts-*.js",
@@ -82,6 +81,16 @@ export default defineConfig(({ mode }) => ({
               networkTimeoutSeconds: 10,
             },
           },
+          {
+            urlPattern: /\/assets\/(three-core|r3f|ru-|postprocessing|vendor-export|vendor-tiles|recharts)/i,
+            handler: "NetworkFirst",
+            options: {
+              cacheName: "lazy-chunks",
+              expiration: { maxEntries: 30, maxAgeSeconds: 7 * 24 * 60 * 60 },
+              cacheableResponse: { statuses: [0, 200] },
+              networkTimeoutSeconds: 6,
+            },
+          },
         ],
       },
     }),
@@ -106,17 +115,8 @@ export default defineConfig(({ mode }) => ({
     // Smaller chunks = better caching & parallel loading
     chunkSizeWarningLimit: 600,
     cssCodeSplit: true,
-    // Minification — terser in prod to drop console/debugger; esbuild in dev for speed
-    minify: mode === 'production' ? 'terser' : 'esbuild',
-    terserOptions: mode === 'production' ? {
-      compress: {
-        // Keep console.warn/error for prod diagnostics; drop log/info/debug/trace noise
-        pure_funcs: ['console.log', 'console.info', 'console.debug', 'console.trace'],
-        drop_debugger: true,
-        passes: 2,
-      },
-      format: { comments: false },
-    } : undefined,
+    // Minification
+    minify: 'esbuild',
     rollupOptions: {
       output: {
         // Stable chunk names for long-term caching
@@ -133,8 +133,7 @@ export default defineConfig(({ mode }) => ({
           // ── vendor chunks ──
           const vendorChunks: Record<string, string[]> = {
             'three-core': ['three'],
-            'r3f': ['@react-three/fiber'],
-            'drei': ['@react-three/drei'],
+            'r3f': ['@react-three/fiber', '@react-three/drei'],
             'postprocessing': ['@react-three/postprocessing'],
             'postprocessing-core': ['postprocessing'],
             'recharts': ['recharts'],

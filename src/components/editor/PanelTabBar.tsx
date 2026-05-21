@@ -9,6 +9,13 @@ export type PanelId = 'script' | 'wind' | 'reports' | 'racks' | 'addressing' | '
 
 export const PANEL_SECTIONS: { title: string; icon: typeof Route; items: { id: PanelId; label: string; icon: typeof Route; shortcut?: string }[] }[] = [
   {
+    title: '★ Comando',
+    icon: Target,
+    items: [
+      { id: 'showcommander', label: 'Show Commander', icon: Target, shortcut: 'Q' },
+    ],
+  },
+  {
     title: 'Posições',
     icon: MapPin,
     items: [
@@ -45,6 +52,7 @@ export const PANEL_SECTIONS: { title: string; icon: typeof Route; items: { id: P
       { id: 'trajectory', label: 'Trajetórias', icon: Navigation },
       { id: 'transitions', label: 'Transições', icon: ArrowRightLeft },
       { id: 'collisions', label: 'Colisões', icon: Crosshair },
+      { id: 'boids', label: 'Boids', icon: Orbit },
     ],
   },
   {
@@ -58,10 +66,15 @@ export const PANEL_SECTIONS: { title: string; icon: typeof Route; items: { id: P
       { id: 'bluetooth', label: 'Bluetooth BLE', icon: Radio },
       { id: 'nfc', label: 'NFC Pair', icon: Zap },
       { id: 'smpte', label: 'SMPTE/LTC', icon: Timer },
+      { id: 'mavlink', label: 'MAVLink', icon: Radio },
       { id: 'lasercontrol', label: 'Laser Control', icon: Zap },
       { id: 'livefiring', label: 'Live SFX', icon: Sparkles },
+      { id: 'mobilelink', label: 'Mobile Link', icon: Cable },
+      { id: 'linkmonitor', label: 'Link Monitor', icon: MonitorPlay },
+      { id: 'remotecontrol', label: 'Remote Control', icon: Play },
       { id: 'ma3', label: 'grandMA3', icon: Sliders },
       { id: 'sacnmonitor', label: 'sACN Monitor', icon: Activity },
+      { id: 'diagnostic', label: 'Diagnóstico', icon: Bug, shortcut: 'D' },
       { id: 'qastudio', label: 'QA Studio', icon: BarChart3 },
     ],
   },
@@ -88,6 +101,7 @@ export const PANEL_SECTIONS: { title: string; icon: typeof Route; items: { id: P
     icon: Package,
     items: [
       { id: 'controllers', label: 'Controladores', icon: Cpu },
+      { id: 'connections', label: 'Conexões HW', icon: Cable },
       { id: 'radio', label: 'Rádio USB', icon: Radio },
       { id: 'fieldmap', label: 'Field Map', icon: Map },
       { id: 'racks', label: 'Racks', icon: Package },
@@ -116,9 +130,9 @@ export const PANEL_SECTIONS: { title: string; icon: typeof Route; items: { id: P
       { id: 'firing', label: 'Export Disparo', icon: Download, shortcut: 'X' },
       { id: 'video', label: 'Gravação', icon: Video, shortcut: 'V' },
       { id: 'share', label: 'Compartilhar', icon: Share2 },
+      { id: 'aroverlay', label: 'AR Overlay', icon: Camera },
       { id: 'approval', label: 'Aprovação', icon: MessageSquare },
       { id: 'models', label: 'Modelos 3D', icon: Box },
-      { id: 'diagnostic', label: 'Diagnóstico', icon: Bug, shortcut: 'D' },
     ],
   },
   {
@@ -130,6 +144,7 @@ export const PANEL_SECTIONS: { title: string; icon: typeof Route; items: { id: P
       { id: 'maps', label: 'Google Maps', icon: Globe },
       { id: 'weather', label: 'Clima', icon: Cloud },
       { id: 'soundlevel', label: 'Nível Sonoro', icon: Volume2 },
+      { id: 'particles', label: 'Partículas', icon: Atom },
       { id: 'audience', label: 'Audiência', icon: FileBarChart },
       { id: 'safety', label: 'Segurança NFPA', icon: Shield, shortcut: 'F' },
       { id: 'showsettings', label: 'Config. Show', icon: Settings2 },
@@ -197,17 +212,9 @@ export default function PanelTabBar({ activePanel, onTogglePanel }: PanelTabBarP
 
   return (
     <TooltipProvider delayDuration={200}>
-      <div
-        className="w-[52px] flex-shrink-0 h-full min-h-0 border-l border-primary/8 flex flex-col"
-        style={{
-          background: 'rgba(8, 10, 14, 0.72)',
-          backdropFilter: 'blur(32px) saturate(1.6)',
-          WebkitBackdropFilter: 'blur(32px) saturate(1.6)',
-          boxShadow: 'inset 1px 0 0 rgba(255,255,255,0.04)',
-        }}
-      >
+      <div className="w-[52px] flex-shrink-0 border-l border-border/10 flex flex-col" style={{ background: 'hsl(var(--card))' }}>
         {/* Search toggle */}
-        <div className="flex-shrink-0 flex items-center justify-center py-1.5 border-b border-border/8">
+        <div className="flex items-center justify-center py-1.5 border-b border-border/8">
           <button
             onClick={() => setSearchOpen(!searchOpen)}
             className={cn("w-8 h-8 flex items-center justify-center rounded-lg transition-colors", searchOpen ? "bg-primary/12 text-primary" : "text-muted-foreground/40 hover:text-muted-foreground/70")}
@@ -216,7 +223,7 @@ export default function PanelTabBar({ activePanel, onTogglePanel }: PanelTabBarP
           </button>
         </div>
         {searchOpen && (
-          <div className="flex-shrink-0 px-1.5 py-1.5 border-b border-border/8">
+          <div className="px-1.5 py-1.5 border-b border-border/8">
             <input
               type="text"
               placeholder="..."
@@ -230,7 +237,7 @@ export default function PanelTabBar({ activePanel, onTogglePanel }: PanelTabBarP
 
         {/* Favorites */}
         {favoriteItems.length > 0 && !searchQuery && (
-          <div className="flex-shrink-0 flex flex-col items-center gap-[2px] py-1.5 border-b border-primary/10">
+          <div className="flex flex-col items-center gap-[2px] py-1.5 border-b border-primary/10">
             {favoriteItems.map(({ id, label, icon: Icon }) => (
               <Tooltip key={id}>
                 <TooltipTrigger asChild>
@@ -255,7 +262,7 @@ export default function PanelTabBar({ activePanel, onTogglePanel }: PanelTabBarP
           </div>
         )}
 
-        <ScrollArea className="flex-1 min-h-0 overscroll-contain">
+        <ScrollArea className="flex-1">
           <div
             ref={containerRef}
             className="flex flex-col items-center py-2 gap-0"

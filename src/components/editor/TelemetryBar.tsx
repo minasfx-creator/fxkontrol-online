@@ -36,9 +36,9 @@ export default React.memo(function TelemetryBar() {
       : 'text-destructive';
 
   return (
-    <div className="absolute top-0 left-0 right-0 z-40 pointer-events-none select-none">
+    <div className="absolute top-0 left-0 right-0 z-30 pointer-events-none select-none">
       <div
-        className="mx-auto mt-2 flex items-center justify-center gap-4 sm:gap-6 px-4 sm:px-5 py-1.5 glass-hud-md"
+        className="mx-auto mt-2 flex items-center justify-center gap-4 sm:gap-6 px-4 sm:px-5 py-1.5 rounded-lg border border-border/10 bg-background/60 backdrop-blur-xl"
         style={{
           maxWidth: '720px',
           fontFamily: 'ui-monospace, "JetBrains Mono", monospace',
@@ -47,7 +47,6 @@ export default React.memo(function TelemetryBar() {
           letterSpacing: '0.02em',
         }}
       >
-
         {/* Clock */}
         <span className="flex items-center gap-1.5 text-muted-foreground/70 shrink-0">
           <Clock className="w-3 h-3" />

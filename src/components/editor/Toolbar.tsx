@@ -435,32 +435,6 @@ export default function Toolbar({ onOpenPanel, isMaximized, onToggleMaximize }: 
     toast.success('Firing CSV exportado!');
   }, [projectName, timelineItems, positions]);
 
-  const handleExportFullJSON = useCallback(async () => {
-    const { exportFullShowJSON, downloadFile } = await getExportEngine();
-    const content = exportFullShowJSON({
-      projectName, duration, positions, timelineItems, trajectories, droneFormations,
-    });
-    downloadFile(content, `${projectName.replace(/\s+/g, '_')}.fxk.json`, 'application/json');
-    toast.success('Show completo exportado em JSON!');
-  }, [projectName, duration, positions, timelineItems, trajectories, droneFormations]);
-
-  const handleExportFinaleFiringCSV = useCallback(async () => {
-    const { exportFinaleFiringCSV, downloadFile } = await getExportEngine();
-    const content = exportFinaleFiringCSV(timelineItems, positions);
-    downloadFile(content, `${projectName.replace(/\s+/g, '_')}.firing.csv`, 'text/csv');
-    toast.success('CSV Finale 3D exportado!');
-  }, [projectName, timelineItems, positions]);
-
-  const handleLoadDemoShow = useCallback(async (id: string) => {
-    const { getDemoShow } = await import('@/data/demoShows');
-    const { loadShowPlanIntoStore } = await import('@/lib/showPlanLoader');
-    const entry = getDemoShow(id);
-    if (!entry) { toast.error('Demo não encontrado'); return; }
-    const plan = entry.build();
-    loadShowPlanIntoStore(plan);
-    toast.success(`Demo "${entry.label}" carregado (${plan.pyroCues.length} cues)`);
-  }, []);
-
   const handleNewProject = useCallback(() => {
     if (timelineItems.length > 0 || positions.length > 0) {
       if (!confirm('Criar novo projeto? Dados não salvos serão perdidos.')) return;
@@ -567,17 +541,11 @@ export default function Toolbar({ onOpenPanel, isMaximized, onToggleMaximize }: 
             { label: 'Twinmotion / 3D', icon: Building2, onClick: () => setTwinmotionOpen(true) },
             { label: 'Asset Marketplace', icon: Store, onClick: () => setMarketplaceOpen(true) },
           ]} />
-          <DropdownMenu label="Demos" icon={FileJson} items={[
-            { label: 'Festival Main Stage', icon: FileJson, onClick: () => handleLoadDemoShow('festival-main-stage-demo') },
-            { label: 'Aniversário Angra (110 cues)', icon: FileJson, onClick: () => handleLoadDemoShow('aniversario-angra-2024') },
-          ]} />
           <DropdownMenu label="Export" icon={Download} items={[
             { label: 'Export Manager...', icon: FileBarChart, onClick: () => setExportModalOpen(true) },
-            { label: 'Show Completo (JSON)', icon: FileJson, onClick: handleExportFullJSON },
-            { label: 'CSV Finale 3D (Firing)', icon: Download, onClick: handleExportFinaleFiringCSV },
             { label: '.vviz (Finale 3D)', icon: FileJson, onClick: () => setVvizExportOpen(true) },
             { label: '.skyc (SkyCreator)', icon: Download, onClick: handleExportSkyc },
-            { label: 'Firing CSV (legacy)', icon: Download, onClick: handleExportFiringCSV },
+            { label: 'Firing CSV', icon: Download, onClick: handleExportFiringCSV },
           ]} />
         </div>
       )}

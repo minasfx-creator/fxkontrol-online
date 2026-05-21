@@ -83,16 +83,14 @@ export function PerformanceHUD({
     <>
       <button
         onClick={toggle}
-        className="absolute top-3 right-16 z-20 glass-hud-md text-muted-foreground hover:text-foreground px-2 py-1 transition-all"
+        className="absolute top-3 right-16 bg-surface-1/80 text-muted-foreground border border-border/50 hover:text-foreground hover:bg-surface-2/80 px-2 py-1 rounded-sm transition-all"
         title="Performance Stats"
-        aria-label="Toggle performance stats"
-        aria-pressed={visible}
       >
         <Activity className="w-3.5 h-3.5" />
       </button>
 
       {visible && (
-        <div className="absolute top-10 right-16 z-20 glass-hud-md p-2 font-mono text-[10px] leading-relaxed min-w-[140px] select-none pointer-events-none">
+        <div className="absolute top-10 right-16 bg-surface-0/90 backdrop-blur-sm border border-border/60 rounded-sm p-2 font-mono text-[10px] leading-relaxed min-w-[140px] select-none pointer-events-none">
           <div className="flex items-center gap-1.5 mb-1 text-[9px] font-semibold uppercase tracking-wider text-muted-foreground">
             <Activity className="w-3 h-3" /> FX Kontrol
           </div>
@@ -110,7 +108,6 @@ export function PerformanceHUD({
     </>
   );
 }
-
 
 function Row({ label, value, className = 'text-foreground' }: { label: string; value: number | string; className?: string }) {
   return (

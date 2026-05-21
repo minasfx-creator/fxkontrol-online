@@ -1,76 +1,82 @@
-# Otimização de Geometria 3D — FX KONTROL
+# Refino de Realismo dos Fogos — 7 Gaps Concretos
 
-Achados da investigação (não toque sem ler):
+## Por que parecem "irreais" hoje
 
-- **Drones em show real (`FireworkRenderer.tsx` linhas 1460–1801)**: cada drone renderiza como `<LightPoint>` individual (sprite additivo + drift Y + pulso 4Hz). Com 10k drones = 10k componentes React + 10k draw calls. **Esse é o gargalo real.**
-- **`InstancedDroneSwarm.tsx`** já existe e usa `THREE.InstancedMesh`, mas só é consumido por `BoidsVisualizer` e `DroneChoreography` (telas auxiliares). Show playback NÃO usa.
-- **`RenderStabilityController` NÃO existe** no repo (a pesquisa que você colou assumiu que existe). Vou criar do zero.
-- **`DRACOLoader`/`KTX2Loader`/`MeshoptDecoder` não estão registrados** em lugar nenhum. Uploads do `user_library_assets` hoje vão como GLB cru. Adicionar decoders no client + script `gltf-transform` no upload é ganho imediato.
-- `Show3DEngine` já tem disposal correto (memo M5), então só plugar novos sistemas sem leak.
+O renderer real (`src/components/editor/skycanvas/FireworkRenderer.tsx`, 1716 linhas) usa `THREE.Points` com um shader Gaussiano radial. As geometrias estão certas (ring, heart, smiley, saturn, etc.), mas faltam os **7 elementos** que separam "estrela genérica que sobe e cai" de pirotecnia real:
 
-## Rodada 1 — RenderStabilityController + Geometry Budget
+| # | Gap visual | Causa técnica | Existe no repo mas não wired? |
+|---|---|---|---|
+| 1 | Estrelas são bolhas redondas iguais | Gaussian sprite isotrópico, sem stretch | parcial |
+| 2 | Sem rastro de faíscas (sparks) atrás de cada estrela | `sparkTrailsGPU.ts` existe, não chamado | ✅ existe |
+| 3 | Cor "chapada" do início ao fim | Sem ramp blackbody temporal | ✅ `particleChemistry.thermalColor` |
+| 4 | "Break flash" inexistente ou fraco | Frame 0..2 do burst não tem HDR boost | parcial |
+| 5 | Sem fumaça residual no ponto de ruptura | `SmokeSystem` existe, só usado p/ ground smoke | ✅ `smokeSimulation.ts` |
+| 6 | Willow/Kamuro sem trilha contínua | Falta ribbon/MeshLine por estrela | ✅ `ribbonTrailRenderer.ts` |
+| 7 | Shapes (heart, smiley, ring) com densidade aleatória | Stars amostradas com `Math.random()` em vez de espaçamento uniforme | — |
 
-Criar `src/render_ultra/stability/renderStabilityController.ts`:
-- Singleton observador de `requestAnimationFrame` com janela móvel 60 frames (p50/p95/p99 ms).
-- Tier autodegrade `cinema → balanced → eco` (reusar `renderQualityCaps()` já criado no `featureFlags.ts`).
-- Triggers: p95 > 22ms por 60f → degradar; p95 < 14ms por 300f + tier não-cinema → tentar subir 1 nível.
-- Hook `useRenderQualityTier()` para componentes lerem o tier corrente reativamente.
-- API `geometryBudget.register({ id, triangles, textureBytes })` + `geometryBudget.report()` para validar uploads e cenas.
-- Limites canônicos: `MAX_TRIANGLES_PER_ASSET=50_000`, `MAX_TEXTURE_DIM=2048`, `MAX_VRAM_SCENE_MB=512`.
+Todo o resto (silhuetas de mine, niagaraProfile glow, chemistry compounds, frustum culling, HDR boost combustion) já está rodando.
 
-Criar `docs/HARDENING_RENDER_ENGINE3D.md` com os limites acima + checklist de upload + receita Draco/KTX2.
+## Plano em 3 passes (cada um isolável por flag, validável visualmente)
 
-Plugar chip `RENDER` na `GlobalSafetyBar` (ao lado do `BUDGET` ECS existente): mostra `cinema|balanced|eco · p95Xms`.
+### Pass 1 — Velocity Stretch + Break Flash (alto impacto, baixo custo)
 
-Testes: `renderStabilityController.spec.ts` — degradação, recuperação histerese, geometry budget overshoot.
+**Arquivo único editado:** `FireworkRenderer.tsx` (shader + setup do material)
 
-## Rodada 2 — InstancedMesh para Drones em Show Playback
+1. **Velocity stretch** no `STAR_VERTEX_SHADER`:
+   - Adicionar attribute `aVel` (vec3) já calculado nas velocidades existentes
+   - Ovalizar o sprite na direção da velocidade projetada em screen-space: `gl_PointSize` continua igual, mas no fragment shader o `gl_PointCoord` é rotacionado pelo ângulo `atan2(velScreen.y, velScreen.x)` e escalado em Y por `(1 + speedFactor * 0.8)`. Resultado: estrelas "riscam" o céu em vez de serem pontos circulares.
+   - Custo: zero (cálculo já é por-vértice)
 
-Criar `src/components/editor/skycanvas/InstancedDroneField.tsx`:
-- 1 `<instancedMesh args={[geom, mat, MAX=10_000]}>` com geometria compartilhada (cone+body baixo-poly ~120 tris) ou Points + shader em `eco`.
-- Atributos instanciados via `InstancedBufferAttribute`: `aColor` (vec3), `aPhase` (float p/ pulso), `aActive` (float 0/1).
-- Material `MeshBasicMaterial` (additive blend) + `onBeforeCompile` injetando pulso 4Hz reaproveitando shader atual do `LightPoint`.
-- Update por frame: 1 `setMatrixAt` + `instanceMatrix.needsUpdate=true`. Zero realloc, pool fixo, compaction soft (active=0 → escala 0).
-- LOD: tier `eco` cai pra Points puros (BufferGeometry de vértices), `balanced/cinema` mantém instancedMesh com mesh.
+2. **Break Flash HDR**:
+   - Nova var `aBirthTime` (float). Nos primeiros `0.08s` após break: multiplicador `flash = exp(-age*40) * 8.0` adicionado ao `col` (HDR > 1.0 alimenta o bloom automaticamente)
+   - Pico ~3 frames @60fps, depois decai pra zero — exatamente como o flash químico real do composto BP no rompimento
+   - Custo: 1 atributo + 2 linhas no fragment
 
-Em `FireworkRenderer.tsx` (linhas 1775–1801):
-- Coletar todos `items` de drone num único array.
-- Trocar `items.map(... <LightPoint/>)` por `<InstancedDroneField items={droneItems} />`.
-- Manter `LightPoint` como fallback path (flag `r_instanced_drones`, default ON).
+3. **Cor temporal blackbody**:
+   - Importar `thermalColor` de `particleChemistry.ts` (já existe!)
+   - No JS, pré-computar 32 amostras da curva `whiteHot(3500K) → starColor → ember(1200K)` em uma `DataTexture` 32×1 RGBA
+   - Sampler no fragment: `vec3 baseCol = texture(uTempRamp, vec2(vLife, 0.5)).rgb`
+   - Custo: 1 texture sampler + DataTexture de 128 bytes
 
-Testes: `instancedDroneField.spec.ts` — N items vira 1 draw call; matrix update determinístico; eco vira Points.
+**Flag:** `r_star_stretch_v2` (default ON após validação visual em `/dev/effect-preview`)
+**Tests:** 3 — atributos populados, ramp gerada determinística, fallback para shader v1 quando flag OFF
 
-## Rodada 3 — Pipeline gltf-transform (Draco + KTX2 + LOD)
+### Pass 2 — Spark Trails (o "wow" visual mais importante)
 
-**Client (descompressão)**:
-- `src/render_ultra/loaders/optimizedGLTFLoader.ts`: `GLTFLoader` + `DRACOLoader` (`/draco/`) + `KTX2Loader` (`/basis/`) + `MeshoptDecoder`.
-- Servir `public/draco/` e `public/basis/` (copiar `three/examples/jsm/libs/draco/*` e `basis/*` no build).
-- Substituir todos `useGLTF` da library por hook `useOptimizedGLTF` que registra triângulos+textureBytes no `geometryBudget` (rodada 1).
+Wire de `sparkTrailsGPU.ts` no `FireworkRenderer`:
 
-**Edge Function `optimize-library-asset`**:
-- Recebe `{ asset_id }`, baixa do bucket `assets`, roda pipeline via npm `@gltf-transform/core` + `@gltf-transform/functions`:
-  - `dedup()` → `prune()` → `weld()` → `simplify({ ratio: 0.6, error: 0.001 })` para LOD1+LOD2.
-  - `draco({ method: 'edgebreaker' })` em mesh data.
-  - `textureCompress({ targetFormat: 'ktx2', quality: 'uastc' })` (substituir imagens >512px).
-- Salva `<asset>.optimized.glb` no bucket, adiciona colunas `optimized_url`, `original_bytes`, `optimized_bytes`, `triangle_count`, `vram_estimate_bytes` em `user_library_assets` (migração separada).
-- `useOptimizedGLTF` prefere `optimized_url` quando disponível, cai pro original com warning.
+1. Para cada `FireworkBurst` ativo, instanciar 1 `SparkTrailSystem` com `STAR_COUNT / 3` rastros (sub-amostragem — 1 em cada 3 estrelas tem trail, suficiente visualmente, terço do custo)
+2. Cada frame: passar posição/velocidade atuais do `Points` → o `sparkTrailsGPU` mantém ring buffer de 8 posições passadas por trail e renderiza como `BufferGeometry LineSegments` com material aditivo
+3. Cor do trail: `starColor * 0.6 * (1 - trailAge/0.4)` — esmaece em 400ms
+4. **Willow/Kamuro/Palm** pegam 100% de cobertura (efeito definidor); demais 33%
 
-**UI**: chip "Optimized · 87% smaller · 12k tris" no `LibraryAssetCard` (Rodada 2 anterior).
+**Flag:** `r_spark_trails` (default ON em desktop, OFF em mobile via `useDeviceTier`)
+**Budget guard:** auto-OFF se `useFrameBudget` p95 ≥ 35ms
+**Tests:** 4 — system criado por burst, dispose no unmount, sub-amostragem correta, mobile-OFF
 
-Testes: `optimizedGLTFLoader.spec.ts` — registro no budget; edge function dry-run via mock.
+### Pass 3 — Break Puff + Shape Pearl Spacing
 
-## Ordem de entrega
+1. **Break Puff de fumaça** — no instante do break, emitir 1 `SmokeSystem` puff (3-5 partículas, raio 0.8m, lifetime 8s, opacidade peak 0.4) no ponto de ruptura. Reaproveita `smokeSimulation.ts` que já está disposable-safe. Apenas para shells > 3" e sem chuva.
 
-1. Rodada 1 (stability + budget + HARDENING doc) — base para as outras
-2. Rodada 2 (InstancedDroneField) — ganho visível imediato em show
-3. Rodada 3 (pipeline gltf-transform) — DB migration + edge function + client
+2. **Pearl Spacing** nas geometrias de shape (heart, smiley, ring, saturn): trocar `Math.random()` por `i / STAR_COUNT` no parâmetro `t` da curva — distribui estrelas uniformemente ao longo da silhueta (como "colar de pérolas"). Mantém jitter pequeno (`±0.02 * sigma`) pra não ficar mecânico. Já testei mentalmente nas funções existentes em `buildPresetVelocities` — é uma troca de 1 linha por shape (heart/smiley/ring/double-ring/saturn-ring).
 
-## Não-objetos
+**Flag:** `r_break_puff` (ON desktop) + `r_pearl_spacing` (ON sempre, é trivialmente melhor)
+**Tests:** 3 — puff só dispara em shell ≥ 3", pearl spacing determinístico, no-rain gate
 
-- Não tocar em `uiCommandGateway`, `SafetyStateMachine`, `CommandBus`, `FieldBus`, FireOne, XL4, FXK-M1, Modbus, `moduleAggregator`, `FireOneModulesInline`.
-- Não trocar versões de Three/R3F/Drei (já em 0.169/8.18/9.122).
-- Não alterar `LightPoint` em outros caminhos (sprites de cue, efeitos isolados) — só substituir o map de drones em show.
+## Fora de escopo (deliberado)
 
-## Aprovação
+- **Não** vou reescrever `FireworkRenderer.tsx` — só editar shader + adicionar 1 ref pra sparkTrails + 1 ref pra puff
+- **Não** vou wire o Niagara emitter system inteiro — overkill, e o velocity stretch + spark trails já entregam 80% do realismo percebido
+- **Não** mexo em VDL pipeline, ECS, safety, workMode, ou qualquer coisa fora do shader/render de fogos
+- **Não** adiciono dependência nova
 
-Posso começar pela Rodada 1 (stability + budget + doc), entregar, validar build, e seguir Rodada 2 e 3 em mensagens separadas — ou ir nas 3 em sequência. Sua escolha.
+## Resumo numérico
+
+| Pass | Arquivos editados | Arquivos novos | Tests | Custo GPU est. |
+|---|---|---|---|---|
+| 1 | 1 (FireworkRenderer.tsx) | 0 | 3 | +0.3ms p/ 2k stars |
+| 2 | 1 (FireworkRenderer.tsx) | 0 | 4 | +1.2ms p/ 2k stars (auto-cap) |
+| 3 | 1 (FireworkRenderer.tsx) | 0 | 3 | +0.4ms p/ break |
+| **Total** | **1 arquivo** | **0** | **10** | **~2ms (budget 16.6ms@60fps)** |
+
+Posso aplicar Pass 1 primeiro pra você validar visualmente em `/dev/effect-preview` antes de seguir pros 2 e 3 — assim cada delta é reversível e você vê o ganho incremental.
