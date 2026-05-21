@@ -42,4 +42,16 @@ describe('fireworksTierConfig', () => {
     expect(capsForTier('cinema').particleCount).toBeGreaterThan(capsForTier('balanced').particleCount);
     expect(capsForTier('balanced').particleCount).toBeGreaterThan(capsForTier('eco').particleCount);
   });
+  it('burstIntensityScale monotonically decreases cinema → balanced → eco', () => {
+    expect(capsForTier('cinema').burstIntensityScale).toBe(1);
+    expect(capsForTier('balanced').burstIntensityScale).toBeLessThan(1);
+    expect(capsForTier('eco').burstIntensityScale).toBeLessThan(capsForTier('balanced').burstIntensityScale);
+  });
+  it('maxParticlesPerBurst respects tier hierarchy', () => {
+    expect(capsForTier('cinema').maxParticlesPerBurst).toBeGreaterThan(capsForTier('balanced').maxParticlesPerBurst);
+    expect(capsForTier('balanced').maxParticlesPerBurst).toBeGreaterThan(capsForTier('eco').maxParticlesPerBurst);
+  });
+  it('eco bans smoke per-burst even if a burst is requested', () => {
+    expect(capsForTier('eco').maxSmokePerBurst).toBe(0);
+  });
 });
