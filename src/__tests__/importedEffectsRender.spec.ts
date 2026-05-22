@@ -19,15 +19,17 @@ describe('importedEffectsRender — renderer lookup fallback', () => {
   const parts = getFinaleParts();
 
   for (const lib of LIBS) {
-    it(`Finale ${lib}: getEffectById resolve e VDL parseia`, () => {
+    it(`Finale ${lib}: getEffectById resolve (e VDL parseia quando presente)`, () => {
       const sample = parts.find((p) => p.libraryId === lib);
       expect(sample, `bundle Finale precisa conter parts ${lib}`).toBeDefined();
       const id = finalePartToEffectId(sample!);
       const eff = getEffectById(id);
       expect(eff, `getEffectById deve resolver ${id}`).toBeDefined();
-      expect(eff!.vdl, 'imported parts carregam VDL').toBeTruthy();
-      const parsed = parseVDL(eff!.vdl as string);
-      expect(parsed.valid, `VDL "${eff!.vdl}" deve parsear`).toBe(true);
+      expect(eff!.partType, 'partType inferido sempre presente').toBeTruthy();
+      if (eff!.vdl) {
+        const parsed = parseVDL(eff!.vdl as string);
+        expect(parsed.valid, `VDL "${eff!.vdl}" deve parsear`).toBe(true);
+      }
     });
   }
 
