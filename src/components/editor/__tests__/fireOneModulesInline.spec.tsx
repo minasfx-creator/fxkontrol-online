@@ -48,10 +48,10 @@ describe('FireOneModulesInline', () => {
     expect(rows.length).toBe(4);
     const allText = rows.map((r) => r.textContent ?? '').join('|');
     expect(allText).toContain('8/32');
-    expect(allText).toMatch(/\bWL\b/);
-    // Address cells should appear somewhere in data rows.
-    expect(allText).toMatch(/\b1\b/);
-    expect(allText).toMatch(/\b3\b/);
+    expect(allText).toContain('WL');
+    expect(allText).toContain('RS485');
+    // Wireless module's RSSI -82 only appears for the WL row.
+    expect(allText).toContain('-82');
   });
 
   it('rescan button calls onRescan and stops propagation', () => {
