@@ -102,10 +102,8 @@ export default function MainLayout() {
     };
   }, [location.pathname]);
 
-  const handlePanic = () => {
-    clearAll();
-    haptics.panic();
-  };
+  // handlePanic removido com o botão PANIC do editor.
+  // E-STOP físico vive em /command via uiCommandGateway.
 
   return (
     <SidebarProvider defaultOpen={!isMobile}>
