@@ -57,21 +57,14 @@ interface Bundle {
 const BUNDLE = bundle as unknown as Bundle;
 
 const ROOT_TO_PART: Record<string, PartType> = {
-  Shell: 'shell',
-  Mine: 'mine',
-  Cake: 'cake',
-  Bengal: 'light',
-  RomanCandle: 'candle',
-  Fountain: 'gerb',
-  Rocket: 'rocket',
-  Crossette: 'shell',
-  Farfalle: 'shell',
-  Whistle: 'sfx',
-  Eruption: 'gerb',
-  Tourbillon: 'sfx',
-  Lancework: 'set_piece',
-  GroundShellFlash: 'ground',
-  Sun: 'set_piece',
+  Shell: 'shell', Mine: 'mine', Cake: 'cake', Bengal: 'light',
+  RomanCandle: 'candle', Fountain: 'gerb', Rocket: 'rocket',
+  Crossette: 'shell', Farfalle: 'shell', Whistle: 'sfx',
+  Eruption: 'gerb', Tourbillon: 'sfx', Lancework: 'set_piece',
+  GroundShellFlash: 'ground', Sun: 'set_piece',
+  Vulcano: 'gerb', PhotoFlash: 'sfx', FlameJet: 'flame',
+  Lycopodium: 'flame', Sparkler: 'sfx', Nautical: 'ground',
+  FrontPiece: 'set_piece',
 };
 
 const CATEGORY: Record<PartType, string> = {
