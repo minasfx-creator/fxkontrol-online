@@ -15,6 +15,7 @@ import type { Effect } from '@/data/effectLibrary';
 import { EFFECT_LIBRARY } from '@/data/effectLibrary';
 import { FWSIM_BUILTIN_EFFECTS } from '@/data/fwsimBuiltinPresets';
 import { FWE_MINE_EFFECTS } from '@/data/fweMineCatalog';
+import { getStandardEffects } from '@/data/standardEffectsCatalog';
 import bundleJson from './generated/finaleLibrariesParts.json';
 import type { FinaleLibrariesBundle, FinalePart, FinaleLibraryId } from './types';
 import { finalePartToEffect, finalePartToEffectId } from './finalePartToEffect';
@@ -82,9 +83,10 @@ const MANUFACTURER_PRIORITY: EffectManufacturer[] = [
   'Curated', 'FWsim', 'Showven', 'Lidu', 'Magic', 'Winda', 'Amazon Fireworks', 'Other',
 ];
 
-function manufacturerOf(e: Effect, source: 'curated' | 'fwsim' | 'finale'): EffectManufacturer {
+function manufacturerOf(e: Effect, source: 'curated' | 'fwsim' | 'finale' | 'standard-effects'): EffectManufacturer {
   if (source === 'curated') return 'Curated';
   if (source === 'fwsim') return 'FWsim';
+  if (source === 'standard-effects') return 'FWsim';
   // finale parts: id is "fl-<libId>-..."
   if (e.id.startsWith('fl-showven-')) return 'Showven';
   if (e.id.startsWith('fl-lidu-')) return 'Lidu';
@@ -109,10 +111,11 @@ let _mergedCache: MergedEffectsCatalog | null = null;
 export function getMergedEffectsCatalog(): MergedEffectsCatalog {
   if (_mergedCache) return _mergedCache;
 
-  const sources: ReadonlyArray<{ src: 'curated' | 'fwsim' | 'finale'; list: Effect[] }> = [
+  const sources: ReadonlyArray<{ src: 'curated' | 'fwsim' | 'finale' | 'standard-effects'; list: Effect[] }> = [
     { src: 'curated', list: EFFECT_LIBRARY },
     { src: 'fwsim', list: FWSIM_BUILTIN_EFFECTS },
     { src: 'fwsim', list: FWE_MINE_EFFECTS },
+    { src: 'standard-effects', list: getStandardEffects() },
     { src: 'finale', list: getFinaleEffects() },
   ];
 

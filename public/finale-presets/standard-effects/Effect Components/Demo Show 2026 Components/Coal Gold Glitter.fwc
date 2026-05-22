@@ -1,0 +1,153 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<CustomComponent xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+  <AuthorSoftwareVersion>
+    <Major>4</Major>
+    <Minor>1</Minor>
+    <Build>1</Build>
+    <Revision>1</Revision>
+  </AuthorSoftwareVersion>
+  <Inserts>
+    <BaseEffectNode xsi:type="StarTails">
+      <Children />
+      <EmitStart>0.016900001</EmitStart>
+      <EmitEnd>0.08</EmitEnd>
+      <Density>100</Density>
+      <Width>0.3</Width>
+      <Type>Microstars_Small</Type>
+      <Color>
+        <CustomR>0</CustomR>
+        <CustomG>0</CustomG>
+        <CustomB>0</CustomB>
+        <Color>PastelOrange</Color>
+      </Color>
+      <Life>0.3</Life>
+      <LifeSigma>0.25</LifeSigma>
+      <Strobe>false</Strobe>
+      <StrobeFreqMean>14.011504</StrobeFreqMean>
+      <CustomDimmcurve>true</CustomDimmcurve>
+      <FadeRatios>
+        <A>0</A>
+        <B>0.50676984</B>
+        <C>0.5077698</C>
+        <D>1</D>
+      </FadeRatios>
+      <StarSizeFactor>0.15</StarSizeFactor>
+      <Crackle>false</Crackle>
+    </BaseEffectNode>
+    <BaseEffectNode xsi:type="StarTails">
+      <Children />
+      <EmitStart>0.039</EmitStart>
+      <EmitEnd>1</EmitEnd>
+      <Density>200</Density>
+      <Width>0</Width>
+      <Type>Microstars_Small</Type>
+      <Color>
+        <CustomR>113</CustomR>
+        <CustomG>53</CustomG>
+        <CustomB>0</CustomB>
+        <Color>Custom</Color>
+      </Color>
+      <Life>2.3</Life>
+      <LifeSigma>1.94</LifeSigma>
+      <Strobe>false</Strobe>
+      <StrobeFreqMean>14</StrobeFreqMean>
+      <CustomDimmcurve>true</CustomDimmcurve>
+      <FadeRatios>
+        <A>0</A>
+        <B>0.2544643</B>
+        <C>0.63</C>
+        <D>1</D>
+      </FadeRatios>
+      <StarSizeFactor>0.13</StarSizeFactor>
+      <Crackle>false</Crackle>
+    </BaseEffectNode>
+    <BaseEffectNode xsi:type="StarTails">
+      <Children />
+      <EmitStart>0.05</EmitStart>
+      <EmitEnd>1</EmitEnd>
+      <Density>6</Density>
+      <Width>1</Width>
+      <Type>Sparks</Type>
+      <Color>
+        <CustomR>0</CustomR>
+        <CustomG>0</CustomG>
+        <CustomB>0</CustomB>
+        <Color>Spark</Color>
+      </Color>
+      <Life>5.6</Life>
+      <LifeSigma>2</LifeSigma>
+      <Strobe>true</Strobe>
+      <StrobeFreqMean>3</StrobeFreqMean>
+      <CustomDimmcurve>true</CustomDimmcurve>
+      <FadeRatios>
+        <A>0.27079305</A>
+        <B>0.6924565</B>
+        <C>0.77529764</C>
+        <D>1</D>
+      </FadeRatios>
+      <StarSizeFactor>0.5</StarSizeFactor>
+      <Crackle>false</Crackle>
+    </BaseEffectNode>
+    <BaseEffectNode xsi:type="StarTails">
+      <Children />
+      <EmitStart>0.016900001</EmitStart>
+      <EmitEnd>0.15</EmitEnd>
+      <Density>100</Density>
+      <Width>0.3</Width>
+      <Type>Microstars_Small</Type>
+      <Color>
+        <CustomR>0</CustomR>
+        <CustomG>0</CustomG>
+        <CustomB>0</CustomB>
+        <Color>Orange</Color>
+      </Color>
+      <Life>0.3</Life>
+      <LifeSigma>0.25</LifeSigma>
+      <Strobe>false</Strobe>
+      <StrobeFreqMean>14</StrobeFreqMean>
+      <CustomDimmcurve>true</CustomDimmcurve>
+      <FadeRatios>
+        <A>0</A>
+        <B>0.50676984</B>
+        <C>0.5077698</C>
+        <D>1</D>
+      </FadeRatios>
+      <StarSizeFactor>0.15</StarSizeFactor>
+      <Crackle>false</Crackle>
+    </BaseEffectNode>
+    <BaseEffectNode xsi:type="StarTails">
+      <Children />
+      <EmitStart>0.016900001</EmitStart>
+      <EmitEnd>0.22</EmitEnd>
+      <Density>100</Density>
+      <Width>0.3</Width>
+      <Type>Microstars_Small</Type>
+      <Color>
+        <CustomR>132</CustomR>
+        <CustomG>66</CustomG>
+        <CustomB>0</CustomB>
+        <Color>Custom</Color>
+      </Color>
+      <Life>0.3</Life>
+      <LifeSigma>0.25</LifeSigma>
+      <Strobe>false</Strobe>
+      <StrobeFreqMean>14.011504</StrobeFreqMean>
+      <CustomDimmcurve>true</CustomDimmcurve>
+      <FadeRatios>
+        <A>0</A>
+        <B>0.50676984</B>
+        <C>0.5077698</C>
+        <D>1</D>
+      </FadeRatios>
+      <StarSizeFactor>0.15</StarSizeFactor>
+      <Crackle>false</Crackle>
+    </BaseEffectNode>
+  </Inserts>
+  <BaseID>
+    <Name>Coal Gold Glitter</Name>
+    <Author>FWsim</Author>
+  </BaseID>
+  <ReadOnly>false</ReadOnly>
+  <InternalUseOnly>false</InternalUseOnly>
+  <Hide>false</Hide>
+</CustomComponent>

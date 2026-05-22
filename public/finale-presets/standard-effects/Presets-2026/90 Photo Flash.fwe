@@ -1,0 +1,66 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<FireworkEffect xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+  <Children>
+    <BaseEffectNode xsi:type="GroundShellFlash">
+      <Children>
+        <BaseEffectNode xsi:type="BurstingCharge">
+          <Children />
+          <Auto>false</Auto>
+          <Energy>50</Energy>
+          <Color>
+            <CustomR>0</CustomR>
+            <CustomG>0</CustomG>
+            <CustomB>0</CustomB>
+            <Color>LightRed</Color>
+          </Color>
+          <ChangeColor>true</ChangeColor>
+          <Sound>false</Sound>
+          <Render>true</Render>
+          <ExplosionSparks>Auto</ExplosionSparks>
+          <Delay>0</Delay>
+          <TestSound>false</TestSound>
+        </BaseEffectNode>
+      </Children>
+      <ID>0</ID>
+      <AllowRenaming>false</AllowRenaming>
+      <SizeSelection>Advanced</SizeSelection>
+      <SimpleSize>
+        <DiameterPreset>d200</DiameterPreset>
+      </SimpleSize>
+      <Diameter>0.03</Diameter>
+      <LiftingCharge>0</LiftingCharge>
+      <Rotation>
+        <Mode>Auto</Mode>
+        <RotationsPerSecond>4</RotationsPerSecond>
+        <RotationDiameterMM>100</RotationDiameterMM>
+      </Rotation>
+      <Stabilizer>false</Stabilizer>
+    </BaseEffectNode>
+  </Children>
+  <SimulationVersion>2</SimulationVersion>
+  <AutotagOverride>Ground Effect</AutotagOverride>
+  <Subtype>Photo Flash</Subtype>
+  <RackType>Ground_Effect</RackType>
+  <RackTypeCustom>No_Rack</RackTypeCustom>
+  <AutotagOverrideQuantity>0</AutotagOverrideQuantity>
+  <AutotagOverrideCaliber>0</AutotagOverrideCaliber>
+  <HideInLib>true</HideInLib>
+  <AutotagOverrideCaliber_Simple xsi:nil="true" />
+  <AutotagOverrideFurther />
+  <Identifier>
+    <Name>90 Photo Flash</Name>
+    <Author>FWsim_Presets_2026</Author>
+  </Identifier>
+  <VisualizationSource>Unknown</VisualizationSource>
+  <Metadata>
+    <Pieces />
+  </Metadata>
+  <FirstCreated>0001-01-01T00:00:00</FirstCreated>
+  <AuthorSoftwareVersion>
+    <Major>4</Major>
+    <Minor>2</Minor>
+    <Build>9</Build>
+    <Revision>27</Revision>
+  </AuthorSoftwareVersion>
+  <Hints />
+</FireworkEffect>
