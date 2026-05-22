@@ -596,7 +596,13 @@ export default function PostProcessing({ activeBurstCount = 0 }: { activeBurstCo
   // Physical bloom calculations (only used when flag is on)
   const pb = usePhysicalBloom(str, bloomMul, activeBurstCount);
 
-  // FWsim bloom calibration (legacy branch only — physical branch keeps its own log curve)
+  // FWsim bloom calibration (legacy branch only — physical branch keeps its own log curve).
+  // NOTE: legacyBloomMul COMPOUNDS with BLOOM_SCALE[viewTransform]. Canonical FWsim
+  // (amount=0.1, weightsAvg=0.925) yields intensityMul≈0.925, which under
+  // 'standard' viewTransform (×1.3) lands at ~1.20 — that's the intended FWsim
+  // look. Under 'aces-filmic' (×1.0) it sits at ~0.925, a deliberate ~7.5% dim
+  // vs pre-FWsim baseline. If you flip the flag OFF, legacyBloomMul=1.0 restores
+  // the literal pre-Step-4 behaviour bit-equivalent.
   const fwsimBloomEnabled = isEnabled('r_fwsim_bloom_weights');
   const fwsimBloom = useMemo(
     () => (fwsimBloomEnabled ? getFwsimBloomCalibration() : null),
