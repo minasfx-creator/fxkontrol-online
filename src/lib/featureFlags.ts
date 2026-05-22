@@ -42,6 +42,19 @@ const FLAGS = {
   r_break_puff: true,
   /** Pass 3: pearl-string spacing on shape geometries (heart/smiley/ring/saturn) */
   r_pearl_spacing: true,
+  // ── FWsim graphics.xml canonical tuning (data registered; renderer wiring opt-in) ──
+  /** Apply FWsim Bloom AmountOfBloom + Upsampling_Weights to EffectComposer. Renderer wiring pending. */
+  r_fwsim_bloom_weights: false,
+  /** Apply FWsim TonemappingConfig (Contrast 1.7, HdrMax 16) to ACES tone-mapper. Renderer wiring pending. */
+  r_fwsim_tonemapping: false,
+  /** Apply FWsim ShellLaunchFlame.SizeDependingOnEnergy curves to LaunchFlash. Renderer wiring pending. */
+  r_fwsim_launch_flash_v2: false,
+  /** Apply FWsim MineFlame + LaunchSparksConfig.Mine_* curves to MineEffect. Renderer wiring pending. */
+  r_fwsim_mine_calibration: false,
+  /** Use canonical FWsim smoke sprite (smoke_with_alpha.png) in SmokeSystem. Renderer wiring pending. */
+  r_fwsim_smoke_texture: false,
+  /** Expose FWsim PresetColors_ palette to renderers (read-only lookup via getFwsimPresetHex). */
+  fwsim_extended_palette: true,
 } as const;
 
 export type FeatureFlag = keyof typeof FLAGS;
