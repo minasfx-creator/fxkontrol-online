@@ -492,7 +492,7 @@ export default function MineEffect({
     // caliber stored in inches; FWsim curve is x = launch energy ≈ shell mm.
     const calibMm = Math.max(16, Math.min(100, caliber * 25.4));
     const sizeMult = sampleCurve(
-      cfg.sizeDependingOnEnergy as ReadonlyArray<readonly [number, number]>,
+      cfg.sizeDependingOnEnergy as unknown as ReadonlyArray<readonly [number, number]>,
       calibMm,
     );
     return {
