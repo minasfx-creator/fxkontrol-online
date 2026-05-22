@@ -70,14 +70,31 @@ export function getAllTailComponents(): TailComponentPart[] {
 export function findTailComponent(ref: string): TailComponentPart | null {
   if (!ref || ref.toLowerCase() === 'none') return null;
   ensure();
-  // Strip trailing density qualifier like ", Dense"
-  const cleaned = ref.replace(/,\s*(dense|sparse|thin|thick)\s*$/i, '').trim();
+  // Strip trailing density/qualifier and tip clauses.
+  const cleaned = ref
+    .replace(/w[_/]\s*[^,()]+tip\)?/gi, '')
+    .replace(/\(.*?\)/g, '')
+    .replace(/,\s*(dense|sparse|thin|thick)\s*$/i, '')
+    .trim();
   const n = norm(cleaned);
   const exact = _byNorm!.get(n);
   if (exact) return exact;
-  // Fuzzy: try to find any tail whose normalized name is a substring/prefix.
-  for (const [k, v] of _byNorm!) {
-    if (k.startsWith(n) || n.startsWith(k)) return v;
+  // Strip "tail" and length qualifiers for fuzzy match on color/kind tokens.
+  const stripped = n
+    .replace(/\b(tail|medium|long|short|thick|thin|dense|sparse)\b/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+  if (stripped) {
+    // Exact on stripped name
+    const ex2 = _byNorm!.get(stripped);
+    if (ex2) return ex2;
+    // Substring: ref tokens ⊆ candidate, or vice versa
+    for (const [k, v] of _byNorm!) {
+      if (k === stripped || k.startsWith(stripped + ' ') || stripped.startsWith(k + ' ')) return v;
+    }
+    for (const [k, v] of _byNorm!) {
+      if (k.includes(stripped) || stripped.includes(k)) return v;
+    }
   }
   // Fall back to kind heuristic from the ref text itself.
   return resolveTailRefByKind(ref);
