@@ -203,11 +203,3 @@ export function extractFweUniversal(xml: string, fileName: string): FweUniversal
     bengalDurationS,
   };
 }
-    hasPistil,
-    hasTailsLink,
-    hasCrackling,
-    subShellCount,
-    caliberIn,
-    bengalDurationS,
-  };
-}
