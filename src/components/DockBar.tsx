@@ -11,8 +11,8 @@ import { haptics } from '@/lib/haptics';
 import { prefetchRoute } from '@/lib/prefetchRoutes';
 import { useSceneStore } from '@/store/useSceneStore';
 import {
-  LayoutDashboard, Clapperboard, CalendarDays,
-  Crosshair, Gamepad2, Rocket, Activity,
+  Clapperboard,
+  Crosshair, Rocket,
   Settings, Shield,
 } from 'lucide-react';
 import { useAdminRole } from '@/hooks/useAdminRole';
@@ -20,19 +20,15 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from '@/components/ui/tooltip';
 
 interface DockItem {
-  icon: typeof LayoutDashboard;
+  icon: typeof Clapperboard;
   label: string;
   path: string;
   accent?: string;
 }
 
 const DOCK_MAIN: DockItem[] = [
-  { icon: LayoutDashboard, label: 'Dashboard', path: '/' },
   { icon: Crosshair, label: 'Command', path: '/command', accent: 'hsl(0 85% 48%)' },
   { icon: Clapperboard, label: 'Editor 3D', path: '/editor', accent: 'hsl(32 100% 50%)' },
-  { icon: CalendarDays, label: 'Agenda', path: '/agenda' },
-  { icon: Gamepad2, label: 'Training', path: '/training' },
-  { icon: Activity, label: 'Field Test', path: '/field-test', accent: 'hsl(165 100% 42%)' },
   { icon: Rocket, label: 'Show Test', path: '/show-test' },
 ];
 

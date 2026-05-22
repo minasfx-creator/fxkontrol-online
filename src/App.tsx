@@ -10,18 +10,11 @@ import PageTransitionOverlay from "@/components/ui/PageTransitionOverlay";
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
 
-// Dashboard lazy-loaded — it's 658 lines with heavy imports
-const Dashboard = lazy(() => import("./pages/Dashboard"));
-
 // Lazy-loaded heavy pages
 const Index = lazy(() => import("./pages/Index"));
-const Agenda = lazy(() => import("./pages/Agenda"));
-const Training = lazy(() => import("./pages/Training"));
 const PCBViewer = lazy(() => import("./pages/PCBViewer"));
-const DevicePairing = lazy(() => import("./pages/DevicePairing"));
 const CommandCenter = lazy(() => import("./pages/CommandCenter"));
 const ShowTestSimulator = lazy(() => import("./pages/ShowTestSimulator"));
-const FieldTest = lazy(() => import("./pages/FieldTest"));
 const Settings = lazy(() => import("./pages/Settings"));
 const FestivalStageDemo = lazy(() => import("./pages/FestivalStageDemo"));
 const PairingTwoWire = lazy(() => import("./pages/PairingTwoWire"));
@@ -59,15 +52,11 @@ function App() {
               <Routes>
                 <Route path="/auth" element={<AuthRoute><Auth /></AuthRoute>} />
                 <Route element={<ProtectedRoute><MainLayout /></ProtectedRoute>}>
-                  <Route path="/" element={<Dashboard />} />
+                  <Route path="/" element={<Navigate to="/editor" replace />} />
                   <Route path="/editor" element={<Index />} />
-                  <Route path="/agenda" element={<Agenda />} />
-                  <Route path="/training" element={<Training />} />
                   <Route path="/pcb-viewer" element={<PCBViewer />} />
-                  <Route path="/pairing" element={<DevicePairing />} />
                   <Route path="/command" element={<CommandCenter />} />
                   <Route path="/show-test" element={<ShowTestSimulator />} />
-                  <Route path="/field-test" element={<FieldTest />} />
                   <Route path="/settings" element={<Settings />} />
                   <Route path="/festival-stage-demo" element={<FestivalStageDemo />} />
                   <Route path="/pairing/two-wire" element={<PairingTwoWire />} />

@@ -28,12 +28,12 @@ afterEach(() => cleanup());
 describe('FireOneModulesInline', () => {
   it('shows hint when not connected', () => {
     render(<FireOneModulesInline modules={new Map()} isConnected={false} />);
-    expect(screen.getByText(/Conecte o controlador/)).toBeTruthy();
+    expect(screen.getByText(/para enxergar módulos/i)).toBeTruthy();
   });
 
   it('shows empty state when connected but no modules answered', () => {
     render(<FireOneModulesInline modules={new Map()} isConnected />);
-    expect(screen.getByText(/IDENTIFY ainda/)).toBeTruthy();
+    expect(screen.getByText(/Nenhum módulo respondeu/i)).toBeTruthy();
   });
 
   it('lists modules sorted by address with mode + igniter live count', () => {
@@ -43,12 +43,15 @@ describe('FireOneModulesInline', () => {
     ]);
     render(<FireOneModulesInline modules={map} isConnected />);
     const rows = screen.getAllByRole('row');
-    // header + 2
-    expect(rows.length).toBe(3);
-    expect(rows[1].textContent).toContain('1');
-    expect(rows[2].textContent).toContain('3');
-    expect(rows[2].textContent).toContain('WL');
-    expect(rows[1].textContent).toContain('8/32');
+    // Each controller group renders its own <table> with a header row, so
+    // wired + wireless = 2 groups = 2 header rows + 2 data rows = 4 total.
+    expect(rows.length).toBe(4);
+    const allText = rows.map((r) => r.textContent ?? '').join('|');
+    expect(allText).toContain('8/32');
+    expect(allText).toContain('WL');
+    expect(allText).toContain('RS485');
+    // Wireless module's RSSI -82 only appears for the WL row.
+    expect(allText).toContain('-82');
   });
 
   it('rescan button calls onRescan and stops propagation', () => {
