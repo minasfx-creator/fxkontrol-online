@@ -47,8 +47,9 @@ const FLAGS = {
   r_fwsim_bloom_weights: false,
   /** Apply FWsim TonemappingConfig (Contrast 1.7, HdrMax 16) to ACES tone-mapper. Renderer wiring pending. */
   r_fwsim_tonemapping: false,
-  /** Apply FWsim ShellLaunchFlame.SizeDependingOnEnergy curves to LaunchFlash. Renderer wiring pending. */
-  r_fwsim_launch_flash_v2: false,
+  /** Apply FWsim ShellLaunchFlame.SizeDependingOnEnergy + brightness/duration curves to PrefireShell muzzle flash. */
+  r_fwsim_launch_flash_v2: true,
+
   /** Apply FWsim MineFlame.sizeDependingOnEnergy + brightness/duration to MineEffect muzzle flash. */
   r_fwsim_mine_calibration: true,
   /** Use canonical FWsim smoke sprite (smoke_with_alpha.png) in MineEffect ground plume. */
