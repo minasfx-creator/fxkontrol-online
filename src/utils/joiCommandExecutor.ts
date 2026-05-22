@@ -861,8 +861,26 @@ function executeCommand(cmd: JoiCommand): JoiCommandResult {
         };
       }
 
+      case 'export_venue_plan_pdf':
+      case 'export_venue_kmz': {
+        const { useActiveVenue } = require('@/store/useActiveVenue') as typeof import('@/store/useActiveVenue');
+        const { getVenuePreset } = require('@/lib/showVenuePresets') as typeof import('@/lib/showVenuePresets');
+        const id = params.id || useActiveVenue.getState().activeVenuePresetId;
+        const preset = id ? getVenuePreset(id) : undefined;
+        if (!preset) return { action, success: false, label: `${action}: nenhum venue ativo` };
+        if (action === 'export_venue_plan_pdf') {
+          const { downloadVenuePlanPdf } = require('@/utils/venuePlanPdf') as typeof import('@/utils/venuePlanPdf');
+          downloadVenuePlanPdf(preset);
+          return { action, success: true, label: `Plano georreferenciado exportado: ${preset.name}` };
+        }
+        const { downloadVenueKmz } = require('@/utils/venueKmlExport') as typeof import('@/utils/venueKmlExport');
+        void downloadVenueKmz(preset);
+        return { action, success: true, label: `KMZ exportado: ${preset.name}` };
+      }
+
       default:
         return { action, success: false, label: `Comando desconhecido: ${action}` };
+
     }
   } catch (err: any) {
     return { action, success: false, label: `Erro: ${err.message}` };
