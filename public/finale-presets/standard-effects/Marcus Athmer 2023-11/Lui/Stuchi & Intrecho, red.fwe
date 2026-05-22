@@ -1,0 +1,339 @@
+<?xml version="1.0"?>
+<FireworkEffect xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+  <Children>
+    <BaseEffectNode xsi:type="Shell">
+      <Children>
+        <BaseEffectNode xsi:type="BurstingCharge">
+          <Children>
+            <BaseEffectNode xsi:type="SubShells">
+              <Children>
+                <BaseEffectNode xsi:type="BurstingCharge">
+                  <Children>
+                    <BaseEffectNode xsi:type="Stars">
+                      <Children>
+                        <BaseEffectNode xsi:type="StarTails">
+                          <Children />
+                          <Color>
+                            <CustomR>0</CustomR>
+                            <CustomG>0</CustomG>
+                            <CustomB>0</CustomB>
+                            <Color>Orange</Color>
+                          </Color>
+                          <Width>5</Width>
+                          <Density>76</Density>
+                          <EmitStart>0.05</EmitStart>
+                          <EmitEnd>1</EmitEnd>
+                          <Life>0.15</Life>
+                        </BaseEffectNode>
+                      </Children>
+                      <Type>Normal</Type>
+                      <Distribution xsi:type="SphericalDistribution">
+                        <Speed>0.6</Speed>
+                        <Sigma>0.04</Sigma>
+                      </Distribution>
+                      <Color>
+                        <CustomR>0</CustomR>
+                        <CustomG>0</CustomG>
+                        <CustomB>0</CustomB>
+                        <Color>Invisible</Color>
+                      </Color>
+                      <Color2>
+                        <CustomR>0</CustomR>
+                        <CustomG>0</CustomG>
+                        <CustomB>0</CustomB>
+                        <Color>Orange</Color>
+                      </Color2>
+                      <ColorChanging>false</ColorChanging>
+                      <Count>25</Count>
+                      <MinimumLifetime>1.5</MinimumLifetime>
+                      <MaximumLifetime>2.1</MaximumLifetime>
+                      <Strobe>false</Strobe>
+                      <StrobeFreqMean>14</StrobeFreqMean>
+                    </BaseEffectNode>
+                  </Children>
+                  <Auto>false</Auto>
+                  <Energy>181</Energy>
+                  <Delay>0.5</Delay>
+                </BaseEffectNode>
+              </Children>
+              <Count>1</Count>
+            </BaseEffectNode>
+            <BaseEffectNode xsi:type="SubShells">
+              <Children>
+                <BaseEffectNode xsi:type="BurstingCharge">
+                  <Children>
+                    <BaseEffectNode xsi:type="Stars">
+                      <Children>
+                        <BaseEffectNode xsi:type="StarTails">
+                          <Children />
+                          <Color>
+                            <CustomR>0</CustomR>
+                            <CustomG>0</CustomG>
+                            <CustomB>0</CustomB>
+                            <Color>Orange</Color>
+                          </Color>
+                          <Width>1.5</Width>
+                          <Density>76</Density>
+                          <EmitStart>0.05</EmitStart>
+                          <EmitEnd>1</EmitEnd>
+                          <Life>0.15</Life>
+                        </BaseEffectNode>
+                      </Children>
+                      <Type>Normal</Type>
+                      <Distribution xsi:type="SphericalDistribution">
+                        <Speed>0.6</Speed>
+                        <Sigma>0.04</Sigma>
+                      </Distribution>
+                      <Color>
+                        <CustomR>0</CustomR>
+                        <CustomG>0</CustomG>
+                        <CustomB>0</CustomB>
+                        <Color>Invisible</Color>
+                      </Color>
+                      <Color2>
+                        <CustomR>0</CustomR>
+                        <CustomG>0</CustomG>
+                        <CustomB>0</CustomB>
+                        <Color>Orange</Color>
+                      </Color2>
+                      <ColorChanging>false</ColorChanging>
+                      <Count>25</Count>
+                      <MinimumLifetime>1.5</MinimumLifetime>
+                      <MaximumLifetime>2.1</MaximumLifetime>
+                      <Strobe>false</Strobe>
+                      <StrobeFreqMean>14</StrobeFreqMean>
+                    </BaseEffectNode>
+                  </Children>
+                  <Auto>false</Auto>
+                  <Energy>181</Energy>
+                  <Delay>0.8</Delay>
+                </BaseEffectNode>
+              </Children>
+              <Count>1</Count>
+            </BaseEffectNode>
+            <BaseEffectNode xsi:type="SubShells">
+              <Children>
+                <BaseEffectNode xsi:type="BurstingCharge">
+                  <Children>
+                    <BaseEffectNode xsi:type="Stars">
+                      <Children>
+                        <BaseEffectNode xsi:type="StarTails">
+                          <Children />
+                          <Color>
+                            <CustomR>0</CustomR>
+                            <CustomG>0</CustomG>
+                            <CustomB>0</CustomB>
+                            <Color>Orange</Color>
+                          </Color>
+                          <Width>1.5</Width>
+                          <Density>76</Density>
+                          <EmitStart>0.05</EmitStart>
+                          <EmitEnd>1</EmitEnd>
+                          <Life>0.15</Life>
+                        </BaseEffectNode>
+                      </Children>
+                      <Type>Normal</Type>
+                      <Distribution xsi:type="SphericalDistribution">
+                        <Speed>0.6</Speed>
+                        <Sigma>0.04</Sigma>
+                      </Distribution>
+                      <Color>
+                        <CustomR>0</CustomR>
+                        <CustomG>0</CustomG>
+                        <CustomB>0</CustomB>
+                        <Color>Invisible</Color>
+                      </Color>
+                      <Color2>
+                        <CustomR>0</CustomR>
+                        <CustomG>0</CustomG>
+                        <CustomB>0</CustomB>
+                        <Color>Orange</Color>
+                      </Color2>
+                      <ColorChanging>false</ColorChanging>
+                      <Count>25</Count>
+                      <MinimumLifetime>1.5</MinimumLifetime>
+                      <MaximumLifetime>2.1</MaximumLifetime>
+                      <Strobe>false</Strobe>
+                      <StrobeFreqMean>14</StrobeFreqMean>
+                    </BaseEffectNode>
+                  </Children>
+                  <Auto>false</Auto>
+                  <Energy>181</Energy>
+                  <Delay>1.1</Delay>
+                </BaseEffectNode>
+              </Children>
+              <Count>1</Count>
+            </BaseEffectNode>
+            <BaseEffectNode xsi:type="SubShells">
+              <Children>
+                <BaseEffectNode xsi:type="BurstingCharge">
+                  <Children>
+                    <BaseEffectNode xsi:type="Stars">
+                      <Children>
+                        <BaseEffectNode xsi:type="StarTails">
+                          <Children />
+                          <Color>
+                            <CustomR>0</CustomR>
+                            <CustomG>0</CustomG>
+                            <CustomB>0</CustomB>
+                            <Color>Orange</Color>
+                          </Color>
+                          <Width>1.5</Width>
+                          <Density>76</Density>
+                          <EmitStart>0.05</EmitStart>
+                          <EmitEnd>1</EmitEnd>
+                          <Life>0.15</Life>
+                        </BaseEffectNode>
+                      </Children>
+                      <Type>Normal</Type>
+                      <Distribution xsi:type="SphericalDistribution">
+                        <Speed>0.6</Speed>
+                        <Sigma>0.04</Sigma>
+                      </Distribution>
+                      <Color>
+                        <CustomR>0</CustomR>
+                        <CustomG>0</CustomG>
+                        <CustomB>0</CustomB>
+                        <Color>Invisible</Color>
+                      </Color>
+                      <Color2>
+                        <CustomR>0</CustomR>
+                        <CustomG>0</CustomG>
+                        <CustomB>0</CustomB>
+                        <Color>Orange</Color>
+                      </Color2>
+                      <ColorChanging>false</ColorChanging>
+                      <Count>25</Count>
+                      <MinimumLifetime>1.5</MinimumLifetime>
+                      <MaximumLifetime>2.1</MaximumLifetime>
+                      <Strobe>false</Strobe>
+                      <StrobeFreqMean>14</StrobeFreqMean>
+                    </BaseEffectNode>
+                  </Children>
+                  <Auto>false</Auto>
+                  <Energy>181</Energy>
+                  <Delay>1.4</Delay>
+                </BaseEffectNode>
+              </Children>
+              <Count>1</Count>
+            </BaseEffectNode>
+            <BaseEffectNode xsi:type="SubShells">
+              <Children>
+                <BaseEffectNode xsi:type="BurstingCharge">
+                  <Children>
+                    <BaseEffectNode xsi:type="Stars">
+                      <Children>
+                        <BaseEffectNode xsi:type="StarTails">
+                          <Children />
+                          <Color>
+                            <CustomR>0</CustomR>
+                            <CustomG>0</CustomG>
+                            <CustomB>0</CustomB>
+                            <Color>Orange</Color>
+                          </Color>
+                          <Width>1.5</Width>
+                          <Density>76</Density>
+                          <EmitStart>0.05</EmitStart>
+                          <EmitEnd>1</EmitEnd>
+                          <Life>0.15</Life>
+                        </BaseEffectNode>
+                      </Children>
+                      <Type>Normal</Type>
+                      <Distribution xsi:type="SphericalDistribution">
+                        <Speed>0.6</Speed>
+                        <Sigma>0.04</Sigma>
+                      </Distribution>
+                      <Color>
+                        <CustomR>0</CustomR>
+                        <CustomG>0</CustomG>
+                        <CustomB>0</CustomB>
+                        <Color>Invisible</Color>
+                      </Color>
+                      <Color2>
+                        <CustomR>0</CustomR>
+                        <CustomG>0</CustomG>
+                        <CustomB>0</CustomB>
+                        <Color>Orange</Color>
+                      </Color2>
+                      <ColorChanging>false</ColorChanging>
+                      <Count>12</Count>
+                      <MinimumLifetime>1.5</MinimumLifetime>
+                      <MaximumLifetime>2.1</MaximumLifetime>
+                      <Strobe>false</Strobe>
+                      <StrobeFreqMean>14</StrobeFreqMean>
+                    </BaseEffectNode>
+                  </Children>
+                  <Auto>false</Auto>
+                  <Energy>150</Energy>
+                  <Delay>1.7</Delay>
+                </BaseEffectNode>
+              </Children>
+              <Count>1</Count>
+            </BaseEffectNode>
+          </Children>
+          <Auto>false</Auto>
+          <Energy>35</Energy>
+          <Delay>1.5</Delay>
+        </BaseEffectNode>
+        <BaseEffectNode xsi:type="BurstingCharge">
+          <Children>
+            <BaseEffectNode xsi:type="SubShells">
+              <Children>
+                <BaseEffectNode xsi:type="BurstingCharge">
+                  <Children>
+                    <BaseEffectNode xsi:type="Stars">
+                      <Children />
+                      <Type>Normal</Type>
+                      <Distribution xsi:type="SphericalDistribution">
+                        <Speed>1</Speed>
+                        <Sigma>0.04</Sigma>
+                      </Distribution>
+                      <Color>
+                        <CustomR>0</CustomR>
+                        <CustomG>0</CustomG>
+                        <CustomB>0</CustomB>
+                        <Color>Red</Color>
+                      </Color>
+                      <Color2>
+                        <CustomR>0</CustomR>
+                        <CustomG>0</CustomG>
+                        <CustomB>0</CustomB>
+                        <Color>Orange</Color>
+                      </Color2>
+                      <ColorChanging>false</ColorChanging>
+                      <Count>30</Count>
+                      <MinimumLifetime>1.5</MinimumLifetime>
+                      <MaximumLifetime>2.1</MaximumLifetime>
+                      <Strobe>false</Strobe>
+                      <StrobeFreqMean>14</StrobeFreqMean>
+                    </BaseEffectNode>
+                  </Children>
+                  <Auto>false</Auto>
+                  <Energy>111</Energy>
+                  <Delay>1.4</Delay>
+                </BaseEffectNode>
+              </Children>
+              <Count>9</Count>
+            </BaseEffectNode>
+          </Children>
+          <Auto>false</Auto>
+          <Energy>44</Energy>
+          <Delay>2.7</Delay>
+        </BaseEffectNode>
+      </Children>
+      <ID>0</ID>
+      <AllowRenaming>false</AllowRenaming>
+      <SizeSelection>Advanced</SizeSelection>
+      <Diameter>0.6</Diameter>
+      <LiftingCharge>300</LiftingCharge>
+    </BaseEffectNode>
+  </Children>
+  <Identifier>
+    <Name>Stuchi &amp; Intrecho, red</Name>
+    <Author>lui</Author>
+  </Identifier>
+  <AuthorSoftwareVersion>
+    <Major>2</Major>
+    <Minor>0</Minor>
+  </AuthorSoftwareVersion>
+<HideInLib>true</HideInLib></FireworkEffect>

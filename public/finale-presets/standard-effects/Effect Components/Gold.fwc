@@ -1,0 +1,130 @@
+<?xml version="1.0"?>
+<CustomComponent xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <Hide>true</Hide><AuthorSoftwareVersion>
+    <Major>3</Major>
+    <Minor>2</Minor>
+    <Build>0</Build>
+    <Revision>100</Revision>
+  </AuthorSoftwareVersion>
+  <Inserts>
+    <BaseEffectNode xsi:type="StarTails">
+      <Children />
+      <Color>
+        <CustomR>0</CustomR>
+        <CustomG>0</CustomG>
+        <CustomB>0</CustomB>
+        <Color>Spark</Color>
+      </Color>
+      <Crackle>false</Crackle>
+      <Width>0.6</Width>
+      <Density>135</Density>
+      <EmitStart>0.05</EmitStart>
+      <EmitEnd>1</EmitEnd>
+      <Life>0.5</Life>
+      <Strobe>false</Strobe>
+      <StrobeFreqMean>2.7</StrobeFreqMean>
+      <StarSizeFactor>0.5</StarSizeFactor>
+      <LifeSigma>0.5</LifeSigma>
+    </BaseEffectNode>
+    <BaseEffectNode xsi:type="StarTails">
+      <Children />
+      <Color>
+        <CustomR>255</CustomR>
+        <CustomG>226</CustomG>
+        <CustomB>174</CustomB>
+        <Color>Custom</Color>
+      </Color>
+      <Crackle>false</Crackle>
+      <Width>0.6</Width>
+      <Density>250</Density>
+      <EmitStart>0.05</EmitStart>
+      <EmitEnd>1</EmitEnd>
+      <Life>0.8</Life>
+      <Strobe>false</Strobe>
+      <StrobeFreqMean>2.7</StrobeFreqMean>
+      <StarSizeFactor>0.8</StarSizeFactor>
+      <LifeSigma>0.15</LifeSigma>
+    </BaseEffectNode>
+    <BaseEffectNode xsi:type="StarTails">
+      <Children />
+      <Color>
+        <CustomR>159</CustomR>
+        <CustomG>80</CustomG>
+        <CustomB>0</CustomB>
+        <Color>Custom</Color>
+      </Color>
+      <Crackle>false</Crackle>
+      <Width>0.3</Width>
+      <Density>81</Density>
+      <EmitStart>0.05</EmitStart>
+      <EmitEnd>1</EmitEnd>
+      <Life>1.7</Life>
+      <Strobe>false</Strobe>
+      <StrobeFreqMean>14</StrobeFreqMean>
+      <StarSizeFactor>0.54</StarSizeFactor>
+      <LifeSigma>0.59</LifeSigma>
+    </BaseEffectNode>
+    <BaseEffectNode xsi:type="StarTails">
+      <Children />
+      <Color>
+        <CustomR>198</CustomR>
+        <CustomG>129</CustomG>
+        <CustomB>0</CustomB>
+        <Color>Custom</Color>
+      </Color>
+      <Crackle>false</Crackle>
+      <Width>0.4</Width>
+      <Density>34</Density>
+      <EmitStart>0.05</EmitStart>
+      <EmitEnd>1</EmitEnd>
+      <Life>1.4</Life>
+      <Strobe>false</Strobe>
+      <StrobeFreqMean>2.7</StrobeFreqMean>
+      <StarSizeFactor>0.5</StarSizeFactor>
+      <LifeSigma>0.65</LifeSigma>
+    </BaseEffectNode>
+    <BaseEffectNode xsi:type="StarTails">
+      <Children />
+      <Color>
+        <CustomR>138</CustomR>
+        <CustomG>69</CustomG>
+        <CustomB>0</CustomB>
+        <Color>Custom</Color>
+      </Color>
+      <Crackle>false</Crackle>
+      <Width>0.3</Width>
+      <Density>40</Density>
+      <EmitStart>0.05</EmitStart>
+      <EmitEnd>1</EmitEnd>
+      <Life>2.1</Life>
+      <Strobe>false</Strobe>
+      <StrobeFreqMean>14</StrobeFreqMean>
+      <StarSizeFactor>0.54</StarSizeFactor>
+      <LifeSigma>0.66</LifeSigma>
+    </BaseEffectNode>
+    <BaseEffectNode xsi:type="StarTails">
+      <Children />
+      <Color>
+        <CustomR>255</CustomR>
+        <CustomG>226</CustomG>
+        <CustomB>174</CustomB>
+        <Color>Custom</Color>
+      </Color>
+      <Crackle>false</Crackle>
+      <Width>0.3</Width>
+      <Density>68</Density>
+      <EmitStart>0.05</EmitStart>
+      <EmitEnd>1</EmitEnd>
+      <Life>1.1</Life>
+      <Strobe>false</Strobe>
+      <StrobeFreqMean>2.7</StrobeFreqMean>
+      <StarSizeFactor>0.7</StarSizeFactor>
+      <LifeSigma>0.5</LifeSigma>
+    </BaseEffectNode>
+  </Inserts>
+  <BaseID>
+    <Name>Gold</Name>
+    <Author>Marcus Athmer</Author>
+  </BaseID>
+  <ReadOnly>false</ReadOnly>
+</CustomComponent>

@@ -1,65 +1,101 @@
-## Objetivo
-Usar os 9 arquivos `.fwe` anexos (todos `xsi:type="Mine"`) como base canônica para refinar os mines no SkyCanvas — paleta, densidade, lifetimes e silhuetas reais do FWsim, sem inventar números.
+## Escopo
 
-## Arquivos anexos (todos Mine)
-1. `Mine_Purple_Comet_White_w_Silver_Tail.fwe` (529 linhas — multi-fase, comet branco c/ cauda prata)
-2. `Mine_Purple_to_Orange.fwe` (263 linhas — color shift)
-3. `Mine_Red_to_Green.fwe` (263 — color shift)
-4. `Mine_Red_w_Silver_Tail_bright_thinned.fwe` (447 — denso c/ cauda)
-5. `Mine_Red-2.fwe` (254 — solid)
-6. `Mine_Silver.fwe` (447 — silver denso)
-7. `Mine_White_w_Silver_Tail.fwe` (447)
-8. `Mine_Yellow_to_Purple.fwe` (263 — color shift)
-9. `Mine_Yellow.fwe` (254 — solid)
+Promover **integração completa** do pacote `Standard_Effects-2.zip`:
 
-## Plano
+- **605 efeitos** `.fwe` (XML FireworkEffect) em 6 coleções:
+  - `Presets-2026/` — 69 (catálogo numerado canônico 01–44: Peony, Crown, Willow, Saturn Ring, Heart, Cake I/Z/V-Shape, Rocket, Fountain, Bengal, Roman Candle, Lancework…)
+  - `Demo Show 2026 Effects/` — 25 (efeitos calibrados pro show de demo)
+  - `Marcus Athmer/` (180) + `Marcus Athmer 2021-04/` (117) + `Marcus Athmer 2023-11/` (210) — coleção massiva (Bengal Lights cromáticos + comets + mines)
+  - `2024/` — 4 (Flamejet, Spark Machine, Waveflamer)
+- **159 componentes** `.fwc` (StarTails, Crackling, CustomTailsLink) — paleta reusável de "tails" pra enriquecer renderer existente
 
-### 1. Ingestão dos .fwe como assets reais
-- `code--copy` os 9 arquivos para `public/finale-presets/mines/` (mantém naming).
-- Adicionar à pipeline existente `scripts/parse-fwe-presets.py` (já reconhece `Mine` rootKind) gerando entradas em `src/data/fwsimBuiltinPresets.json`.
-- Gerar thumbs opcional (placeholder, sem PNG já que upload não trouxe).
+Tipos cobertos (já mapeados pelo xsi:type inventory):
+`Shell` 400 · `Mine` 184 · `Cake` 56 · `Bengal` 35 · `Crackling` 27 · `Eruption` 25 · `Crossette` 19 · `HeartDistribution` 15 · `Farfalle` 4 · `Whistle` 2 · `Rocket` 2 · `Tourbillon` 1 + distribuições especiais (Ring/Heart/QuarterSphere/AtomicPattern/Hemisphere)
 
-### 2. Extrair parâmetros canônicos (parser puro, sem mutar runtime)
-Novo helper `src/lib/fweMineExtractor.ts`:
-- Parse `<StarTails>` (Density, Width, Life, LifeSigma, FadeRatios, StarSizeFactor) e `<Color>` (Custom RGB ou Named).
-- Detectar **color-shift** (≥2 fases de Stars com cores distintas) → emite `colorPhases: [{rgb, lifeRatio}]`.
-- Detectar **comet head** (presença de `CustomTailsLink` "Mortar Sparks" + Stars central denso) → flag `hasCometHead`.
-- Detectar **silver tail** (StarTails branco/silver com Density alta) → flag `silverTail`.
+## Arquitetura (zero impacto safety/workMode/CommandBus)
 
-### 3. Catalog: `src/data/effectsLibraries/generated/fweMinesParts.json`
-Entradas tipadas adicionadas via `finalePartToEffect` (já existe), expostas em `getMergedEffectsCatalog()`. Cada uma vira `Effect` com:
-- `partType:'mine'`, `category:'mines'`
-- `color` primário + `secondaryColor`
-- `pattern:'mine_colorShift'|'mine_comet'|'mine_solid'` (novo discriminador)
-- `prefire`, `duration`, `caliber` derivados do XML (não chutados).
+```text
+public/finale-presets/standard-effects/{collection}/*.fwe   (assets, build-time only)
+scripts/parse-standard-effects.py                            (extrator XML batelado)
+src/data/effectsLibraries/generated/standardEffects.json    (~600KB, gerado)
+src/lib/fweUniversalExtractor.ts                             (parser TS puro)
+src/data/standardEffectsCatalog.ts                           (Effect[] memo)
+src/data/effectsLibraries/registry.ts                        (+source 'standard-effects')
+src/render/silhouettes/*                                     (+1 variant Bengal, +1 Crossette)
+src/lib/__tests__/*                                          (8 spec novos)
+```
 
-### 4. Renderer refinement (presentation only)
-Atualizar `src/render/silhouettes/mineSilhouettes.ts` + consumidor `MineEffect`:
-- Adicionar variante `mine_comet_with_silver_tail` (1 jato denso central, jitter 1.5°, vida longa) — derivada de `Mine_Purple_Comet_White_w_Silver_Tail`.
-- Suportar `colorPhases[]` no renderer: lerp RGB ao longo de `lifeRatio` (já há `_copyMaterial`, só nova uniform).
-- `FadeRatios` do .fwe (A/B/C/D) → curva de opacidade (já temos `pow(lifeRatio,1.6)` — substituir por interpolação cúbica dos 4 pontos quando disponível).
+## Implementação
 
-### 5. Testes
-- `src/lib/__tests__/fweMineExtractor.spec.ts` (9 fixtures): pinar cor primária, fases detectadas, comet head, silver tail.
-- `src/data/__tests__/fweMinesParts.spec.ts`: 9 effects registrados, ids estáveis, `partType==='mine'`.
-- `src/render/silhouettes/__tests__/mineSilhouettes.spec.ts`: novo variante `mine_comet_with_silver_tail` presente, jitter ≤2°.
+### 1. Ingestão de assets
+- Copiar 605 `.fwe` + 159 `.fwc` pra `public/finale-presets/standard-effects/<collection>/`.
+- Slugify nomes (remover espaços, acentos) — preservar coleção como subpasta.
 
-### 6. Memória
-- Atualizar `mem://funcionalidades/fwsim-asset-pack-integration` (+9 mines).
-- Nova memória `mem://render/mine-color-shift-and-comet-head` documentando `colorPhases` + `hasCometHead` + `FadeRatios` cubic.
+### 2. Extrator universal (`scripts/parse-standard-effects.py`)
+- Refatora `parse-fwe-presets.py` em função `extract_fwe(path) -> dict` reutilizável.
+- Novos campos extraídos:
+  - `rootType` (Shell/Mine/Cake/Bengal/Rocket/Crossette/Farfalle/Whistle/Eruption/Tourbillon)
+  - `distribution` (Spherical/Ring/Heart/QuarterSphere/AtomicPattern/Hemisphere/Mine)
+  - `palette[]` (até 8 cores, dedup, hex)
+  - `colorPhases[]` (Color/Color2 + Count por phase — pra color-shift e multi-break)
+  - `hasPistil`, `hasTailsLink`, `hasCracklingLink`
+  - `cakeShotCount`, `cakeRows`, `subShellCount` (multi-break)
+  - `bengalDurationS` (do nome: `(30s)`, `(05s)`, etc.)
+  - `caliberIn` (do `<Diameter>` max ÷ 0.0254)
+  - `prefire`, `lift`, `fanAngleDeg` quando presentes
+- Output: `src/data/effectsLibraries/generated/standardEffects.json` com shape `{ version, generatedAt, collections: {...}, parts: StandardEffectPart[] }`.
+
+### 3. Parser TS espelhado (`src/lib/fweUniversalExtractor.ts`)
+- `extractFweUniversal(xml, fileName) -> FweUniversalSpec` — puro, sem DOMParser (regex balanceado, mesma técnica de `fweMineExtractor`).
+- Test fixtures: 1 por rootType (10 fixtures inline em `__tests__/fweUniversalExtractor.spec.ts`) garantem que o build script + runtime extractor concordam (parity test).
+
+### 4. Adapter pra `Effect[]` (`src/data/standardEffectsCatalog.ts`)
+- `standardEffectPartToEffect(part) -> Effect` aproveitando `finalePartToEffect.ts` (PART_TYPE_MAP, CATEGORY_BY_PART, ICON_BY_PART) com extensões:
+  - `Bengal` → `partType: 'light'`, categoria `iluminacao`, `duration = bengalDurationS`
+  - `Crossette` → `partType: 'shell'` + flag `pattern: 'crossette'` (renderer já trata)
+  - `Cake` (Z/V/Fan-Shape) → preserva `firingPattern` em `effect.metadata.cakeFiring`
+- Stable id: `se-<collection>-<slug>` (sobrevive a renomeações).
+
+### 5. Registry merge (`src/data/effectsLibraries/registry.ts`)
+- Adiciona source `'standard-effects'` ao array `sources` em `getMergedEffectsCatalog`.
+- Manufacturer detection: `se-` prefix → `'FWsim'` (mesma claim `pilot`).
+- Dedup automático via `effectFingerprint` existente (colapsa duplicatas entre coleções).
+
+### 6. Refinements de renderer (mínimos, opt-in via flag)
+- **Bengal**: nova silhouette `bengalGroundFlame` em `src/render/silhouettes/bengalSilhouettes.ts` (chama existing flame system com `duration` real do nome, 1 jato vertical baixo, cor sólida).
+- **Crossette**: split-particle behavior já existe no `EFFECT_LIBRARY` — só wire da flag `pattern: 'crossette'` em `resolveEffect.ts`.
+- **Color-shift universal**: `colorPhases[]` propagado pra `SkyCanvas3D` via `effect.colorPhases` (uniform já existe pro caso Mine).
+- Flag `r_standard_effects_pack` default ON, override `fxk.flag.standard_effects_pack`.
+
+### 7. UI
+- `EffectLibrary.tsx`: badge "+605 Standard Effects" (mesmo padrão do badge atual "+527 Finale Libraries").
+- Filtro por coleção (Presets-2026 / Demo 2026 / Athmer / 2024) — dropdown novo, não substitui filtros existentes.
+
+### 8. Testes (8 spec novos)
+- `fweUniversalExtractor.spec.ts` — 10 fixtures, 1 por rootType.
+- `standardEffectsCatalog.spec.ts` — count por coleção, dedup vs FWsim builtin, color-phases preservados.
+- `bengalSilhouettes.spec.ts` — duration extraída do nome.
+- `registryStandardEffectsMerge.spec.ts` — fingerprint collision com Curated wins.
+
+### 9. Memória
+- Criar `mem://funcionalidades/standard-effects-pack-integration` (605 efeitos, 6 coleções, claim pilot, flag, badge UI).
+- Atualizar `mem://index.md` (1 linha).
 
 ## Fora de escopo
-- Sem mudança em safety/workMode/CommandBus.
-- Sem novo upload de PNG thumbs (placeholders SVG já existentes).
-- Sem reescrita de shaders existentes — só uniforms adicionais opt-in via flag `r_fwe_mine_color_phases` (default ON).
 
-## Entregáveis (arquivos)
-- `public/finale-presets/mines/*.fwe` (9, copiados)
-- `src/lib/fweMineExtractor.ts` (novo)
-- `src/data/effectsLibraries/generated/fweMinesParts.json` (gerado)
-- `src/render/silhouettes/mineSilhouettes.ts` (edit: +1 variante)
-- Renderer `MineEffect` (edit cirúrgico: colorPhases uniform)
-- 3 specs novas
-- Atualização de 2 memórias
+- Nenhuma mudança em `safety`, `workMode`, `uiCommandGateway`, `CommandBus`, `FieldBus`, `SafetyStateMachine`.
+- Sem geração de thumbnails PNG (script standalone separado se demandado).
+- Sem field-test/validação física (claim permanece `pilot`).
+- Sem novos shaders — só uniforms já existentes.
 
-Tempo estimado: 1 turno de implementação.
+## Entregáveis
+
+1. 605 + 159 assets copiados.
+2. 1 script Python (extrator batelado).
+3. 1 JSON gerado (~600KB, chunk separado via Vite).
+4. 3 arquivos TS novos (`fweUniversalExtractor.ts`, `standardEffectsCatalog.ts`, `bengalSilhouettes.ts`).
+5. 2 arquivos TS editados (`registry.ts`, `EffectLibrary.tsx`, `resolveEffect.ts`).
+6. 8 spec files novos.
+7. 2 entradas de memória.
+
+**Tempo estimado**: 1 turno de implementação (heavy: copy + script run + write files em paralelo).

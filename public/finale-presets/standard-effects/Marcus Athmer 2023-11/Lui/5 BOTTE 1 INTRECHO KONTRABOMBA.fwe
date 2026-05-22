@@ -1,0 +1,160 @@
+<?xml version="1.0"?>
+<FireworkEffect xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+  <Children>
+    <BaseEffectNode xsi:type="Shell">
+      <Children>
+        <BaseEffectNode xsi:type="BurstingCharge">
+          <Children>
+            <BaseEffectNode xsi:type="SubShells">
+              <Children>
+                <BaseEffectNode xsi:type="BurstingCharge">
+                  <Children>
+                    <BaseEffectNode xsi:type="Stars">
+                      <Children />
+                      <Type>Normal</Type>
+                      <Distribution xsi:type="SphericalDistribution">
+                        <Speed>1</Speed>
+                        <Sigma>0.04</Sigma>
+                      </Distribution>
+                      <Color>
+                        <CustomR>0</CustomR>
+                        <CustomG>0</CustomG>
+                        <CustomB>0</CustomB>
+                        <Color>Red</Color>
+                      </Color>
+                      <Count>30</Count>
+                      <MinimumLifetime>1.5</MinimumLifetime>
+                      <MaximumLifetime>2.1</MaximumLifetime>
+                      <Strobe>false</Strobe>
+                      <StrobeFreqMean>14</StrobeFreqMean>
+                    </BaseEffectNode>
+                  </Children>
+                  <Energy>87</Energy>
+                  <Delay>0.5</Delay>
+                </BaseEffectNode>
+              </Children>
+              <Count>7</Count>
+            </BaseEffectNode>
+          </Children>
+          <Energy>80</Energy>
+          <Delay>1.2</Delay>
+        </BaseEffectNode>
+        <BaseEffectNode xsi:type="BurstingCharge">
+          <Children>
+            <BaseEffectNode xsi:type="SubShells">
+              <Children>
+                <BaseEffectNode xsi:type="BurstingCharge">
+                  <Children />
+                  <Energy>81</Energy>
+                  <Delay>0.6</Delay>
+                </BaseEffectNode>
+              </Children>
+              <Count>1</Count>
+            </BaseEffectNode>
+            <BaseEffectNode xsi:type="SubShells">
+              <Children>
+                <BaseEffectNode xsi:type="BurstingCharge">
+                  <Children />
+                  <Energy>81</Energy>
+                  <Delay>1</Delay>
+                </BaseEffectNode>
+              </Children>
+              <Count>1</Count>
+            </BaseEffectNode>
+            <BaseEffectNode xsi:type="SubShells">
+              <Children>
+                <BaseEffectNode xsi:type="BurstingCharge">
+                  <Children />
+                  <Energy>85</Energy>
+                  <Delay>1.4</Delay>
+                </BaseEffectNode>
+              </Children>
+              <Count>1</Count>
+            </BaseEffectNode>
+            <BaseEffectNode xsi:type="SubShells">
+              <Children>
+                <BaseEffectNode xsi:type="BurstingCharge">
+                  <Children />
+                  <Energy>87</Energy>
+                  <Delay>1.8</Delay>
+                </BaseEffectNode>
+              </Children>
+              <Count>1</Count>
+            </BaseEffectNode>
+          </Children>
+          <Energy>80</Energy>
+          <Delay>2</Delay>
+        </BaseEffectNode>
+        <BaseEffectNode xsi:type="BurstingCharge">
+          <Children>
+            <BaseEffectNode xsi:type="Stars">
+              <Children>
+                <BaseEffectNode xsi:type="StarTails">
+                  <Children />
+                  <Color>
+                    <CustomR>0</CustomR>
+                    <CustomG>0</CustomG>
+                    <CustomB>0</CustomB>
+                    <Color>Spark</Color>
+                  </Color>
+                  <Width>2.7</Width>
+                  <Density>45</Density>
+                  <EmitStart>0.05</EmitStart>
+                  <EmitEnd>0.86</EmitEnd>
+                  <Life>3.1</Life>
+                </BaseEffectNode>
+              </Children>
+              <Type>Normal</Type>
+              <Distribution xsi:type="RingDistribution">
+                <Speed>1</Speed>
+                <Sigma>0.04</Sigma>
+              </Distribution>
+              <Color>
+                <CustomR>0</CustomR>
+                <CustomG>0</CustomG>
+                <CustomB>0</CustomB>
+                <Color>Green</Color>
+              </Color>
+              <Count>129</Count>
+              <MinimumLifetime>1.5</MinimumLifetime>
+              <MaximumLifetime>2.1</MaximumLifetime>
+              <Strobe>false</Strobe>
+              <StrobeFreqMean>14</StrobeFreqMean>
+            </BaseEffectNode>
+            <BaseEffectNode xsi:type="Stars">
+              <Children />
+              <Type>Small</Type>
+              <Distribution xsi:type="SphericalDistribution">
+                <Speed>0.55</Speed>
+                <Sigma>0.04</Sigma>
+              </Distribution>
+              <Color>
+                <CustomR>0</CustomR>
+                <CustomG>0</CustomG>
+                <CustomB>0</CustomB>
+                <Color>Red</Color>
+              </Color>
+              <Count>569</Count>
+              <MinimumLifetime>2</MinimumLifetime>
+              <MaximumLifetime>2.1</MaximumLifetime>
+              <Strobe>false</Strobe>
+              <StrobeFreqMean>14</StrobeFreqMean>
+            </BaseEffectNode>
+          </Children>
+          <Energy>239</Energy>
+          <Delay>4.8</Delay>
+        </BaseEffectNode>
+      </Children>
+      <Diameter>0.375</Diameter>
+      <LiftingCharge>281.52</LiftingCharge>
+    </BaseEffectNode>
+  </Children>
+  <Identifier>
+    <Name>5 BOTTE 1 INTRECHO KONTRABOMBA</Name>
+    <Author>lui</Author>
+  </Identifier>
+  <AuthorSoftwareVersion>
+    <Major>1</Major>
+    <Minor>0</Minor>
+  </AuthorSoftwareVersion>
+<HideInLib>true</HideInLib></FireworkEffect>
