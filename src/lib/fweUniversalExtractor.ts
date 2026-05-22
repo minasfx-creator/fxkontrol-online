@@ -8,18 +8,28 @@
  * Honest: only XML facts + filename hints — no invented numbers.
  */
 
+export interface FweColorPhase {
+  at: number;
+  hex: string;
+  modifier?: 'strobe' | 'crackle' | 'glitter' | 'charcoal';
+}
+
 export interface FweUniversalSpec {
   fileName: string;
   rootType: string | null;
+  typeReal: string | null;
   distribution: string | null;
   palette: string[];
   primary: string | null;
   secondary: string | null;
+  colorPhases: FweColorPhase[];
+  tailRef: string | null;
   hasPistil: boolean;
   hasTailsLink: boolean;
   hasCrackling: boolean;
   subShellCount: number;
   caliberIn: number | null;
+  caliberSource: 'xml' | 'inferred' | 'unknown';
   bengalDurationS: number | null;
 }
 
