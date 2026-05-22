@@ -222,14 +222,22 @@ export function buildVenuePlanPdf(preset: VenueShowPreset): jsPDF {
   doc.text(preset.name, M, 16);
   doc.text(`${preset.reference.event} · ${preset.reference.location}`, M, 20);
 
-  // Map
+  // Map (skipped under headless environments without canvas support)
   const canvas = renderVenueMapCanvas(preset);
-  const dataUrl = canvas.toDataURL('image/png');
   const mapW = PAGE_W - M * 2;
   const mapH = (canvas.height / canvas.width) * mapW;
-  doc.addImage(dataUrl, 'PNG', M, 26, mapW, mapH);
-
-  let y = 26 + mapH + 6;
+  let y = 26;
+  try {
+    const dataUrl = canvas.toDataURL('image/png');
+    if (dataUrl && dataUrl.startsWith('data:image/')) {
+      doc.addImage(dataUrl, 'PNG', M, 26, mapW, mapH);
+      y = 26 + mapH + 6;
+    } else {
+      y = 30;
+    }
+  } catch {
+    y = 30;
+  }
 
   // Anchor metadata
   doc.setTextColor(40);
