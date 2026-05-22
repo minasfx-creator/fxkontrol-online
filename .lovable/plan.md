@@ -1,22 +1,21 @@
-## Plano — Refresh dos 9 ícones FWsim
+## Plano — Refresh dos 8 ícones FWsim (Mine/Other/Rocket)
 
-O wiring já existe (`src/components/icons/EffectCategoryIcon.tsx` mapeia `cake`/`comet`/`flame` × `large/medium/small` → `Cake_0{1,2,3}.svg` / `Comet_0{1,2,3}.svg` / `FeuerProjektor_0{1,2,3}.svg`, todos em `src/assets/fwsim-effect-icons/`). Os 9 arquivos com esses nomes já existem no projeto — o upload é uma **atualização in-place** dos vetores.
+Mesma operação da rodada anterior. Os 8 nomes-alvo já existem em `src/assets/fwsim-effect-icons/` e estão wirados em `EffectCategoryIcon` (tier `large=_01` / `medium=_02` / `small=_03`).
 
 ### Passos
 
-1. **Sobrescrever 9 SVGs** (overwrite=true) em `src/assets/fwsim-effect-icons/`:
-   - `Cake_01.svg`, `Cake_02.svg`, `Cake_03.svg`
-   - `Comet_01.svg`, `Comet_02.svg`, `Comet_03.svg`
-   - `FeuerProjektor_01.svg`, `FeuerProjektor_02.svg`, `FeuerProjektor_03.svg`
+1. **Sobrescrever 8 SVGs** (overwrite=true) em `src/assets/fwsim-effect-icons/`:
+   - `Mine_01.svg`, `Mine_02.svg`, `Mine_03.svg`
+   - `Other_01.svg`, `Other_02.svg`, `Other_03.svg`
+   - `Rocket_01.svg`, `Rocket_02.svg`
+   - `Rocket_03.svg` **não foi uploadado** → fica como está.
 
-2. **Não alterar** `EffectCategoryIcon.tsx`, mapping `familyFromEffect`, nem `EffectLibrary.tsx` — o contrato `tier: 'large'(_01) | 'medium'(_02) | 'small'(_03)` já casa com "detalhado / médio / outline".
-
-3. **Sanity check** rápido: rodar a suite (esperado 1003/1003 verde — SVGs são assets, não tocam código).
+2. **Não tocar** em `EffectCategoryIcon.tsx`, mapping de família, nem renderer (`mineSilhouettes.ts`/`MineEffect` continuam usando a geometria 5/7/9 jatos — SVG é só ícone de UI, não fonte de silhueta 3D).
 
 ### Fora de escopo
-- Mine / Rocket / RomanCandle / Other / Shell / ShellOfShells (não foram re-uploadados, ficam como estão).
-- Mudanças no LOD selector ou nos surfaces (cards/timeline/rows continuam usando o tier que já passam).
-- Geração de novos componentes wrapper.
+- Cake/Comet/FeuerProjektor (atualizados na rodada anterior).
+- Shell/ShellOfShells/RomanCandle (não uploadados).
+- Qualquer wiring novo, mudança de tier ou refator de componente.
 
 ### Risco
-Baixíssimo — só troca de bytes em 9 assets versionados. Se algum SVG novo tiver `viewBox` ou tamanho diferente do atual, ajuste de CSS pode ser necessário; verifico visualmente após overwrite.
+Baixíssimo — troca de bytes em 8 assets versionados; consumidores acessam pelos mesmos imports.
