@@ -95,10 +95,10 @@ export default function ICETDirectSendPanel({ onClose }: Props) {
     portRef.current = null;
     setPairedLabel(null);
 
-    if (result.ok) {
+    if (result.ok === true) {
       toast.success(`Exportação concluída — ${result.cuesSent} cues enviados`);
     } else {
-      toast.error(result.message);
+      toast.error((result as { message: string }).message);
     }
   }, [build]);
 
