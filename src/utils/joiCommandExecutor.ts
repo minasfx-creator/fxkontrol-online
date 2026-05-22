@@ -818,12 +818,17 @@ function executeCommand(cmd: JoiCommand): JoiCommandResult {
             params: { audienceLat: preset.venue.audienceArea.lat, audienceLng: preset.venue.audienceArea.lng },
           });
         }
+        // 4) publish active preset id so the 3D overlay renders audience /
+        //    exclusion / water polygons and per-LP NFPA rings.
+        const { useActiveVenue } = require('@/store/useActiveVenue') as typeof import('@/store/useActiveVenue');
+        useActiveVenue.getState().setActiveVenuePreset(preset.id);
         return {
           action, success: true,
           label: `Venue "${preset.name}" aplicado`,
           detail: `${preset.venue.launchPoints.length} launch points georreferenciados`,
         };
       }
+
 
       case 'snap_all_to_terrain': {
         // Real raycast precisa de Scene/THREE — só pode rodar com scene viva.
