@@ -123,7 +123,9 @@ def extract(path):
     sub_shells = raw.count('xsi:type="SubShells"')
 
     file_name = os.path.basename(path)
-    collection = os.path.basename(os.path.dirname(path))
+    rel = os.path.relpath(path, ROOT_DIR).replace('\\', '/')
+    collection = rel.split('/')[0]
+    subPath = '/'.join(rel.split('/')[1:-1]) or None
     stem = re.sub(r'\.fwe$', '', file_name, flags=re.IGNORECASE)
     return {
         'id': 'se-' + slugify(collection) + '-' + slugify(stem),
