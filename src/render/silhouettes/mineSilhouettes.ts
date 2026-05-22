@@ -10,11 +10,13 @@
  */
 
 export interface MineSilhouette {
-  id: 'mine_5jet' | 'mine_7jet' | 'mine_9jet';
+  id: 'mine_5jet' | 'mine_7jet' | 'mine_9jet' | 'mine_comet_with_silver_tail';
   jetAnglesDeg: number[];
   jitterDeg: number;
   crownRatio: number;
   crownLifetimeS: number;
+  /** Optional: when set, renderer should append a dense central spark tail. */
+  silverTail?: boolean;
 }
 
 export const MINE_SILHOUETTES: Record<MineSilhouette['id'], MineSilhouette> = {
@@ -42,12 +44,23 @@ export const MINE_SILHOUETTES: Record<MineSilhouette['id'], MineSilhouette> = {
     crownRatio: 0.15,
     crownLifetimeS: 0.14,
   },
+  // Mine_Purple_Comet_White_w_Silver_Tail.fwe reference — 1 dense
+  // central jet with very tight jitter and a silver spark tail.
+  mine_comet_with_silver_tail: {
+    id: 'mine_comet_with_silver_tail',
+    jetAnglesDeg: [0],
+    jitterDeg: 1.5,
+    crownRatio: 0.08,
+    crownLifetimeS: 0.22,
+    silverTail: true,
+  },
 };
 
-/** Pick a silhouette from caliber + numDevices heuristics. */
+/** Pick a silhouette from caliber + numDevices + cometHead heuristics. */
 export function selectMineSilhouette(opts: {
-  caliber?: number; numDevices?: number;
+  caliber?: number; numDevices?: number; cometHead?: boolean;
 }): MineSilhouette {
+  if (opts.cometHead) return MINE_SILHOUETTES.mine_comet_with_silver_tail;
   const cal = opts.caliber ?? 3;
   const n = opts.numDevices ?? 1;
   if (cal >= 5 || n >= 5) return MINE_SILHOUETTES.mine_9jet;
