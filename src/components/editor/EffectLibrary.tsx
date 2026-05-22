@@ -11,6 +11,7 @@ import { FWE_UPLOADED_EFFECTS } from '@/data/fweUploadedEffects';
 import { FWSIM_BUILTIN_EFFECTS } from '@/data/fwsimBuiltinPresets';
 import { FWE_MINE_EFFECTS } from '@/data/fweMineCatalog';
 import { getStandardEffects, STANDARD_EFFECTS_META } from '@/data/standardEffectsCatalog';
+import { TAIL_COMPONENTS_META } from '@/data/tailComponentCatalog';
 import { getFinaleEffects, FINALE_LIBRARIES_META } from '@/data/effectsLibraries';
 import { parseFweXml } from '@/data/fweImporter';
 import { useImportedFweStore } from '@/store/useImportedFweStore';
