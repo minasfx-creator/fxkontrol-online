@@ -46,9 +46,13 @@ export type IcetSendErrorCode =
   | 'transfer-error'
   | 'aborted';
 
-export type IcetSendResult =
-  | { ok: true; cuesSent: number; firmwareVersion?: string }
-  | { ok: false; code: IcetSendErrorCode; message: string; cuesSent: number };
+export interface IcetSendResult {
+  ok: boolean;
+  cuesSent: number;
+  firmwareVersion?: string;
+  code?: IcetSendErrorCode;
+  message?: string;
+}
 
 export interface IcetSendOptions {
   baudRate?: number;          // default 115200 (ESP32 ICET típico)

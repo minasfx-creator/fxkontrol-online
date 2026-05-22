@@ -95,10 +95,10 @@ export default function ICETDirectSendPanel({ onClose }: Props) {
     portRef.current = null;
     setPairedLabel(null);
 
-    if (result.ok === true) {
+    if (result.ok) {
       toast.success(`Exportação concluída — ${result.cuesSent} cues enviados`);
     } else {
-      toast.error((result as { message: string }).message);
+      toast.error(result.message ?? 'Falha no envio');
     }
   }, [build]);
 
@@ -227,8 +227,8 @@ export default function ICETDirectSendPanel({ onClose }: Props) {
                     </div>
                   </>
                 : <>
-                    <div className="font-bold">{lastResult.message}</div>
-                    <div className="text-muted-foreground font-mono">code: {lastResult.code}</div>
+                    <div className="font-bold">{lastResult.message ?? 'Falha no envio'}</div>
+                    <div className="text-muted-foreground font-mono">code: {lastResult.code ?? 'unknown'}</div>
                   </>}
             </div>
           </div>
