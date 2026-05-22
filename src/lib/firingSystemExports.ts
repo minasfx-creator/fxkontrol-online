@@ -214,11 +214,12 @@ export function exportPyroLEDA(items: TimelineItem[], positions: Position[]): st
   return header + '\n' + cues.map(c => `${c.cue},${c.module},${c.pin},${Math.round(c.eventTime * 1000)},${Math.round(c.preFireTime * 1000)},${c.effectName},${c.posName}`).join('\n');
 }
 
-// ─── RJ EQUIPAMENTOS ─────────────────────────────────────────────────
+// ─── RJ EQUIPAMENTOS / ICET (spec real do Timecode V1.5) ────────────
+// Spec extraída por reverse-engineering do binário oficial (icet/Timecode.exe).
+// Implementação canônica em ./rjIcetScript.ts — esta função delega.
+import { buildIcetScript } from './rjIcetScript';
 export function exportRJEquipamentos(items: TimelineItem[], positions: Position[]): string {
-  const cues = buildCues(items, positions, 20, 1);
-  const header = 'NUM,MODULO,CANAL,TEMPO,PFT,EFEITO,CALIBRE,POSICAO';
-  return header + '\n' + cues.map(c => `${c.cue},${c.module},${c.pin},${fmt(c.eventTime)},${fmt(c.preFireTime)},${c.effectName},${c.caliber},${c.posName}`).join('\n');
+  return buildIcetScript(items, positions).csv;
 }
 
 // ─── SHOW DIRECTOR ───────────────────────────────────────────────────
@@ -289,6 +290,10 @@ export interface FiringSystem {
   exportFn: (items: TimelineItem[], positions: Position[]) => string;
   fileExt: string;
   mimeType: string;
+  /** Marca sistemas que suportam envio direto ao equipamento (USB serial). */
+  directSend?: boolean;
+  /** Identificador do bridge de envio direto (UI dispatch). */
+  directSender?: 'icet';
 }
 
 export const FIRING_SYSTEMS: FiringSystem[] = [
@@ -310,7 +315,7 @@ export const FIRING_SYSTEMS: FiringSystem[] = [
   { id: 'rfremotech', name: 'RFRemotech', country: '🇨🇳', format: 'CSV', pinsPerSlat: 12, exportFn: exportRFRemotech, fileExt: 'csv', mimeType: 'text/csv' },
   { id: 'pyrodigit', name: 'PyroDigiT', country: '🇮🇹', format: 'CSV (;)', pinsPerSlat: 24, exportFn: exportPyroDigiT, fileExt: 'csv', mimeType: 'text/csv' },
   { id: 'pyroleda', name: 'PyroLEDA', country: '🇩🇪', format: 'CSV', pinsPerSlat: 16, exportFn: exportPyroLEDA, fileExt: 'csv', mimeType: 'text/csv' },
-  { id: 'rjequipamentos', name: 'RJ Equipamentos', country: '🇧🇷', format: 'CSV', pinsPerSlat: 20, exportFn: exportRJEquipamentos, fileExt: 'csv', mimeType: 'text/csv' },
+  { id: 'rjequipamentos', name: 'RJ Equipamentos (ICET)', country: '🇧🇷', format: 'CSV (HH:MM:SS:FF)', pinsPerSlat: 32, exportFn: exportRJEquipamentos, fileExt: 'csv', mimeType: 'text/csv', directSend: true, directSender: 'icet' },
   { id: 'showdirector', name: 'Show Director', country: '🇺🇸', format: 'JSON', pinsPerSlat: 100, exportFn: exportShowDirector, fileExt: 'json', mimeType: 'application/json' },
   { id: 'megafire', name: 'Megafire', country: '🇮🇹', format: 'CSV (;)', pinsPerSlat: 50, exportFn: exportMegafire, fileExt: 'csv', mimeType: 'text/csv' },
   { id: 'pyroneo', name: 'PyroNeo', country: '🇫🇷', format: 'Custom', pinsPerSlat: 20, exportFn: exportPyroNeo, fileExt: 'pns', mimeType: 'text/plain' },
