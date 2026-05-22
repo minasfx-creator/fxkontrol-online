@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { handleCors, corsHeaders } from "../_shared/cors.ts";
+import { requireAuth } from "../_shared/auth.ts";
 import { jsonOk, jsonError } from "../_shared/response.ts";
 
 const GATEWAY = "https://ai.gateway.lovable.dev/v1/chat/completions";
