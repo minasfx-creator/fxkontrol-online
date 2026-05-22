@@ -225,6 +225,18 @@ const PrefireShell = React.forwardRef<THREE.Group, {
     }
   });
 
+  // r_fwsim_launch_flash_v2: scale muzzle flash by FWsim shellLaunchFlame energy curve.
+  // Energy proxy from caliber (≈ lifting charge grams): 3"→70, 4"→144, 5"→253, 6"→404, 8"→820.
+  // MUST be declared before any early return to satisfy Rules of Hooks.
+  const flashV2 = useMemo(() => {
+    if (!isEnabled('r_fwsim_launch_flash_v2')) return null;
+    const slf = getFwsimGraphics().flashes.shellLaunchFlame;
+    const energy = 70 * Math.pow(Math.max(1, caliber) / 3, 2.5);
+    const sizeMult = sampleCurve(slf.sizeDependingOnEnergy as unknown as ReadonlyArray<readonly [number, number]>, energy);
+    const opacityMult = Math.min(1.4, slf.brightness / 5);
+    return { sizeMult, opacityMult, duration: slf.duration };
+  }, [caliber]);
+
   if (progress <= 0 || progress > 1) return null;
 
   // Shell position along launch angle with real gravity
@@ -244,20 +256,9 @@ const PrefireShell = React.forwardRef<THREE.Group, {
   const smokeRadius = 0.3 + caliber * caliber * 0.02 + progress * 3.0;
   const smokeOpacity = (0.06 + caliber * 0.008) * (1 - progress / 0.35);
 
-  // r_fwsim_launch_flash_v2: scale muzzle flash by FWsim shellLaunchFlame energy curve.
-  // Energy proxy from caliber (≈ lifting charge grams): 3"→70, 4"→144, 5"→253, 6"→404, 8"→820.
-  const flashV2 = useMemo(() => {
-    if (!isEnabled('r_fwsim_launch_flash_v2')) return null;
-    const slf = getFwsimGraphics().flashes.shellLaunchFlame;
-    const energy = 70 * Math.pow(Math.max(1, caliber) / 3, 2.5);
-    const sizeMult = sampleCurve(slf.sizeDependingOnEnergy as unknown as ReadonlyArray<readonly [number, number]>, energy);
-    // brightness 5 is FWsim baseline → map to current opacity scale (1.0)
-    const opacityMult = Math.min(1.4, slf.brightness / 5);
-    return { sizeMult, opacityMult, duration: slf.duration };
-  }, [caliber]);
-
   // Muzzle flash window: FWsim duration (s) → fraction of liftTime; clamp safe range.
   const flashWindow = flashV2 ? Math.max(0.05, Math.min(0.25, flashV2.duration / Math.max(0.5, liftTime))) : 0.1;
+
 
   return (
     <group position={position}>
