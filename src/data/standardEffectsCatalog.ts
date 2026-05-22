@@ -188,6 +188,7 @@ export function standardEffectPartToEffect(p: StandardEffectPart): Effect {
     tailRef: p.tailRef ?? undefined,
     colorPhases: p.colorPhases && p.colorPhases.length > 0 ? p.colorPhases : undefined,
     caliberSource: p.caliberSource,
+  };
 }
 
 let _cache: Effect[] | null = null;
