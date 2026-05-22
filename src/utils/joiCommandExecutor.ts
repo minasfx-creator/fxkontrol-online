@@ -697,23 +697,13 @@ function executeCommand(cmd: JoiCommand): JoiCommandResult {
   }
 }
 
-/** Execute all JOI_CMD blocks in a text, return results */
+/**
+ * Execute all JOI_CMD blocks in a text, return results.
+ * Toast UI silenciado (soft mode) — Joi atua como comando de voz; o feedback
+ * fica no transcript do chat e nos próprios resultados retornados.
+ */
 export function executeJoiCommands(text: string): JoiCommandResult[] {
   const cmds = parseJoiCommands(text);
   if (cmds.length === 0) return [];
-
-  const results = cmds.map(executeCommand);
-
-  const successCount = results.filter(r => r.success).length;
-  const failCount = results.filter(r => !r.success).length;
-
-  if (successCount > 0) {
-    toast.success(`Joi executou ${successCount} comando${successCount > 1 ? 's' : ''}`, {
-      description: failCount > 0 ? `${failCount} falharam` : undefined,
-    });
-  } else if (failCount > 0) {
-    toast.error(`${failCount} comando${failCount > 1 ? 's' : ''} falharam`);
-  }
-
-  return results;
+  return cmds.map(executeCommand);
 }
