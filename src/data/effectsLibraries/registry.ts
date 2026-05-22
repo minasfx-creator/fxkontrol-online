@@ -111,10 +111,11 @@ let _mergedCache: MergedEffectsCatalog | null = null;
 export function getMergedEffectsCatalog(): MergedEffectsCatalog {
   if (_mergedCache) return _mergedCache;
 
-  const sources: ReadonlyArray<{ src: 'curated' | 'fwsim' | 'finale'; list: Effect[] }> = [
+  const sources: ReadonlyArray<{ src: 'curated' | 'fwsim' | 'finale' | 'standard-effects'; list: Effect[] }> = [
     { src: 'curated', list: EFFECT_LIBRARY },
     { src: 'fwsim', list: FWSIM_BUILTIN_EFFECTS },
     { src: 'fwsim', list: FWE_MINE_EFFECTS },
+    { src: 'standard-effects', list: getStandardEffects() },
     { src: 'finale', list: getFinaleEffects() },
   ];
 
