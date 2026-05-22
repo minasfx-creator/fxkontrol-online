@@ -62,6 +62,9 @@ serve(async (req) => {
   const preflight = handleCors(req);
   if (preflight) return preflight;
 
+  const auth = await requireAuth(req);
+  if (auth.error) return auth.error;
+
   try {
     const { agency, documents, eventName } = await req.json();
 
