@@ -248,7 +248,7 @@ async function safeClose(port: SerialPortLike): Promise<void> {
 // ─── RX buffer com timeout ──────────────────────────────────────────
 
 class RxBuffer {
-  private buf = new Uint8Array(0);
+  private buf: Uint8Array = new Uint8Array(0);
 
   constructor(private reader: ReadableStreamDefaultReader<Uint8Array>) {}
 
@@ -283,7 +283,7 @@ function concat(a: Uint8Array, b: Uint8Array): Uint8Array {
   const out = new Uint8Array(a.length + b.length);
   out.set(a, 0);
   out.set(b, a.length);
-  return out;
+  return out as Uint8Array;
 }
 
 async function raceTimeout<T>(p: Promise<T>, ms: number): Promise<T | null> {
