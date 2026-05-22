@@ -911,15 +911,15 @@ function executeCommand(cmd: JoiCommand): JoiCommandResult {
         void commitJoiDossierToCloud(preset, {
           signedUrlTtlSec: Number.isFinite(ttl) && ttl > 0 ? ttl : undefined,
         }).then((res) => {
-          if (res.ok) {
-            toast.success(`Dossiê na nuvem: ${res.filename}`, {
-              description: `URL assinada válida por ${Math.round(res.expiresInSec / 3600)}h`,
-              action: { label: 'Copiar URL', onClick: () => navigator.clipboard?.writeText(res.signedUrl) },
-              duration: 12000,
-            });
-          } else {
+          if (!res.ok) {
             toast.error(`commit_dossier_to_cloud falhou`, { description: res.error });
+            return;
           }
+          toast.success(`Dossiê na nuvem: ${res.filename}`, {
+            description: `URL assinada válida por ${Math.round(res.expiresInSec / 3600)}h`,
+            action: { label: 'Copiar URL', onClick: () => navigator.clipboard?.writeText(res.signedUrl) },
+            duration: 12000,
+          });
         });
         return {
           action, success: true,
