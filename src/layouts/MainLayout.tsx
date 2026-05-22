@@ -1,7 +1,7 @@
-import { Outlet, useLocation, useNavigate } from 'react-router-dom';
+import { Outlet, useLocation } from 'react-router-dom';
 import { SidebarProvider, useSidebar } from '@/components/ui/sidebar';
 import { useIsMobile } from '@/hooks/use-mobile';
-import { PanelLeftClose, PanelLeft, AlertOctagon, Menu } from 'lucide-react';
+import { PanelLeftClose, PanelLeft, Menu } from 'lucide-react';
 import minasfxLogo from '@/assets/minasfx-logo-white.png';
 import { useLiveSfxStore } from '@/store/useLiveSfxStore';
 import { useDisplayStore } from '@/store/useDisplayStore';
@@ -46,7 +46,6 @@ function MobileSidebarTrigger() {
 
 export default function MainLayout() {
   const location = useLocation();
-  const navigate = useNavigate();
   const isEditor = location.pathname === '/editor';
   const isCommand = location.pathname === '/command';
   const commandImmersive = isCommand;
@@ -58,10 +57,6 @@ export default function MainLayout() {
   const [transitionPhase, setTransitionPhase] = useState<'idle' | 'dissolve-out' | 'materialize-in'>('idle');
   const [displayedPath, setDisplayedPath] = useState(location.pathname);
   const transitionTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  const activeEffects = useLiveSfxStore(s => s.activeEffects);
-  const clearAll = useLiveSfxStore(s => s.clearAll);
-  const isArmed = activeEffects.length > 0;
 
   const backlight = useDisplayStore(s => s.backlight);
 
