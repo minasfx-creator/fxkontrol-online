@@ -40,6 +40,18 @@ export interface TimelineItem {
 
 export type PositionType = 'pyro' | 'drone-pad' | 'light';
 
+/**
+ * Optional geo anchor for a Position. When present, it is the authoritative
+ * source: `x,y,z` are derived (re-materialised) from `geo` whenever the scene
+ * anchor changes. Plain `x,y,z` positions (no `geo`) remain untouched.
+ */
+export interface PositionGeo {
+  lat: number;
+  lng: number;
+  /** Altitude above ground level in meters. If omitted, snap-to-terrain is used. */
+  altAGL?: number;
+}
+
 export interface Position {
   id: string;
   name: string;
@@ -52,6 +64,12 @@ export interface Position {
   roll: number;
   color: string;
   section?: string;
+  /** Geo-authoritative anchor (lat/lng). When set, `x,y,z` are derived from it. */
+  geo?: PositionGeo;
+  /** Heading derives from audience azimuth when true. */
+  audienceFacing?: boolean;
+  /** True when `y` came from a terrain raycast (not user input). */
+  snappedToTerrain?: boolean;
 }
 
 export interface BezierHandle {
