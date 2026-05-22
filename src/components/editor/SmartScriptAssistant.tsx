@@ -75,7 +75,7 @@ export default function SmartScriptAssistant({ open, onClose }: { open: boolean;
       if (result?.actions && Array.isArray(result.actions)) {
         for (const action of result.actions) {
           if (action.type === 'add_timeline_item') {
-            const effect = findEffectById(action.effectId || e.name.toLowerCase().includes((action.effectName || '').toLowerCase()));
+            const effect = findEffectById(action.effectId) ?? EFFECT_LIBRARY.find(e => e.name.toLowerCase().includes((action.effectName || '').toLowerCase()));
             if (effect) {
               const pos = store.positions.find(p => p.name === action.positionName || p.id === action.positionId);
               store.addTimelineItem({
