@@ -309,7 +309,7 @@ export default function AssetMarketplaceBrowser({ open, onOpenChange }: AssetMar
                   multiple
                   accept=".uasset,.umap"
                   className="hidden"
-                  // @ts-expect-error - webkitdirectory is a non-standard browser attribute
+                  // @ts-ignore - webkitdirectory is non-standard
                   webkitdirectory=""
                   onChange={e => e.target.files && handleUEProjectUpload(e.target.files)}
                 />

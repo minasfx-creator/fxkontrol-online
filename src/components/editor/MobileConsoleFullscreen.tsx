@@ -31,12 +31,12 @@ export default function MobileConsoleFullscreen({
     // Try to lock to landscape if available
     try {
       (screen.orientation as any)?.lock?.('landscape').catch(() => {});
-    } catch { /* best-effort: screen.orientation.lock may be unavailable */ }
+    } catch {}
     return () => {
       document.body.style.overflow = '';
       try {
         (screen.orientation as any)?.unlock?.();
-      } catch { /* best-effort: screen.orientation.unlock may be unavailable */ }
+      } catch {}
     };
   }, []);
 

@@ -8,8 +8,6 @@
 import type { Command } from '@/core/command/CommandBus';
 import { safetyStateMachine, type SafetyTransition } from './SafetyStateMachine';
 import { safetyAuditTrail, type AuditEntry } from './SafetyAuditTrail';
-import { safetyGate } from './safetyGate';
-import { workMode } from './workMode';
 
 export interface ValidationResult {
   allowed: boolean;
@@ -48,37 +46,6 @@ class SafetyValidator {
 
     // Non-safety commands always pass
     if (!transition) {
-      return { allowed: true };
-    }
-
-    // Work-mode gate: physical safety transitions only have real meaning
-    // in `real_operation`. In design/simulation we tag the audit entry
-    // as SIMULATED and allow it (the underlying simulator consumes it).
-    if (!workMode.isRealOperation()) {
-      const auditEvent = CMD_TO_AUDIT_EVENT[cmd.type] ?? 'STATE_CHANGE';
-      safetyAuditTrail.log({
-        timestamp: Date.now(),
-        tick,
-        event: auditEvent,
-        from: safetyStateMachine.state,
-        to: safetyStateMachine.state,
-        detail: `${cmd.type} SIMULATED (workMode=${workMode.get()})`,
-      });
-      return { allowed: true };
-    }
-
-    // Gate bypass — when interlock chain is disabled by user preference,
-    // log a GATE_BYPASS entry to keep audit honest, but allow the command.
-    if (!safetyGate.isEnforced('interlockChain')) {
-      const auditEvent = CMD_TO_AUDIT_EVENT[cmd.type] ?? 'STATE_CHANGE';
-      safetyAuditTrail.log({
-        timestamp: Date.now(),
-        tick,
-        event: auditEvent,
-        from: safetyStateMachine.state,
-        to: safetyStateMachine.state,
-        detail: `${cmd.type} GATE_BYPASS (interlock chain disabled by user)`,
-      });
       return { allowed: true };
     }
 

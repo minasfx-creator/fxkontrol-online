@@ -1,19 +1,15 @@
 /**
- * ─── Verification Store — Reactive Status (UNIFIED) ─────────────────
- * Single canonical store wrapping VerificationEngine.
- *
- * Replaces the previous duplicate `useVerificationEngine` hook — both
- * had the same responsibility, just different names. This is the merged
- * survivor and exposes the richer engine result shape (`issues` + `summary`).
+ * ─── Verification Store — Reactive Status ───────────────────────────
+ * Zustand store exposing real-time verification state for UI consumption.
  */
 
 import { create } from 'zustand';
-import { verificationEngine } from './VerificationEngine';
-import type { VerificationResult, VerificationStatus } from './types';
+import { verificationPass } from './VerificationPass';
+import type { VerificationResult, VerificationLevel } from '@/core/showplan/ShowPlan';
 
 interface VerificationState {
   result: VerificationResult | null;
-  level: VerificationStatus;
+  level: VerificationLevel;
   isRunning: boolean;
   lastRunAt: number;
   runVerification: () => void;
@@ -28,7 +24,7 @@ export const useVerificationStore = create<VerificationState>((set) => ({
   runVerification: () => {
     set({ isRunning: true });
     try {
-      const result = verificationEngine.run();
+      const result = verificationPass.run();
       set({
         result,
         level: result.level,

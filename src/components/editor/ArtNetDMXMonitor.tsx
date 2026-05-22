@@ -6,7 +6,6 @@
 
 import { useEffect, useState } from 'react';
 import { artNetNodeAdapter, type ArtNetNodeState } from '@/core/hardware/adapters/ArtNetNodeAdapter';
-import { shouldAdapterTick } from '@/core/hardware/adapterTickGate';
 import { cn } from '@/lib/utils';
 import { Wifi, Activity } from 'lucide-react';
 
@@ -14,7 +13,6 @@ export default function ArtNetDMXMonitor() {
   const [state, setState] = useState<ArtNetNodeState>(artNetNodeAdapter.getState());
 
   useEffect(() => {
-    if (!shouldAdapterTick(artNetNodeAdapter)) return;
     const iv = setInterval(() => {
       artNetNodeAdapter.pollTelemetry();
       setState(artNetNodeAdapter.getState());

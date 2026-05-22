@@ -81,16 +81,6 @@ export function useFXKUltraRefinement() {
   const lastQualityChangeRef = useRef(0);
   const QUALITY_CHANGE_COOLDOWN_MS = 3000;
 
-  // Warm-up window — ignore FPS samples for the first N ms after mount.
-  // Without this the controller measures the empty splash scene at 138fps and
-  // immediately promotes to ULTRA, only to crash the WebGL context once the
-  // real world (GPGPU + GI + lens flares + heavy shadows) finishes loading.
-  const mountedAtRef = useRef(typeof performance !== 'undefined' ? performance.now() : Date.now());
-  const WARMUP_MS = 5000;
-  // Require N consecutive "headroom" samples before promoting quality up.
-  const promoteStreakRef = useRef(0);
-  const PROMOTE_STREAK = 3;
-
   // Wire into scene store for lowQualityMode
   const applyQualityToScene = useCallback((level: FXKQualityLevel, budget: typeof effectBudgetRef.current) => {
     const store = useSceneStore.getState();
@@ -142,11 +132,8 @@ export function useFXKUltraRefinement() {
 
     const canChangeQuality = (now - lastQualityChangeRef.current) > QUALITY_CHANGE_COOLDOWN_MS;
 
-    const nowPerf = typeof performance !== 'undefined' ? performance.now() : Date.now();
-    const inWarmup = (nowPerf - mountedAtRef.current) < WARMUP_MS;
-
     if (hardPressure && canChangeQuality) {
-      // Degrade quality (always allowed, even in warm-up — protects the GPU)
+      // Degrade quality
       if (qualityIndexRef.current < QUALITY_LEVELS.length - 1) {
         qualityIndexRef.current++;
         lastQualityChangeRef.current = now;
@@ -154,7 +141,6 @@ export function useFXKUltraRefinement() {
       // Disable heavy effects
       effectBudgetRef.current.heavyShaders = false;
       effectBudgetRef.current.particlesHighQuality = false;
-      promoteStreakRef.current = 0;
     } else if (softPressure && canChangeQuality) {
       if (qualityIndexRef.current < QUALITY_LEVELS.length - 1) {
         qualityIndexRef.current++;
@@ -162,31 +148,21 @@ export function useFXKUltraRefinement() {
       }
       effectBudgetRef.current.bloom = false;
       effectBudgetRef.current.volumetricFog = false;
-      promoteStreakRef.current = 0;
-    } else if (!softPressure && !hardPressure && canChangeQuality && !inWarmup) {
-      // Recover — but require N consecutive headroom samples to avoid promoting
-      // off a single empty-frame spike (e.g. before the world finishes loading).
-      promoteStreakRef.current++;
-      if (promoteStreakRef.current >= PROMOTE_STREAK) {
-        promoteStreakRef.current = 0;
-        if (qualityIndexRef.current > 0) {
-          qualityIndexRef.current--;
-          lastQualityChangeRef.current = now;
-        }
-        const level = QUALITY_LEVELS[qualityIndexRef.current];
-        if (level === 'cinematic' || level === 'high') {
-          effectBudgetRef.current = {
-            bloom: true,
-            volumetricFog: true,
-            heavyShaders: true,
-            particlesHighQuality: true,
-          };
-        }
+    } else if (!softPressure && !hardPressure && canChangeQuality) {
+      // Recover
+      if (qualityIndexRef.current > 0) {
+        qualityIndexRef.current--;
+        lastQualityChangeRef.current = now;
       }
-    } else {
-      // In warm-up or pressure neutral — reset streak so promotion only happens
-      // after a sustained stable period post-warmup.
-      promoteStreakRef.current = 0;
+      const level = QUALITY_LEVELS[qualityIndexRef.current];
+      if (level === 'cinematic' || level === 'high') {
+        effectBudgetRef.current = {
+          bloom: true,
+          volumetricFog: true,
+          heavyShaders: true,
+          particlesHighQuality: true,
+        };
+      }
     }
 
     // ═══ Render Stability ═══

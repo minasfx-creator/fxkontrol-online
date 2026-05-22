@@ -1,6 +1,6 @@
 /**
  * MobileLinkMode — FireOne XL4+ Style Remote Firing Console
- *
+ * 
  * Inspired by the FireOne XL4+ hardware:
  * - Master Key Switch (ARM/SAFE)
  * - 4 independent outputs with redundancy
@@ -20,7 +20,7 @@ import {
   Shield, ShieldAlert, Lock, Unlock, Key, Radio, Signal, Timer,
   Play, Square, SkipForward, Hand, AlertTriangle, Check, X,
   Wifi, WifiOff, ChevronLeft, ChevronRight, Activity, Eye, Usb,
-  RefreshCw, Search, CircuitBoard, History
+  RefreshCw, Search, CircuitBoard
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -34,15 +34,9 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import type { SFXChannel } from './types';
 import {
   FireOneController, getFireOneController,
+  createSimulatedModuleStatus,
   type FireOneModuleStatus, type FireOneEvent,
 } from '@/lib/fireoneProtocol';
-
-// ─── Honest event-id generator (deterministic monotonic counter) ───
-let _evtSeq = 0;
-function nextEvtId(): string {
-  _evtSeq = (_evtSeq + 1) & 0xffff;
-  return `evt-${Date.now()}-${_evtSeq.toString(36).padStart(3, '0')}`;
-}
 
 // ═══════════════════════════════════════════════════════════
 // TYPES
@@ -121,9 +115,23 @@ function fmtTC(ms: number): string {
 // ═══════════════════════════════════════════════════════════
 // DEFAULT FIELD MODULES (simulated)
 // ═══════════════════════════════════════════════════════════
-// Field modules now arrive ONLY from real hardware (FireOneController) or
-// from operator-persisted state in localStorage. No synthetic seed.
-function loadEmptyModules(): FieldModule[] { return []; }
+function createDefaultModules(): FieldModule[] {
+  return Array.from({ length: 6 }, (_, i) => ({
+    id: i + 1,
+    name: `FM-${String(i + 1).padStart(2, '0')}`,
+    connected: i < 4,
+    wireless: i >= 2,
+    batteryVoltage: 11.5 + Math.random() * 1.5,
+    signalStrength: 60 + Math.floor(Math.random() * 40),
+    igniters: Array.from({ length: 32 }, (_, j) => ({
+      position: j + 1,
+      connected: Math.random() > 0.15,
+      fired: false,
+      resistance: 1.5 + Math.random() * 3,
+    })),
+    armed: false,
+  }));
+}
 
 // ═══════════════════════════════════════════════════════════
 // MAIN COMPONENT
@@ -147,12 +155,12 @@ export default function MobileLinkMode({ fs, fireChannel, channels, artNetConnec
   const [xl4Mode, setXl4Mode] = useState<XL4Mode>('manual');
   const [keyInserted, setKeyInserted] = useState(false);
   const [selectedModule, setSelectedModule] = useState(1);
-
+  const [selectedOutput, setSelectedOutput] = useState(0); // 0-3 for 4 outputs
   const [modules, setModules] = useState<FieldModule[]>(() => {
     try {
       const saved = localStorage.getItem(MODULES_KEY);
-      return saved ? JSON.parse(saved) : loadEmptyModules();
-    } catch { return loadEmptyModules(); }
+      return saved ? JSON.parse(saved) : createDefaultModules();
+    } catch { return createDefaultModules(); }
   });
 
   // ─── Semi-Auto state ───
@@ -184,58 +192,7 @@ export default function MobileLinkMode({ fs, fireChannel, channels, artNetConnec
   const [hwModules, setHwModules] = useState<FireOneModuleStatus[]>([]);
   const [hwEvents, setHwEvents] = useState<FireOneEvent[]>([]);
   const [hwScanning, setHwScanning] = useState(false);
-  // Hardware honesty: real FireOne only — no synthetic toggle.
-
-  // ─── Link transition mini-history (last 60s) ───
-  type LinkName = 'artnet' | 'relay' | 'realtime' | 'serial';
-  type LinkState = 'online' | 'offline' | 'error';
-  interface LinkTransition {
-    id: string;
-    timestamp: number;
-    link: LinkName;
-    from: LinkState;
-    to: LinkState;
-  }
-  const HISTORY_WINDOW_MS = 60_000;
-  const [linkHistory, setLinkHistory] = useState<LinkTransition[]>([]);
-  const [historyWindow, setHistoryWindow] = useState<30 | 60>(60);
-  const [showHistory, setShowHistory] = useState(false);
-  const prevLinkRef = useRef<Record<LinkName, LinkState>>({
-    artnet: 'offline', relay: 'offline', realtime: 'offline', serial: 'offline',
-  });
-  const recordTransition = useCallback((link: LinkName, to: LinkState) => {
-    const from = prevLinkRef.current[link];
-    if (from === to) return;
-    prevLinkRef.current[link] = to;
-    setLinkHistory(prev => {
-      const next = [...prev, {
-        id: nextEvtId(), timestamp: Date.now(), link, from, to,
-      }];
-      // cap at 200 entries to bound memory; window filtering happens at render
-      return next.length > 200 ? next.slice(-200) : next;
-    });
-  }, []);
-  // Watch real signals → transition log
-  useEffect(() => { recordTransition('artnet',   artNetConnected ? 'online' : 'offline'); }, [artNetConnected, recordTransition]);
-  useEffect(() => { recordTransition('relay',    relayConnected  ? 'online' : 'offline'); }, [relayConnected,  recordTransition]);
-  useEffect(() => { recordTransition('realtime', connected       ? 'online' : 'offline'); }, [connected,       recordTransition]);
-  useEffect(() => { recordTransition('serial',   hwConnected     ? 'online' : 'offline'); }, [hwConnected,     recordTransition]);
-  // Map FireOne hardware errors into the serial link history
-  useEffect(() => {
-    const last = hwEvents[0];
-    if (!last) return;
-    if (last.type === 'error' || last.type === 'emergency-stop') {
-      recordTransition('serial', 'error');
-    }
-  }, [hwEvents, recordTransition]);
-  // Periodic prune to keep linkHistory bounded to current window
-  useEffect(() => {
-    const id = setInterval(() => {
-      const cutoff = Date.now() - HISTORY_WINDOW_MS;
-      setLinkHistory(prev => prev[0] && prev[0].timestamp < cutoff ? prev.filter(e => e.timestamp >= cutoff) : prev);
-    }, 5000);
-    return () => clearInterval(id);
-  }, []);
+  const [hwSimulated, setHwSimulated] = useState(false);
 
   // Persist
   useEffect(() => { localStorage.setItem(STORAGE_KEY, JSON.stringify(fixtures)); }, [fixtures]);
@@ -249,7 +206,7 @@ export default function MobileLinkMode({ fs, fireChannel, channels, artNetConnec
     ch.on('broadcast', { event: 'fxc-fire' }, (msg) => {
       const p = msg.payload as any;
       setEvents(prev => [{
-        id: nextEvtId(),
+        id: `evt-${Date.now()}-${Math.random().toString(36).slice(2, 4)}`,
         timestamp: Date.now(), source: 'remote' as const,
         fixtureName: p.name || p.type, type: p.type,
         color: p.color || '#fff', intensity: p.intensity || 200,
@@ -360,7 +317,7 @@ export default function MobileLinkMode({ fs, fireChannel, channels, artNetConnec
     ));
 
     setEvents(prev => [{
-      id: nextEvtId(),
+      id: `evt-${Date.now()}-${Math.random().toString(36).slice(2, 4)}`,
       timestamp: Date.now(), source: 'local' as const,
       fixtureName: label, type: 'fire', color: '#ff4400', intensity: 255,
     }, ...prev].slice(0, 80));
@@ -429,56 +386,75 @@ export default function MobileLinkMode({ fs, fireChannel, channels, artNetConnec
     toast.info('Hardware desconectado');
   }, []);
 
-  const requireHw = useCallback((): boolean => {
-    if (!hwConnected) {
-      toast.error('Hardware FireOne desconectado — conecte via USB.');
-      return false;
-    }
-    return true;
-  }, [hwConnected]);
-
   const handleHwScan = useCallback(async () => {
-    if (!requireHw()) return;
     setHwScanning(true);
-    try {
-      await fireoneRef.current.discoverModules(20);
-      setHwModules([...fireoneRef.current.discoveredModules]);
-      toast.success(`${fireoneRef.current.discoveredModules.length} módulos encontrados`);
-    } catch (err: any) {
-      toast.error(`Scan falhou: ${err.message}`);
+    if (hwSimulated) {
+      const sims = Array.from({ length: 6 }, (_, i) => createSimulatedModuleStatus(i + 1, i >= 3));
+      setHwModules(sims);
+      toast.success(`${sims.length} módulos simulados carregados`);
+    } else {
+      try {
+        await fireoneRef.current.discoverModules(20);
+        setHwModules([...fireoneRef.current.discoveredModules]);
+        toast.success(`${fireoneRef.current.discoveredModules.length} módulos encontrados`);
+      } catch (err: any) {
+        toast.error(`Scan falhou: ${err.message}`);
+      }
     }
     setHwScanning(false);
-  }, [requireHw]);
+  }, [hwSimulated]);
 
   const handleHwFire = useCallback(async (modAddr: number, igniterPos: number) => {
     if (!masterArmed || !deadmanHeld) return;
-    if (!requireHw()) return;
-    try {
-      await fireoneRef.current.fireIgniter(modAddr, igniterPos, 500);
-    } catch (err: any) {
-      toast.error(`Fire falhou: ${err.message}`);
+    if (hwSimulated) {
+      setHwModules(prev => prev.map(m =>
+        m.moduleAddress === modAddr
+          ? { ...m, igniters: m.igniters.map(ig => ig.position === igniterPos ? { ...ig, fired: true } : ig) }
+          : m
+      ));
+      broadcastModuleFire(modAddr, igniterPos, `HW-M${modAddr}-I${igniterPos}`);
+      toast.success(`🔥 HW Fire M${modAddr} I${igniterPos}`);
+    } else {
+      try {
+        await fireoneRef.current.fireIgniter(modAddr, igniterPos, 500);
+      } catch (err: any) {
+        toast.error(`Fire falhou: ${err.message}`);
+      }
     }
-  }, [masterArmed, deadmanHeld, requireHw]);
+  }, [masterArmed, deadmanHeld, hwSimulated, broadcastModuleFire]);
 
   const handleHwArmModule = useCallback(async (modAddr: number, arm: boolean) => {
-    if (!requireHw()) return;
-    try {
-      if (arm) await fireoneRef.current.armModule(modAddr);
-      else await fireoneRef.current.disarmModule(modAddr);
-    } catch (err: any) { toast.error(err.message); }
-  }, [requireHw]);
+    if (hwSimulated) {
+      setHwModules(prev => prev.map(m => m.moduleAddress === modAddr ? { ...m, armed: arm } : m));
+    } else {
+      try {
+        if (arm) await fireoneRef.current.armModule(modAddr);
+        else await fireoneRef.current.disarmModule(modAddr);
+      } catch (err: any) { toast.error(err.message); }
+    }
+  }, [hwSimulated]);
 
   const handleHwEmergencyStop = useCallback(async () => {
-    if (hwConnected) {
+    if (hwSimulated) {
+      setHwModules(prev => prev.map(m => ({ ...m, armed: false })));
+    } else {
       try { await fireoneRef.current.emergencyStop(); } catch { /* ignore */ }
     }
     handlePanic();
-  }, [hwConnected, handlePanic]);
+  }, [hwSimulated, handlePanic]);
 
   const handleHwContinuity = useCallback(async (modAddr: number) => {
-    if (!requireHw()) return;
-    try { await fireoneRef.current.requestContinuity(modAddr); } catch (err: any) { toast.error(err.message); }
-  }, [requireHw]);
+    if (hwSimulated) {
+      setHwModules(prev => prev.map(m =>
+        m.moduleAddress === modAddr
+          ? { ...m, igniters: m.igniters.map(ig => ({ ...ig, continuityOk: ig.connected && ig.resistance > 0.5 && ig.resistance < 10 })) }
+          : m
+      ));
+      toast.success(`Continuity check M${modAddr} completo`);
+    } else {
+      try { await fireoneRef.current.requestContinuity(modAddr); } catch (err: any) { toast.error(err.message); }
+    }
+  }, [hwSimulated]);
 
 
   const broadcastFire = useCallback((fixture: VirtualFixture) => {
@@ -486,7 +462,7 @@ export default function MobileLinkMode({ fs, fireChannel, channels, artNetConnec
     haptics.fire();
 
     setEvents(prev => [{
-      id: nextEvtId(),
+      id: `evt-${Date.now()}-${Math.random().toString(36).slice(2, 4)}`,
       timestamp: Date.now(), source: 'local' as const,
       fixtureName: fixture.name, type: fixture.type,
       color: fixture.color, intensity: fixture.intensity,
@@ -579,23 +555,17 @@ export default function MobileLinkMode({ fs, fireChannel, channels, artNetConnec
             </div>
           </div>
         </div>
-        <div className="flex items-center gap-2">
-          {/* Real link/transport indicators only */}
+        <div className="flex items-center gap-1.5">
+          {/* Connection LEDs */}
           {[
-            { label: 'Art-Net', on: artNetConnected },
-            { label: 'Relay', on: relayConnected },
-            { label: 'Realtime', on: connected },
-            { label: 'Serial', on: hwConnected },
+            { label: 'ArtN', on: artNetConnected, color: 'green' },
+            { label: 'UDP', on: relayConnected, color: 'cyan' },
+            { label: 'RT', on: connected, color: 'green' },
           ].map(led => (
-            <div key={led.label} className="flex items-center gap-1" title={`${led.label} ${led.on ? 'online' : 'offline'}`}>
-              <div className={cn(
-                "rounded-full w-1.5 h-1.5",
-                led.on ? "bg-green-500" : "bg-muted-foreground/25"
-              )}
-                style={led.on ? { boxShadow: '0 0 4px rgba(34,197,94,0.5)' } : undefined} />
-              <span className={cn("font-mono", tsS, led.on ? "text-green-500/70" : "text-muted-foreground/30")}>
-                {led.label}
-              </span>
+            <div key={led.label} className="flex items-center gap-0.5" title={led.label}>
+              <div className={cn("rounded-full w-1.5 h-1.5", led.on ? `bg-${led.color}-500` : "bg-muted-foreground/20")}
+                style={led.on ? { boxShadow: `0 0 4px ${led.color === 'cyan' ? 'rgba(0,220,255,0.5)' : 'rgba(34,197,94,0.5)'}` } : undefined} />
+              <span className={cn("font-mono", tsS, led.on ? `text-${led.color}-500/60` : "text-muted-foreground/20")}>{led.label}</span>
             </div>
           ))}
         </div>
@@ -667,91 +637,21 @@ export default function MobileLinkMode({ fs, fireChannel, channels, artNetConnec
               {connectedModules.length} MOD · {totalIgniters} IGN · {firedIgniters} FIRED
             </span>
           </div>
-          {/* Hardware presence (real signals only) */}
-          <div className="flex items-center gap-2">
-            <span className={cn("font-mono", tsS, hwConnected ? "text-green-500/70" : "text-muted-foreground/40")}>
-              HW {hwConnected ? 'ONLINE' : 'OFFLINE'}
-            </span>
-            {hwConnected && (
-              <span className={cn("font-mono text-muted-foreground/40", tsS)}>
-                · {hwModules.length} MOD
-              </span>
-            )}
-            <button
-              onClick={() => setShowHistory(v => !v)}
-              title="Histórico de transições de link"
-              className={cn(
-                "ml-1 inline-flex items-center gap-1 rounded border px-1.5 py-0.5 font-mono uppercase transition-colors",
-                tsS,
-                showHistory
-                  ? "border-primary/40 text-primary bg-primary/10"
-                  : "border-border/20 text-muted-foreground/50 hover:text-muted-foreground"
-              )}>
-              <History className="w-3 h-3" />
-              HIST {linkHistory.filter(e => e.timestamp >= Date.now() - historyWindow * 1000).length}
-            </button>
+          {/* 4 Output LEDs */}
+          <div className="flex items-center gap-1">
+            <span className={cn("font-mono text-muted-foreground/20 mr-1", tsS)}>OUT:</span>
+            {[0, 1, 2, 3].map(i => (
+              <button key={i} onClick={() => setSelectedOutput(i)}
+                className={cn(
+                  "rounded-full transition-all",
+                  mob ? "w-3 h-3" : "w-2.5 h-2.5",
+                  selectedOutput === i
+                    ? masterArmed ? "bg-red-500 shadow-[0_0_6px_rgba(239,68,68,0.5)]" : "bg-green-500 shadow-[0_0_4px_rgba(34,197,94,0.4)]"
+                    : "bg-muted-foreground/15 hover:bg-muted-foreground/30"
+                )} title={`Output ${i + 1}`} />
+            ))}
           </div>
-
         </div>
-        {showHistory && (() => {
-          const cutoff = Date.now() - historyWindow * 1000;
-          const recent = linkHistory.filter(e => e.timestamp >= cutoff).slice().reverse();
-          const linkColor: Record<LinkName, string> = {
-            artnet: 'text-cyan-400', relay: 'text-amber-400',
-            realtime: 'text-violet-400', serial: 'text-green-400',
-          };
-          const stateColor: Record<LinkState, string> = {
-            online: 'text-green-400', offline: 'text-muted-foreground/60', error: 'text-red-400',
-          };
-          return (
-            <div className="border-t border-border/10 px-2 py-1.5">
-              <div className="flex items-center justify-between mb-1">
-                <span className={cn("font-mono uppercase tracking-wider text-muted-foreground/60", tsS)}>
-                  Link history · last {historyWindow}s
-                </span>
-                <div className="flex items-center gap-1">
-                  {[30, 60].map(w => (
-                    <button key={w} onClick={() => setHistoryWindow(w as 30 | 60)}
-                      className={cn(
-                        "rounded px-1.5 py-0.5 font-mono border", tsS,
-                        historyWindow === w
-                          ? "border-primary/40 text-primary bg-primary/10"
-                          : "border-border/15 text-muted-foreground/40 hover:text-muted-foreground/70"
-                      )}>{w}s</button>
-                  ))}
-                  <button onClick={() => setLinkHistory([])}
-                    className={cn("rounded px-1.5 py-0.5 font-mono border border-border/15 text-muted-foreground/40 hover:text-red-400", tsS)}>
-                    Clear
-                  </button>
-                </div>
-              </div>
-              {recent.length === 0 ? (
-                <div className={cn("font-mono text-muted-foreground/30 py-1", tsS)}>
-                  Sem transições nos últimos {historyWindow}s — links estáveis.
-                </div>
-              ) : (
-                <ScrollArea className="max-h-24">
-                  <div className="flex flex-col gap-0.5">
-                    {recent.map(e => {
-                      const ageS = Math.max(0, Math.round((Date.now() - e.timestamp) / 1000));
-                      const tStr = new Date(e.timestamp).toLocaleTimeString('pt-BR', { hour12: false });
-                      return (
-                        <div key={e.id} className={cn("flex items-center gap-2 font-mono", tsS)}>
-                          <span className="text-muted-foreground/40 w-16 shrink-0">{tStr}</span>
-                          <span className="text-muted-foreground/30 w-8 shrink-0">-{ageS}s</span>
-                          <span className={cn("uppercase font-bold w-16 shrink-0", linkColor[e.link])}>{e.link}</span>
-                          <span className={cn("uppercase", stateColor[e.from])}>{e.from}</span>
-                          <span className="text-muted-foreground/30">→</span>
-                          <span className={cn("uppercase font-bold", stateColor[e.to])}>{e.to}</span>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </ScrollArea>
-              )}
-            </div>
-          );
-        })()}
       </div>
 
       {masterArmed && (
@@ -962,14 +862,16 @@ export default function MobileLinkMode({ fs, fireChannel, channels, artNetConnec
               </button>
             </div>
 
-            {/* Timecode source — internal clock only (real sources not wired) */}
+            {/* Timecode source */}
             <div className="flex items-center gap-2">
               <span className={cn("font-mono text-muted-foreground/30", tsS)}>Source:</span>
-              <span className={cn("font-mono rounded px-1.5 py-0.5 border border-primary/30 bg-primary/10 text-primary/70", tsS)}>
-                Internal
-              </span>
+              {['Internal', 'LTC', 'MTC', 'GPS'].map(src => (
+                <span key={src} className={cn("font-mono rounded px-1.5 py-0.5 border", tsS,
+                  src === 'Internal' ? "border-primary/30 bg-primary/10 text-primary/70" : "border-border/10 text-muted-foreground/20")}>
+                  {src}
+                </span>
+              ))}
             </div>
-
 
             {/* Cue list */}
             <div className={cn("rounded border border-border/10 bg-[hsl(220_10%_5%)]", mob ? "p-2" : "p-1.5")}>
@@ -1012,7 +914,7 @@ export default function MobileLinkMode({ fs, fireChannel, channels, artNetConnec
           <div className="space-y-2">
             <div className="flex items-center justify-between">
               <span className={cn("font-bold text-muted-foreground/40 uppercase tracking-wider", tsS)}>Continuity Check</span>
-              <button onClick={() => setModules([])}
+              <button onClick={() => setModules(createDefaultModules())}
                 className={cn("text-primary/50 font-bold uppercase", tsS)}>Refresh</button>
             </div>
             {modules.filter(m => m.connected).map(mod => {
@@ -1058,29 +960,36 @@ export default function MobileLinkMode({ fs, fireChannel, channels, artNetConnec
         {xl4Mode === 'hardware' && (
           <div className="space-y-2">
             {/* Connection */}
-            <div className={cn("rounded-lg border bg-[hsl(220_10%_7%)]", hwConnected ? "border-green-500/30" : "border-border/15")}>
+            <div className={cn("rounded-lg border bg-[hsl(220_10%_7%)]", hwConnected || hwSimulated ? "border-green-500/30" : "border-border/15")}>
               <div className={cn("flex items-center gap-2 p-2")}>
-                <CircuitBoard className={cn("shrink-0", mob ? "w-5 h-5" : "w-4 h-4", hwConnected ? "text-green-400" : "text-muted-foreground/30")} />
+                <CircuitBoard className={cn("shrink-0", mob ? "w-5 h-5" : "w-4 h-4", hwConnected || hwSimulated ? "text-green-400" : "text-muted-foreground/30")} />
                 <div className="flex-1 min-w-0">
                   <div className={cn("font-bold uppercase tracking-wider text-foreground/70", tsL)}>
-                    FireOne RS-485
+                    FireOne RS-485 {hwSimulated ? '(Simulado)' : ''}
                   </div>
                   <div className={cn("font-mono text-muted-foreground/40", tsS)}>
-                    {hwConnected ? '● Conectado · 9600 8N1' : '○ Desconectado'}
+                    {hwConnected ? '● Conectado · 9600 8N1' : hwSimulated ? '● Modo simulação ativo' : '○ Desconectado'}
                   </div>
                 </div>
                 <div className="flex items-center gap-1">
-                  {hwConnected ? (
-                    <Button size="sm" variant="outline" onClick={handleHwDisconnect}
-                      className={cn(mob ? "h-8 text-[10px]" : "h-6 text-[8px]", "border-red-500/30 text-red-400")}>
-                      Desconectar
-                    </Button>
-                  ) : (
-                    <Button size="sm" onClick={handleHwConnect}
-                      className={cn(mob ? "h-8 text-[10px]" : "h-6 text-[8px]")}>
-                      <Usb className="w-3 h-3 mr-1" /> Conectar
-                    </Button>
-                  )}
+                  <button onClick={() => setHwSimulated(!hwSimulated)}
+                    className={cn("rounded border font-bold transition-all", mob ? "px-2 py-1 text-[9px]" : "px-1.5 py-0.5 text-[8px]",
+                      hwSimulated ? "border-amber-500/30 bg-amber-500/10 text-amber-400" : "border-border/15 text-muted-foreground/30")}>
+                    SIM
+                  </button>
+                  {!hwSimulated ? (
+                    hwConnected ? (
+                      <Button size="sm" variant="outline" onClick={handleHwDisconnect}
+                        className={cn(mob ? "h-8 text-[10px]" : "h-6 text-[8px]", "border-red-500/30 text-red-400")}>
+                        Desconectar
+                      </Button>
+                    ) : (
+                      <Button size="sm" onClick={handleHwConnect}
+                        className={cn(mob ? "h-8 text-[10px]" : "h-6 text-[8px]")}>
+                        <Usb className="w-3 h-3 mr-1" /> Conectar
+                      </Button>
+                    )
+                  ) : null}
                 </div>
               </div>
             </div>
@@ -1099,7 +1008,7 @@ export default function MobileLinkMode({ fs, fireChannel, channels, artNetConnec
 
             {hwModules.length === 0 ? (
               <div className={cn("text-center text-muted-foreground/20 py-4 font-mono rounded border border-dashed border-border/10", tsS)}>
-                {hwConnected ? 'Clique em Scan para descobrir módulos' : 'Conecte o hardware FireOne via USB para descobrir módulos'}
+                {hwSimulated || hwConnected ? 'Clique em Scan para descobrir módulos' : 'Conecte o hardware ou ative o modo SIM'}
               </div>
             ) : (
               <div className="space-y-1.5">
