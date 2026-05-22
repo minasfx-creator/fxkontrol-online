@@ -590,6 +590,7 @@ export default function EffectLibrary() {
       ...EFFECT_LIBRARY,
       ...FINALE_SHELL_PRESET_EFFECTS,
       ...FWSIM_BUILTIN_EFFECTS,
+      ...FWE_MINE_EFFECTS,
       ...getFinaleEffects(),
       ...FWE_UPLOADED_EFFECTS,
       ...importedFweEffects,
