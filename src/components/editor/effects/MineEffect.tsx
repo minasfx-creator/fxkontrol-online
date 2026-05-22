@@ -236,11 +236,15 @@ export default function MineEffect({
     const time = clock.getElapsedTime();
     const envelope = attackReleaseEnvelope(progress, 0.015, 0.55, 3.2);
 
-    // Wind integration
+    // Wind integration — mines are heavy ground spray (fast burn, dense ejecta).
+    // Real-world wind tilts the smoke column, NOT the bright jets. The previous
+    // coefficient (0.08) caused every burst to drift in the same direction →
+    // user reported "todas tombadas pro mesmo lado". Drop to 0.012 so the jets
+    // stay vertical-symmetric and only smoke/drips show a subtle lean.
     const { wind } = useProjectStore.getState();
     const windRad = (wind.direction * Math.PI) / 180;
-    const windX = wind.enabled ? Math.sin(windRad) * wind.speed * 0.08 : 0;
-    const windZ = wind.enabled ? Math.cos(windRad) * wind.speed * 0.08 : 0;
+    const windX = wind.enabled ? Math.sin(windRad) * wind.speed * 0.012 : 0;
+    const windZ = wind.enabled ? Math.cos(windRad) * wind.speed * 0.012 : 0;
 
     // Inject density into fluid grid on burst (once)
     const fluidGrid = (window as any).__niagaraFluidGrid as FluidGrid | undefined;
