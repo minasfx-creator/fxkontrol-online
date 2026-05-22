@@ -15,6 +15,7 @@ import type { Effect } from '@/data/effectLibrary';
 import { EFFECT_LIBRARY } from '@/data/effectLibrary';
 import { FWSIM_BUILTIN_EFFECTS } from '@/data/fwsimBuiltinPresets';
 import { FWE_MINE_EFFECTS } from '@/data/fweMineCatalog';
+import { getStandardEffects } from '@/data/standardEffectsCatalog';
 import bundleJson from './generated/finaleLibrariesParts.json';
 import type { FinaleLibrariesBundle, FinalePart, FinaleLibraryId } from './types';
 import { finalePartToEffect, finalePartToEffectId } from './finalePartToEffect';
