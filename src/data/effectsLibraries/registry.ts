@@ -14,6 +14,7 @@
 import type { Effect } from '@/data/effectLibrary';
 import { EFFECT_LIBRARY } from '@/data/effectLibrary';
 import { FWSIM_BUILTIN_EFFECTS } from '@/data/fwsimBuiltinPresets';
+import { FWE_MINE_EFFECTS } from '@/data/fweMineCatalog';
 import bundleJson from './generated/finaleLibrariesParts.json';
 import type { FinaleLibrariesBundle, FinalePart, FinaleLibraryId } from './types';
 import { finalePartToEffect, finalePartToEffectId } from './finalePartToEffect';
@@ -111,6 +112,7 @@ export function getMergedEffectsCatalog(): MergedEffectsCatalog {
   const sources: ReadonlyArray<{ src: 'curated' | 'fwsim' | 'finale'; list: Effect[] }> = [
     { src: 'curated', list: EFFECT_LIBRARY },
     { src: 'fwsim', list: FWSIM_BUILTIN_EFFECTS },
+    { src: 'fwsim', list: FWE_MINE_EFFECTS },
     { src: 'finale', list: getFinaleEffects() },
   ];
 
