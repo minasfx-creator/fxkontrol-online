@@ -715,7 +715,7 @@ export default function PostProcessing({ activeBurstCount = 0 }: { activeBurstCo
         <>
           {/* Legacy Layer 1: Core catch — threshold raised to 3.5 for real flashes only */}
           <Bloom
-            intensity={str * 0.04 * bloomMul}
+            intensity={str * 0.04 * bloomMul * legacyBloomMul}
             luminanceThreshold={3.5}
             luminanceSmoothing={0.05}
             kernelSize={KernelSize.MEDIUM}
@@ -725,10 +725,10 @@ export default function PostProcessing({ activeBurstCount = 0 }: { activeBurstCo
           {/* Legacy Layer 2: Star halos — threshold raised to 5.0, intense explosions only */}
           {hasBursts && (
             <Bloom
-              intensity={str * 0.025 * bloomMul}
+              intensity={str * 0.025 * bloomMul * legacyBloomMul}
               luminanceThreshold={5.0}
               luminanceSmoothing={0.2}
-              kernelSize={KernelSize.LARGE}
+              kernelSize={legacyLargeKernel}
               mipmapBlur
             />
           )}
@@ -740,7 +740,7 @@ export default function PostProcessing({ activeBurstCount = 0 }: { activeBurstCo
         <GodRays intensity={0.5 + activeBurstCount * 0.08} />
       ) : (hasHeavyBursts && (
         <Bloom
-          intensity={str * 0.008 * bloomMul}
+          intensity={str * 0.008 * bloomMul * legacyBloomMul}
           luminanceThreshold={6.0}
           luminanceSmoothing={0.5}
           kernelSize={KernelSize.HUGE}
