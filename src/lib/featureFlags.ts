@@ -49,10 +49,10 @@ const FLAGS = {
   r_fwsim_tonemapping: false,
   /** Apply FWsim ShellLaunchFlame.SizeDependingOnEnergy curves to LaunchFlash. Renderer wiring pending. */
   r_fwsim_launch_flash_v2: false,
-  /** Apply FWsim MineFlame + LaunchSparksConfig.Mine_* curves to MineEffect. Renderer wiring pending. */
-  r_fwsim_mine_calibration: false,
-  /** Use canonical FWsim smoke sprite (smoke_with_alpha.png) in SmokeSystem. Renderer wiring pending. */
-  r_fwsim_smoke_texture: false,
+  /** Apply FWsim MineFlame.sizeDependingOnEnergy + brightness/duration to MineEffect muzzle flash. */
+  r_fwsim_mine_calibration: true,
+  /** Use canonical FWsim smoke sprite (smoke_with_alpha.png) in MineEffect ground plume. */
+  r_fwsim_smoke_texture: true,
   /** Expose FWsim PresetColors_ palette to renderers (read-only lookup via getFwsimPresetHex). */
   fwsim_extended_palette: true,
 } as const;
