@@ -51,6 +51,7 @@ import {
   CakeEffect,
   ConfettiEffect,
   MovingHeadEffect,
+  GenericFXFallback,
   PrefireShell,
   SmokeTrail,
   EmberParticles,
@@ -1724,7 +1725,13 @@ export function TimelineEffects() {
         if (pt === 'girandola') return <GirandolaEffect key={item.id} position={pos} color={effect.color} progress={progress} caliber={caliber} />;
         if (pt === 'cake') return <CakeEffect key={item.id} position={pos} color={effect.color} progress={progress} shotCount={effect.shotCount || 25} pattern={vdlFiringPattern} caliber={caliber} formulationId={effFormulationId} launchHeading={launchHeading} launchPitch={launchPitch} presetId={cakePresetId} />;
         if (pt === 'laser') return <LaserEffect key={item.id} position={pos} color={effect.color} progress={progress} pattern={effect.laserPattern || 'fan'} beamCount={effect.beamCount || 8} />;
-        if (pt === 'light' && effect.beamType) return <MovingHeadEffect key={item.id} position={pos} color={effect.color} progress={progress} beamType={effect.beamType} />;
+        if (pt === 'light') {
+          // Light cues SEMPRE renderizam algo visível. Com beamType → moving-head
+          // dedicado; sem beamType → cone aditivo vertical do GenericFXFallback
+          // (antes virava QuadcopterModel invisível).
+          if (effect.beamType) return <MovingHeadEffect key={item.id} position={pos} color={effect.color} progress={progress} beamType={effect.beamType} />;
+          return <GenericFXFallback key={item.id} position={pos} color={effect.color} progress={progress} kind="light" id={eid} />;
+        }
 
         if (eid === 'sfx-01') return <CryoJetEffect key={item.id} position={pos} color={effect.color} progress={progress} height={scaledHeight || 6} />;
         if (eid === 'sfx-02') return <CryoJetEffect key={item.id} position={pos} color={effect.color} progress={progress} height={scaledHeight || 8} horizontal />;
@@ -1775,7 +1782,11 @@ export function TimelineEffects() {
             presetId={shellPresetId}
           />
         );
-        return <LightPoint key={item.id} position={pos} color={effect.color} />;
+        // Fallback genérico — qualquer efeito da livraria sem renderer dedicado
+        // (lancework, flame Showven SHV3xxx, drone/form placeholders, lighting
+        // genérico) ainda aparece no viewport via GenericFXFallback (classifica
+        // por partType + id-prefix). Antes virava QuadcopterModel invisível.
+        return <GenericFXFallback key={item.id} position={pos} color={effect.color} progress={progress} kind={pt} id={eid} />;
       })}
     </>
   );
