@@ -899,6 +899,35 @@ function executeCommand(cmd: JoiCommand): JoiCommandResult {
         };
       }
 
+      case 'commit_dossier_to_cloud': {
+        const { useActiveVenue } = require('@/store/useActiveVenue') as typeof import('@/store/useActiveVenue');
+        const { getVenuePreset } = require('@/lib/showVenuePresets') as typeof import('@/lib/showVenuePresets');
+        const id = params.id || useActiveVenue.getState().activeVenuePresetId;
+        const preset = id ? getVenuePreset(id) : undefined;
+        if (!preset) return { action, success: false, label: `${action}: nenhum venue ativo` };
+        const { commitJoiDossierToCloud } = require('@/utils/joiDossierExport') as typeof import('@/utils/joiDossierExport');
+        const ttl = Number(params.ttlSec);
+        // Fire and forget but capture result for toast/transcript via promise chain.
+        void commitJoiDossierToCloud(preset, {
+          signedUrlTtlSec: Number.isFinite(ttl) && ttl > 0 ? ttl : undefined,
+        }).then((res) => {
+          if (res.ok) {
+            toast.success(`Dossiê na nuvem: ${res.filename}`, {
+              description: `URL assinada válida por ${Math.round(res.expiresInSec / 3600)}h`,
+              action: { label: 'Copiar URL', onClick: () => navigator.clipboard?.writeText(res.signedUrl) },
+              duration: 12000,
+            });
+          } else {
+            toast.error(`commit_dossier_to_cloud falhou`, { description: res.error });
+          }
+        });
+        return {
+          action, success: true,
+          label: `Upload do dossiê iniciado: ${preset.name}`,
+          detail: 'URL assinada será exibida em toast ao concluir',
+        };
+      }
+
       default:
         return { action, success: false, label: `Comando desconhecido: ${action}` };
 
