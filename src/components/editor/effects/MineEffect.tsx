@@ -9,6 +9,8 @@ import { getChemistryForRendering, autoMatchFormulation } from '@/render_ultra/f
 import { resolveMinePresetProps } from '@/data/finalePresets';
 import { selectMineSilhouette } from '@/render/silhouettes/mineSilhouettes';
 import { isEnabled } from '@/lib/featureFlags';
+import { getFwsimGraphics, sampleCurve } from '@/data/fwsimGraphicsConfig';
+import { getFwsimSmokeTexture } from '@/render/textures/fwsimSmokeTexture';
 
 /**
  * Mine Effect — Multi-phase ground burst (PyroJam 2026 reference)
@@ -478,13 +480,41 @@ export default function MineEffect({
 
   const screenBlend = useMemo(() => getThreeBlending('screen'), []);
 
+  // FWsim graphics.xml canonical tuning (opt-in via r_fwsim_mine_calibration).
+  // mineFlame.sizeDependingOnEnergy maps caliber→size multiplier; brightness
+  // and duration come from the same canonical block. When OFF, fall back to
+  // the legacy literal constants used before the FWsim integration.
+  const mineCalib = useMemo(() => {
+    if (!isEnabled('r_fwsim_mine_calibration')) {
+      return { sizeMult: 1, brightness: 0.7, durationMult: 1 };
+    }
+    const cfg = getFwsimGraphics().flashes.mineFlame;
+    // caliber stored in inches; FWsim curve is x = launch energy ≈ shell mm.
+    const calibMm = Math.max(16, Math.min(100, caliber * 25.4));
+    const sizeMult = sampleCurve(
+      cfg.sizeDependingOnEnergy as unknown as ReadonlyArray<readonly [number, number]>,
+      calibMm,
+    );
+    return {
+      sizeMult: Math.max(0.2, sizeMult),
+      brightness: Math.max(0.1, Math.min(1, cfg.brightness * 0.5)), // brightness 2 → opacity ~1
+      durationMult: Math.max(0.5, cfg.duration / 0.15),
+    };
+  }, [caliber]);
+
   // Mines are omnidirectional — root group is intentionally NOT rotated.
   // launchHeading/launchPitch are still accepted in the props for future
   // selective use (e.g. sutil column tilt ≤10°), but never tip the cloud.
   void launchHeading; void launchPitch;
 
   // Combustion-modulated muzzle flash
-  const muzzleFlashOpacity = useMemo(() => 0.7, []);
+  const muzzleFlashOpacity = useMemo(() => 0.7 * mineCalib.brightness / 0.7, [mineCalib]);
+
+  // FWsim smoke sprite (opt-in via r_fwsim_smoke_texture).
+  const smokeMap = useMemo(
+    () => (isEnabled('r_fwsim_smoke_texture') ? getFwsimSmokeTexture() : null),
+    [],
+  );
 
   // Per-particle size shader
   const sizeVertexShader = `
@@ -517,13 +547,13 @@ export default function MineEffect({
           spray fans hemispherically, drips fall by gravity. Tilting the whole
           group would tip the ground ring and the entire particle field. */}
       {/* Combustion muzzle flash with flicker */}
-      {progress < 0.08 && (
+      {progress < 0.08 * mineCalib.durationMult && (
         <mesh position={[0, 0.3, 0]}>
-          <sphereGeometry args={[0.6 + caliber * 0.3 + progress * 8, 16, 16]} />
+          <sphereGeometry args={[(0.6 + caliber * 0.3 + progress * 8) * mineCalib.sizeMult, 16, 16]} />
           <meshBasicMaterial
             color="#FFFFF0"
             transparent
-            opacity={muzzleFlashOpacity * (1 - progress / 0.08)}
+            opacity={muzzleFlashOpacity * (1 - progress / (0.08 * mineCalib.durationMult))}
             blending={screenBlend.blending}
             blendEquation={screenBlend.blendEquation}
             blendSrc={screenBlend.blendSrc as any}
@@ -596,8 +626,17 @@ export default function MineEffect({
             <bufferAttribute attach="attributes-size" args={[smokeSizeRef, 1]} />
           </bufferGeometry>
           <shaderMaterial
+            key={smokeMap ? 'fwsim-tex' : 'procedural'}
             vertexShader={sizeVertexShader}
-            fragmentShader={`
+            fragmentShader={smokeMap ? `
+              uniform sampler2D uSmokeTex;
+              varying vec3 vColor;
+              void main() {
+                vec4 tex = texture2D(uSmokeTex, gl_PointCoord);
+                if (tex.a < 0.02) discard;
+                gl_FragColor = vec4(vColor * tex.rgb, tex.a * 0.18);
+              }
+            ` : `
               varying vec3 vColor;
               void main() {
                 float dist = length(gl_PointCoord - vec2(0.5));
@@ -606,6 +645,7 @@ export default function MineEffect({
                 gl_FragColor = vec4(vColor, alpha);
               }
             `}
+            uniforms={smokeMap ? { uSmokeTex: { value: smokeMap } } : undefined}
             transparent
             depthWrite={false}
             depthTest={false}
