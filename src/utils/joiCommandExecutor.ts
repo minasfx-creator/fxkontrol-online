@@ -1,6 +1,15 @@
 /**
  * Joi Command Executor — Parses [JOI_CMD]{...}[/JOI_CMD] blocks from AI responses
- * and dispatches platform operations to useProjectStore + system inspection.
+ * and dispatches platform operations to useProjectStore.
+ *
+ * EXECUÇÃO LIVRE: Joi tem liberdade total no editor (design/simulação).
+ * Zero gates de safety/readiness/operationalMode aqui — o editor é por contrato
+ * uma zona de criação. Safety físico continua nos planos hardware/safety,
+ * intocados (uiCommandGateway, SafetyStateMachine, FieldBus).
+ *
+ * Handlers de inspeção dev (inspect_*, run_verification, check_readiness,
+ * inspect_hardware, inspect_exports, get_system_state, get_audit_log,
+ * generate_mermaid) foram REMOVIDOS — Joi não é instrumento de desenvolvimento.
  */
 import { useProjectStore } from '@/store/useProjectStore';
 import { EFFECT_LIBRARY } from '@/data/effectLibrary';
@@ -8,15 +17,13 @@ import { findEffectById } from '@/data/effectsLibraries/resolveEffect';
 import type { Effect } from '@/data/effectLibrary';
 import { timelineEngine } from '@/core/engine/timelineEngine';
 import { toast } from 'sonner';
-import { verificationEngine } from '@/core/verification/VerificationEngine';
-import { readinessEvaluator } from '@/core/hardware/ReadinessEvaluator';
-import { unifiedHardwareRegistry } from '@/core/hardware/UnifiedHardwareRegistry';
-import { exportCoordinator } from '@/core/export/ExportCoordinator';
-import { deviceEventLog } from '@/core/hardware/DeviceEventLog';
-import { operationalModeGuard } from '@/core/hardware/OperationalModeGuard';
-import { getProvenanceBadge, type IntegrationMode } from '@/core/hardware/provenance';
 import { showStyleManager } from '@/core/joi/ShowStyleManager';
 import { supabase } from '@/integrations/supabase/client';
+import {
+  materializeLayout, mirrorPositions, resolvePalette, pickPaletteColor,
+  planArcSchedule, snapToBeat, effectWindowDuration,
+  type LayoutPreset, type PaletteName, type DramaticPhase,
+} from '@/utils/joiChoreographyHelpers';
 
 export interface JoiCommandResult {
   action: string;
