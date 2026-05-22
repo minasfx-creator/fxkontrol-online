@@ -4,7 +4,7 @@
  * All editing tools moved to floating docks.
  */
 import { useState, useEffect, useCallback, lazy, Suspense } from 'react';
-import { useNavigate } from 'react-router-dom';
+// useNavigate removido — editor não roteia para /command nem hardware.
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Zap, Save, FolderOpen, Undo, Redo, Upload, FileJson, FilePlus, Download, ChevronDown, Wand2, PlusCircle, Cog, Paintbrush, Map, Globe, FileBarChart, Cloud, Eye, Volume2, Film, MapPinned, Atom, Share2, Users, History, MessageSquare, BoxSelect, Gauge, Sparkles, FileCode, Store, Lightbulb, MonitorSpeaker, FileArchive, Mountain, Building2, Command, Copy, Trash2, SkipBack, Navigation, LogOut, MapPin, Target, MousePointer, Shapes, LayoutGrid, Moon, Sun, Maximize2, Minimize2 } from 'lucide-react';
 import fxkLogo from '@/assets/fxk-logo.png';
@@ -19,9 +19,7 @@ import { useProjectPersistence } from '@/hooks/useProjectPersistence';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { secondsToTimecode, formatTimecode } from '@/lib/smpteEngine';
-import { useFireOneHardware } from '@/hooks/useFireOneHardware';
-import { usePBusHardware } from '@/hooks/usePBusHardware';
-import { artnetModuleService } from '@/services/artnetModuleService';
+// Hardware hooks (useFireOneHardware/usePBusHardware/artnetModuleService) removidos da Toolbar do editor.
 
 // ── Lazy-loaded modals (only fetched when user opens them) ──
 const lz = (loader: () => Promise<{ default: React.ComponentType<any> }>) => lazy(loader);
