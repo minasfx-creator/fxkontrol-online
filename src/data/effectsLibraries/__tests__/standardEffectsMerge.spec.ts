@@ -5,7 +5,9 @@ describe('registry merge — standard effects', () => {
   it('includes Standard Effects parts under FWsim manufacturer', () => {
     const merged = getMergedEffectsCatalog();
     const fromStd = merged.entries.filter((e) => e.effect.id.startsWith('se-'));
-    expect(fromStd.length).toBeGreaterThan(400);
+    // Standard Effects contribute many unique entries post-dedup; the rest
+    // collapse into earlier sources via effectFingerprint (curated/FWsim wins).
+    expect(fromStd.length).toBeGreaterThan(100);
     for (const e of fromStd) expect(e.manufacturer).toBe('FWsim');
   });
   it('totalRaw reflects all source lists summed', () => {
