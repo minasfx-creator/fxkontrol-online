@@ -36,7 +36,7 @@ export function getFwsimGraphics(): FwsimGraphicsConfig {
 
 /** Resolve a single FWsim preset color by name → `#rrggbb`. Returns null if unknown. */
 export function getFwsimPresetHex(name: string): string | null {
-  const palette = (getFwsimGraphics().presetColors as Record<string, [number, number, number]>);
+  const palette = getFwsimGraphics().presetColors as unknown as Record<string, [number, number, number]>;
   const v = palette[name];
   if (!v) return null;
   const [r, g, b] = v;
