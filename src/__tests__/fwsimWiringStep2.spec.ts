@@ -18,7 +18,7 @@ describe('FWsim Wiring Step 2 — r_fwsim_launch_flash_v2', () => {
   });
 
   it('shellLaunchFlame.sizeDependingOnEnergy curve has documented anchors', () => {
-    const curve = getFwsimGraphics().flashes.shellLaunchFlame.sizeDependingOnEnergy as ReadonlyArray<readonly [number, number]>;
+    const curve = getFwsimGraphics().flashes.shellLaunchFlame.sizeDependingOnEnergy as unknown as ReadonlyArray<readonly [number, number]>;
     expect(curve[0]).toEqual([16, 0.2]);
     expect(curve[1]).toEqual([1300, 1]);
     expect(curve[2]).toEqual([13000, 1.5]);
@@ -32,7 +32,7 @@ describe('FWsim Wiring Step 2 — r_fwsim_launch_flash_v2', () => {
   });
 
   it('sizeMult grows from caliber 3" to 8" (more energy → bigger flash)', () => {
-    const curve = getFwsimGraphics().flashes.shellLaunchFlame.sizeDependingOnEnergy as ReadonlyArray<readonly [number, number]>;
+    const curve = getFwsimGraphics().flashes.shellLaunchFlame.sizeDependingOnEnergy as unknown as ReadonlyArray<readonly [number, number]>;
     const small = sampleCurve(curve, energyFromCaliber(3));
     const big = sampleCurve(curve, energyFromCaliber(8));
     expect(big).toBeGreaterThan(small);
