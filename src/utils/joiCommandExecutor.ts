@@ -351,41 +351,111 @@ function executeCommand(cmd: JoiCommand): JoiCommandResult {
         const results: JoiCommandResult[] = [];
         const posMap = new Map<number, string>();
         let cueFails = 0;
+        const createdIds: string[] = [];
 
-        // Create positions
-        if (Array.isArray(params.positions)) {
-          params.positions.forEach((p: any, i: number) => {
-            const r = executeCommand({ action: 'add_position', params: p });
-            results.push(r);
-            if (r.success) {
-              const id = p.id || useProjectStore.getState().positions[useProjectStore.getState().positions.length - 1]?.id;
-              posMap.set(i, id);
-            }
+        // ── NOVOS PARÂMETROS (todos opcionais, backward compatible) ──
+        const layoutPreset = params.layoutPreset as LayoutPreset | undefined;
+        const paletteName = params.paletteName as PaletteName | undefined;
+        const customPalette = Array.isArray(params.palette) ? params.palette as string[] : undefined;
+        const mirrorX = params.mirrorX === true;
+        const bpm = typeof params.bpm === 'number' ? params.bpm : undefined;
+        const syncToBeat = params.syncToBeat === true;
+        const dramaticArc = Array.isArray(params.dramaticArc) ? params.dramaticArc as DramaticPhase[] : undefined;
+        const palette = resolvePalette(paletteName, customPalette);
+
+        // 1) Materializa posições via layoutPreset (se fornecido)
+        let inputPositions = Array.isArray(params.positions) ? params.positions : [];
+        if (layoutPreset && (!inputPositions.length || params.count)) {
+          const count = params.count ?? inputPositions.length ?? 6;
+          const generated = materializeLayout(layoutPreset, count, {
+            anchorX: params.anchorX, anchorZ: params.anchorZ,
+            spacing: params.spacing, radius: params.radius,
+            namePrefix: params.positionPrefix ?? 'POS',
           });
+          inputPositions = generated.map(g => ({
+            id: undefined, name: g.name, type: g.type,
+            x: g.x, y: g.y, z: g.z, heading: g.heading, pitch: g.pitch,
+            color: pickPaletteColor(palette, g.index),
+          }));
+          if (mirrorX) {
+            const mirrored = mirrorPositions(generated, generated.length);
+            mirrored.forEach((g, k) => inputPositions.push({
+              id: undefined, name: g.name, type: g.type,
+              x: g.x, y: g.y, z: g.z, heading: g.heading, pitch: g.pitch,
+              color: pickPaletteColor(palette, generated.length + k),
+            }));
+          }
         }
 
-        // Create cues — track individual failures and collect IDs
-        const createdIds: string[] = [];
-        if (Array.isArray(params.cues)) {
-          params.cues.forEach((c: any) => {
-            const posId = posMap.get(c.positionIndex);
-            const storeBefore = useProjectStore.getState().timelineItems.length;
-            const r = executeCommand({
-              action: 'add_effect',
-              params: { ...c, positionId: posId || c.positionId },
-            });
-            if (!r.success) {
-              cueFails++;
-            } else {
-              const storeAfter = useProjectStore.getState();
-              if (storeAfter.timelineItems.length > storeBefore) {
-                createdIds.push(storeAfter.timelineItems[storeAfter.timelineItems.length - 1].id);
+        inputPositions.forEach((p: any, i: number) => {
+          const r = executeCommand({ action: 'add_position', params: p });
+          results.push(r);
+          if (r.success) {
+            const id = p.id || useProjectStore.getState().positions[useProjectStore.getState().positions.length - 1]?.id;
+            posMap.set(i, id);
+          }
+        });
+
+        // 2) Cues: explícitos OU gerados via dramaticArc
+        let cueList: any[] = Array.isArray(params.cues) ? [...params.cues] : [];
+        if (cueList.length === 0 && dramaticArc && dramaticArc.length > 0) {
+          const totalDur = params.duration ?? store.duration ?? 60;
+          const schedule = planArcSchedule(dramaticArc, totalDur);
+          let colorIdx = 0;
+          const posCount = inputPositions.length || 1;
+          schedule.forEach(phaseSlot => {
+            const span = phaseSlot.end - phaseSlot.start;
+            for (let k = 0; k < phaseSlot.cueCount; k++) {
+              const t0 = phaseSlot.start + (span * k) / Math.max(1, phaseSlot.cueCount);
+              const t = bpm && syncToBeat ? snapToBeat(t0, bpm, 2) : t0;
+              cueList.push({
+                effectName: phaseSlot.phase === 'finale' ? 'Grand Peony' : phaseSlot.phase === 'climax' ? 'Chrysanthemum' : phaseSlot.phase === 'build' ? 'Peony' : 'Comet',
+                startTime: t,
+                positionIndex: (k + colorIdx) % posCount,
+                color: pickPaletteColor(palette, colorIdx++),
+              });
+              if (mirrorX && posCount > 1) {
+                cueList.push({
+                  effectName: phaseSlot.phase === 'finale' ? 'Grand Peony' : phaseSlot.phase === 'climax' ? 'Chrysanthemum' : phaseSlot.phase === 'build' ? 'Peony' : 'Comet',
+                  startTime: t,
+                  positionIndex: (posCount - 1) - ((k + colorIdx) % posCount),
+                  color: pickPaletteColor(palette, colorIdx),
+                });
               }
             }
           });
         }
 
-        // Auto-create cue markers for sections
+        // Aplica beat snap a cues explícitos quando syncToBeat=true
+        if (bpm && syncToBeat) {
+          cueList = cueList.map(c => ({ ...c, startTime: snapToBeat(c.startTime ?? 0, bpm, 2) }));
+        }
+
+        // Cake/candle reserva janela própria (não empilha cues em cima)
+        let lastByPos = new Map<number, number>();
+        cueList.forEach((c: any) => {
+          const posId = posMap.get(c.positionIndex);
+          const last = lastByPos.get(c.positionIndex) ?? -Infinity;
+          if (c.startTime !== undefined && c.startTime < last) {
+            c.startTime = last + 0.05;
+          }
+          const storeBefore = useProjectStore.getState().timelineItems.length;
+          const r = executeCommand({ action: 'add_effect', params: { ...c, positionId: posId || c.positionId } });
+          if (!r.success) {
+            cueFails++;
+          } else {
+            const storeAfter = useProjectStore.getState();
+            if (storeAfter.timelineItems.length > storeBefore) {
+              const last = storeAfter.timelineItems[storeAfter.timelineItems.length - 1];
+              createdIds.push(last.id);
+              const eff = findEffectById(last.effectId);
+              const window = effectWindowDuration(eff?.partType, c.duration);
+              lastByPos.set(c.positionIndex, (c.startTime ?? 0) + window);
+            }
+          }
+        });
+
+        // Cue markers de seção
         if (Array.isArray(params.sections)) {
           params.sections.forEach((s: any) => {
             executeCommand({
@@ -395,21 +465,29 @@ function executeCommand(cmd: JoiCommand): JoiCommandResult {
           });
         }
 
-        // Set project name
-        if (params.projectName) {
-          store.setProjectName(params.projectName);
+        if (params.projectName) store.setProjectName(params.projectName);
+        if (params.duration) {
+          store.setDuration(params.duration);
+          timelineEngine.setDuration(params.duration);
         }
 
-        const posCount = params.positions?.length || 0;
-        const cueCount = params.cues?.length || 0;
+        const posCount = inputPositions.length;
+        const cueCount = cueList.length;
+        const totalDur = params.duration ?? store.duration ?? 0;
+        const density = totalDur > 0 ? (cueCount / totalDur).toFixed(2) : '0';
         const failDetail = cueFails > 0 ? ` (${cueFails} falharam)` : '';
-        const idsDetail = createdIds.length > 0 ? `\nIDs criados: ${createdIds.join(', ')}` : '';
+        const layoutDetail = layoutPreset ? ` | layout:${layoutPreset}${mirrorX ? '+mirror' : ''}` : '';
+        const arcDetail = dramaticArc?.length ? ` | arco:${dramaticArc.join('→')}` : '';
+        const bpmDetail = bpm ? ` | ${bpm}BPM${syncToBeat ? ' snap' : ''}` : '';
+        const paletteDetail = paletteName ? ` | paleta:${paletteName}` : '';
         return {
           action, success: true,
           label: `Coreografia criada`,
-          detail: `${posCount} posições + ${cueCount} cues${failDetail}${idsDetail}`,
+          detail: `${posCount} posições + ${cueCount} cues @ ${density}/s${layoutDetail}${arcDetail}${bpmDetail}${paletteDetail}${failDetail}`,
         };
       }
+
+
 
       case 'clear_project': {
         const posCount = store.positions.length;
