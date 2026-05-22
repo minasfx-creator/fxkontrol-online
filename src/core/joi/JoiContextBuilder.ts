@@ -1,23 +1,12 @@
 /**
- * ─── JoiContextBuilder — System Context Assembler ──────────────────
- * Aggregates real-time data from all core subsystems into a structured
- * JoiSystemContext object for injection into AI conversations.
- * 
- * Sources: ShowPlan, VerificationEngine, ReadinessEvaluator,
- * UnifiedHardwareRegistry, ExportCoordinator, DeviceEventLog,
- * OperationalModeGuard, SafetyAuditTrail
+ * ─── JoiContextBuilder — Show Context Assembler ──────────────────
+ * Joi opera como secretária executiva / diretora de show & documentação.
+ * Contexto é puramente criativo: ShowPlan + biblioteca de efeitos.
+ * Gates de readiness/hardware/operationalMode foram REMOVIDOS — Joi não
+ * é instrumento de inspeção de software, e o editor é zona de criação livre.
  */
 
 import { useProjectStore } from '@/store/useProjectStore';
-import { verificationEngine } from '@/core/verification/VerificationEngine';
-import { readinessEvaluator } from '@/core/hardware/ReadinessEvaluator';
-import { unifiedHardwareRegistry } from '@/core/hardware/UnifiedHardwareRegistry';
-import { exportCoordinator } from '@/core/export/ExportCoordinator';
-import { deviceEventLog } from '@/core/hardware/DeviceEventLog';
-import { operationalModeGuard } from '@/core/hardware/OperationalModeGuard';
-import { verificationLog } from '@/core/verification/VerificationLog';
-import { getProvenanceBadge, type IntegrationMode } from '@/core/hardware/provenance';
-import { EFFECT_LIBRARY } from '@/data/effectLibrary';
 import { findEffectById } from '@/data/effectsLibraries/resolveEffect';
 
 export interface JoiSystemContext {
