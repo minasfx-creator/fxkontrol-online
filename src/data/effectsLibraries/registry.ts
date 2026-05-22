@@ -83,9 +83,10 @@ const MANUFACTURER_PRIORITY: EffectManufacturer[] = [
   'Curated', 'FWsim', 'Showven', 'Lidu', 'Magic', 'Winda', 'Amazon Fireworks', 'Other',
 ];
 
-function manufacturerOf(e: Effect, source: 'curated' | 'fwsim' | 'finale'): EffectManufacturer {
+function manufacturerOf(e: Effect, source: 'curated' | 'fwsim' | 'finale' | 'standard-effects'): EffectManufacturer {
   if (source === 'curated') return 'Curated';
   if (source === 'fwsim') return 'FWsim';
+  if (source === 'standard-effects') return 'FWsim';
   // finale parts: id is "fl-<libId>-..."
   if (e.id.startsWith('fl-showven-')) return 'Showven';
   if (e.id.startsWith('fl-lidu-')) return 'Lidu';
