@@ -79,6 +79,7 @@ function briefingStub(preset: VenueShowPreset): string {
     '## Diretrizes Regulatórias',
     'Validar todos os itens dos checklists anexos antes da operação real.',
     '',
+    renderTechnicalLayerMarkdown(preset),
     '---',
     '*Documento gerado por Joi · FXKONTROL · claim: marketing_hypothesis*',
   ].join('\n');
