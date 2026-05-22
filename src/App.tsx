@@ -52,15 +52,11 @@ function App() {
               <Routes>
                 <Route path="/auth" element={<AuthRoute><Auth /></AuthRoute>} />
                 <Route element={<ProtectedRoute><MainLayout /></ProtectedRoute>}>
-                  <Route path="/" element={<Dashboard />} />
+                  <Route path="/" element={<Navigate to="/editor" replace />} />
                   <Route path="/editor" element={<Index />} />
-                  <Route path="/agenda" element={<Agenda />} />
-                  <Route path="/training" element={<Training />} />
                   <Route path="/pcb-viewer" element={<PCBViewer />} />
-                  <Route path="/pairing" element={<DevicePairing />} />
                   <Route path="/command" element={<CommandCenter />} />
                   <Route path="/show-test" element={<ShowTestSimulator />} />
-                  <Route path="/field-test" element={<FieldTest />} />
                   <Route path="/settings" element={<Settings />} />
                   <Route path="/festival-stage-demo" element={<FestivalStageDemo />} />
                   <Route path="/pairing/two-wire" element={<PairingTwoWire />} />
