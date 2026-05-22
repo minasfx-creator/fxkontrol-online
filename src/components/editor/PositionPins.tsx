@@ -7,6 +7,7 @@ import { EFFECT_LIBRARY } from '@/data/effectLibrary';
 import { findEffectById } from '@/data/effectsLibraries/resolveEffect';
 import { useSceneStore } from '@/store/useSceneStore';
 import { useTerrainHeightCache } from '@/hooks/useTerrainHeightCache';
+import { useGeoPositionsTerrainSnap } from '@/hooks/useGeoPositionsTerrainSnap';
 import { useUndoStore } from '@/store/useUndoStore';
 import { useAddressingStore } from '@/store/useAddressingStore';
 import { getBreakHeight } from '@/lib/pyroPhysics';
