@@ -620,46 +620,14 @@ export default function Toolbar({ onOpenPanel, isMaximized, onToggleMaximize }: 
             {/* ── Separator ── */}
             <div className="w-px h-5 bg-border/20" />
 
-            {/* Command */}
+            {/* Command Palette (⌘K) — busca de painéis de composição */}
             <button onClick={() => setCommandMenuOpen(true)} className="h-7 px-2.5 flex items-center gap-1.5 rounded-md text-muted-foreground hover:text-foreground/80 hover:bg-muted/30 transition-all text-[10px] font-semibold uppercase tracking-wider" title="⌘K">
               <Command className="h-3 w-3" />
               <span>⌘K</span>
             </button>
 
-            {/* ── Separator ── */}
-            <div className="w-px h-5 bg-border/20" />
-
-            {/* LIVE + ARM + E-STOP */}
-            <button
-              onClick={() => onOpenPanel?.('showcommander')}
-              className="h-8 px-3 flex items-center gap-1.5 rounded-lg bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 border border-emerald-500/20 transition-all text-[10px] font-bold uppercase tracking-wider"
-            >
-              <Zap className="h-3.5 w-3.5" />
-              LIVE
-            </button>
-            <button
-              onClick={() => onOpenPanel?.('livefiring')}
-              className="h-8 px-3 flex items-center gap-1.5 rounded-lg bg-amber-500/10 text-amber-400 hover:bg-amber-500/20 border border-amber-500/20 transition-all text-[10px] font-bold uppercase tracking-wider"
-            >
-              <Shield className="h-3.5 w-3.5" />
-              ARM
-            </button>
-            <button
-              onClick={() => {
-                useProjectStore.getState().setPlaying(false);
-                toast.error('🔴 EMERGENCY STOP');
-              }}
-              className="h-9 px-4 flex items-center gap-1.5 rounded-xl bg-red-600 text-red-50 hover:bg-red-500 shadow-[0_0_20px_rgba(220,38,38,0.3)] transition-all text-[11px] font-black uppercase tracking-wider"
-            >
-              <AlertTriangle className="h-4 w-4" />
-              E-STOP
-            </button>
-
-            {/* ── Separator ── */}
-            <div className="w-px h-5 bg-border/20" />
-
-            {/* Hardware dots */}
-            <HardwareStatusDots onOpenPanel={onOpenPanel} />
+            {/* LIVE / ARM / E-STOP / Hardware dots removidos do editor.
+                Editor 3D = composição/simulação visual. Hardware, ARM, FIRE e E-STOP só em /command. */}
           </>
         )}
 
