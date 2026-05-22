@@ -832,6 +832,14 @@ export const useSceneStore = create<SceneSettingsState>((set) => ({
     }
     return { settings: next };
   }),
+  setVenueAnchor: (anchor) => set(s => ({
+    settings: {
+      ...s.settings,
+      geoAnchorLat: anchor.lat,
+      geoAnchorLon: anchor.lng,
+      geoAnchorAlt: anchor.alt ?? s.settings.geoAnchorAlt,
+    },
+  })),
   applyPreset: (presetId) => {
     const preset = SCENE_PRESETS[presetId];
     if (preset) set(s => ({ settings: { ...DEFAULT_SETTINGS, ...preset.settings } }));
