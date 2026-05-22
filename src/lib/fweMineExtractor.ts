@@ -175,7 +175,12 @@ export function extractMineSpecFromXml(xml: string, fileName: string): FweMineSp
   // Pick the inner / largest-count phase for primary
   const ranked = [...phases].sort((a, b) => (b.count ?? 0) - (a.count ?? 0));
   let primary = ranked.find((p) => !!p.color)?.color ?? null;
-  if (!primary) primary = primaryFromFilename(fileName);
+  // Filename label wins for single-solid mines (e.g. "Mine_Silver.fwe" — author intent
+  // overrides FWsim's internal RGB which is often a non-canonical brown/spark hue).
+  const filenamePrimary = primaryFromFilename(fileName);
+  const isSingleSolid = filenamePrimary && !/_to_|_w_|comet/i.test(low);
+  if (isSingleSolid) primary = filenamePrimary;
+  if (!primary) primary = filenamePrimary;
   if (!primary) primary = '#FFFFFF';
   let secondary: string | undefined;
   if (isColorShift) {

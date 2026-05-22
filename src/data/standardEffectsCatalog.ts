@@ -145,6 +145,14 @@ function defaultPrefire(part: PartType, p: StandardEffectPart): number {
   return Math.max(1, c * 0.5);
 }
 
+/** Build a fetch-safe URL: percent-encode each path segment (spaces, brackets, &). */
+function buildStandardEffectUrl(p: StandardEffectPart): string {
+  const segs = ['finale-presets', 'standard-effects', p.collection];
+  if (p.subPath) for (const s of p.subPath.split('/').filter(Boolean)) segs.push(s);
+  segs.push(p.fileName);
+  return '/' + segs.map(encodeURIComponent).join('/');
+}
+
 /** Convert a single StandardEffectPart → Effect. */
 export function standardEffectPartToEffect(p: StandardEffectPart): Effect {
   const part: PartType = ROOT_TO_PART[p.rootType ?? ''] ?? 'shell';
@@ -173,7 +181,7 @@ export function standardEffectPartToEffect(p: StandardEffectPart): Effect {
     hasPistil: p.hasPistil || undefined,
     impliesTrail: p.hasTailsLink || undefined,
     colorTransition: p.secondary ? `${color}→${p.secondary}` : undefined,
-    finalePresetUrl: `/finale-presets/standard-effects/${p.collection}${p.subPath ? '/' + p.subPath : ''}/${p.fileName}`,
+    finalePresetUrl: buildStandardEffectUrl(p),
   };
 }
 
