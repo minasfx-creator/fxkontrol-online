@@ -1,5 +1,6 @@
 import { handleCors } from "../_shared/cors.ts";
 import { jsonOk, jsonError } from "../_shared/response.ts";
+import { requireAuth } from "../_shared/auth.ts";
 
 Deno.serve(async (req) => {
   const preflight = handleCors(req);
