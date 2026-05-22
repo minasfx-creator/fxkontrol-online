@@ -1782,7 +1782,11 @@ export function TimelineEffects() {
             presetId={shellPresetId}
           />
         );
-        return <LightPoint key={item.id} position={pos} color={effect.color} />;
+        // Fallback genérico — qualquer efeito da livraria sem renderer dedicado
+        // (lancework, flame Showven SHV3xxx, drone/form placeholders, lighting
+        // genérico) ainda aparece no viewport via GenericFXFallback (classifica
+        // por partType + id-prefix). Antes virava QuadcopterModel invisível.
+        return <GenericFXFallback key={item.id} position={pos} color={effect.color} progress={progress} kind={pt} id={eid} />;
       })}
     </>
   );
