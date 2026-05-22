@@ -11,8 +11,8 @@ import { haptics } from '@/lib/haptics';
 import { prefetchRoute } from '@/lib/prefetchRoutes';
 import { useSceneStore } from '@/store/useSceneStore';
 import {
-  LayoutDashboard, Clapperboard, CalendarDays,
-  Crosshair, Gamepad2, Rocket, Activity,
+  Clapperboard,
+  Crosshair, Rocket,
   Settings, Shield,
 } from 'lucide-react';
 import { useAdminRole } from '@/hooks/useAdminRole';
