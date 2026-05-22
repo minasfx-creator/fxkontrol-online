@@ -191,6 +191,25 @@ def extract(path):
     collection = rel.split('/')[0]
     subPath = '/'.join(rel.split('/')[1:-1]) or None
     stem = re.sub(r'\.fwe$', '', file_name, flags=re.IGNORECASE)
+
+    # Detect extended type (Vulcano, PhotoFlash, FlameJet, etc.) from name when XML is generic
+    type_real = root_type
+    if root_type in (None, 'Fountain'):
+        for et in EXTENDED_TYPES:
+            if re.search(r'\b' + et.lower() + r'\b', stem.lower()):
+                type_real = et
+                break
+    # Also lift Crossette/Farfalle/Whistle/Tourbillon from name when not root
+    if root_type == 'Shell':
+        for sub in ('Crossette', 'Farfalle', 'Whistle', 'Tourbillon'):
+            if re.search(r'\b' + sub.lower() + r'\b', stem.lower()):
+                type_real = sub
+                break
+
+    color_phases = parse_color_phases(stem)
+    tail_ref = parse_tail_ref(stem)
+    caliber_in_final = caliber_in if caliber_in is not None else infer_caliber_from_name(stem)
+
     return {
         'id': 'se-' + slugify(collection) + '-' + slugify(stem),
         'fileName': file_name,
@@ -198,11 +217,15 @@ def extract(path):
         'subPath': subPath,
         'displayName': stem,
         'rootType': root_type,
+        'typeReal': type_real,
         'distribution': distribution[:-len('Distribution')] if distribution else None,
         'palette': palette,
         'primary': palette[0] if palette else None,
         'secondary': palette[1] if len(palette) > 1 else None,
-        'caliberIn': caliber_in,
+        'colorPhases': color_phases,
+        'tailRef': tail_ref,
+        'caliberIn': caliber_in_final,
+        'caliberSource': 'xml' if caliber_in is not None else ('inferred' if caliber_in_final is not None else 'unknown'),
         'shotCount': max(shot_counts) if shot_counts else None,
         'cakeRows': max(rows) if rows else None,
         'starCount': max(counts) if counts else None,
