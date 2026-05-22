@@ -3,11 +3,10 @@
  * Compact layout optimized for 375px mobile screens.
  */
 import React, { useCallback, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Play, Pause, Square, AlertOctagon, Zap, Radio, ScanEye, Crosshair, MapPin } from 'lucide-react';
+import { Play, Pause, Square, Zap, ScanEye, Crosshair, MapPin } from 'lucide-react';
 import { haptics } from '@/lib/haptics';
 import { cn } from '@/lib/utils';
-import { usePlaybackState, useEditorMode, useHardwareStatus } from '@/hooks/useEditorUI';
+import { usePlaybackState, useEditorMode } from '@/hooks/useEditorUI';
 import { useProjectStore } from '@/store/useProjectStore';
 import { useShowSettings } from '@/hooks/useShowSettings';
 import { useSceneStore } from '@/store/useSceneStore';
@@ -30,10 +29,8 @@ function getCountdown(showDate: string | null): string | null {
 }
 
 export default React.memo(function MobileHUD() {
-  const navigate = useNavigate();
   const { currentTime, isPlaying, setPlaying, setCurrentTime } = usePlaybackState();
   const { editorMode, isPlacingMode } = useEditorMode();
-  const { activeEffects, clearAll, usbConnected, smpteRunning, isArmed } = useHardwareStatus();
   const positions = useProjectStore(s => s.positions);
   const selectedIds = useProjectStore(s => s.selectedPositionIds);
   const { settings } = useShowSettings();
@@ -47,12 +44,7 @@ export default React.memo(function MobileHUD() {
     haptics.arToggle(next);
   }, [arMode, updateEnvironment]);
 
-  const handlePanic = useCallback(() => {
-    clearAll();
-    setPlaying(false);
-    setCurrentTime(0);
-    haptics.panic();
-  }, [clearAll, setPlaying, setCurrentTime]);
+  // handlePanic removido — editor 3D não tem estado armado.
 
   return (
     <div className="fixed top-0 left-0 right-0 z-50 pointer-events-none" style={{ paddingTop: 'max(8px, env(safe-area-inset-top))' }}>
@@ -65,18 +57,12 @@ export default React.memo(function MobileHUD() {
             <span className="text-[10px] font-bold text-accent uppercase tracking-wider">Placing</span>
           </div>
         ) : (
-          <div className={cn(
-            "pointer-events-auto status-pill transition-all duration-300 shrink-0",
-            isArmed && "ring-1 ring-destructive/40 shadow-[0_0_8px_hsl(var(--destructive)/0.15)]"
-          )}>
-            <Zap className={cn("w-3 h-3", isArmed ? "text-destructive" : "text-primary")} />
+          <div className="pointer-events-auto status-pill transition-all duration-300 shrink-0">
+            <Zap className="w-3 h-3 text-primary" />
             <span className="font-mono text-[10px] font-semibold text-primary tabular-nums tracking-tight truncate max-w-[80px]">
               {formatTimecode(currentTime)}
             </span>
-            {isArmed && (
-              <span className="text-[8px] font-bold text-destructive animate-pulse ml-0.5">ARM</span>
-            )}
-            {countdown && !isArmed && (
+            {countdown && (
               <span className={cn("text-[8px] font-bold ml-0.5", countdown === 'LIVE' ? "text-destructive" : "text-accent")}>
                 {countdown}
               </span>
@@ -125,15 +111,8 @@ export default React.memo(function MobileHUD() {
             <ScanEye className="w-3.5 h-3.5" />
             AR
           </button>
-          {/* PANIC — only when armed, takes priority */}
-          {isArmed && (
-            <button
-              onClick={handlePanic}
-              className="flex items-center justify-center w-11 h-11 rounded-xl bg-destructive/90 armed-pulse active:scale-90 transition-transform"
-            >
-              <AlertOctagon className="w-5 h-5 text-destructive-foreground" />
-            </button>
-          )}
+          {/* PANIC e atalho de hardware removidos — Editor é zona de criação.
+              Hardware, ARM, FIRE e E-STOP só em /command. */}
 
           {/* Geo location button */}
           <button
@@ -141,20 +120,6 @@ export default React.memo(function MobileHUD() {
             className="glass-button flex items-center justify-center w-11 h-11 active:scale-90 transition-transform"
           >
             <MapPin className="w-4 h-4 text-foreground" />
-          </button>
-
-          {/* Hardware status indicator */}
-          <button
-            onClick={() => { haptics.tap(); navigate('/command?mode=hardware'); }}
-            className={cn(
-              "glass-button relative flex items-center justify-center w-11 h-11 active:scale-90 transition-transform",
-              (usbConnected || smpteRunning) && "ring-1 ring-[hsl(var(--success)/0.4)]"
-            )}
-          >
-            <Radio className="w-4 h-4 text-foreground" />
-            {(usbConnected || smpteRunning) && (
-              <div className="absolute top-1.5 right-1.5 w-1.5 h-1.5 rounded-full bg-[hsl(var(--success))]" />
-            )}
           </button>
 
         </div>

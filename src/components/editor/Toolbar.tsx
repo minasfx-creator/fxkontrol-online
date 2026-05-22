@@ -4,9 +4,9 @@
  * All editing tools moved to floating docks.
  */
 import { useState, useEffect, useCallback, lazy, Suspense } from 'react';
-import { useNavigate } from 'react-router-dom';
+// useNavigate removido — editor não roteia para /command nem hardware.
 import { useIsMobile } from '@/hooks/use-mobile';
-import { Zap, Save, FolderOpen, Undo, Redo, Upload, FileJson, FilePlus, Download, ChevronDown, Wand2, PlusCircle, Cog, Paintbrush, Map, Globe, FileBarChart, Cloud, Eye, Volume2, Film, MapPinned, Atom, Share2, Users, History, MessageSquare, BoxSelect, Gauge, Sparkles, FileCode, Store, Lightbulb, MonitorSpeaker, FileArchive, Mountain, Building2, Command, Copy, Trash2, SkipBack, Navigation, LogOut, MapPin, Target, MousePointer, Shapes, LayoutGrid, Shield, AlertTriangle, Moon, Sun, Maximize2, Minimize2 } from 'lucide-react';
+import { Zap, Save, FolderOpen, Undo, Redo, Upload, FileJson, FilePlus, Download, ChevronDown, Wand2, PlusCircle, Cog, Paintbrush, Map, Globe, FileBarChart, Cloud, Eye, Volume2, Film, MapPinned, Atom, Share2, Users, History, MessageSquare, BoxSelect, Gauge, Sparkles, FileCode, Store, Lightbulb, MonitorSpeaker, FileArchive, Mountain, Building2, Command, Copy, Trash2, SkipBack, Navigation, LogOut, MapPin, Target, MousePointer, Shapes, LayoutGrid, Moon, Sun, Maximize2, Minimize2 } from 'lucide-react';
 import fxkLogo from '@/assets/fxk-logo.png';
 import { Button } from '@/components/ui/button';
 import { useProjectStore } from '@/store/useProjectStore';
@@ -19,9 +19,7 @@ import { useProjectPersistence } from '@/hooks/useProjectPersistence';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { secondsToTimecode, formatTimecode } from '@/lib/smpteEngine';
-import { useFireOneHardware } from '@/hooks/useFireOneHardware';
-import { usePBusHardware } from '@/hooks/usePBusHardware';
-import { artnetModuleService } from '@/services/artnetModuleService';
+// Hardware hooks (useFireOneHardware/usePBusHardware/artnetModuleService) removidos da Toolbar do editor.
 
 // ── Lazy-loaded modals (only fetched when user opens them) ──
 const lz = (loader: () => Promise<{ default: React.ComponentType<any> }>) => lazy(loader);
@@ -45,87 +43,7 @@ const VVIZExportDialog = lz(() => import('./VVIZExportDialog'));
 // Export functions loaded on demand
 const getExportEngine = () => import('@/lib/exportEngine');
 
-/* ── Hardware Status Dots (live feedback) ──────────────────────── */
-function HardwareStatusDots({ onOpenPanel }: { onOpenPanel?: (id: string) => void }) {
-  const fireone = useFireOneHardware();
-  const pbus = usePBusHardware();
-  const [artnetCount, setArtnetCount] = useState(0);
-  const [artnetConnected, setArtnetConnected] = useState(0);
-  
-  const isMobile = useIsMobile();
-
-  useEffect(() => {
-    const update = () => {
-      const ctrl = artnetModuleService.getController();
-      if (ctrl) {
-        setArtnetCount(ctrl.modules.length);
-        setArtnetConnected(ctrl.modules.filter(m => artnetModuleService.getModuleState(m.id) === 'connected').length);
-      } else {
-        setArtnetCount(0);
-        setArtnetConnected(0);
-      }
-    };
-    update();
-    const unsub = artnetModuleService.subscribe((_type, _data) => update());
-    return () => unsub();
-  }, []);
-
-  const foConnected = fireone.isConnected || fireone.modules.size > 0;
-  const foScanning = fireone.scanning;
-  const foCount = fireone.modules.size;
-
-  const pbConnected = pbus.isConnected || pbus.devices.size > 0;
-  const pbScanning = pbus.scanning;
-  const pbCount = pbus.devices.size;
-
-  const maConnected = artnetConnected > 0;
-
-  const getDotClass = (connected: boolean, scanning: boolean) => {
-    if (connected) return 'bg-emerald-400 shadow-[0_0_6px_rgba(52,211,153,0.5)]';
-    if (scanning) return 'bg-amber-400 animate-pulse shadow-[0_0_6px_rgba(251,191,36,0.4)]';
-    return 'bg-muted border border-border/20';
-  };
-
-  const getTextClass = (connected: boolean, scanning: boolean) => {
-    if (connected) return 'text-emerald-400';
-    if (scanning) return 'text-amber-400';
-    return 'text-muted-foreground/60';
-  };
-
-  const navTo = useNavigate();
-  const handleDotClick = useCallback(() => {
-    if (isMobile) {
-      navTo('/command?mode=hardware');
-    } else {
-      onOpenPanel?.('easyconnect');
-    }
-  }, [isMobile, onOpenPanel, navTo]);
-
-  return (
-    <>
-      <div className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-background/30 border border-border/20">
-        <button onClick={handleDotClick} className="flex items-center gap-0.5 group" title="FireOne">
-          <div className={cn("w-1.5 h-1.5 rounded-full transition-all", getDotClass(foConnected, foScanning))} />
-          <span className={cn("text-[7px] font-mono group-hover:text-foreground/80 transition-colors", getTextClass(foConnected, foScanning))}>
-            FO{foCount > 0 && ` ${foCount}`}
-          </span>
-        </button>
-        <button onClick={handleDotClick} className="flex items-center gap-0.5 group" title="PBUS">
-          <div className={cn("w-1.5 h-1.5 rounded-full transition-all", getDotClass(pbConnected, pbScanning))} />
-          <span className={cn("text-[7px] font-mono group-hover:text-foreground/80 transition-colors", getTextClass(pbConnected, pbScanning))}>
-            PB{pbCount > 0 && ` ${pbCount}`}
-          </span>
-        </button>
-        <button onClick={handleDotClick} className="flex items-center gap-0.5 group" title="Art-Net/MA3">
-          <div className={cn("w-1.5 h-1.5 rounded-full transition-all", getDotClass(maConnected, false))} />
-          <span className={cn("text-[7px] font-mono group-hover:text-foreground/80 transition-colors", getTextClass(maConnected, false))}>
-            MA{artnetConnected > 0 && ` ${artnetConnected}`}
-          </span>
-        </button>
-      </div>
-    </>
-  );
-}
+/* HardwareStatusDots removido do editor — hardware vive só em /command. */
 
 
 function TimecodeDisplay() {
@@ -620,46 +538,14 @@ export default function Toolbar({ onOpenPanel, isMaximized, onToggleMaximize }: 
             {/* ── Separator ── */}
             <div className="w-px h-5 bg-border/20" />
 
-            {/* Command */}
+            {/* Command Palette (⌘K) — busca de painéis de composição */}
             <button onClick={() => setCommandMenuOpen(true)} className="h-7 px-2.5 flex items-center gap-1.5 rounded-md text-muted-foreground hover:text-foreground/80 hover:bg-muted/30 transition-all text-[10px] font-semibold uppercase tracking-wider" title="⌘K">
               <Command className="h-3 w-3" />
               <span>⌘K</span>
             </button>
 
-            {/* ── Separator ── */}
-            <div className="w-px h-5 bg-border/20" />
-
-            {/* LIVE + ARM + E-STOP */}
-            <button
-              onClick={() => onOpenPanel?.('showcommander')}
-              className="h-8 px-3 flex items-center gap-1.5 rounded-lg bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 border border-emerald-500/20 transition-all text-[10px] font-bold uppercase tracking-wider"
-            >
-              <Zap className="h-3.5 w-3.5" />
-              LIVE
-            </button>
-            <button
-              onClick={() => onOpenPanel?.('livefiring')}
-              className="h-8 px-3 flex items-center gap-1.5 rounded-lg bg-amber-500/10 text-amber-400 hover:bg-amber-500/20 border border-amber-500/20 transition-all text-[10px] font-bold uppercase tracking-wider"
-            >
-              <Shield className="h-3.5 w-3.5" />
-              ARM
-            </button>
-            <button
-              onClick={() => {
-                useProjectStore.getState().setPlaying(false);
-                toast.error('🔴 EMERGENCY STOP');
-              }}
-              className="h-9 px-4 flex items-center gap-1.5 rounded-xl bg-red-600 text-red-50 hover:bg-red-500 shadow-[0_0_20px_rgba(220,38,38,0.3)] transition-all text-[11px] font-black uppercase tracking-wider"
-            >
-              <AlertTriangle className="h-4 w-4" />
-              E-STOP
-            </button>
-
-            {/* ── Separator ── */}
-            <div className="w-px h-5 bg-border/20" />
-
-            {/* Hardware dots */}
-            <HardwareStatusDots onOpenPanel={onOpenPanel} />
+            {/* LIVE / ARM / E-STOP / Hardware dots removidos do editor.
+                Editor 3D = composição/simulação visual. Hardware, ARM, FIRE e E-STOP só em /command. */}
           </>
         )}
 

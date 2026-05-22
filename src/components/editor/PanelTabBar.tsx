@@ -8,13 +8,9 @@ import { Search, Star } from 'lucide-react';
 export type PanelId = 'script' | 'wind' | 'reports' | 'racks' | 'addressing' | 'inventory' | 'waypoints' | 'effects' | 'properties' | 'positions' | 'boids' | 'pid' | 'dmx' | 'battery' | 'mavlink' | 'smpte' | 'maps' | 'diagnostic' | 'logistics' | 'swarmgpt' | 'synesthesia' | 'firing' | 'labels' | 'video' | 'models' | 'safety' | 'scripting' | 'audience' | 'indoor' | 'chains' | 'groups' | 'scene' | 'soundlevel' | 'aroverlay' | 'share' | 'particles' | 'versioning' | 'weather' | 'collisions' | 'approval' | 'trajectory' | 'templates' | 'telemetry' | 'flightlog' | 'marketplace' | 'sitelayout' | 'showsettings' | 'calibration' | 'livefiring' | 'fleet' | 'geofence' | 'storyboard' | 'showcontrol' | 'inspector' | 'lightprogram' | 'safetycheck' | 'takeoffgrid' | 'transitions' | 'lasercontrol' | 'suppliers' | 'usb' | 'videochoreo' | 'showven' | 'generative' | 'sitemodels' | 'setlist' | 'rider' | 'budget' | 'showpreview' | 'mobilelink' | 'linkmonitor' | 'controllers' | 'fieldmap' | 'connections' | 'radio' | 'ma3' | 'sacnmonitor' | 'showcommander' | 'bluetooth' | 'nfc' | 'remotecontrol' | 'dmxoutput' | 'easyconnect' | 'worldshows' | 'qastudio';
 
 export const PANEL_SECTIONS: { title: string; icon: typeof Route; items: { id: PanelId; label: string; icon: typeof Route; shortcut?: string }[] }[] = [
-  {
-    title: '★ Comando',
-    icon: Target,
-    items: [
-      { id: 'showcommander', label: 'Show Commander', icon: Target, shortcut: 'Q' },
-    ],
-  },
+  // Hardware, conexões, ARM/FIRE, safety NFPA e comandos de show foram
+  // intencionalmente REMOVIDOS do editor. Editor 3D = composição/simulação visual.
+  // Hardware, ARM/FIRE/E-STOP e safety físico vivem só em /command e /pairing/*.
   {
     title: 'Posições',
     icon: MapPin,
@@ -53,52 +49,14 @@ export const PANEL_SECTIONS: { title: string; icon: typeof Route; items: { id: P
       { id: 'transitions', label: 'Transições', icon: ArrowRightLeft },
       { id: 'collisions', label: 'Colisões', icon: Crosshair },
       { id: 'boids', label: 'Boids', icon: Orbit },
-    ],
-  },
-  {
-    title: 'Conexões',
-    icon: Cable,
-    items: [
-      { id: 'easyconnect', label: 'Easy Connect', icon: Zap, shortcut: 'E' },
-      { id: 'usb', label: 'USB Connect', icon: Cpu },
-      { id: 'dmx', label: 'DMX512', icon: ScanLine },
-      { id: 'dmxoutput', label: 'DMX Output', icon: Cable },
-      { id: 'bluetooth', label: 'Bluetooth BLE', icon: Radio },
-      { id: 'nfc', label: 'NFC Pair', icon: Zap },
-      { id: 'smpte', label: 'SMPTE/LTC', icon: Timer },
-      { id: 'mavlink', label: 'MAVLink', icon: Radio },
-      { id: 'lasercontrol', label: 'Laser Control', icon: Zap },
-      { id: 'livefiring', label: 'Live SFX', icon: Sparkles },
-      { id: 'mobilelink', label: 'Mobile Link', icon: Cable },
-      { id: 'linkmonitor', label: 'Link Monitor', icon: MonitorPlay },
-      { id: 'remotecontrol', label: 'Remote Control', icon: Play },
-      { id: 'ma3', label: 'grandMA3', icon: Sliders },
-      { id: 'sacnmonitor', label: 'sACN Monitor', icon: Activity },
-    ],
-  },
-  {
-    title: 'Drone',
-    icon: Plane,
-    items: [
-      { id: 'fleet', label: 'Frota', icon: Radar },
-      { id: 'showcontrol', label: 'Show Control', icon: CircuitBoard },
-      { id: 'takeoffgrid', label: 'Grid Decolagem', icon: Grid3x3 },
       { id: 'lightprogram', label: 'LED Program', icon: Lightbulb },
-      { id: 'safetycheck', label: 'Safety Check', icon: ShieldCheck },
-      { id: 'pid', label: 'PID Tuning', icon: Gauge },
-      { id: 'battery', label: 'Bateria', icon: Battery },
       { id: 'indoor', label: 'Indoor Sim', icon: Warehouse },
-      { id: 'geofence', label: 'Geofence', icon: Layers },
     ],
   },
   {
-    title: 'Hardware',
+    title: 'Catálogo',
     icon: Package,
     items: [
-      { id: 'controllers', label: 'Controladores', icon: Cpu },
-      { id: 'connections', label: 'Conexões HW', icon: Cable },
-      { id: 'radio', label: 'Rádio USB', icon: Radio },
-      { id: 'fieldmap', label: 'Field Map', icon: Map },
       { id: 'racks', label: 'Racks', icon: Package },
       { id: 'addressing', label: 'Endereçamento', icon: Cpu },
       { id: 'inventory', label: 'Inventário', icon: DollarSign },
@@ -141,7 +99,6 @@ export const PANEL_SECTIONS: { title: string; icon: typeof Route; items: { id: P
       { id: 'soundlevel', label: 'Nível Sonoro', icon: Volume2 },
       { id: 'particles', label: 'Partículas', icon: Atom },
       { id: 'audience', label: 'Audiência', icon: FileBarChart },
-      { id: 'safety', label: 'Segurança NFPA', icon: Shield, shortcut: 'F' },
       { id: 'showsettings', label: 'Config. Show', icon: Settings2 },
       { id: 'versioning', label: 'Versões', icon: History },
     ],

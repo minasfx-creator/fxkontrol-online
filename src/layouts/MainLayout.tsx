@@ -1,11 +1,9 @@
-import { Outlet, useLocation, useNavigate } from 'react-router-dom';
+import { Outlet, useLocation } from 'react-router-dom';
 import { SidebarProvider, useSidebar } from '@/components/ui/sidebar';
 import { useIsMobile } from '@/hooks/use-mobile';
-import { PanelLeftClose, PanelLeft, AlertOctagon, Menu } from 'lucide-react';
+import { PanelLeftClose, PanelLeft, Menu } from 'lucide-react';
 import minasfxLogo from '@/assets/minasfx-logo-white.png';
-import { useLiveSfxStore } from '@/store/useLiveSfxStore';
 import { useDisplayStore } from '@/store/useDisplayStore';
-import { haptics } from '@/lib/haptics';
 import { ambientSound } from '@/lib/ambientSound';
 import { useEffect, useRef, useState, lazy, Suspense } from 'react';
 import DockBar from '@/components/DockBar';
@@ -46,7 +44,6 @@ function MobileSidebarTrigger() {
 
 export default function MainLayout() {
   const location = useLocation();
-  const navigate = useNavigate();
   const isEditor = location.pathname === '/editor';
   const isCommand = location.pathname === '/command';
   const commandImmersive = isCommand;
@@ -58,10 +55,6 @@ export default function MainLayout() {
   const [transitionPhase, setTransitionPhase] = useState<'idle' | 'dissolve-out' | 'materialize-in'>('idle');
   const [displayedPath, setDisplayedPath] = useState(location.pathname);
   const transitionTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  const activeEffects = useLiveSfxStore(s => s.activeEffects);
-  const clearAll = useLiveSfxStore(s => s.clearAll);
-  const isArmed = activeEffects.length > 0;
 
   const backlight = useDisplayStore(s => s.backlight);
 
@@ -107,10 +100,8 @@ export default function MainLayout() {
     };
   }, [location.pathname]);
 
-  const handlePanic = () => {
-    clearAll();
-    haptics.panic();
-  };
+  // handlePanic removido com o botão PANIC do editor.
+  // E-STOP físico vive em /command via uiCommandGateway.
 
   return (
     <SidebarProvider defaultOpen={!isMobile}>
@@ -125,22 +116,8 @@ export default function MainLayout() {
         )}
 
         <div className="flex-1 flex flex-col min-w-0 min-h-0">
-          {/* ARMED Banner */}
-          {isArmed && !commandImmersive && (
-            <button
-              onClick={() => navigate('/command')}
-              className="shrink-0 w-full flex items-center justify-center gap-2 py-1.5 danger-stripe armed-pulse cursor-pointer transition-all hover:brightness-110"
-              style={{
-                background: 'hsl(var(--destructive) / 0.15)',
-                borderBottom: '1px solid hsl(var(--destructive) / 0.3)',
-              }}
-            >
-              <AlertOctagon className="w-3.5 h-3.5 text-destructive animate-pulse" />
-              <span className="text-[10px] font-mono-code font-black tracking-[0.2em] text-destructive uppercase">
-                ⚠ SYSTEM ARMED — {activeEffects.length} CHANNEL{activeEffects.length > 1 ? 'S' : ''} HOT
-              </span>
-            </button>
-          )}
+          {/* ARMED banner intentionally removed from editor chrome.
+              Editor is a pure design/composition surface — disparos e hardware vivem só em /command. */}
 
           {/* Header */}
           {!commandImmersive && !isEditor && (
@@ -204,27 +181,8 @@ export default function MainLayout() {
         <FXKAssistant />
       </Suspense>
 
-      {isArmed && !commandImmersive && (
-        <button
-          onClick={handlePanic}
-          className="fixed z-[9999] flex items-center justify-center rounded-xl border-2 border-destructive/60 transition-all active:scale-90 armed-pulse"
-          style={{
-            bottom: '80px',
-            right: '16px',
-            width: '64px',
-            height: '64px',
-            background: 'hsl(var(--destructive) / 0.9)',
-            boxShadow: '0 0 24px hsl(var(--destructive) / 0.4), 0 0 64px hsl(var(--destructive) / 0.15)',
-          }}
-          title="EMERGENCY STOP — ALL CHANNELS"
-          aria-label="Emergency stop — all channels"
-        >
-          <div className="flex flex-col items-center">
-            <AlertOctagon className="w-6 h-6 text-white" />
-            <span className="text-[7px] font-mono-code font-black text-white tracking-widest mt-0.5">PANIC</span>
-          </div>
-        </button>
-      )}
+      {/* PANIC floating button removed — Editor é zona de criação;
+          E-STOP físico só em /command (rota dedicada, intertravamentos completos). */}
 
       {(showDock || showMobileDock) && <DockBar />}
 
