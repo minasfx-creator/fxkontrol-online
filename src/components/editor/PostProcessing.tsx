@@ -10,6 +10,8 @@ import { HighlightDesaturationEffect } from '@/render_ultra/postprocessing/highl
 import { ACESHuePreserveEffect } from '@/render_ultra/postprocessing/acesHuePreserve';
 import { LuminanceFilmGrainEffect } from '@/render_ultra/postprocessing/luminanceFilmGrain';
 import { AtmosphericDepthEffect } from '@/render_ultra/postprocessing/atmosphericDepth';
+import { getFwsimGraphics } from '@/data/fwsimGraphicsConfig';
+
 
 const TONE_MAP: Record<ViewTransform, ToneMappingMode> = {
   'aces-filmic': ToneMappingMode.ACES_FILMIC,
@@ -521,13 +523,20 @@ const HighlightDesaturation = forwardRef<HighlightDesaturationEffect, { intensit
   }
 );
 
-const ACESHuePreserve = forwardRef<ACESHuePreserveEffect, { exposure?: number; huePreserveStrength?: number; highlightThreshold?: number }>(
-  function ACESHuePreserve({ exposure = 1.0, huePreserveStrength = 0.7, highlightThreshold = 1.5 }, ref) {
-    const effect = useMemo(() => new ACESHuePreserveEffect({ exposure, huePreserveStrength, highlightThreshold }), []);
-    useMemo(() => { effect.exposure = exposure; effect.huePreserveStrength = huePreserveStrength; effect.highlightThreshold = highlightThreshold; }, [effect, exposure, huePreserveStrength, highlightThreshold]);
+const ACESHuePreserve = forwardRef<ACESHuePreserveEffect, { exposure?: number; huePreserveStrength?: number; highlightThreshold?: number; fwsimContrast?: number; fwsimHdrMax?: number }>(
+  function ACESHuePreserve({ exposure = 1.0, huePreserveStrength = 0.7, highlightThreshold = 1.5, fwsimContrast = 1.0, fwsimHdrMax = 0.0 }, ref) {
+    const effect = useMemo(() => new ACESHuePreserveEffect({ exposure, huePreserveStrength, highlightThreshold, fwsimContrast, fwsimHdrMax }), []);
+    useMemo(() => {
+      effect.exposure = exposure;
+      effect.huePreserveStrength = huePreserveStrength;
+      effect.highlightThreshold = highlightThreshold;
+      effect.fwsimContrast = fwsimContrast;
+      effect.fwsimHdrMax = fwsimHdrMax;
+    }, [effect, exposure, huePreserveStrength, highlightThreshold, fwsimContrast, fwsimHdrMax]);
     return <primitive ref={ref} object={effect} />;
   }
 );
+
 
 const LuminanceFilmGrain = forwardRef<LuminanceFilmGrainEffect, { intensity?: number; luminanceResponse?: number }>(
   function LuminanceFilmGrain({ intensity = 0.08, luminanceResponse = 0.3 }, ref) {
@@ -812,15 +821,23 @@ export default function PostProcessing({ activeBurstCount = 0 }: { activeBurstCo
 
       {/* ═══ Tone Mapping — Studio Mode: ACES Hue-Preserving / Legacy: standard ═══
            Pipeline order per spec: Color Grading → Tone Mapping (final stage) */}
-      {cameraResponseEnabled ? (
-        <ACESHuePreserve
-          exposure={1.0}
-          huePreserveStrength={0.7}
-          highlightThreshold={1.5}
-        />
-      ) : (
+      {cameraResponseEnabled ? (() => {
+        // r_fwsim_tonemapping: apply FWsim TonemappingConfig (contrast 1.7, hdrMax 16) when ON.
+        const useFwsimTM = isEnabled('r_fwsim_tonemapping');
+        const tm = useFwsimTM ? getFwsimGraphics().tonemapping : null;
+        return (
+          <ACESHuePreserve
+            exposure={1.0}
+            huePreserveStrength={0.7}
+            highlightThreshold={1.5}
+            fwsimContrast={tm ? tm.contrast : 1.0}
+            fwsimHdrMax={tm ? tm.hdrMax : 0.0}
+          />
+        );
+      })() : (
         <ToneMapping mode={TONE_MAP[vt]} />
       )}
     </EffectComposer>
   );
 }
+
