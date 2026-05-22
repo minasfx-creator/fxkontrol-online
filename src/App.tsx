@@ -10,18 +10,11 @@ import PageTransitionOverlay from "@/components/ui/PageTransitionOverlay";
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
 
-// Dashboard lazy-loaded — it's 658 lines with heavy imports
-const Dashboard = lazy(() => import("./pages/Dashboard"));
-
 // Lazy-loaded heavy pages
 const Index = lazy(() => import("./pages/Index"));
-const Agenda = lazy(() => import("./pages/Agenda"));
-const Training = lazy(() => import("./pages/Training"));
 const PCBViewer = lazy(() => import("./pages/PCBViewer"));
-const DevicePairing = lazy(() => import("./pages/DevicePairing"));
 const CommandCenter = lazy(() => import("./pages/CommandCenter"));
 const ShowTestSimulator = lazy(() => import("./pages/ShowTestSimulator"));
-const FieldTest = lazy(() => import("./pages/FieldTest"));
 const Settings = lazy(() => import("./pages/Settings"));
 const FestivalStageDemo = lazy(() => import("./pages/FestivalStageDemo"));
 const PairingTwoWire = lazy(() => import("./pages/PairingTwoWire"));
