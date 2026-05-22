@@ -30,6 +30,70 @@ KNOWN_ROOTS = ('Shell', 'Mine', 'Cake', 'Bengal', 'RomanCandle', 'Fountain',
                'Rocket', 'Crossette', 'Farfalle', 'Whistle', 'Eruption',
                'Tourbillon', 'Lancework')
 
+# Extended sub-types (not always root; detected if first xsi:type matches OR appears as primary effect).
+EXTENDED_TYPES = ('Vulcano', 'PhotoFlash', 'FlameJet', 'Lycopodium', 'Sparkler',
+                  'Nautical', 'FrontPiece', 'GroundShellFlash', 'Sun')
+
+CALIBER_TOKENS = [
+    (r'\(\s*xsmall\s*\)|\bxsmall\b', 0.8),
+    (r'\(\s*small\s*\)|\bsmall\b', 1.5),
+    (r'\(\s*medium\s*\)|\bmedium\b', 2.5),
+    (r'\(\s*big\s*\)|\bbig\b|\blarge\b', 4.0),
+]
+
+# Common color tokens for phase parsing.
+PHASE_COLORS = {
+    'red': '#FF1A1A', 'green': '#00E676', 'blue': '#3F7BFF',
+    'yellow': '#FFD600', 'orange': '#FF8A00', 'pink': '#FF66C4',
+    'purple': '#A24BFF', 'white': '#FFFFFF', 'silver': '#E5E5E5',
+    'gold': '#FFD27A', 'aqua': '#33D6FF', 'mint': '#A2FFD6',
+    'magenta': '#FF00C8', 'cyan': '#33D6FF',
+    'pastel red': '#FF6B6B', 'pastel green': '#7CFFB0',
+    'pastel blue': '#7DB6FF', 'pastel purple': '#D5B8FF',
+    'coal gold': '#9C7A1C', 'charcoal gold': '#7A6818',
+    'silver charcoal': '#8C8C8C', 'gold charcoal': '#8A6E1A',
+    'brocade': '#FFE2AE', 'titanium': '#F5F5F5',
+}
+
+
+def parse_color_phases(stem):
+    """Parse name like 'Red to Green' or 'X & Y' → [{at, hex, modifier?}]."""
+    s = stem.lower()
+    phases = []
+    # Match modifiers
+    mod = None
+    if 'strobe' in s: mod = 'strobe'
+    elif 'crackle' in s or 'crackling' in s: mod = 'crackle'
+    elif 'glitter' in s: mod = 'glitter'
+    elif 'charcoal' in s: mod = 'charcoal'
+    # 'X to Y' transitions
+    m = re.search(r'\b([a-z][a-z ]{1,18}?)\s+to\s+([a-z][a-z ]{1,18}?)(?=\s|$|[.,)\]\[])', s)
+    if m:
+        a, b = m.group(1).strip(), m.group(2).strip()
+        ha = PHASE_COLORS.get(a) or next((v for k, v in PHASE_COLORS.items() if a.endswith(k)), None)
+        hb = PHASE_COLORS.get(b) or next((v for k, v in PHASE_COLORS.items() if b.endswith(k)), None)
+        if ha and hb:
+            phases.append({'at': 0.0, 'hex': ha})
+            phases.append({'at': 1.0, 'hex': hb, **({'modifier': mod} if mod else {})})
+    return phases
+
+
+def parse_tail_ref(stem):
+    """Extract [Brocade Tail Medium] style references from filename."""
+    m = re.search(r'\[([^\]]+)\]', stem)
+    if not m: return None
+    inner = m.group(1).strip()
+    if inner.lower() == 'none': return 'none'
+    return inner
+
+
+def infer_caliber_from_name(stem, default=None):
+    s = stem.lower()
+    for pat, val in CALIBER_TOKENS:
+        if re.search(pat, s):
+            return val
+    return default
+
 
 def hexc(r, g, b):
     return '#%02X%02X%02X' % (
@@ -127,6 +191,25 @@ def extract(path):
     collection = rel.split('/')[0]
     subPath = '/'.join(rel.split('/')[1:-1]) or None
     stem = re.sub(r'\.fwe$', '', file_name, flags=re.IGNORECASE)
+
+    # Detect extended type (Vulcano, PhotoFlash, FlameJet, etc.) from name when XML is generic
+    type_real = root_type
+    if root_type in (None, 'Fountain'):
+        for et in EXTENDED_TYPES:
+            if re.search(r'\b' + et.lower() + r'\b', stem.lower()):
+                type_real = et
+                break
+    # Also lift Crossette/Farfalle/Whistle/Tourbillon from name when not root
+    if root_type == 'Shell':
+        for sub in ('Crossette', 'Farfalle', 'Whistle', 'Tourbillon'):
+            if re.search(r'\b' + sub.lower() + r'\b', stem.lower()):
+                type_real = sub
+                break
+
+    color_phases = parse_color_phases(stem)
+    tail_ref = parse_tail_ref(stem)
+    caliber_in_final = caliber_in if caliber_in is not None else infer_caliber_from_name(stem)
+
     return {
         'id': 'se-' + slugify(collection) + '-' + slugify(stem),
         'fileName': file_name,
@@ -134,11 +217,15 @@ def extract(path):
         'subPath': subPath,
         'displayName': stem,
         'rootType': root_type,
+        'typeReal': type_real,
         'distribution': distribution[:-len('Distribution')] if distribution else None,
         'palette': palette,
         'primary': palette[0] if palette else None,
         'secondary': palette[1] if len(palette) > 1 else None,
-        'caliberIn': caliber_in,
+        'colorPhases': color_phases,
+        'tailRef': tail_ref,
+        'caliberIn': caliber_in_final,
+        'caliberSource': 'xml' if caliber_in is not None else ('inferred' if caliber_in_final is not None else 'unknown'),
         'shotCount': max(shot_counts) if shot_counts else None,
         'cakeRows': max(rows) if rows else None,
         'starCount': max(counts) if counts else None,
