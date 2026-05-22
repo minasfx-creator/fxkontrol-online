@@ -1043,7 +1043,7 @@ function CameraController({ targetPosition, targetLookAt, freeLook, flyMode }: {
   }, [targetPosition, targetLookAt]);
 
   const presetKey = `${targetPosition.join(',')}_${targetLookAt.join(',')}`;
-  
+
   useEffect(() => {
     if (freeLook) { animating.current = false; return; }
     if (!initialized.current) {
@@ -1052,11 +1052,43 @@ function CameraController({ targetPosition, targetLookAt, freeLook, flyMode }: {
       return;
     }
     if (presetKey === lastPresetKey.current) return;
+    // If the user is actively driving the camera (or just released within
+    // the grace window), don't yank back to a preset — respect intent.
+    const sinceUser = performance.now() - lastUserInteractionAt.current;
+    if (userActive.current || sinceUser < 800) {
+      lastPresetKey.current = presetKey;
+      return;
+    }
     lastPresetKey.current = presetKey;
     targetPos.current.set(...targetPosition);
     targetLook.current.set(...targetLookAt);
     animating.current = true;
   }, [presetKey, freeLook]);
+
+  // ── Track active user interaction with OrbitControls ──
+  useEffect(() => {
+    const c = controlsRef.current;
+    if (!c) return;
+    const onStart = () => {
+      userActive.current = true;
+      // Cancel any in-flight preset/focus animation the moment the user grabs
+      // the camera — eliminates fight-back / drift.
+      animating.current = false;
+      focusAnimating.current = false;
+      try { cancelFlyTo(); } catch {}
+    };
+    const onEnd = () => {
+      userActive.current = false;
+      lastUserInteractionAt.current = performance.now();
+    };
+    c.addEventListener('start', onStart);
+    c.addEventListener('end', onEnd);
+    return () => {
+      c.removeEventListener('start', onStart);
+      c.removeEventListener('end', onEnd);
+    };
+  }, []);
+
 
   useFrame((_, delta) => {
     if (introPhase.current !== 'done') {
