@@ -63,3 +63,39 @@ export function sampleCurve(pts: ReadonlyArray<readonly [number, number]>, x: nu
 /** Path to the canonical smoke sprite (FWsim sourced). Import via `@/assets/textures/fwsim/...`. */
 export const FWSIM_SMOKE_TEXTURE_PATH =
   'src/assets/textures/fwsim/smoke_with_alpha.png';
+
+/**
+ * Derived calibration factors for the legacy Bloom pipeline.
+ *
+ * Maps FWsim's bloom config (graphics.xml) into renderer-side multipliers:
+ *  - `intensityMul` = `amountOfBloom × avg(upsamplingWeights)` (FWsim sums weighted mip contributions;
+ *    the average weight × bloom amount approximates the integrated bloom energy per pixel).
+ *  - `levels` mirrors `nrLevels` (FWsim default 10) — drives kernel choice.
+ *  - `radius` mirrors `radiusForUpsampling` (default 1.5).
+ *
+ * Pure read; safe to call in render loops (memoised on getFwsimGraphics()).
+ */
+export function getFwsimBloomCalibration(): {
+  intensityMul: number;
+  levels: number;
+  radius: number;
+  weightsAvg: number;
+  amount: number;
+} {
+  const b = getFwsimGraphics().bloom as unknown as {
+    amountOfBloom?: number;
+    upsamplingWeights?: number[];
+    nrLevels?: number;
+    radiusForUpsampling?: number;
+  };
+  const amount = typeof b.amountOfBloom === 'number' ? b.amountOfBloom : 0.1;
+  const weights = Array.isArray(b.upsamplingWeights) && b.upsamplingWeights.length > 0
+    ? b.upsamplingWeights
+    : [1];
+  const weightsAvg = weights.reduce((s, w) => s + w, 0) / weights.length;
+  // Clamp to a sane range so a malformed config can't blow out the renderer.
+  const intensityMul = Math.max(0.25, Math.min(4.0, amount * weightsAvg * 10)); // ×10 normaliza amount=0.1 → ~weightsAvg
+  const levels = Math.max(1, Math.min(16, Math.round(b.nrLevels ?? 10)));
+  const radius = Math.max(0.5, Math.min(4.0, b.radiusForUpsampling ?? 1.5));
+  return { intensityMul, levels, radius, weightsAvg, amount };
+}

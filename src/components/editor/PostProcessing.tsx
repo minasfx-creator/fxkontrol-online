@@ -10,7 +10,7 @@ import { HighlightDesaturationEffect } from '@/render_ultra/postprocessing/highl
 import { ACESHuePreserveEffect } from '@/render_ultra/postprocessing/acesHuePreserve';
 import { LuminanceFilmGrainEffect } from '@/render_ultra/postprocessing/luminanceFilmGrain';
 import { AtmosphericDepthEffect } from '@/render_ultra/postprocessing/atmosphericDepth';
-import { getFwsimGraphics } from '@/data/fwsimGraphicsConfig';
+import { getFwsimGraphics, getFwsimBloomCalibration } from '@/data/fwsimGraphicsConfig';
 
 
 const TONE_MAP: Record<ViewTransform, ToneMappingMode> = {
@@ -596,6 +596,15 @@ export default function PostProcessing({ activeBurstCount = 0 }: { activeBurstCo
   // Physical bloom calculations (only used when flag is on)
   const pb = usePhysicalBloom(str, bloomMul, activeBurstCount);
 
+  // FWsim bloom calibration (legacy branch only — physical branch keeps its own log curve)
+  const fwsimBloomEnabled = isEnabled('r_fwsim_bloom_weights');
+  const fwsimBloom = useMemo(
+    () => (fwsimBloomEnabled ? getFwsimBloomCalibration() : null),
+    [fwsimBloomEnabled],
+  );
+  const legacyBloomMul = fwsimBloom ? fwsimBloom.intensityMul : 1.0;
+  const legacyLargeKernel = fwsimBloom && fwsimBloom.levels >= 10 ? KernelSize.HUGE : KernelSize.LARGE;
+
   // Adaptive: use half-res SSR when enabled for GPU savings
   const ssrResScale = s.ssrHalfRes ? 0.5 : 1.0;
 
@@ -706,7 +715,7 @@ export default function PostProcessing({ activeBurstCount = 0 }: { activeBurstCo
         <>
           {/* Legacy Layer 1: Core catch — threshold raised to 3.5 for real flashes only */}
           <Bloom
-            intensity={str * 0.04 * bloomMul}
+            intensity={str * 0.04 * bloomMul * legacyBloomMul}
             luminanceThreshold={3.5}
             luminanceSmoothing={0.05}
             kernelSize={KernelSize.MEDIUM}
@@ -716,10 +725,10 @@ export default function PostProcessing({ activeBurstCount = 0 }: { activeBurstCo
           {/* Legacy Layer 2: Star halos — threshold raised to 5.0, intense explosions only */}
           {hasBursts && (
             <Bloom
-              intensity={str * 0.025 * bloomMul}
+              intensity={str * 0.025 * bloomMul * legacyBloomMul}
               luminanceThreshold={5.0}
               luminanceSmoothing={0.2}
-              kernelSize={KernelSize.LARGE}
+              kernelSize={legacyLargeKernel}
               mipmapBlur
             />
           )}
@@ -731,7 +740,7 @@ export default function PostProcessing({ activeBurstCount = 0 }: { activeBurstCo
         <GodRays intensity={0.5 + activeBurstCount * 0.08} />
       ) : (hasHeavyBursts && (
         <Bloom
-          intensity={str * 0.008 * bloomMul}
+          intensity={str * 0.008 * bloomMul * legacyBloomMul}
           luminanceThreshold={6.0}
           luminanceSmoothing={0.5}
           kernelSize={KernelSize.HUGE}

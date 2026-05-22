@@ -43,8 +43,8 @@ const FLAGS = {
   /** Pass 3: pearl-string spacing on shape geometries (heart/smiley/ring/saturn) */
   r_pearl_spacing: true,
   // ── FWsim graphics.xml canonical tuning (data registered; renderer wiring opt-in) ──
-  /** Apply FWsim Bloom AmountOfBloom + Upsampling_Weights to EffectComposer. Renderer wiring pending. */
-  r_fwsim_bloom_weights: false,
+  /** Apply FWsim Bloom AmountOfBloom + Upsampling_Weights calibration to legacy Bloom layers (kernelSize+intensity). */
+  r_fwsim_bloom_weights: true,
   /** Apply FWsim TonemappingConfig (Contrast 1.7, HdrMax 16) to ACES tone-mapper. */
   r_fwsim_tonemapping: true,
 
