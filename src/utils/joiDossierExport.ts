@@ -201,7 +201,7 @@ async function buildBriefingDocx(markdown: string, title: string): Promise<Blob>
   const MARGIN_L = 1701, MARGIN_T = 1701, MARGIN_R = 1134, MARGIN_B = 1134;
 
   const lines = markdown.split('\n');
-  const children: Paragraph[] = [];
+  const children: Para[] = [];
   for (const raw of lines) {
     const t = raw.trim();
     if (!t) { children.push(new Paragraph({ spacing: { after: 120 } })); continue; }
