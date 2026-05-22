@@ -131,6 +131,7 @@ def extract(path):
         'id': 'se-' + slugify(collection) + '-' + slugify(stem),
         'fileName': file_name,
         'collection': collection,
+        'subPath': subPath,
         'displayName': stem,
         'rootType': root_type,
         'distribution': distribution[:-len('Distribution')] if distribution else None,
