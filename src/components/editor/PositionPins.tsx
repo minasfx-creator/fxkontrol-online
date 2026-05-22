@@ -843,6 +843,8 @@ export default function PositionPins() {
   const google3DTilesEnabled = useSceneStore(s => s.settings.google3DTilesEnabled);
   const [contextMenu, setContextMenu] = useState<{ pos: Position; screen: { x: number; y: number } } | null>(null);
   const { getHeight } = useTerrainHeightCache(positions, google3DTilesEnabled);
+  // Joi geo-bound positions: snap Y to Google Tiles terrain when available.
+  useGeoPositionsTerrainSnap(google3DTilesEnabled);
 
   const handleRightClick = useCallback((pos: Position, screenPos: { x: number; y: number }) => {
     setContextMenu({ pos, screen: screenPos });
