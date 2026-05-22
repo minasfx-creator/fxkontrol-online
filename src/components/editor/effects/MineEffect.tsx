@@ -547,13 +547,13 @@ export default function MineEffect({
           spray fans hemispherically, drips fall by gravity. Tilting the whole
           group would tip the ground ring and the entire particle field. */}
       {/* Combustion muzzle flash with flicker */}
-      {progress < 0.08 && (
+      {progress < 0.08 * mineCalib.durationMult && (
         <mesh position={[0, 0.3, 0]}>
-          <sphereGeometry args={[0.6 + caliber * 0.3 + progress * 8, 16, 16]} />
+          <sphereGeometry args={[(0.6 + caliber * 0.3 + progress * 8) * mineCalib.sizeMult, 16, 16]} />
           <meshBasicMaterial
             color="#FFFFF0"
             transparent
-            opacity={muzzleFlashOpacity * (1 - progress / 0.08)}
+            opacity={muzzleFlashOpacity * (1 - progress / (0.08 * mineCalib.durationMult))}
             blending={screenBlend.blending}
             blendEquation={screenBlend.blendEquation}
             blendSrc={screenBlend.blendSrc as any}
@@ -626,8 +626,17 @@ export default function MineEffect({
             <bufferAttribute attach="attributes-size" args={[smokeSizeRef, 1]} />
           </bufferGeometry>
           <shaderMaterial
+            key={smokeMap ? 'fwsim-tex' : 'procedural'}
             vertexShader={sizeVertexShader}
-            fragmentShader={`
+            fragmentShader={smokeMap ? `
+              uniform sampler2D uSmokeTex;
+              varying vec3 vColor;
+              void main() {
+                vec4 tex = texture2D(uSmokeTex, gl_PointCoord);
+                if (tex.a < 0.02) discard;
+                gl_FragColor = vec4(vColor * tex.rgb, tex.a * 0.18);
+              }
+            ` : `
               varying vec3 vColor;
               void main() {
                 float dist = length(gl_PointCoord - vec2(0.5));
@@ -636,6 +645,7 @@ export default function MineEffect({
                 gl_FragColor = vec4(vColor, alpha);
               }
             `}
+            uniforms={smokeMap ? { uSmokeTex: { value: smokeMap } } : undefined}
             transparent
             depthWrite={false}
             depthTest={false}
