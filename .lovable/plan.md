@@ -1,91 +1,88 @@
-# Refino UX da câmera no Editor 3D
+## Spec real (extraída de `Timecode.exe` V1.5 — ICET / RJ Equipamentos)
 
-## Diagnóstico
+Reverse-engineering do binário revelou o formato e o handshake oficiais:
 
-`CameraController` em `src/components/editor/SkyCanvas.tsx` (linhas 842–1188) tem 3 causas para a sensação de "drag/arrasto" após o usuário girar a visão:
+**Script CSV (importável pelo Timecode):**
+- Colunas: `timecode, modulo, canal, abertura`
+- Ordenação canônica: `timecode ASC, modulo ASC, canal ASC`
+- `timecode` — SMPTE `HH:MM:SS:FF` (30 fps non-drop: HH 0–23, MM 0–59, SS 0–59, FF 0–29)
+- `modulo` — inteiro 1–99
+- `canal` — inteiro 1–32 **ou** `C` / `F` / `S` (canais especiais: Comum / Flama / Stop)
+- `abertura` — inteiro em ms, **múltiplo de 100**, dentro do range min/max do equipamento
+- Limite: **9999 disparos** por script
+- Título do show: ≤ 20 caracteres ASCII
 
-1. **Velocidade subdimensionada** — `rotateSpeed={0.6} × sensitivityScale=0.7 ≈ 0.42`. Sensação de câmera "pesada". `panSpeed` e `zoomSpeed` idem.
-2. **Auto-animação roubando o controle** — o `useEffect` (1020–1032) observa `presetKey = targetPosition+targetLookAt`. Qualquer re-render do pai que altere essas props depois do usuário girar dispara `animating.current = true` e o `useFrame` (1097–1099) começa a interpolar a câmera de volta ao preset com `lerp(0.06)` — é literalmente um "puxão" pós-rotação. O mesmo vale para `focus-camera-on-point` disparado por seleção.
-3. **`clampToWorldBounds()` rodando todo frame** mesmo idle, com `controls.target.set(...)` quando algum eixo bate no limite — gera micro-saltos.
+**Bridge USB serial (envio direto):**
+- O Timecode detecta o equipamento via Win32_PnPEntity filtrando por VID/PID:
+  - `VID_1A86 PID_7523` (CH340)
+  - `VID_0403 PID_6001` (FTDI FT232)
+  - `VID_067B PID_2303` (Prolific PL2303)
+- Sequência: abre porta → handshake de versão → envia título → envia cues → aguarda ACK → "Exportação concluída"
+- Erros tratados pelo firmware: versão incompatível, timeout de resposta, falha na abertura da porta
 
-Sem damping (já `enableDamping={false}`), inércia não é a causa.
+Assunção (a confirmar no campo): baud 115200 8N1 (default do ICET ESP32; o app expõe `set_serialESP` mas não fixa baud nos strings). Plano deixa configurável.
 
-## Mudanças (somente `src/components/editor/SkyCanvas.tsx`, escopo UI)
+## O que vai ser feito
 
-### 1. Trava de auto-animação enquanto o usuário interage
+```text
+src/lib/
+  rjIcetScript.ts             [novo] builder + validator do CSV ICET spec-exato
+  rjIcetSerialBridge.ts       [novo] Web Serial, filtro VID/PID, handshake, stream cues
+  __tests__/rjIcetScript.spec.ts  [novo] specs determinísticas
 
-Adicionar refs `userActive` + `lastUserInteractionAt` e listeners `start`/`end` do próprio OrbitControls:
+src/lib/firingSystemExports.ts
+  - exportRJEquipamentos: reescrito para delegar a buildIcetScript()
+    (header/colunas corretos, SMPTE, abertura múltiplo de 100)
+  - FIRING_SYSTEMS entry ganha flag `directSend: true`
 
-```ts
-useEffect(() => {
-  const c = controlsRef.current; if (!c) return;
-  const onStart = () => {
-    userActive.current = true;
-    animating.current = false;        // cancela preset/focus em andamento
-    focusAnimating.current = false;
-    cancelFlyTo();                    // cancela voo geo se ativo
-  };
-  const onEnd = () => {
-    userActive.current = false;
-    lastUserInteractionAt.current = performance.now();
-  };
-  c.addEventListener('start', onStart);
-  c.addEventListener('end', onEnd);
-  return () => { c.removeEventListener('start', onStart); c.removeEventListener('end', onEnd); };
-}, []);
+src/components/editor/firing/
+  ICETDirectSendPanel.tsx     [novo] pareamento + validação + barra de progresso
+                               + log honesto de erros do equipamento
+
+src/lib/__tests__/
+  rjIcetSerialBridge.spec.ts  [novo] fake port (loopback) + ACK timeout
 ```
 
-E no `useFrame` da animação de preset (linha 1093+), respeitar **grace period de 800 ms** após o último `end`:
+## Detalhes técnicos
 
-```ts
-const sinceUser = performance.now() - lastUserInteractionAt.current;
-if (userActive.current || sinceUser < 800) {
-  clampToWorldBounds();
-  return;
-}
-```
+### 1. `rjIcetScript.ts` (puro, data-in/data-out)
+- `buildIcetScript(items, positions, opts)` → `{ csv: string, cues: IcetCue[], warnings: string[] }`
+- Validações idênticas ao Timecode:
+  - throw/warn se modulo ∉ [1,99], canal ∉ [1,32]∪{C,F,S}
+  - throw/warn se abertura não múltiplo de 100 (auto-quantiza com warning)
+  - cap em 9999 cues (resto vai pra `warnings`)
+  - título sanitizado pra ≤ 20 chars ASCII
+- Ordenação obrigatória `timecode ASC, modulo ASC, canal ASC`
+- SMPTE 30fps non-drop (já existe `timeToSMPTE` no projeto)
 
-O `useEffect` do `presetKey` (1020–1032) também passa a ignorar mudanças quando `userActive.current || sinceUser < 800` — câmera não é mais "puxada de volta" para o preset depois que o usuário girou.
+### 2. `rjIcetSerialBridge.ts` (Web Serial honest-hardware)
+- `requestIcetPort()` — `navigator.serial.requestPort({ filters: [...3 VID/PIDs] })`
+- `IcetSerialLink` classe: open(baud) → `probeVersion()` → `sendTitle()` → `sendCues(onProgress)` → `close()`
+- Frame: comandos em ASCII linha-terminada (placeholder até diff binário do firmware — handshake real precisa de um teste de campo; deixo TODO marcado e bridge abstrata pra encaixar protocolo binário quando confirmado).
+- Errors mapeados 1:1 com os do Timecode: `version-incompatible`, `response-timeout`, `port-open-failed`.
+- Honest hardware: zero simulação fake, falhas viram resultado `{ ok: false, code, message }`.
 
-### 2. Curvas de sensibilidade mais fluidas
+### 3. Wiring no `firingSystemExports.ts`
+- `exportRJEquipamentos` passa a chamar `buildIcetScript()` (1 linha) — backward-compat: continua retornando string CSV.
+- Entry ICET ganha `directSend: true` e `directSender: 'icet'` no registry (campo opcional novo).
 
-```tsx
-<OrbitControls
-  ref={controlsRef}
-  enableDamping={false}        // sem inércia/arrasto (mantém comportamento exigido)
-  rotateSpeed={1.0}            // era 0.6 × 0.7 = 0.42
-  panSpeed={1.1}               // era 0.8 × 0.7 = 0.56
-  zoomSpeed={1.4}              // era 1.2 × 0.7 = 0.84
-  screenSpacePanning           // pan respeita o plano da tela — mais previsível
-  minPolarAngle={Math.PI * 0.02}
-  maxPolarAngle={Math.PI * 0.85}
-  minDistance={2}
-  maxDistance={90000}
-  enablePan
-/>
-```
+### 4. UI `ICETDirectSendPanel.tsx`
+- Botão "Parear equipamento ICET" → `requestIcetPort()`
+- Pré-validação roda local; mostra os warnings antes do envio.
+- "Enviar para equipamento" desabilitado se Web Serial indisponível (toast com motivo: HTTPS + Chrome/Edge desktop).
+- Progress 0–100% por cue enviado; cancelável; resultado final ("Exportação concluída" ou erro do equipamento).
+- Painel embedável no ExportCenter existente (não cria rota nova).
 
-Remove o `sensitivityScale = 0.7` global (linha 1107).
+### 5. Safety
+- Não toca `CommandBus`, `FieldBus`, `uiCommandGateway`, `SafetyStateMachine`.
+- Export é doc-artifact + transferência de script (não dispara). Equipamento decide quando armar — o app só transfere bytes.
+- Sem mudança de `workMode`. Disponível em design/simulation/real_operation.
 
-### 3. Clamp somente quando há mudança real
+### 6. Tests
+- `rjIcetScript.spec.ts`: 8+ tests (SMPTE format, ordenação canônica, abertura múltiplo 100, canais C/F/S, cap 9999, título 20 chars, quantização warning, sort estável).
+- `rjIcetSerialBridge.spec.ts`: fake port com loopback validando ACK timeout, version probe, progress callback monotônico.
 
-`clampToWorldBounds` só roda se `controls.target` ou `camera.position` diferirem do último frame por > 1e-3 (compara contra `_lastClampPos`/`_lastClampTarget` refs). Elimina micro-set por floating-point que cria "tremor".
+## Riscos / abertos honestos
 
-### 4. Handlers de foco e frame-all respeitam interação ativa
-
-`focus-camera-on-point` e `viewport-frame-all` viram **no-op** se `userActive.current` for true (ou descartam se `sinceUser < 300 ms`). UX: clique acidental durante rotação não interrompe o gesto.
-
-### 5. Cancelamento de intro mais limpo
-
-`cancelIntro` (912–939) passa a usar `controlsRef.current.addEventListener('start', ..., once)` no lugar do `pointerdown` no canvas — evita race com box-select e gizmo.
-
-## Fora de escopo
-
-- Safety state machine, uiCommandGateway, CommandBus/FieldBus, workMode, pairing, edge functions.
-- `GeoCameraController` permanece (apenas honra o novo `cancelFlyTo` em `onStart`, que já existe).
-- `FreeFlyCamera` (pointer-lock) intocado — é outro modo.
-
-## Verificação
-
-- `bunx vitest run` para garantir zero regressão (suíte 1280+ já existente).
-- Smoke manual: girar com botão esquerdo, soltar — câmera para imediatamente, sem retorno a preset; trocar de aba lateral (que costuma re-renderizar SkyCanvas com `targetPosition` igual) não desloca mais a câmera; pan/zoom continuam responsivos.
+- **Baud rate e frame binário do handshake** — strings não revelam. Marcado como TODO no bridge; abstrato o suficiente pra trocar a camada `frame()` sem mexer na UI/validação. Pode rodar field-test sniffing com `Wireshark USB + cabo Y` pra fechar a spec depois.
+- Web Serial não funciona em iOS Safari nem dentro de iframe sem permissions-policy — o painel detecta e instrui.
