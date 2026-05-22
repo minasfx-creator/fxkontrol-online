@@ -13,6 +13,7 @@ import { executeJoiCommands, stripJoiCommands, hasJoiCommands, type JoiCommandRe
 import JoiCommandFeedback from '@/components/JoiCommandFeedback';
 import { OPERATIONAL_PRESETS } from '@/components/JoiCommandPresets';
 import { useProjectStore } from '@/store/useProjectStore';
+import { supabase } from '@/integrations/supabase/client';
 import { EFFECT_LIBRARY } from '@/data/effectLibrary';
 import { cn } from '@/lib/utils';
 import ReactMarkdown from 'react-markdown';
@@ -141,11 +142,14 @@ async function streamChat(
   onDone: () => void,
   signal?: AbortSignal,
 ) {
+  const { data: { session } } = await supabase.auth.getSession();
+  const token = session?.access_token ?? import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
   const resp = await fetch(CHAT_URL, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+      Authorization: `Bearer ${token}`,
+      apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
     },
     body: JSON.stringify({ messages, projectContext: true }),
     signal,
