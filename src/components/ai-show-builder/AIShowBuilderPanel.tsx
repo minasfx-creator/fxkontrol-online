@@ -433,7 +433,7 @@ export default function AIShowBuilderPanel({ site, onApplied, onEditSite }: Prop
       setRedoStack(persisted.redo);
     }
     // Apenas quando o id do plano muda — não rehidrata em cada extensão.
-     
+
   }, [plan?.id]);
 
   useEffect(() => {

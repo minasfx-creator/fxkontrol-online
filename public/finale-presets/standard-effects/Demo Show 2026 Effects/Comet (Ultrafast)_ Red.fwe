@@ -1,0 +1,133 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<FireworkEffect xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+  <UseEvents>true</UseEvents>
+  <Children>
+    <BaseEffectNode xsi:type="Mine">
+      <UseEvents>true</UseEvents>
+      <Children>
+        <BaseEffectNode xsi:type="BurstingCharge">
+          <UseEvents>true</UseEvents>
+          <Children>
+            <BaseEffectNode xsi:type="Stars">
+              <UseEvents>true</UseEvents>
+              <Children />
+              <Count>1</Count>
+              <Distribution xsi:type="MineDistribution">
+                <Speed>2</Speed>
+                <Sigma>0.09</Sigma>
+                <PositionSigma>0.35</PositionSigma>
+                <Rotation>
+                  <XAxis>0</XAxis>
+                  <YAxis>0</YAxis>
+                  <ZAxis>0</ZAxis>
+                </Rotation>
+                <Spread>0</Spread>
+              </Distribution>
+              <Phases>
+                <StarPhase>
+                  <Color>
+                    <CustomR>0</CustomR>
+                    <CustomG>0</CustomG>
+                    <CustomB>0</CustomB>
+                    <Color>Red</Color>
+                  </Color>
+                  <Strobe>false</Strobe>
+                </StarPhase>
+              </Phases>
+              <Color>
+                <CustomR>0</CustomR>
+                <CustomG>0</CustomG>
+                <CustomB>0</CustomB>
+                <Color>PastelGreen</Color>
+              </Color>
+              <Type>Large</Type>
+              <Mass>1</Mass>
+              <Birthtime>0</Birthtime>
+              <BirthtimeSigmaRatio>0.1</BirthtimeSigmaRatio>
+              <MinimumLifetime>0.3</MinimumLifetime>
+              <MaximumLifetime>0.4</MaximumLifetime>
+              <CustomDimmcurve>true</CustomDimmcurve>
+              <FadeRatios>
+                <A>0.001</A>
+                <B>0.061895553</B>
+                <C>0.8529981</C>
+                <D>0.999</D>
+              </FadeRatios>
+              <Strobe>false</Strobe>
+              <StrobeType>Regular</StrobeType>
+              <StrobeOnTime>0.1</StrobeOnTime>
+              <StrobeFreqMean>14.011504</StrobeFreqMean>
+              <CanOverrideColor>true</CanOverrideColor>
+              <Motorized>false</Motorized>
+              <Motor>
+                <StartPropulsionAt>0.5</StartPropulsionAt>
+                <PropulsionStrength>0</PropulsionStrength>
+                <Curvature>0</Curvature>
+              </Motor>
+              <ColorChanging>false</ColorChanging>
+              <Color2>
+                <CustomR>0</CustomR>
+                <CustomG>0</CustomG>
+                <CustomB>0</CustomB>
+                <Color>PastelRed</Color>
+              </Color2>
+              <StrobeSynchronous>false</StrobeSynchronous>
+            </BaseEffectNode>
+          </Children>
+          <Auto>false</Auto>
+          <Energy>45</Energy>
+          <Color>
+            <CustomR>0</CustomR>
+            <CustomG>0</CustomG>
+            <CustomB>0</CustomB>
+            <Color>Spark</Color>
+          </Color>
+          <ChangeColor>false</ChangeColor>
+          <Sound>true</Sound>
+          <Render>true</Render>
+          <ExplosionSparks>Auto</ExplosionSparks>
+          <Delay>0</Delay>
+          <TestSound>false</TestSound>
+        </BaseEffectNode>
+      </Children>
+      <ID>1</ID>
+      <AllowRenaming>true</AllowRenaming>
+      <UserDefinedName />
+      <SizeSelection>Simple</SizeSelection>
+      <SimpleSize>
+        <DiameterPreset>d30</DiameterPreset>
+      </SimpleSize>
+      <Diameter>0.03</Diameter>
+      <LiftingCharge>133</LiftingCharge>
+      <Rotation>
+        <Mode>Auto</Mode>
+        <RotationsPerSecond>4</RotationsPerSecond>
+        <RotationDiameterMM>100</RotationDiameterMM>
+      </Rotation>
+      <Stabilizer>false</Stabilizer>
+    </BaseEffectNode>
+  </Children>
+  <SimulationVersion>0</SimulationVersion>
+  <AutotagOverride>Single Shot</AutotagOverride>
+  <Subtype>Comet</Subtype>
+  <RackType>Single_Shot</RackType>
+  <AutotagOverrideQuantity>0</AutotagOverrideQuantity>
+  <AutotagOverrideCaliber>0</AutotagOverrideCaliber>
+  <HideInLib>false</HideInLib>
+  <AutotagOverrideCaliber_Simple xsi:nil="true" />
+  <AutotagOverrideFurther />
+  <Identifier>
+    <Name>Comet (Ultrafast): Red</Name>
+    <Author>FWsim Collection</Author>
+  </Identifier>
+  <Metadata>
+    <Pieces />
+  </Metadata>
+  <FirstCreated>0001-01-01T00:00:00</FirstCreated>
+  <AuthorSoftwareVersion>
+    <Major>4</Major>
+    <Minor>2</Minor>
+    <Build>0</Build>
+    <Revision>0</Revision>
+  </AuthorSoftwareVersion>
+</FireworkEffect>

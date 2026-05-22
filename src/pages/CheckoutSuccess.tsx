@@ -6,7 +6,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 
 const clientToken = import.meta.env.VITE_PAYMENTS_CLIENT_TOKEN;
-const PADDLE_ENV: 'sandbox' | 'live' = clientToken?.startsWith('test_') ? 'sandbox' : 'live';
+const isSandboxPaddleToken = !clientToken || clientToken.startsWith('test_');
+const PADDLE_ENV: 'sandbox' | 'live' = isSandboxPaddleToken ? 'sandbox' : 'live';
 
 const REDIRECT_DELAY_MS = 2500;
 const POLL_INTERVAL_MS = 1500;

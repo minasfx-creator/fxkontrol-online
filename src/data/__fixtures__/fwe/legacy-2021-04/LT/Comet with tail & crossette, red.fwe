@@ -1,0 +1,101 @@
+<?xml version="1.0"?>
+<FireworkEffect xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+  <Children>
+    <BaseEffectNode xsi:type="Shell">
+      <Children>
+        <BaseEffectNode xsi:type="BurstingCharge">
+          <Children>
+            <BaseEffectNode xsi:type="Stars">
+              <Children>
+                <BaseEffectNode xsi:type="Crossette">
+                  <Children />
+                  <Type>Normal</Type>
+                  <Distribution xsi:type="SphericalDistribution">
+                    <Speed>1</Speed>
+                    <Sigma>0.14</Sigma>
+                  </Distribution>
+                  <Color>
+                    <CustomR>0</CustomR>
+                    <CustomG>0</CustomG>
+                    <CustomB>0</CustomB>
+                    <Color>Red</Color>
+                  </Color>
+                  <Color2>
+                    <CustomR>0</CustomR>
+                    <CustomG>0</CustomG>
+                    <CustomB>0</CustomB>
+                    <Color>Orange</Color>
+                  </Color2>
+                  <ColorChanging>false</ColorChanging>
+                  <Count>4</Count>
+                  <MinimumLifetime>1.5</MinimumLifetime>
+                  <MaximumLifetime>2.1</MaximumLifetime>
+                  <Strobe>false</Strobe>
+                  <StrobeFreqMean>14</StrobeFreqMean>
+                </BaseEffectNode>
+                <BaseEffectNode xsi:type="StarTails">
+                  <Children />
+                  <Color>
+                    <CustomR>0</CustomR>
+                    <CustomG>0</CustomG>
+                    <CustomB>0</CustomB>
+                    <Color>Spark</Color>
+                  </Color>
+                  <Width>1.5</Width>
+                  <Density>50</Density>
+                  <EmitStart>0.05</EmitStart>
+                  <EmitEnd>0.86</EmitEnd>
+                  <Life>3.1</Life>
+                </BaseEffectNode>
+              </Children>
+              <Type>Normal</Type>
+              <Distribution xsi:type="MineDistribution">
+                <Speed>1</Speed>
+                <Sigma>0.14</Sigma>
+                <Spread>0</Spread>
+              </Distribution>
+              <Color>
+                <CustomR>0</CustomR>
+                <CustomG>0</CustomG>
+                <CustomB>0</CustomB>
+                <Color>Yellow</Color>
+              </Color>
+              <Color2>
+                <CustomR>0</CustomR>
+                <CustomG>0</CustomG>
+                <CustomB>0</CustomB>
+                <Color>Orange</Color>
+              </Color2>
+              <ColorChanging>false</ColorChanging>
+              <Count>1</Count>
+              <MinimumLifetime>1.4</MinimumLifetime>
+              <MaximumLifetime>1.7</MaximumLifetime>
+              <Strobe>false</Strobe>
+              <StrobeFreqMean>14</StrobeFreqMean>
+            </BaseEffectNode>
+          </Children>
+          <Auto>false</Auto>
+          <Energy>229.39</Energy>
+          <Delay>0</Delay>
+        </BaseEffectNode>
+      </Children>
+      <ID>0</ID>
+      <AllowRenaming>false</AllowRenaming>
+      <SizeSelection>Advanced</SizeSelection>
+      <Diameter>0.142</Diameter>
+      <LiftingCharge>0</LiftingCharge>
+    </BaseEffectNode>
+  </Children>
+  <Identifier>
+    <Name>Comet with tail &amp; crossette, red</Name>
+    <Author>LT</Author>
+  </Identifier>
+  <IsReadonly>true</IsReadonly>
+  <AuthorSoftwareVersion>
+    <Major>2</Major>
+    <Minor>0</Minor>
+  </AuthorSoftwareVersion>
+  <MD5Hash>
+    <Value>vBU8n4UxPR/fDwmMXS9mEA==</Value>
+  </MD5Hash>
+</FireworkEffect>

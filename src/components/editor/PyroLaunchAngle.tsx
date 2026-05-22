@@ -5,6 +5,7 @@ import * as THREE from 'three';
 import { useProjectStore } from '@/store/useProjectStore';
 import { type Position } from '@/types/projectTypes';
 import { EFFECT_LIBRARY } from '@/data/effectLibrary';
+import { findEffectById } from '@/data/effectsLibraries/resolveEffect';
 import { useUndoStore } from '@/store/useUndoStore';
 import { calcWindCompensation, getBreakHeight, getMortarVelocity, getLiftTime } from '@/lib/pyroPhysics';
 import { useSceneStore } from '@/store/useSceneStore';
@@ -403,7 +404,7 @@ const LaunchAngleGizmo = forwardRef<THREE.Group, {
   const realCaliber = useMemo(() => {
     let cal = 4;
     for (const item of linkedCues) {
-      const eff = EFFECT_LIBRARY.find(e => e.id === item.effectId);
+      const eff = findEffectById(item.effectId);
       if (eff?.caliber && eff.caliber > cal) cal = eff.caliber;
     }
     return cal;

@@ -12,8 +12,6 @@
 import { Effect } from 'postprocessing';
 import { Uniform } from 'three';
 
-type EffectUniformMap = Map<string, Uniform>;
-
 const HALATION_FRAGMENT = `
 uniform float intensity;
 uniform float threshold;
@@ -91,10 +89,6 @@ void mainImage(const in vec4 inputColor, const in vec2 uv, out vec4 outputColor)
 `;
 
 export class HalationEffect extends Effect {
-  private get effectUniforms(): EffectUniformMap {
-    return (this as unknown as { uniforms: EffectUniformMap }).uniforms;
-  }
-
   constructor({
     intensity = 0.15,
     threshold = 5.0,
@@ -114,14 +108,14 @@ export class HalationEffect extends Effect {
   }
 
   set intensity(value: number) {
-    (this.effectUniforms.get('intensity') as Uniform).value = value;
+    (this.uniforms.get('intensity') as Uniform).value = value;
   }
 
   set threshold(value: number) {
-    (this.effectUniforms.get('threshold') as Uniform).value = value;
+    (this.uniforms.get('threshold') as Uniform).value = value;
   }
 
   set radius(value: number) {
-    (this.effectUniforms.get('radius') as Uniform).value = value;
+    (this.uniforms.get('radius') as Uniform).value = value;
   }
 }

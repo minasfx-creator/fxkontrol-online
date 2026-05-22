@@ -1,0 +1,527 @@
+{
+  "$schema": "fxk.fwsim.graphics.v1",
+  "source": "FWsim graphics.xml (3.4.x)",
+  "generatedAt": "2026-05-22T17:06:34.082Z",
+  "presetColors": {
+    "Red": [
+      255,
+      0,
+      15
+    ],
+    "PastelRed": [
+      240,
+      128,
+      128
+    ],
+    "Orange": [
+      255,
+      140,
+      10
+    ],
+    "Gold": [
+      255,
+      200,
+      120
+    ],
+    "Yellow": [
+      255,
+      215,
+      0
+    ],
+    "PastelGreen": [
+      200,
+      255,
+      185
+    ],
+    "Green": [
+      35,
+      205,
+      10
+    ],
+    "DarkGreen": [
+      34,
+      139,
+      34
+    ],
+    "Mint": [
+      78,
+      238,
+      148
+    ],
+    "Aqua": [
+      135,
+      206,
+      255
+    ],
+    "PastelBlue": [
+      150,
+      160,
+      255
+    ],
+    "Blue": [
+      50,
+      50,
+      200
+    ],
+    "PastelPurple": [
+      171,
+      130,
+      255
+    ],
+    "Purple": [
+      160,
+      0,
+      255
+    ],
+    "Pink": [
+      255,
+      20,
+      147
+    ],
+    "Spark": [
+      255,
+      247,
+      230
+    ],
+    "White": [
+      255,
+      251,
+      245
+    ],
+    "PastelPink": [
+      255,
+      187,
+      255
+    ],
+    "Lime": [
+      200,
+      255,
+      47
+    ],
+    "DarkYellow": [
+      254,
+      179,
+      22
+    ],
+    "DeepPurple": [
+      49,
+      1,
+      192
+    ],
+    "LightGreen": [
+      188,
+      255,
+      128
+    ],
+    "LightPink": [
+      255,
+      47,
+      104
+    ],
+    "LightRed": [
+      254,
+      52,
+      1
+    ],
+    "LightYellow": [
+      254,
+      238,
+      129
+    ],
+    "Lilac": [
+      219,
+      112,
+      254
+    ],
+    "PastelOrange": [
+      255,
+      169,
+      83
+    ],
+    "SeaGreen": [
+      0,
+      164,
+      66
+    ],
+    "SkyBlue": [
+      44,
+      90,
+      252
+    ],
+    "IceBlue": [
+      210,
+      231,
+      255
+    ]
+  },
+  "tonemapping": {
+    "contrast": 1.7,
+    "hdrMax": 16
+  },
+  "motionBlur": {
+    "enabled": true,
+    "oneDividedByExposureTime": 35,
+    "exposureCorrection": 0.8
+  },
+  "mainStarsShape": {
+    "whiteRadius": 0.15,
+    "falloffFactor": 0.2
+  },
+  "perTypeStars": {
+    "XLarge": {
+      "brightness": 0.6,
+      "shapeOverride": {
+        "whiteRadius": 0.12,
+        "falloffFactor": 0.25
+      }
+    },
+    "Large": {
+      "brightness": 0.8,
+      "shapeOverride": {
+        "whiteRadius": 0.1,
+        "falloffFactor": 0.175
+      }
+    },
+    "Normal": {
+      "brightness": 1,
+      "shapeOverride": {
+        "whiteRadius": 0.07,
+        "falloffFactor": 0.14
+      }
+    },
+    "Small": {
+      "brightness": 1.75,
+      "shapeOverride": {
+        "whiteRadius": 0.08,
+        "falloffFactor": 0.12
+      }
+    },
+    "XSmall": {
+      "brightness": 4,
+      "shapeOverride": {
+        "whiteRadius": 0.12,
+        "falloffFactor": 0.08
+      }
+    },
+    "XXSmall": {
+      "brightness": 8,
+      "shapeOverride": {
+        "whiteRadius": 0.06,
+        "falloffFactor": 0.02
+      }
+    },
+    "Sparks": {
+      "brightness": 0.01
+    },
+    "FallingLeaves": {
+      "brightness": 1,
+      "shapeOverride": {
+        "whiteRadius": 0.09,
+        "falloffFactor": 0.08
+      }
+    }
+  },
+  "flashes": {
+    "shellLaunchFlame": {
+      "sizeAtBeginning": 0.3,
+      "sizeAtEnding": 4,
+      "brightness": 5,
+      "duration": 0.2,
+      "sizeDependingOnEnergy": [
+        [
+          16,
+          0.2
+        ],
+        [
+          1300,
+          1
+        ],
+        [
+          13000,
+          1.5
+        ]
+      ]
+    },
+    "mineFlame": {
+      "sizeAtBeginning": 0.3,
+      "sizeAtEnding": 4,
+      "brightness": 2,
+      "duration": 0.15,
+      "sizeDependingOnEnergy": [
+        [
+          16,
+          0.2
+        ],
+        [
+          50,
+          1
+        ],
+        [
+          100,
+          1.5
+        ]
+      ]
+    },
+    "shellExplosion": {
+      "sizeAtBeginning": 15,
+      "sizeAtEnding": 10,
+      "brightness": 5,
+      "duration": 0.08,
+      "sizeDependingOnEnergy": [
+        [
+          10,
+          0.2
+        ],
+        [
+          100,
+          1
+        ],
+        [
+          500,
+          1.5
+        ]
+      ]
+    }
+  },
+  "strobeConfig": {
+    "strobeFadeBegin": 1.3,
+    "strobeFadeEnd": 0.7
+  },
+  "randomFlickeringForStars": {
+    "XLarge": 0.12,
+    "Large": 0.1,
+    "Normal": 0.08,
+    "Small": 0.05,
+    "XSmall": 0.03,
+    "XXSmall": 0.02,
+    "Sparks": 0,
+    "FallingLeaves": 0.1
+  },
+  "randomFlickeringForTails": {
+    "Sparks": 0.25,
+    "Microstars_Small": 0,
+    "Microstars_Medium": 0,
+    "Microstars_Large": 0
+  },
+  "defaultStarBrightnessCurve": {
+    "durationOfFadeIn": 0.09,
+    "durationOfFadeOut": 0.15
+  },
+  "ascentFlickering": {
+    "minimumBrightness": 0.3
+  },
+  "globals": {
+    "brightnessNormalizationMainStars": 0.3,
+    "brightnessNormalizationSparksMicrostars": 0.4,
+    "mainStarsSizeFactor": 0.55,
+    "microstarsSizeFactor": 0.7,
+    "mainStarsColorVariation": 0.03,
+    "mainStarsBrightness": 25,
+    "ascentStarBrightness": 25,
+    "microstarsBrightness": 25,
+    "sparksBrightness": 10.75,
+    "cracklingBrightnessModifier": 0.25,
+    "sparksMass": 0.18,
+    "cracklingMassModifier": 1,
+    "cracklingSizeVariation": 0.05,
+    "sparksNrMultiplier": 2.75,
+    "sparksSizeFactor": 0.35,
+    "sparksAsMainSizeFactor": 0.6,
+    "sparksAsMainBrightnessFactor": 1,
+    "sparksColorVariation": 0.01,
+    "sparksSizeVariation": 0.05,
+    "randomFlickeringSpeed": 2.5,
+    "randomFlickeringAmountForCrossette": 0,
+    "randomFlickeringSpeedForCrossette": 7.5,
+    "durationOfColorChange": 0.1,
+    "effectEditorGroundBrightness": 0.07,
+    "bengalFlareLightStreakIntensity": 0.25,
+    "lightOnEnvironmentFactor": 50,
+    "flamejetGroundBrightnessFactor": 0.005
+  },
+  "explosionSparks": {
+    "enabled": true,
+    "nrStars": 100,
+    "starsSpeedRelative": 1,
+    "starsSpeedVariance": 0.1,
+    "burnDuration": {
+      "begin": 1.5,
+      "end": 1.5
+    },
+    "shellSizeBelowWhichGoldDense": 76
+  },
+  "launchSparks": {
+    "enabled": true,
+    "shellExpStrength": [
+      [
+        40,
+        60
+      ],
+      [
+        70,
+        75
+      ],
+      [
+        200,
+        75
+      ]
+    ],
+    "shellRelativeSpeed": [
+      [
+        40,
+        0.5
+      ],
+      [
+        80,
+        0.8
+      ],
+      [
+        1000,
+        1
+      ]
+    ],
+    "shellMineWidth": [
+      [
+        40,
+        0.065
+      ],
+      [
+        70,
+        0.07
+      ]
+    ],
+    "shellNrStars": [
+      [
+        40,
+        100
+      ],
+      [
+        70,
+        200
+      ],
+      [
+        200,
+        250
+      ]
+    ],
+    "cometNrStars": 75,
+    "cometExplosionRelativeSpeed": 0.6,
+    "cometSpeedVariance": 0.14,
+    "cometMineWidth": 0.05,
+    "mineNrStars": 75,
+    "mineExplosionRelativeSpeed": 1,
+    "mineSpeedVariance": 0.14,
+    "mineMineWidth": 0.05
+  },
+  "bloom": {
+    "enabled": true,
+    "amountOfBloom": 0.1,
+    "upsamplingWeights": [
+      1.3,
+      0.9,
+      0.4,
+      0.5,
+      0.7,
+      0.8,
+      1.2,
+      1.6
+    ],
+    "radiusForUpsampling": 1.5,
+    "nrLevels": 10,
+    "algorithm": "Raw"
+  },
+  "tailDynamics": {
+    "particleCountOverTime": [
+      [
+        0,
+        0
+      ],
+      [
+        0.01,
+        1.2
+      ],
+      [
+        0.8,
+        1
+      ],
+      [
+        1,
+        0.01
+      ]
+    ],
+    "particleWidthOverTime": [
+      [
+        0,
+        1
+      ],
+      [
+        1,
+        1
+      ],
+      [
+        1,
+        0
+      ]
+    ]
+  },
+  "distanceScaling": {
+    "mainStars": {
+      "referenceDistance": 120,
+      "amountOfScaling": 0.5
+    },
+    "sparks": {
+      "referenceDistance": 120,
+      "amountOfScaling": 0.5
+    }
+  },
+  "spinners": {
+    "whistle": {
+      "averageSize": 2.4,
+      "sizeSigma": 0.4,
+      "mass": 0.27,
+      "sparkLifetime": 0.3,
+      "driverLifetime": 2.5,
+      "density": 300,
+      "rotSpeed": 25,
+      "radiusFactor": 100,
+      "nrNozzles": 1,
+      "randomVelocity": 0.4
+    },
+    "farfalle": {
+      "averageSize": 2.4,
+      "sizeSigma": 0.4,
+      "mass": 0.27,
+      "sparkLifetime": 0.6,
+      "driverLifetime": 3,
+      "density": 200,
+      "rotSpeed": 60,
+      "radiusFactor": 1,
+      "nrNozzles": 2,
+      "randomVelocity": 0.5
+    },
+    "tourbillon": {
+      "averageSize": 2.4,
+      "sizeSigma": 0.4,
+      "mass": 0.27,
+      "sparkLifetime": 0.2,
+      "driverLifetime": 3,
+      "density": 530,
+      "rotSpeed": 40,
+      "radiusFactor": 2,
+      "nrNozzles": 1,
+      "randomVelocity": 0.35
+    }
+  },
+  "water": {
+    "waterColor": [
+      10,
+      90,
+      255
+    ],
+    "waterBrightness": 0.01,
+    "waveSpeed": 0.01,
+    "waveHeight": 0.04,
+    "waveScaling": 5
+  },
+  "mainStarSortingEnabled": true
+}

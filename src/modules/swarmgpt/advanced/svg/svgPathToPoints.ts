@@ -30,4 +30,3 @@ export function svgPointsToDronePoints(
     z: center.z - ((point.y - (minY + height / 2)) / maxAxis) * scale,
   }));
 }
-

@@ -28,4 +28,3 @@ export interface ValidationReport {
   maxSpeed: number;
   maxDistance: number;
 }
-

@@ -1,0 +1,126 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<FireworkEffect xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+  <Children>
+    <BaseEffectNode xsi:type="Shell">
+      <Children>
+        <BaseEffectNode xsi:type="BurstingCharge">
+          <Children />
+          <Auto>false</Auto>
+          <Energy>85</Energy>
+          <Color>
+            <CustomR>0</CustomR>
+            <CustomG>0</CustomG>
+            <CustomB>0</CustomB>
+            <Color>Spark</Color>
+          </Color>
+          <ChangeColor>false</ChangeColor>
+          <Sound>true</Sound>
+          <Render>true</Render>
+          <ExplosionSparks>Auto</ExplosionSparks>
+          <Delay>1.9</Delay>
+          <TestSound>false</TestSound>
+        </BaseEffectNode>
+        <BaseEffectNode xsi:type="BurstingCharge">
+          <Children />
+          <Auto>false</Auto>
+          <Energy>80</Energy>
+          <Color>
+            <CustomR>0</CustomR>
+            <CustomG>0</CustomG>
+            <CustomB>0</CustomB>
+            <Color>Spark</Color>
+          </Color>
+          <ChangeColor>false</ChangeColor>
+          <Sound>true</Sound>
+          <Render>true</Render>
+          <ExplosionSparks>Auto</ExplosionSparks>
+          <Delay>2.3</Delay>
+          <TestSound>false</TestSound>
+        </BaseEffectNode>
+        <BaseEffectNode xsi:type="BurstingCharge">
+          <Children />
+          <Auto>false</Auto>
+          <Energy>80</Energy>
+          <Color>
+            <CustomR>0</CustomR>
+            <CustomG>0</CustomG>
+            <CustomB>0</CustomB>
+            <Color>Spark</Color>
+          </Color>
+          <ChangeColor>false</ChangeColor>
+          <Sound>true</Sound>
+          <Render>true</Render>
+          <ExplosionSparks>Auto</ExplosionSparks>
+          <Delay>2.7</Delay>
+          <TestSound>false</TestSound>
+        </BaseEffectNode>
+        <BaseEffectNode xsi:type="BurstingCharge">
+          <Children />
+          <Auto>false</Auto>
+          <Energy>80</Energy>
+          <Color>
+            <CustomR>0</CustomR>
+            <CustomG>0</CustomG>
+            <CustomB>0</CustomB>
+            <Color>Spark</Color>
+          </Color>
+          <ChangeColor>false</ChangeColor>
+          <Sound>true</Sound>
+          <Render>true</Render>
+          <ExplosionSparks>Auto</ExplosionSparks>
+          <Delay>3.1</Delay>
+          <TestSound>false</TestSound>
+        </BaseEffectNode>
+        <BaseEffectNode xsi:type="BurstingCharge">
+          <Children />
+          <Auto>false</Auto>
+          <Energy>80</Energy>
+          <Color>
+            <CustomR>0</CustomR>
+            <CustomG>0</CustomG>
+            <CustomB>0</CustomB>
+            <Color>Spark</Color>
+          </Color>
+          <ChangeColor>false</ChangeColor>
+          <Sound>true</Sound>
+          <Render>true</Render>
+          <ExplosionSparks>Auto</ExplosionSparks>
+          <Delay>3.6</Delay>
+          <TestSound>false</TestSound>
+        </BaseEffectNode>
+      </Children>
+      <ID>0</ID>
+      <AllowRenaming>false</AllowRenaming>
+      <SizeSelection>Advanced</SizeSelection>
+      <Diameter>0.169</Diameter>
+      <LiftingCharge>280</LiftingCharge>
+      <Rotation>
+        <Mode>Auto</Mode>
+        <RotationsPerSecond>4</RotationsPerSecond>
+        <RotationDiameterMM>100</RotationDiameterMM>
+      </Rotation>
+      <Stabilizer>false</Stabilizer>
+    </BaseEffectNode>
+  </Children>
+  <SimulationVersion>0</SimulationVersion>
+  <RackType xsi:nil="true" />
+  <AutotagOverrideQuantity>0</AutotagOverrideQuantity>
+  <AutotagOverrideCaliber>150</AutotagOverrideCaliber>
+  <HideInLib>true</HideInLib>
+  <AutotagOverrideCaliber_Simple xsi:nil="true" />
+  <AutotagOverrideFurther />
+  <Identifier>
+    <Name>bomba a 8 botte</Name>
+    <Author>lui</Author>
+  </Identifier>
+  <Metadata>
+    <Pieces />
+  </Metadata>
+  <FirstCreated>0001-01-01T00:00:00</FirstCreated>
+  <AuthorSoftwareVersion>
+    <Major>4</Major>
+    <Minor>1</Minor>
+    <Build>3</Build>
+    <Revision>0</Revision>
+  </AuthorSoftwareVersion>
+</FireworkEffect>

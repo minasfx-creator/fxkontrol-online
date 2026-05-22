@@ -7,6 +7,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useProjectStore } from '@/store/useProjectStore';
 import { EFFECT_LIBRARY } from '@/data/effectLibrary';
+import { findEffectById } from '@/data/effectsLibraries/resolveEffect';
 import { useInventoryStore } from '@/store/useInventoryStore';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -46,7 +47,7 @@ export default function RiderPanel({ onClose }: RiderPanelProps) {
     });
 
     const pyroItems = Object.entries(effectCounts).map(([id, qty]) => {
-      const effect = EFFECT_LIBRARY.find(e => e.id === id);
+      const effect = findEffectById(id);
       return { label: effect?.name || id, qty, notes: '' };
     });
 

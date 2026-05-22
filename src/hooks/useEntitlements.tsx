@@ -22,7 +22,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { promptUpgrade } from '@/lib/upgradePrompt';
 
 const clientToken = import.meta.env.VITE_PAYMENTS_CLIENT_TOKEN;
-export const PADDLE_ENV: 'sandbox' | 'live' = clientToken?.startsWith('test_') ? 'sandbox' : 'live';
+const isSandboxPaddleToken = !clientToken || clientToken.startsWith('test_');
+export const PADDLE_ENV: 'sandbox' | 'live' = isSandboxPaddleToken ? 'sandbox' : 'live';
 
 export type Tier = 'free' | 'pro' | 'enterprise';
 

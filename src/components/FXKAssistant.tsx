@@ -409,7 +409,7 @@ export function FXKAssistant() {
   const [messages, setMessages] = useState<Msg[]>(() => loadHistory());
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
-  
+
   const [isTyping, setIsTyping] = useState(false);
   const [idlePhrase, setIdlePhrase] = useState(0);
   const [connectionOk, setConnectionOk] = useState<boolean | null>(null);
@@ -549,7 +549,7 @@ export function FXKAssistant() {
   const presets = useMemo(() => {
     return getPresetsForMode(joiMode).map(p => ({ label: p.label, icon: p.icon, prompt: p.prompt }));
   }, [joiMode]);
-  
+
 
   const handleFileSelect = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];

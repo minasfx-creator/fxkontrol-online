@@ -2,15 +2,15 @@
  * MobileLinkMonitor — Desktop overlay that shows real-time fire events
  * received from mobile devices via Supabase Realtime broadcast.
  */
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { Cable, Wifi, WifiOff, Flame, Zap, Wind, Sparkles, Lightbulb, X, Monitor, Smartphone } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
 import { useLiveSfxStore } from '@/store/useLiveSfxStore';
-import { useProjectStore } from '@/store/useProjectStore';
-import { getMobileGatewayChannelName } from '@/lib/bridgeGateway';
+
+const CHANNEL_NAME = 'mobile-link';
 
 type FixtureType = 'par' | 'wash' | 'strobe' | 'flame' | 'co2' | 'spark';
 
@@ -60,13 +60,11 @@ export default function MobileLinkMonitor({ onClose }: MobileLinkMonitorProps) {
   const [events, setEvents] = useState<FireEvent[]>([]);
   const [flashId, setFlashId] = useState<string | null>(null);
   const fireEffect = useLiveSfxStore((s) => s.fireEffect);
-  const projectId = useProjectStore((s) => s.projectId);
-  const channelName = useMemo(() => getMobileGatewayChannelName(projectId), [projectId]);
   const maxEvents = 20;
 
   useEffect(() => {
     let flashTimer: ReturnType<typeof setTimeout> | null = null;
-    const ch = supabase.channel(channelName, { config: { broadcast: { self: false } } });
+    const ch = supabase.channel(CHANNEL_NAME);
     ch.on('broadcast', { event: 'fixture-fire' }, (msg) => {
       const p = msg.payload as { fixtureId: string; type: FixtureType; color: string; intensity: number };
       const eventId = `${p.fixtureId}-${Date.now()}`;
@@ -106,7 +104,7 @@ export default function MobileLinkMonitor({ onClose }: MobileLinkMonitorProps) {
       if (flashTimer) clearTimeout(flashTimer);
       supabase.removeChannel(ch);
     };
-  }, [channelName, fireEffect]);
+  }, [fireEffect]);
 
   return (
     <div className="h-full flex flex-col bg-background text-foreground">

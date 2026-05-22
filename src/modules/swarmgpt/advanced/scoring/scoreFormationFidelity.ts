@@ -26,4 +26,3 @@ export function scoreFormationFidelity(
     pointCount: sampledPoints.length,
   };
 }
-

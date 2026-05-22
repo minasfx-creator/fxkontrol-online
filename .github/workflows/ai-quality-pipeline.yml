@@ -68,7 +68,7 @@ jobs:
           fi
       - name: Detect hardcoded Datadog keys
         run: |
-          if grep -RIn "ddapp_" .github/ src/ supabase/ 2>/dev/null; then
+          if grep -RIn "[d]dapp_" .github/ src/ supabase/ 2>/dev/null; then
             echo "Hardcoded Datadog app key detected."
             exit 1
           fi
@@ -79,10 +79,4 @@ jobs:
             exit 1
           fi
       - name: Detect global setInterval in stores/lib
-        run: |
-          matches=$(grep -RIn "setInterval" src/store src/lib 2>/dev/null | grep -viE "//|/\*" || true)
-          if [ -n "$matches" ]; then
-            echo "Global timers detected. Use lifecycle-controlled start/stop functions."
-            echo "$matches"
-            exit 1
-          fi
+        run: node scripts/check-global-timers.mjs

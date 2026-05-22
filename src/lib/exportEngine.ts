@@ -1,7 +1,9 @@
 import { type TimelineItem, type Position, type Trajectory, type DroneFormation } from '@/types/projectTypes';
 import { EFFECT_LIBRARY } from '@/data/effectLibrary';
+import { findEffectById } from '@/data/effectsLibraries/resolveEffect';
 import { rgbToVdlString } from '@/lib/vdlQuantizer';
 import { getLiftTime } from '@/lib/pyroPhysics';
+import { resolveCuePresetMetadata, csvCell, type CuePresetMetadata } from '@/core/export/cuePresetMetadata';
 
 // ─── VVIZ Drone Export (Finale 3D Spec) ─────────────────────────────
 // Generates a valid .vviz JSON file following the official Finale 3D specification:
@@ -41,6 +43,13 @@ interface VVIZPyroPayload {
   partNumber: string;
   tilt?: number;
   pan?: number;
+  /**
+   * rev9: Mine/Cake-shot canonical Finale preset wiring.
+   * Optional — present when the source effect resolves to a known preset.
+   * Consumers (Finale 3D plugin, Skybrush bridge, FXKONTROL replay) read
+   * this block to render the LED-accurate body/trail and strobe.
+   */
+  presetMetadata?: CuePresetMetadata;
 }
 
 type VVIZPayload = VVIZLightPayload | VVIZPyroPayload;
@@ -173,19 +182,28 @@ export function exportVVIZ(
   const zF = (z: number) => applyZFlip(z, frame);
 
   // ── Helper: add VDL pyro payload alongside light payload ──
-  const buildVdlPayloads = (lightPayload: VVIZLightPayload): VVIZPayload[] => {
+  // `presetHints` (rev9): strings consulted to resolve Mine/Cake-shot canonical
+  // Finale presets — when present the partNumber is upgraded to the preset id
+  // and a `presetMetadata` block is attached to the Pyro payload.
+  const buildVdlPayloads = (
+    lightPayload: VVIZLightPayload,
+    presetHints: ReadonlyArray<string | undefined | null> = [],
+  ): VVIZPayload[] => {
     const payloads: VVIZPayload[] = [lightPayload];
     // Find dominant color from light payload for VDL string
     const actions = lightPayload.payloadActions;
     const dominant = actions.find(a => a.r > 0 || a.g > 0 || a.b > 0);
     if (dominant) {
       const vdl = rgbToVdlString(dominant.r, dominant.g, dominant.b, noTrail);
+      const meta = resolveCuePresetMetadata(presetHints);
+      const presetId = meta.minePresetId ?? meta.cakePresetId;
       payloads.push({
         id: 1,
         type: 'Pyro',
         eventTime: 0,
         vdl,
-        partNumber: `VDL-${vdl.replace(/\s+/g, '-')}`,
+        partNumber: presetId ?? `VDL-${vdl.replace(/\s+/g, '-')}`,
+        ...(presetId ? { presetMetadata: meta } : {}),
       });
     }
     return payloads;
@@ -193,12 +211,12 @@ export function exportVVIZ(
 
   // ── Build performances from timeline drone items ──
   const droneItems = timelineItems.filter((item) => {
-    const effect = EFFECT_LIBRARY.find((e) => e.id === item.effectId);
+    const effect = findEffectById(item.effectId);
     return effect?.type === 'drone';
   });
 
   for (const item of droneItems) {
-    const effect = EFFECT_LIBRARY.find((e) => e.id === item.effectId)!;
+    const effect = findEffectById(item.effectId)!;
     const rgb = hexToRgb(effect.color);
     const homeX = item.position.x;
     const homeY = 0;
@@ -225,7 +243,7 @@ export function exportVVIZ(
     performances.push({
       id: performanceId++,
       agentDescription: { homeX, homeY, homeZ, homeH, agentTraversal: buildTraversal(keyframes) },
-      payloadDescription: buildVdlPayloads(lp),
+      payloadDescription: buildVdlPayloads(lp, [item.effectId, effect.name, item.notes]),
     });
   }
 
@@ -344,6 +362,14 @@ interface FiringCue {
   heading: number;
   pitch: number;
   angle: number;
+  /** rev9: canonical Mine/Cake-shot wiring (optional). */
+  minePresetId?: string;
+  cakePresetId?: string;
+  bodyColor?: string;
+  trailColor?: string;
+  strobeHz?: number;
+  innerCount?: number;
+  innerSpeedMS?: number;
 }
 
 /** Extract caliber from effect name (e.g., 'Chrysanthemum 3"' → '3"') */
@@ -363,7 +389,7 @@ export function exportFiringCSV(
   positions: Position[],
 ): string {
   const pyroItems = timelineItems.filter((item) => {
-    const effect = EFFECT_LIBRARY.find((e) => e.id === item.effectId);
+    const effect = findEffectById(item.effectId);
     return effect?.type === 'firework';
   });
 
@@ -373,7 +399,7 @@ export function exportFiringCSV(
   const SLATS_PER_MODULE = 5;
 
   const cues: FiringCue[] = sorted.map((item, index) => {
-    const effect = EFFECT_LIBRARY.find((e) => e.id === item.effectId)!;
+    const effect = findEffectById(item.effectId)!;
     const caliber = extractCaliber(effect.name);
     const pft = calculatePFT(caliber);
 
@@ -402,6 +428,8 @@ export function exportFiringCSV(
       }
     }
 
+    const meta = resolveCuePresetMetadata([item.effectId, effect.name, item.notes]);
+
     return {
       cue: index + 1,
       module,
@@ -419,103 +447,32 @@ export function exportFiringCSV(
       heading,
       pitch,
       angle: 0,
+      minePresetId: meta.minePresetId,
+      cakePresetId: meta.cakePresetId,
+      bodyColor: meta.bodyColorHex,
+      trailColor: meta.trailColorHex,
+      strobeHz: meta.strobeHz,
+      innerCount: meta.innerCount,
+      innerSpeedMS: meta.innerSpeedMS,
     };
   });
 
-  const header = 'Cue,Module,Slat,Pin,EventTime(s),PreFireTime(s),EffectName,Caliber,Duration(s),Position,X,Y,Z,Heading,Pitch,Angle';
-  const escape = (v: string) => /[",\n]/.test(v) ? `"${v.replace(/"/g, '""')}"` : v;
+  const header =
+    'Cue,Module,Slat,Pin,EventTime(s),PreFireTime(s),EffectName,Caliber,Duration(s),Position,X,Y,Z,Heading,Pitch,Angle,MinePresetId,CakePresetId,BodyColor,TrailColor,StrobeHz,InnerCount,InnerSpeedMS';
   const rows = cues.map((c) =>
-    `${c.cue},${c.module},${c.slat},${c.pin},${c.eventTime},${c.preFireTime},${escape(c.effectName)},${c.caliber},${c.duration},${escape(c.posName)},${c.x},${c.y},${c.z},${c.heading},${c.pitch},${c.angle}`
+    [
+      c.cue, c.module, c.slat, c.pin, c.eventTime, c.preFireTime,
+      csvCell(c.effectName), c.caliber, c.duration, csvCell(c.posName),
+      c.x, c.y, c.z, c.heading, c.pitch, c.angle,
+      csvCell(c.minePresetId), csvCell(c.cakePresetId),
+      csvCell(c.bodyColor), csvCell(c.trailColor),
+      c.strobeHz != null ? c.strobeHz.toFixed(2) : '',
+      c.innerCount != null ? String(c.innerCount) : '',
+      c.innerSpeedMS != null ? c.innerSpeedMS.toFixed(2) : '',
+    ].join(','),
   );
 
   return header + '\n' + rows.join('\n');
-}
-
-/**
- * Build the same firing cue list returned by exportFiringCSV but as a
- * structured JSON document. Suitable for ingestion by JSON-driven firing
- * consoles (FXcommander Pro, Cobra JSON profile, custom FXK bridges).
- *
- * Schema is stable and versioned (`schemaVersion`) so external tools can
- * pin against breaking changes.
- */
-export interface FiringScriptJSON {
-  schemaVersion: '1.0';
-  generator: 'FXKontrol';
-  generatedAt: string;
-  show: {
-    name: string;
-    cueCount: number;
-    moduleCount: number;
-    durationSec: number;
-  };
-  cues: FiringCue[];
-}
-
-export function exportFiringJSON(
-  projectName: string,
-  timelineItems: TimelineItem[],
-  positions: Position[],
-): string {
-  const csv = exportFiringCSV(timelineItems, positions);
-  // Re-parse the CSV body into structured rows. Cheaper than duplicating
-  // the cue assembly logic and guarantees CSV/JSON exports stay aligned.
-  const lines = csv.split('\n').slice(1).filter(Boolean);
-  const cues: FiringCue[] = lines.map((line) => {
-    // Tolerant CSV split (handles quoted fields with commas)
-    const cells: string[] = [];
-    let cur = '';
-    let inQuotes = false;
-    for (let i = 0; i < line.length; i++) {
-      const ch = line[i];
-      if (ch === '"') {
-        if (inQuotes && line[i + 1] === '"') { cur += '"'; i++; }
-        else inQuotes = !inQuotes;
-      } else if (ch === ',' && !inQuotes) {
-        cells.push(cur);
-        cur = '';
-      } else {
-        cur += ch;
-      }
-    }
-    cells.push(cur);
-    return {
-      cue: Number(cells[0]),
-      module: Number(cells[1]),
-      slat: Number(cells[2]),
-      pin: Number(cells[3]),
-      eventTime: Number(cells[4]),
-      preFireTime: Number(cells[5]),
-      effectName: cells[6],
-      caliber: cells[7],
-      duration: Number(cells[8]),
-      posName: cells[9],
-      x: Number(cells[10]),
-      y: Number(cells[11]),
-      z: Number(cells[12]),
-      heading: Number(cells[13]),
-      pitch: Number(cells[14]),
-      angle: Number(cells[15]),
-    };
-  });
-
-  const moduleCount = cues.length === 0 ? 0 : Math.max(...cues.map(c => c.module));
-  const durationSec = cues.length === 0 ? 0 : Math.max(...cues.map(c => c.eventTime + c.duration));
-
-  const doc: FiringScriptJSON = {
-    schemaVersion: '1.0',
-    generator: 'FXKontrol',
-    generatedAt: new Date().toISOString(),
-    show: {
-      name: projectName,
-      cueCount: cues.length,
-      moduleCount,
-      durationSec: Math.round(durationSec * 1000) / 1000,
-    },
-    cues,
-  };
-
-  return JSON.stringify(doc, null, 2);
 }
 
 // ─── Boids Simulation → VVIZ Export ──────────────────────────────────
@@ -880,11 +837,7 @@ export function exportFormationsToKML(
 </kml>`;
 }
 
-// ─── Unified Show Export — JSON & CSV ────────────────────────────────
-// Bundle the entire show (project meta + positions + timeline cues +
-// drone formations + trajectories) into a single canonical document.
-// Coordinates use the editor's Three.js frame (X right, Y up, Z toward viewer).
-// Heading is reported per-cue: linked position heading > position default > 0.
+// ─── Download Helper ─────────────────────────────────────────────────
 
 export interface ShowBundleJSON {
   schemaVersion: '1.0';
@@ -901,8 +854,12 @@ export interface ShowBundleJSON {
     id: string;
     name: string;
     type: Position['type'];
-    x: number; y: number; z: number;
-    heading: number; pitch: number; roll: number;
+    x: number;
+    y: number;
+    z: number;
+    heading: number;
+    pitch: number;
+    roll: number;
   }>;
   cues: Array<{
     id: string;
@@ -913,13 +870,17 @@ export interface ShowBundleJSON {
     startTime: number;
     duration: number;
     color: string;
-    x: number; y: number; z: number;
-    heading: number; pitch: number;
-    pan: number; tilt: number; spin: number;
+    x: number;
+    y: number;
+    z: number;
+    heading: number;
+    pitch: number;
+    pan: number;
+    tilt: number;
+    spin: number;
     intensity: number;
     positionId?: string;
     positionName?: string;
-    /** Caliber (in) for fireworks. */
     caliber?: number;
     prefire?: number;
     safetyDistance?: number;
@@ -938,15 +899,19 @@ function resolveCueGeometry(item: TimelineItem, positions: Position[]) {
   let heading = 0;
   let pitch = 90;
   let positionName: string | undefined = item.positionName;
+
   if (item.positionId) {
-    const linked = positions.find(p => p.id === item.positionId);
+    const linked = positions.find((position) => position.id === item.positionId);
     if (linked) {
-      x = linked.x; y = linked.y; z = linked.z;
+      x = linked.x;
+      y = linked.y;
+      z = linked.z;
       heading = item.cueHeading ?? linked.heading ?? 0;
       pitch = item.cuePitch ?? linked.pitch ?? 90;
       positionName = linked.name;
     }
   }
+
   return { x, y, z, heading, pitch, positionName };
 }
 
@@ -959,10 +924,11 @@ export function exportShowBundleJSON(
   droneFormations: DroneFormation[] = [],
 ): string {
   const cues: ShowBundleJSON['cues'] = timelineItems.map((item) => {
-    const effect = EFFECT_LIBRARY.find(e => e.id === item.effectId);
+    const effect = findEffectById(item.effectId);
     const geom = resolveCueGeometry(item, positions);
     const color = item.colorOverride ?? effect?.color ?? '#FFFFFF';
-    const dur = item.durationOverride ?? effect?.duration ?? 0;
+    const itemDuration = item.durationOverride ?? effect?.duration ?? 0;
+
     return {
       id: item.id,
       effectId: item.effectId,
@@ -970,7 +936,7 @@ export function exportShowBundleJSON(
       type: (effect?.type ?? 'sfx') as ShowBundleJSON['cues'][number]['type'],
       category: effect?.category ?? 'unknown',
       startTime: Math.round(item.startTime * 1000) / 1000,
-      duration: Math.round(dur * 1000) / 1000,
+      duration: Math.round(itemDuration * 1000) / 1000,
       color,
       x: Math.round(geom.x * 1000) / 1000,
       y: Math.round(geom.y * 1000) / 1000,
@@ -992,8 +958,9 @@ export function exportShowBundleJSON(
     };
   });
 
-  const droneCount = (droneFormations[0]?.droneCount ?? 0) + trajectories.length +
-    cues.filter(c => c.type === 'drone').length;
+  const droneCount = (droneFormations[0]?.droneCount ?? 0)
+    + trajectories.length
+    + cues.filter((cue) => cue.type === 'drone').length;
 
   const doc: ShowBundleJSON = {
     schemaVersion: '1.0',
@@ -1006,56 +973,55 @@ export function exportShowBundleJSON(
       positionCount: positions.length,
       droneCount,
     },
-    positions: positions.map(p => ({
-      id: p.id, name: p.name, type: p.type,
-      x: Math.round(p.x * 1000) / 1000,
-      y: Math.round(p.y * 1000) / 1000,
-      z: Math.round(p.z * 1000) / 1000,
-      heading: p.heading ?? 0,
-      pitch: p.pitch ?? 0,
-      roll: p.roll ?? 0,
+    positions: positions.map((position) => ({
+      id: position.id,
+      name: position.name,
+      type: position.type,
+      x: Math.round(position.x * 1000) / 1000,
+      y: Math.round(position.y * 1000) / 1000,
+      z: Math.round(position.z * 1000) / 1000,
+      heading: position.heading ?? 0,
+      pitch: position.pitch ?? 0,
+      roll: position.roll ?? 0,
     })),
     cues,
     droneFormations,
     trajectories,
   };
+
   return JSON.stringify(doc, null, 2);
 }
 
-/**
- * Universal CSV export — every cue (firework, drone, sfx, laser, light) on
- * one row with X/Y/Z/Heading. Suitable for spreadsheets, audits, and
- * downstream import in Excel / Google Sheets.
- */
 export function exportShowBundleCSV(
   timelineItems: TimelineItem[],
   positions: Position[],
 ): string {
   const sorted = [...timelineItems].sort((a, b) => a.startTime - b.startTime);
-  const escape = (v: string | number | undefined) => {
-    const s = v === undefined || v === null ? '' : String(v);
-    return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+  const escape = (value: string | number | undefined) => {
+    const text = value == null ? '' : String(value);
+    return /[",\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
   };
 
   const header = [
     'Cue', 'Type', 'Category', 'EffectName', 'StartTime(s)', 'Duration(s)',
-    'X', 'Y', 'Z', 'Heading(°)', 'Pitch(°)', 'Pan(°)', 'Tilt(°)', 'Spin(°)',
+    'X', 'Y', 'Z', 'Heading(deg)', 'Pitch(deg)', 'Pan(deg)', 'Tilt(deg)', 'Spin(deg)',
     'Color', 'Intensity(%)', 'Caliber(in)', 'Prefire(s)', 'SafetyDist(m)',
     'Pattern', 'BeamCount', 'FlightCount', 'Position', 'PositionId',
   ].join(',');
 
-  const rows = sorted.map((item, idx) => {
-    const effect = EFFECT_LIBRARY.find(e => e.id === item.effectId);
+  const rows = sorted.map((item, index) => {
+    const effect = findEffectById(item.effectId);
     const geom = resolveCueGeometry(item, positions);
     const color = item.colorOverride ?? effect?.color ?? '';
-    const dur = item.durationOverride ?? effect?.duration ?? 0;
+    const itemDuration = item.durationOverride ?? effect?.duration ?? 0;
+
     return [
-      idx + 1,
+      index + 1,
       effect?.type ?? 'sfx',
       effect?.category ?? 'unknown',
       escape(effect?.name ?? 'Unknown'),
       Math.round(item.startTime * 1000) / 1000,
-      Math.round(dur * 1000) / 1000,
+      Math.round(itemDuration * 1000) / 1000,
       Math.round(geom.x * 1000) / 1000,
       Math.round(geom.y * 1000) / 1000,
       Math.round(geom.z * 1000) / 1000,
@@ -1077,10 +1043,8 @@ export function exportShowBundleCSV(
     ].join(',');
   });
 
-  return header + '\n' + rows.join('\n');
+  return `${header}\n${rows.join('\n')}`;
 }
-
-// ─── Download Helper ─────────────────────────────────────────────────
 
 export function downloadFile(content: string, filename: string, mimeType: string) {
   const blob = new Blob([content], { type: mimeType });

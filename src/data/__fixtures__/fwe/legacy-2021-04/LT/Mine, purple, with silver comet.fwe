@@ -1,0 +1,100 @@
+<?xml version="1.0"?>
+<FireworkEffect xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+  <Children>
+    <BaseEffectNode xsi:type="Mine">
+      <Children>
+        <BaseEffectNode xsi:type="BurstingCharge">
+          <Children>
+            <BaseEffectNode xsi:type="Stars">
+              <Children />
+              <Type>Normal</Type>
+              <Distribution xsi:type="MineDistribution">
+                <Speed>0.68</Speed>
+                <Sigma>0.036</Sigma>
+                <Spread>0.07505673</Spread>
+              </Distribution>
+              <Color>
+                <CustomR>0</CustomR>
+                <CustomG>0</CustomG>
+                <CustomB>0</CustomB>
+                <Color>Purple</Color>
+              </Color>
+              <Color2>
+                <CustomR>0</CustomR>
+                <CustomG>0</CustomG>
+                <CustomB>0</CustomB>
+                <Color>Orange</Color>
+              </Color2>
+              <ColorChanging>false</ColorChanging>
+              <Count>60</Count>
+              <MinimumLifetime>0.7</MinimumLifetime>
+              <MaximumLifetime>1</MaximumLifetime>
+              <Strobe>false</Strobe>
+              <StrobeFreqMean>14</StrobeFreqMean>
+            </BaseEffectNode>
+            <BaseEffectNode xsi:type="Stars">
+              <Children>
+                <BaseEffectNode xsi:type="StarTails">
+                  <Children />
+                  <Color>
+                    <CustomR>0</CustomR>
+                    <CustomG>0</CustomG>
+                    <CustomB>0</CustomB>
+                    <Color>Spark</Color>
+                  </Color>
+                  <Width>1.3</Width>
+                  <Density>99</Density>
+                  <EmitStart>0.05</EmitStart>
+                  <EmitEnd>0.86</EmitEnd>
+                  <Life>3.1</Life>
+                </BaseEffectNode>
+              </Children>
+              <Type>Normal</Type>
+              <Distribution xsi:type="MineDistribution">
+                <Speed>1</Speed>
+                <Sigma>0.04</Sigma>
+                <Spread>0</Spread>
+              </Distribution>
+              <Color>
+                <CustomR>0</CustomR>
+                <CustomG>0</CustomG>
+                <CustomB>0</CustomB>
+                <Color>Spark</Color>
+              </Color>
+              <Color2>
+                <CustomR>0</CustomR>
+                <CustomG>0</CustomG>
+                <CustomB>0</CustomB>
+                <Color>Orange</Color>
+              </Color2>
+              <ColorChanging>false</ColorChanging>
+              <Count>1</Count>
+              <MinimumLifetime>1.9</MinimumLifetime>
+              <MaximumLifetime>2.5</MaximumLifetime>
+              <Strobe>false</Strobe>
+              <StrobeFreqMean>14</StrobeFreqMean>
+            </BaseEffectNode>
+          </Children>
+          <Auto>false</Auto>
+          <Energy>80</Energy>
+          <Delay>0</Delay>
+        </BaseEffectNode>
+      </Children>
+      <ID>0</ID>
+      <AllowRenaming>false</AllowRenaming>
+      <SizeSelection>Advanced</SizeSelection>
+      <Diameter>0.1</Diameter>
+      <LiftingCharge>0</LiftingCharge>
+    </BaseEffectNode>
+  </Children>
+  <Identifier>
+    <Name>Mine, purple, with silver comet</Name>
+    <Author>LT</Author>
+  </Identifier>
+  <IsReadonly>false</IsReadonly>
+  <AuthorSoftwareVersion>
+    <Major>2</Major>
+    <Minor>0</Minor>
+  </AuthorSoftwareVersion>
+  <MD5Hash />
+</FireworkEffect>

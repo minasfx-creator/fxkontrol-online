@@ -35,4 +35,3 @@ export function silhouetteToPoints(
     z: center.z - ((pixel.y - (minY + height / 2)) / maxAxis) * scale,
   }));
 }
-
