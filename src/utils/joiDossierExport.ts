@@ -190,6 +190,60 @@ export async function downloadJoiDossier(
   return { filename, bytes: blob.size };
 }
 
+/**
+ * Commit the dossier ZIP to Lovable Cloud Storage (private `assets` bucket)
+ * under `${userId}/joi-dossiers/${filename}` and return a signed URL valid
+ * for the requested TTL.
+ *
+ * SAFETY: pure documentation upload. Never touches CommandBus / FieldBus.
+ * Honest-hardware: failures bubble up as `{ ok: false, error }` — no fake URLs.
+ */
+export async function commitJoiDossierToCloud(
+  preset: VenueShowPreset,
+  options: JoiDossierOptions & { signedUrlTtlSec?: number } = {},
+): Promise<
+  | { ok: true; filename: string; path: string; signedUrl: string; bytes: number; expiresInSec: number }
+  | { ok: false; error: string }
+> {
+  try {
+    const { supabase } = await import('@/integrations/supabase/client');
+    const { data: auth } = await supabase.auth.getUser();
+    const userId = auth?.user?.id;
+    if (!userId) return { ok: false, error: 'not-authenticated' };
+
+    const { blob, filename, bytes } = await buildJoiDossier(preset, options);
+    const path = `${userId}/joi-dossiers/${filename}`;
+    const ttl = Math.max(60, options.signedUrlTtlSec ?? 60 * 60 * 24 * 7); // default 7d
+
+    const { error: upErr } = await supabase.storage
+      .from('assets')
+      .upload(path, blob, {
+        contentType: 'application/zip',
+        upsert: true,
+        cacheControl: '3600',
+      });
+    if (upErr) return { ok: false, error: `upload-failed: ${upErr.message}` };
+
+    const { data: signed, error: sErr } = await supabase.storage
+      .from('assets')
+      .createSignedUrl(path, ttl);
+    if (sErr || !signed?.signedUrl) {
+      return { ok: false, error: `sign-failed: ${sErr?.message ?? 'unknown'}` };
+    }
+
+    return {
+      ok: true,
+      filename,
+      path,
+      signedUrl: signed.signedUrl,
+      bytes: bytes.byteLength,
+      expiresInSec: ttl,
+    };
+  } catch (err: any) {
+    return { ok: false, error: err?.message ?? String(err) };
+  }
+}
+
 // ─────────────────────────────────────────────────────────────────────
 // In-memory DOCX builder reusing the ABNT styling logic. Kept local to
 // avoid coupling joiDocxExport's DOM download side-effects.
