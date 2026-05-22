@@ -6,6 +6,7 @@
 
 import { useProjectStore } from '@/store/useProjectStore';
 import { EFFECT_LIBRARY } from '@/data/effectLibrary';
+import { findEffectById } from '@/data/effectsLibraries/resolveEffect';
 import { supabase } from '@/integrations/supabase/client';
 
 // Type-safe wrapper since show_styles may not be in generated types yet

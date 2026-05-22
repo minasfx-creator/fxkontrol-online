@@ -18,6 +18,7 @@ import { operationalModeGuard } from '@/core/hardware/OperationalModeGuard';
 import { verificationLog } from '@/core/verification/VerificationLog';
 import { getProvenanceBadge, type IntegrationMode } from '@/core/hardware/provenance';
 import { EFFECT_LIBRARY } from '@/data/effectLibrary';
+import { findEffectById } from '@/data/effectsLibraries/resolveEffect';
 
 export interface JoiSystemContext {
   showPlan: {

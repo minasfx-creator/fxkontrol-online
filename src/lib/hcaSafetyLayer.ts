@@ -8,6 +8,7 @@
 
 import { type Position, type Trajectory, type TimelineItem, type DroneFormation } from '@/types/projectTypes';
 import { EFFECT_LIBRARY } from '@/data/effectLibrary';
+import { findEffectById } from '@/data/effectsLibraries/resolveEffect';
 
 // ─── Failsafe Escalation Levels ──────────────────────────────────────
 

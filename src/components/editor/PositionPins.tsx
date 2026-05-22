@@ -4,6 +4,7 @@ import { Html, Line } from '@react-three/drei';
 import { useProjectStore } from '@/store/useProjectStore';
 import { type Position } from '@/types/projectTypes';
 import { EFFECT_LIBRARY } from '@/data/effectLibrary';
+import { findEffectById } from '@/data/effectsLibraries/resolveEffect';
 import { useSceneStore } from '@/store/useSceneStore';
 import { useTerrainHeightCache } from '@/hooks/useTerrainHeightCache';
 import { useUndoStore } from '@/store/useUndoStore';

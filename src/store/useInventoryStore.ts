@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { EFFECT_LIBRARY } from '@/data/effectLibrary';
+import { findEffectById } from '@/data/effectsLibraries/resolveEffect';
 
 export interface InventoryItem {
   effectId: string;

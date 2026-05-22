@@ -7,6 +7,7 @@ import { Slider } from '@/components/ui/slider';
 import { useProjectStore } from '@/store/useProjectStore';
 import { type TimelineItem } from '@/types/projectTypes';
 import { EFFECT_LIBRARY } from '@/data/effectLibrary';
+import { findEffectById } from '@/data/effectsLibraries/resolveEffect';
 import { getChainStats, getUniqueChains } from '@/lib/chainEngine';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';

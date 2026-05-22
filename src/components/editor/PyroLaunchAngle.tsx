@@ -5,6 +5,7 @@ import * as THREE from 'three';
 import { useProjectStore } from '@/store/useProjectStore';
 import { type Position } from '@/types/projectTypes';
 import { EFFECT_LIBRARY } from '@/data/effectLibrary';
+import { findEffectById } from '@/data/effectsLibraries/resolveEffect';
 import { useUndoStore } from '@/store/useUndoStore';
 import { calcWindCompensation, getBreakHeight, getMortarVelocity, getLiftTime } from '@/lib/pyroPhysics';
 import { useSceneStore } from '@/store/useSceneStore';

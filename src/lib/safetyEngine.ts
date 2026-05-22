@@ -1,5 +1,6 @@
 import { type Position, type Trajectory, type TimelineItem } from '@/types/projectTypes';
 import { EFFECT_LIBRARY } from '@/data/effectLibrary';
+import { findEffectById } from '@/data/effectsLibraries/resolveEffect';
 
 // ─── Deconfliction: minimum distance checks between drones ───────────
 

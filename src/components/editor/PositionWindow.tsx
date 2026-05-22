@@ -3,6 +3,7 @@ import { MapPin, Plus, Trash2, Copy, ChevronDown, ChevronRight, GripVertical, Se
 import { useProjectStore } from '@/store/useProjectStore';
 import { type Position, type PositionType } from '@/types/projectTypes';
 import { EFFECT_LIBRARY } from '@/data/effectLibrary';
+import { findEffectById } from '@/data/effectsLibraries/resolveEffect';
 import { cn } from '@/lib/utils';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';

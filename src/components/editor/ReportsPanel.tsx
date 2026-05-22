@@ -2,6 +2,7 @@ import { useState, useMemo } from 'react';
 import { FileText, Shield, Cable, Link2, ClipboardList, Map, ChevronDown, ChevronRight, Sparkles } from 'lucide-react';
 import { useProjectStore } from '@/store/useProjectStore';
 import { EFFECT_LIBRARY } from '@/data/effectLibrary';
+import { findEffectById } from '@/data/effectsLibraries/resolveEffect';
 import {
   generateSafetyReport,
   generateWiringReport,

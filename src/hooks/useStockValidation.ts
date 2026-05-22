@@ -5,6 +5,7 @@
 import { useMemo } from 'react';
 import { useProjectStore } from '@/store/useProjectStore';
 import { EFFECT_LIBRARY } from '@/data/effectLibrary';
+import { findEffectById } from '@/data/effectsLibraries/resolveEffect';
 import { useInventoryStore } from '@/store/useInventoryStore';
 
 export interface StockAlert {

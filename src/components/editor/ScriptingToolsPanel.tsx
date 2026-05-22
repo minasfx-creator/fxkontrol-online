@@ -5,6 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Slider } from '@/components/ui/slider';
 import { useProjectStore } from '@/store/useProjectStore';
 import { EFFECT_LIBRARY } from '@/data/effectLibrary';
+import { findEffectById } from '@/data/effectsLibraries/resolveEffect';
 import {
   randomizeItems, DEFAULT_RANDOMIZE, type RandomizeConfig,
   makeIntoSequence, DEFAULT_SEQUENCE, type SequenceConfig, type SequenceSortMode,

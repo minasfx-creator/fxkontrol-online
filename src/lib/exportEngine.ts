@@ -1,5 +1,6 @@
 import { type TimelineItem, type Position, type Trajectory, type DroneFormation } from '@/types/projectTypes';
 import { EFFECT_LIBRARY } from '@/data/effectLibrary';
+import { findEffectById } from '@/data/effectsLibraries/resolveEffect';
 import { rgbToVdlString } from '@/lib/vdlQuantizer';
 import { getLiftTime } from '@/lib/pyroPhysics';
 import { resolveCuePresetMetadata, csvCell, type CuePresetMetadata } from '@/core/export/cuePresetMetadata';

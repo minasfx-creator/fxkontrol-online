@@ -15,6 +15,7 @@ import { operationalModeGuard } from '@/core/hardware/OperationalModeGuard';
 import { getProvenanceBadge } from '@/core/hardware/provenance';
 import { useProjectStore } from '@/store/useProjectStore';
 import { EFFECT_LIBRARY } from '@/data/effectLibrary';
+import { findEffectById } from '@/data/effectsLibraries/resolveEffect';
 
 export interface JOIResolver {
   name: string;

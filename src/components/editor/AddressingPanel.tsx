@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { useAddressingStore, DEFAULT_MODULE_SPECS, type AddressSortMode } from '@/store/useAddressingStore';
 import { useProjectStore } from '@/store/useProjectStore';
 import { EFFECT_LIBRARY } from '@/data/effectLibrary';
+import { findEffectById } from '@/data/effectsLibraries/resolveEffect';
 import { useRackStore } from '@/store/useRackStore';
 import { useFireOneHardware } from '@/hooks/useFireOneHardware';
 import { cn } from '@/lib/utils';
