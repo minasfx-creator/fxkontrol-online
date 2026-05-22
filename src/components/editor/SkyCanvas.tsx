@@ -1148,7 +1148,15 @@ function CameraController({ targetPosition, targetLookAt, freeLook, flyMode }: {
       return;
     }
 
-    // Normal preset animation
+    // Normal preset animation — suppressed while the user is interacting
+    // or for an 800ms grace window after release.
+    const sinceUser = performance.now() - lastUserInteractionAt.current;
+    if (userActive.current || sinceUser < 800) {
+      animating.current = false;
+      focusAnimating.current = false;
+      clampToWorldBounds();
+      return;
+    }
     if ((!animating.current && !focusAnimating.current) || !controlsRef.current || freeLook) {
       clampToWorldBounds();
       return;
@@ -1163,7 +1171,7 @@ function CameraController({ targetPosition, targetLookAt, freeLook, flyMode }: {
     clampToWorldBounds();
   });
 
-  const sensitivityScale = 0.7;
+
 
   // Broadcast OrbitControls ref to GeoCameraController
   useEffect(() => {
