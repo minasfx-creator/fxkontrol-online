@@ -521,13 +521,20 @@ const HighlightDesaturation = forwardRef<HighlightDesaturationEffect, { intensit
   }
 );
 
-const ACESHuePreserve = forwardRef<ACESHuePreserveEffect, { exposure?: number; huePreserveStrength?: number; highlightThreshold?: number }>(
-  function ACESHuePreserve({ exposure = 1.0, huePreserveStrength = 0.7, highlightThreshold = 1.5 }, ref) {
-    const effect = useMemo(() => new ACESHuePreserveEffect({ exposure, huePreserveStrength, highlightThreshold }), []);
-    useMemo(() => { effect.exposure = exposure; effect.huePreserveStrength = huePreserveStrength; effect.highlightThreshold = highlightThreshold; }, [effect, exposure, huePreserveStrength, highlightThreshold]);
+const ACESHuePreserve = forwardRef<ACESHuePreserveEffect, { exposure?: number; huePreserveStrength?: number; highlightThreshold?: number; fwsimContrast?: number; fwsimHdrMax?: number }>(
+  function ACESHuePreserve({ exposure = 1.0, huePreserveStrength = 0.7, highlightThreshold = 1.5, fwsimContrast = 1.0, fwsimHdrMax = 0.0 }, ref) {
+    const effect = useMemo(() => new ACESHuePreserveEffect({ exposure, huePreserveStrength, highlightThreshold, fwsimContrast, fwsimHdrMax }), []);
+    useMemo(() => {
+      effect.exposure = exposure;
+      effect.huePreserveStrength = huePreserveStrength;
+      effect.highlightThreshold = highlightThreshold;
+      effect.fwsimContrast = fwsimContrast;
+      effect.fwsimHdrMax = fwsimHdrMax;
+    }, [effect, exposure, huePreserveStrength, highlightThreshold, fwsimContrast, fwsimHdrMax]);
     return <primitive ref={ref} object={effect} />;
   }
 );
+
 
 const LuminanceFilmGrain = forwardRef<LuminanceFilmGrainEffect, { intensity?: number; luminanceResponse?: number }>(
   function LuminanceFilmGrain({ intensity = 0.08, luminanceResponse = 0.3 }, ref) {
