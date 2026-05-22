@@ -878,6 +878,27 @@ function executeCommand(cmd: JoiCommand): JoiCommandResult {
         return { action, success: true, label: `KMZ exportado: ${preset.name}` };
       }
 
+      case 'export_joi_dossier': {
+        const { useActiveVenue } = require('@/store/useActiveVenue') as typeof import('@/store/useActiveVenue');
+        const { getVenuePreset } = require('@/lib/showVenuePresets') as typeof import('@/lib/showVenuePresets');
+        const id = params.id || useActiveVenue.getState().activeVenuePresetId;
+        const preset = id ? getVenuePreset(id) : undefined;
+        if (!preset) return { action, success: false, label: `${action}: nenhum venue ativo` };
+        const { downloadJoiDossier } = require('@/utils/joiDossierExport') as typeof import('@/utils/joiDossierExport');
+        const agencies = typeof params.agencies === 'string'
+          ? params.agencies.split(',').map((a: string) => a.trim()).filter(Boolean) as any
+          : undefined;
+        void downloadJoiDossier(preset, {
+          briefingMarkdown: typeof params.briefing === 'string' ? params.briefing : undefined,
+          agencies,
+        });
+        return {
+          action, success: true,
+          label: `Dossiê completo gerado: ${preset.name}`,
+          detail: 'ZIP contém venue-plan.pdf, venue.kmz, briefing.docx, checklist regulatório',
+        };
+      }
+
       default:
         return { action, success: false, label: `Comando desconhecido: ${action}` };
 
