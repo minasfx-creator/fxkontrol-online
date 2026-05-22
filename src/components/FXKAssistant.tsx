@@ -14,6 +14,7 @@ import JoiCommandFeedback from '@/components/JoiCommandFeedback';
 import { OPERATIONAL_PRESETS } from '@/components/JoiCommandPresets';
 import { useProjectStore } from '@/store/useProjectStore';
 import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/hooks/useAuth';
 import { EFFECT_LIBRARY } from '@/data/effectLibrary';
 import { cn } from '@/lib/utils';
 import ReactMarkdown from 'react-markdown';
@@ -138,17 +139,16 @@ function saveHistory(msgs: Msg[]) {
 
 async function streamChat(
   messages: any[],
+  accessToken: string,
   onDelta: (t: string) => void,
   onDone: () => void,
   signal?: AbortSignal,
 ) {
-  const { data: { session } } = await supabase.auth.getSession();
-  const token = session?.access_token ?? import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
   const resp = await fetch(CHAT_URL, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      Authorization: `Bearer ${token}`,
+      Authorization: `Bearer ${accessToken}`,
       apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
     },
     body: JSON.stringify({ messages, projectContext: true }),
@@ -394,6 +394,7 @@ function JoiMatrixBlock({ content }: { content: string }) {
 
 export function FXKAssistant() {
   const isMobile = useIsMobile();
+  const { session, loading: authLoading } = useAuth();
   const [open, setOpen] = useState(false);
   const [minimized, setMinimized] = useState(false);
   const [closing, setClosing] = useState(false);
@@ -629,7 +630,12 @@ export function FXKAssistant() {
     });
 
     try {
-      await streamChat(apiMessages as any, upsert, () => {
+      const accessToken = session?.access_token;
+      if (authLoading || !accessToken) {
+        throw new Error('Sessão não disponível. Faça login novamente para usar a Joi.');
+      }
+
+      await streamChat(apiMessages as any, accessToken, upsert, () => {
         setLoading(false);
         if (hasJoiCommands(soFar)) {
           const results = executeJoiCommands(soFar);
