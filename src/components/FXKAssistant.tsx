@@ -13,6 +13,7 @@ import { executeJoiCommands, stripJoiCommands, hasJoiCommands, type JoiCommandRe
 import JoiCommandFeedback from '@/components/JoiCommandFeedback';
 import { OPERATIONAL_PRESETS } from '@/components/JoiCommandPresets';
 import { useProjectStore } from '@/store/useProjectStore';
+import { supabase } from '@/integrations/supabase/client';
 import { EFFECT_LIBRARY } from '@/data/effectLibrary';
 import { cn } from '@/lib/utils';
 import ReactMarkdown from 'react-markdown';
