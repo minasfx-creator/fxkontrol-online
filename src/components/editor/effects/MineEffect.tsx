@@ -9,6 +9,8 @@ import { getChemistryForRendering, autoMatchFormulation } from '@/render_ultra/f
 import { resolveMinePresetProps } from '@/data/finalePresets';
 import { selectMineSilhouette } from '@/render/silhouettes/mineSilhouettes';
 import { isEnabled } from '@/lib/featureFlags';
+import { getFwsimGraphics, sampleCurve } from '@/data/fwsimGraphicsConfig';
+import { getFwsimSmokeTexture } from '@/render/textures/fwsimSmokeTexture';
 
 /**
  * Mine Effect — Multi-phase ground burst (PyroJam 2026 reference)
