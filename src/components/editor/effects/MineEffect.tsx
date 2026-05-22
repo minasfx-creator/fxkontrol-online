@@ -475,8 +475,13 @@ export default function MineEffect({
       const smokeGeo = smokePointsRef.current.geometry;
       const sPosAttr = smokeGeo.getAttribute('position') as THREE.BufferAttribute;
       const sColAttr = smokeGeo.getAttribute('color') as THREE.BufferAttribute;
+      const sSizeAttr = smokeGeo.getAttribute('size') as THREE.BufferAttribute;
       if (sPosAttr) sPosAttr.needsUpdate = true;
       if (sColAttr) sColAttr.needsUpdate = true;
+      // BUGFIX: size buffer was mutated every frame but never re-uploaded → smoke
+      // sprites stayed at gl_PointSize = 0 (Float32Array init) and the FWsim
+      // smoke texture (r_fwsim_smoke_texture Step 1) appeared empty.
+      if (sSizeAttr) sSizeAttr.needsUpdate = true;
     }
   });
 
