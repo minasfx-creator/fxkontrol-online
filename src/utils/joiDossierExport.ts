@@ -18,6 +18,7 @@ import type { VenueShowPreset } from '@/lib/showVenuePresets';
 import { buildVenuePlanPdf } from './venuePlanPdf';
 import { buildVenueKmz } from './venueKmlExport';
 import { REGULATORY_CHECKLISTS, type AgencyType, getChecklistForAgency } from './regulatoryChecklist';
+import { renderTechnicalLayerMarkdown } from './joiTechnicalBriefing';
 
 export interface JoiDossierOptions {
   /** Optional briefing markdown (Joi narrative). If omitted, a stub is generated. */
