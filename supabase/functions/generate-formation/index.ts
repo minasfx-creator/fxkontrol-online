@@ -2091,6 +2091,10 @@ serve(async (req) => {
   const preflight = handleCors(req);
   if (preflight) return preflight;
 
+  const auth = await requireAuth(req);
+  if (auth.error) return auth.error;
+
+
   try {
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
