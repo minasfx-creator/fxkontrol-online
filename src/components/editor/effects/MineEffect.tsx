@@ -380,8 +380,10 @@ export default function MineEffect({
       colArr[i * 3 + 1] = g * fadeSq * twinkle * hdrBoost * envelope * smokeBoost;
       colArr[i * 3 + 2] = b * fadeSq * twinkle * hdrBoost * envelope * smokeBoost;
 
-      // Per-particle size
-      sizeArr[i] = basePointSize * particleSizes[i];
+      // Per-particle size — spray layer scaled by FWsim launchSparks.mineMineWidth
+      // (neutral=1 when canonical 0.05; flag-gated, OFF preserves legacy literal).
+      const isSpray = !isColumn && !isDrip && !isBounce;
+      sizeArr[i] = basePointSize * particleSizes[i] * (isSpray ? sparkCalib.widthMult : 1);
     }
 
     // ── Spray comet trails ──
@@ -501,6 +503,29 @@ export default function MineEffect({
       durationMult: Math.max(0.5, cfg.duration / 0.15),
     };
   }, [caliber]);
+
+  // FWsim launchSparks.mine* canonical tuning (opt-in via r_fwsim_launch_sparks_mine).
+  // Maps spec block { mineNrStars, mineExplosionRelativeSpeed, mineSpeedVariance,
+  // mineMineWidth } into multiplicative factors over the legacy spray spark layer.
+  // Canonical values (75 / 1.0 / 0.14 / 0.05) are intentionally neutral so OFF and
+  // ON-with-default produce identical rendered sizes (bit-equivalent fallback).
+  const sparkCalib = useMemo(() => {
+    if (!isEnabled('r_fwsim_launch_sparks_mine')) {
+      return { widthMult: 1, speedMult: 1, variance: 0.14, nrStarsTarget: sprayCount };
+    }
+    const cfg = getFwsimGraphics().launchSparks as unknown as {
+      mineNrStars?: number;
+      mineExplosionRelativeSpeed?: number;
+      mineSpeedVariance?: number;
+      mineMineWidth?: number;
+    };
+    const baseWidth = 0.05; // canonical reference width — neutral when matched.
+    const widthMult = Math.max(0.25, Math.min(4, (cfg.mineMineWidth ?? baseWidth) / baseWidth));
+    const speedMult = Math.max(0.25, Math.min(4, cfg.mineExplosionRelativeSpeed ?? 1));
+    const variance = Math.max(0, Math.min(1, cfg.mineSpeedVariance ?? 0.14));
+    const nrStarsTarget = Math.max(8, Math.round(cfg.mineNrStars ?? 75));
+    return { widthMult, speedMult, variance, nrStarsTarget };
+  }, [sprayCount]);
 
   // Mines are omnidirectional — root group is intentionally NOT rotated.
   // launchHeading/launchPitch are still accepted in the props for future

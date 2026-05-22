@@ -55,6 +55,8 @@ const FLAGS = {
   r_fwsim_mine_calibration: true,
   /** Use canonical FWsim smoke sprite (smoke_with_alpha.png) in MineEffect ground plume. */
   r_fwsim_smoke_texture: true,
+  /** Apply FWsim launchSparks.mine* (mineNrStars/mineExplosionRelativeSpeed/mineSpeedVariance/mineMineWidth) to MineEffect spray spark layer. */
+  r_fwsim_launch_sparks_mine: true,
   /** Expose FWsim PresetColors_ palette to renderers (read-only lookup via getFwsimPresetHex). */
   fwsim_extended_palette: true,
 } as const;
