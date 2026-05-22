@@ -689,6 +689,173 @@ function executeCommand(cmd: JoiCommand): JoiCommandResult {
         };
       }
 
+      // ── Geo / Google 3D Tiles ─────────────────────────────────────
+      case 'set_venue': {
+        const lat = Number(params.lat);
+        const lng = Number(params.lng);
+        if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+          return { action, success: false, label: 'set_venue: lat/lng inválidos' };
+        }
+        const alt = Number.isFinite(Number(params.altMSL)) ? Number(params.altMSL) : 0;
+        const { useSceneStore } = require('@/store/useSceneStore') as typeof import('@/store/useSceneStore');
+        useSceneStore.getState().setVenueAnchor({ lat, lng, alt, name: params.name });
+        // Re-materialise any geo-bound positions for the new anchor.
+        const { rematerialisePositions } = require('@/utils/joiGeoHelpers') as typeof import('@/utils/joiGeoHelpers');
+        const next = rematerialisePositions(store.positions, { lat, lng, alt });
+        next.forEach((p, i) => {
+          const prev = store.positions[i];
+          if (prev && (prev.x !== p.x || prev.y !== p.y || prev.z !== p.z)) {
+            store.updatePosition(p.id, { x: p.x, y: p.y, z: p.z });
+          }
+        });
+        return {
+          action, success: true,
+          label: `Venue "${params.name || 'anchor'}" definido`,
+          detail: `${lat.toFixed(5)}, ${lng.toFixed(5)}`,
+        };
+      }
+
+      case 'place_position_geo': {
+        const lat = Number(params.lat);
+        const lng = Number(params.lng);
+        if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+          return { action, success: false, label: 'place_position_geo: lat/lng inválidos' };
+        }
+        const { useSceneStore } = require('@/store/useSceneStore') as typeof import('@/store/useSceneStore');
+        const s = useSceneStore.getState().settings;
+        const anchor = { lat: s.geoAnchorLat, lng: s.geoAnchorLon, alt: s.geoAnchorAlt };
+        const { positionFromGeo } = require('@/utils/joiGeoHelpers') as typeof import('@/utils/joiGeoHelpers');
+        const altAGL = Number.isFinite(Number(params.altAGL)) ? Number(params.altAGL) : 0;
+        const local = positionFromGeo({ lat, lng, altAGL }, anchor);
+        const id = params.positionId || `joi-geo-${Date.now()}-${Math.random().toString(36).slice(2, 5)}`;
+        const existing = store.positions.find(p => p.id === id);
+        const patch = {
+          id,
+          name: params.name || existing?.name || id,
+          type: (params.type || existing?.type || 'pyro') as 'pyro' | 'drone-pad' | 'light',
+          x: local.x, y: local.y, z: local.z,
+          heading: existing?.heading ?? params.heading ?? 0,
+          pitch: existing?.pitch ?? 0,
+          roll: existing?.roll ?? 0,
+          color: existing?.color ?? params.color ?? '#ff6600',
+          geo: { lat, lng, altAGL },
+        };
+        if (existing) {
+          store.updatePosition(id, patch);
+        } else {
+          store.addPosition(patch);
+        }
+        return { action, success: true, label: `Posição em (${lat.toFixed(5)}, ${lng.toFixed(5)})` };
+      }
+
+      case 'place_positions_along_polygon': {
+        const polygon = Array.isArray(params.polygon) ? params.polygon : [];
+        const count = Math.max(1, Number(params.count) || 0);
+        if (polygon.length < 2 || count < 1) {
+          return { action, success: false, label: 'place_positions_along_polygon: polygon ou count inválidos' };
+        }
+        const { distributeAlongPolygon, positionFromGeo } = require('@/utils/joiGeoHelpers') as typeof import('@/utils/joiGeoHelpers');
+        const { useSceneStore } = require('@/store/useSceneStore') as typeof import('@/store/useSceneStore');
+        const s = useSceneStore.getState().settings;
+        const anchor = { lat: s.geoAnchorLat, lng: s.geoAnchorLon, alt: s.geoAnchorAlt };
+        const points = distributeAlongPolygon(polygon, count, !!params.closed);
+        const role = params.role || 'pyro';
+        const baseName = params.namePrefix || role;
+        points.forEach((pt, i) => {
+          const local = positionFromGeo({ lat: pt.lat, lng: pt.lng, altAGL: 0 }, anchor);
+          store.addPosition({
+            id: `joi-poly-${Date.now()}-${i}`,
+            name: `${baseName} ${i + 1}`,
+            type: role === 'drone-pad' ? 'drone-pad' : role === 'light' ? 'light' : 'pyro',
+            x: local.x, y: local.y, z: local.z,
+            heading: 0, pitch: 0, roll: 0,
+            color: params.color || '#ff6600',
+            geo: { lat: pt.lat, lng: pt.lng, altAGL: 0 },
+          });
+        });
+        return { action, success: true, label: `${points.length} posições distribuídas ao longo da polilinha` };
+      }
+
+      case 'orient_all_to_audience': {
+        const aLat = Number(params.audienceLat);
+        const aLng = Number(params.audienceLng);
+        if (!Number.isFinite(aLat) || !Number.isFinite(aLng)) {
+          return { action, success: false, label: 'orient_all_to_audience: audienceLat/Lng inválidos' };
+        }
+        const { useSceneStore } = require('@/store/useSceneStore') as typeof import('@/store/useSceneStore');
+        const s = useSceneStore.getState().settings;
+        const anchor = { lat: s.geoAnchorLat, lng: s.geoAnchorLon, alt: s.geoAnchorAlt };
+        const { orientPositionsToAudience } = require('@/utils/joiGeoHelpers') as typeof import('@/utils/joiGeoHelpers');
+        const oriented = orientPositionsToAudience(store.positions, { lat: aLat, lng: aLng }, anchor);
+        oriented.forEach((p) => store.updatePosition(p.id, { heading: p.heading, audienceFacing: true }));
+        return { action, success: true, label: `${oriented.length} posições orientadas à audiência` };
+      }
+
+      case 'apply_venue_preset': {
+        const { getVenuePreset } = require('@/lib/showVenuePresets') as typeof import('@/lib/showVenuePresets');
+        const preset = getVenuePreset(params.id);
+        if (!preset) return { action, success: false, label: `Venue preset não encontrado: ${params.id}` };
+        // 1) set anchor
+        executeCommand({ action: 'set_venue', params: { lat: preset.venue.gps.lat, lng: preset.venue.gps.lng, altMSL: preset.venue.gps.altMSL ?? 0, name: preset.name } });
+        // 2) materialise launch points
+        preset.venue.launchPoints.forEach((lp) => {
+          executeCommand({
+            action: 'place_position_geo',
+            params: {
+              positionId: `${preset.id}-${lp.id}`,
+              name: lp.name,
+              type: lp.role === 'drone-pad' ? 'drone-pad' : 'pyro',
+              lat: lp.lat,
+              lng: lp.lng,
+              altAGL: lp.heightHintAGL ?? 0,
+            },
+          });
+        });
+        // 3) orient to audience if defined
+        if (preset.venue.audienceArea) {
+          executeCommand({
+            action: 'orient_all_to_audience',
+            params: { audienceLat: preset.venue.audienceArea.lat, audienceLng: preset.venue.audienceArea.lng },
+          });
+        }
+        return {
+          action, success: true,
+          label: `Venue "${preset.name}" aplicado`,
+          detail: `${preset.venue.launchPoints.length} launch points georreferenciados`,
+        };
+      }
+
+      case 'snap_all_to_terrain': {
+        // Real raycast precisa de Scene/THREE — só pode rodar com scene viva.
+        // Aqui devolvemos sucesso indicativo; o snap concreto ocorre no SkyCanvas
+        // via useTerrainHeightCache. Marcamos posições como pendentes.
+        store.positions.filter(p => p.geo).forEach(p => {
+          store.updatePosition(p.id, { snappedToTerrain: false });
+        });
+        return {
+          action, success: true,
+          label: `Snap-to-terrain agendado para ${store.positions.filter(p => p.geo).length} posições`,
+          detail: 'Raycast executa no próximo frame do SkyCanvas',
+        };
+      }
+
+      case 'query_terrain_height_geo': {
+        // Read-only: retorna apenas a posição local estimada — a altura real
+        // depende da scene viva. Útil pra Joi raciocinar sobre relativos.
+        const { useSceneStore } = require('@/store/useSceneStore') as typeof import('@/store/useSceneStore');
+        const s = useSceneStore.getState().settings;
+        const { positionFromGeo } = require('@/utils/joiGeoHelpers') as typeof import('@/utils/joiGeoHelpers');
+        const local = positionFromGeo(
+          { lat: Number(params.lat), lng: Number(params.lng), altAGL: 0 },
+          { lat: s.geoAnchorLat, lng: s.geoAnchorLon, alt: s.geoAnchorAlt },
+        );
+        return {
+          action, success: true,
+          label: `Posição local estimada`,
+          detail: `x=${local.x.toFixed(1)}m, z=${local.z.toFixed(1)}m (terreno via raycast no SkyCanvas)`,
+        };
+      }
+
       default:
         return { action, success: false, label: `Comando desconhecido: ${action}` };
     }

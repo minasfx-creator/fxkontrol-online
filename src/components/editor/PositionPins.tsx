@@ -7,6 +7,7 @@ import { EFFECT_LIBRARY } from '@/data/effectLibrary';
 import { findEffectById } from '@/data/effectsLibraries/resolveEffect';
 import { useSceneStore } from '@/store/useSceneStore';
 import { useTerrainHeightCache } from '@/hooks/useTerrainHeightCache';
+import { useGeoPositionsTerrainSnap } from '@/hooks/useGeoPositionsTerrainSnap';
 import { useUndoStore } from '@/store/useUndoStore';
 import { useAddressingStore } from '@/store/useAddressingStore';
 import { getBreakHeight } from '@/lib/pyroPhysics';
@@ -843,6 +844,8 @@ export default function PositionPins() {
   const google3DTilesEnabled = useSceneStore(s => s.settings.google3DTilesEnabled);
   const [contextMenu, setContextMenu] = useState<{ pos: Position; screen: { x: number; y: number } } | null>(null);
   const { getHeight } = useTerrainHeightCache(positions, google3DTilesEnabled);
+  // Joi geo-bound positions: snap Y to Google Tiles terrain when available.
+  useGeoPositionsTerrainSnap(google3DTilesEnabled);
 
   const handleRightClick = useCallback((pos: Position, screenPos: { x: number; y: number }) => {
     setContextMenu({ pos, screen: screenPos });
