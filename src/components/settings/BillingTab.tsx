@@ -8,7 +8,8 @@ import { CreditCard, ExternalLink, ArrowUpRight, Loader2, AlertCircle, CheckCirc
 import { toast } from '@/hooks/use-toast';
 
 const clientToken = import.meta.env.VITE_PAYMENTS_CLIENT_TOKEN;
-const PADDLE_ENV: 'sandbox' | 'live' = clientToken?.startsWith('test_') ? 'sandbox' : 'live';
+const isSandboxPaddleToken = !clientToken || clientToken.startsWith('test_');
+const PADDLE_ENV: 'sandbox' | 'live' = isSandboxPaddleToken ? 'sandbox' : 'live';
 
 type Subscription = {
   id: string;
