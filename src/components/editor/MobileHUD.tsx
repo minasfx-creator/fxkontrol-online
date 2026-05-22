@@ -3,11 +3,10 @@
  * Compact layout optimized for 375px mobile screens.
  */
 import React, { useCallback, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Play, Pause, Square, AlertOctagon, Zap, Radio, ScanEye, Crosshair, MapPin } from 'lucide-react';
+import { Play, Pause, Square, Zap, ScanEye, Crosshair, MapPin } from 'lucide-react';
 import { haptics } from '@/lib/haptics';
 import { cn } from '@/lib/utils';
-import { usePlaybackState, useEditorMode, useHardwareStatus } from '@/hooks/useEditorUI';
+import { usePlaybackState, useEditorMode } from '@/hooks/useEditorUI';
 import { useProjectStore } from '@/store/useProjectStore';
 import { useShowSettings } from '@/hooks/useShowSettings';
 import { useSceneStore } from '@/store/useSceneStore';
@@ -30,10 +29,8 @@ function getCountdown(showDate: string | null): string | null {
 }
 
 export default React.memo(function MobileHUD() {
-  const navigate = useNavigate();
   const { currentTime, isPlaying, setPlaying, setCurrentTime } = usePlaybackState();
   const { editorMode, isPlacingMode } = useEditorMode();
-  const { activeEffects, clearAll, usbConnected, smpteRunning, isArmed } = useHardwareStatus();
   const positions = useProjectStore(s => s.positions);
   const selectedIds = useProjectStore(s => s.selectedPositionIds);
   const { settings } = useShowSettings();
@@ -47,12 +44,7 @@ export default React.memo(function MobileHUD() {
     haptics.arToggle(next);
   }, [arMode, updateEnvironment]);
 
-  const handlePanic = useCallback(() => {
-    clearAll();
-    setPlaying(false);
-    setCurrentTime(0);
-    haptics.panic();
-  }, [clearAll, setPlaying, setCurrentTime]);
+  // handlePanic removido — editor 3D não tem estado armado.
 
   return (
     <div className="fixed top-0 left-0 right-0 z-50 pointer-events-none" style={{ paddingTop: 'max(8px, env(safe-area-inset-top))' }}>
