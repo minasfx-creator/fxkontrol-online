@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { handleCors, corsHeaders } from "../_shared/cors.ts";
+import { requireAuth } from "../_shared/auth.ts";
 import { jsonOk, jsonError } from "../_shared/response.ts";
 
 const GATEWAY = "https://ai.gateway.lovable.dev/v1/chat/completions";
@@ -2089,6 +2090,10 @@ function selectModels(mode: string, count: number, isFullShow: boolean): { prima
 serve(async (req) => {
   const preflight = handleCors(req);
   if (preflight) return preflight;
+
+  const auth = await requireAuth(req);
+  if (auth.error) return auth.error;
+
 
   try {
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
