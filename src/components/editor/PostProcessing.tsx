@@ -596,6 +596,15 @@ export default function PostProcessing({ activeBurstCount = 0 }: { activeBurstCo
   // Physical bloom calculations (only used when flag is on)
   const pb = usePhysicalBloom(str, bloomMul, activeBurstCount);
 
+  // FWsim bloom calibration (legacy branch only — physical branch keeps its own log curve)
+  const fwsimBloomEnabled = isEnabled('r_fwsim_bloom_weights');
+  const fwsimBloom = useMemo(
+    () => (fwsimBloomEnabled ? getFwsimBloomCalibration() : null),
+    [fwsimBloomEnabled],
+  );
+  const legacyBloomMul = fwsimBloom ? fwsimBloom.intensityMul : 1.0;
+  const legacyLargeKernel = fwsimBloom && fwsimBloom.levels >= 10 ? KernelSize.HUGE : KernelSize.LARGE;
+
   // Adaptive: use half-res SSR when enabled for GPU savings
   const ssrResScale = s.ssrHalfRes ? 0.5 : 1.0;
 
