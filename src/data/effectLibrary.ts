@@ -56,6 +56,12 @@ export interface Effect {
   thumbUrl?: string;
   /** Optional path to the source Finale 3D `.fwe` preset (in /public). */
   finalePresetUrl?: string;
+  /** Optional reference to a .fwc tail component (e.g. "Brocade Tail Medium"). */
+  tailRef?: string;
+  /** Optional ordered color phases extracted from XML (e.g. "Red to Green"). */
+  colorPhases?: Array<{ at: number; hex: string; modifier?: 'strobe' | 'crackle' | 'glitter' | 'charcoal' }>;
+  /** Where caliber came from: 'xml' explicit, 'inferred' from filename, or 'unknown'. */
+  caliberSource?: 'xml' | 'inferred' | 'unknown';
 }
 
 export const EFFECT_LIBRARY: Effect[] = [
