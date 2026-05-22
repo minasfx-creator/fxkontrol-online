@@ -52,8 +52,11 @@ void mainImage(const in vec4 inputColor, const in vec2 uv, out vec4 outputColor)
     color = min(color, vec3(fwsimHdrMax));
   }
 
-  // r_fwsim_tonemapping: Contrast preserves luminance, scales chroma around mid-gray.
-  // Neutral when fwsimContrast == 1.0.
+  // r_fwsim_tonemapping: per-channel power curve around mid-gray (0.18).
+  // This is the FWsim "Contrast" knob (graphics.xml TonemappingConfig.Contrast).
+  // It is a CONTRAST/gamma operation per channel — it lifts shadows and steepens
+  // highlights. Hue/saturation drift slightly (the highlight-preservation pass
+  // below compensates the worst of it on bright emissives). Neutral at 1.0.
   if (abs(fwsimContrast - 1.0) > 0.001) {
     vec3 mid = vec3(0.18);
     color = mid * pow(max(color / mid, vec3(0.0)), vec3(fwsimContrast));

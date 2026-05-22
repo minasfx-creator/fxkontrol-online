@@ -17,14 +17,20 @@ let _loader: THREE.TextureLoader | null = null;
 export function getFwsimSmokeTexture(): THREE.Texture {
   if (_tex) return _tex;
   if (!_loader) _loader = new THREE.TextureLoader();
-  _tex = _loader.load(smokeUrl);
-  _tex.colorSpace = THREE.SRGBColorSpace;
+  _tex = _loader.load(smokeUrl, (loaded) => {
+    // Force GPU re-upload once the image actually arrives.
+    loaded.needsUpdate = true;
+  });
+  // Sprite is consumed by an additive shader (gl_FragColor = vec4(vColor * tex.rgb, tex.a * k)).
+  // Tagging the texture as sRGB would force three.js to apply an sRGB→linear
+  // decode that crushes the FWsim smoke into a grey/dim plume. Keep linear so
+  // the alpha curve baked by the FWsim artists hits the framebuffer 1:1.
+  _tex.colorSpace = THREE.LinearSRGBColorSpace;
   _tex.wrapS = THREE.ClampToEdgeWrapping;
   _tex.wrapT = THREE.ClampToEdgeWrapping;
   _tex.minFilter = THREE.LinearFilter;
   _tex.magFilter = THREE.LinearFilter;
   _tex.generateMipmaps = false;
-  _tex.needsUpdate = true;
   return _tex;
 }
 
