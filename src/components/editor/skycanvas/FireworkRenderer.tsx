@@ -51,6 +51,7 @@ import {
   CakeEffect,
   ConfettiEffect,
   MovingHeadEffect,
+  GenericFXFallback,
   PrefireShell,
   SmokeTrail,
   EmberParticles,
