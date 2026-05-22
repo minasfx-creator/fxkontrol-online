@@ -68,7 +68,7 @@ jobs:
           fi
       - name: Detect hardcoded Datadog keys
         run: |
-          if grep -RIn "ddapp_" .github/ src/ supabase/ 2>/dev/null; then
+          if grep -RIn "[d]dapp_" .github/ src/ supabase/ 2>/dev/null; then
             echo "Hardcoded Datadog app key detected."
             exit 1
           fi
