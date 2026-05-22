@@ -480,13 +480,41 @@ export default function MineEffect({
 
   const screenBlend = useMemo(() => getThreeBlending('screen'), []);
 
+  // FWsim graphics.xml canonical tuning (opt-in via r_fwsim_mine_calibration).
+  // mineFlame.sizeDependingOnEnergy maps caliber→size multiplier; brightness
+  // and duration come from the same canonical block. When OFF, fall back to
+  // the legacy literal constants used before the FWsim integration.
+  const mineCalib = useMemo(() => {
+    if (!isEnabled('r_fwsim_mine_calibration')) {
+      return { sizeMult: 1, brightness: 0.7, durationMult: 1 };
+    }
+    const cfg = getFwsimGraphics().flashes.mineFlame;
+    // caliber stored in inches; FWsim curve is x = launch energy ≈ shell mm.
+    const calibMm = Math.max(16, Math.min(100, caliber * 25.4));
+    const sizeMult = sampleCurve(
+      cfg.sizeDependingOnEnergy as ReadonlyArray<readonly [number, number]>,
+      calibMm,
+    );
+    return {
+      sizeMult: Math.max(0.2, sizeMult),
+      brightness: Math.max(0.1, Math.min(1, cfg.brightness * 0.5)), // brightness 2 → opacity ~1
+      durationMult: Math.max(0.5, cfg.duration / 0.15),
+    };
+  }, [caliber]);
+
   // Mines are omnidirectional — root group is intentionally NOT rotated.
   // launchHeading/launchPitch are still accepted in the props for future
   // selective use (e.g. sutil column tilt ≤10°), but never tip the cloud.
   void launchHeading; void launchPitch;
 
   // Combustion-modulated muzzle flash
-  const muzzleFlashOpacity = useMemo(() => 0.7, []);
+  const muzzleFlashOpacity = useMemo(() => 0.7 * mineCalib.brightness / 0.7, [mineCalib]);
+
+  // FWsim smoke sprite (opt-in via r_fwsim_smoke_texture).
+  const smokeMap = useMemo(
+    () => (isEnabled('r_fwsim_smoke_texture') ? getFwsimSmokeTexture() : null),
+    [],
+  );
 
   // Per-particle size shader
   const sizeVertexShader = `
