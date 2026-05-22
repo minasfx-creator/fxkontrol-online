@@ -821,15 +821,23 @@ export default function PostProcessing({ activeBurstCount = 0 }: { activeBurstCo
 
       {/* ═══ Tone Mapping — Studio Mode: ACES Hue-Preserving / Legacy: standard ═══
            Pipeline order per spec: Color Grading → Tone Mapping (final stage) */}
-      {cameraResponseEnabled ? (
-        <ACESHuePreserve
-          exposure={1.0}
-          huePreserveStrength={0.7}
-          highlightThreshold={1.5}
-        />
-      ) : (
+      {cameraResponseEnabled ? (() => {
+        // r_fwsim_tonemapping: apply FWsim TonemappingConfig (contrast 1.7, hdrMax 16) when ON.
+        const useFwsimTM = isEnabled('r_fwsim_tonemapping');
+        const tm = useFwsimTM ? getFwsimGraphics().tonemapping : null;
+        return (
+          <ACESHuePreserve
+            exposure={1.0}
+            huePreserveStrength={0.7}
+            highlightThreshold={1.5}
+            fwsimContrast={tm ? tm.contrast : 1.0}
+            fwsimHdrMax={tm ? tm.hdrMax : 0.0}
+          />
+        );
+      })() : (
         <ToneMapping mode={TONE_MAP[vt]} />
       )}
     </EffectComposer>
   );
 }
+
