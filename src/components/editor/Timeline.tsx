@@ -3,6 +3,7 @@ import { Play, Pause, SkipBack, SkipForward, Square, Trash2, ZoomIn, ZoomOut, Ma
 import { Button } from '@/components/ui/button';
 import { useProjectStore } from '@/store/useProjectStore';
 import { EFFECT_LIBRARY } from '@/data/effectLibrary';
+import { findEffectById } from '@/data/effectsLibraries/resolveEffect';
 import { useLaserPreviewStore } from '@/store/useLaserPreviewStore';
 import useGenerativeStore from '@/store/useGenerativeStore';
 import { getPreFireTime } from '@/lib/safetyEngine';
@@ -403,7 +404,7 @@ function TimelineTrackRow({
     setIsDragOver(false);
     const effectId = e.dataTransfer.getData('application/effect-id');
     if (!effectId) return;
-    const effect = EFFECT_LIBRARY.find((ef) => ef.id === effectId);
+    const effect = findEffectById(effectId);
     if (!effect) return;
     if ((effect.type === 'firework' || effect.type === 'sfx') && trackIndex !== 0) return;
     if (effect.type === 'drone' && trackIndex !== 1) return;
@@ -464,12 +465,12 @@ function TimelineTrackRow({
 
       // ── Magnetic snap to adjacent items (edge-to-edge) ──
       const snapThresholdSec = 6 / pixelsPerSecond;
-      const currentEffect = EFFECT_LIBRARY.find(ef => ef.id === item.effectId);
+      const currentEffect = findEffectById(item.effectId);
       const currentDuration = item.durationOverride ?? currentEffect?.duration ?? 2;
 
       for (const other of timelineItems) {
         if (other.id === itemId || other.trackIndex !== item.trackIndex) continue;
-        const otherEffect = EFFECT_LIBRARY.find(ef => ef.id === other.effectId);
+        const otherEffect = findEffectById(other.effectId);
         const otherDur = other.durationOverride ?? otherEffect?.duration ?? 2;
         const otherEnd = other.startTime + otherDur;
 
@@ -555,7 +556,7 @@ function TimelineTrackRow({
       const selectedIds: string[] = [];
       const linkedPosIds = new Set<string>();
       items.forEach(item => {
-        const effect = EFFECT_LIBRARY.find(ef => ef.id === item.effectId);
+        const effect = findEffectById(item.effectId);
         if (!effect) return;
         const itemLeft = item.startTime * pixelsPerSecond;
         const itemRight = itemLeft + Math.max((item.durationOverride ?? effect.duration) * pixelsPerSecond, 28);
@@ -624,7 +625,7 @@ function TimelineTrackRow({
           />
         )}
         {!muted && items.map((item) => {
-          const effect = EFFECT_LIBRARY.find((e) => e.id === item.effectId);
+          const effect = findEffectById(item.effectId);
           if (!effect) return null;
           // Virtualize: skip items outside visible scroll range
           const effectDuration = item.durationOverride ?? effect.duration;
@@ -783,7 +784,7 @@ function DroneFXTrackRow({ pixelsPerSecond, duration }: { pixelsPerSecond: numbe
     e.preventDefault();
     const effectId = e.dataTransfer.getData('application/effect-id');
     if (!effectId) return;
-    const effect = EFFECT_LIBRARY.find((ef) => ef.id === effectId);
+    const effect = findEffectById(effectId);
     if (!effect || effect.type !== 'drone') return;
 
     const rect = e.currentTarget.getBoundingClientRect();
@@ -820,7 +821,7 @@ function DroneFXTrackRow({ pixelsPerSecond, duration }: { pixelsPerSecond: numbe
           );
         })}
         {droneFxItems.map((item) => {
-          const effect = EFFECT_LIBRARY.find((e) => e.id === item.effectId);
+          const effect = findEffectById(item.effectId);
           if (!effect) return null;
           const isSelected = selectedTimelineItemId === item.id;
           return (
@@ -855,7 +856,7 @@ function LaserTrackRow({ pixelsPerSecond, duration }: { pixelsPerSecond: number;
   const [collapsed, setCollapsed] = useState(false);
 
   const laserItems = useMemo(() => timelineItems.filter((i) => {
-    const effect = EFFECT_LIBRARY.find((e) => e.id === i.effectId);
+    const effect = findEffectById(i.effectId);
     return effect?.type === 'laser';
   }), [timelineItems]);
 
@@ -870,7 +871,7 @@ function LaserTrackRow({ pixelsPerSecond, duration }: { pixelsPerSecond: number;
     e.preventDefault();
     const effectId = e.dataTransfer.getData('application/effect-id');
     if (!effectId) return;
-    const effect = EFFECT_LIBRARY.find((ef) => ef.id === effectId);
+    const effect = findEffectById(effectId);
     if (!effect || effect.type !== 'laser') return;
     const rect = e.currentTarget.getBoundingClientRect();
     const x = e.clientX - rect.left;
@@ -894,7 +895,7 @@ function LaserTrackRow({ pixelsPerSecond, duration }: { pixelsPerSecond: number;
       {!collapsed && (
         <div className="flex-1 relative h-8" style={{ background: 'hsl(var(--background) / 0.4)' }} onDragOver={handleDragOver} onDrop={handleDrop}>
           {laserItems.map((item) => {
-            const effect = EFFECT_LIBRARY.find((e) => e.id === item.effectId);
+            const effect = findEffectById(item.effectId);
             if (!effect) return null;
             const isSelected = selectedTimelineItemId === item.id;
             const widthPx = Math.max(effect.duration * pixelsPerSecond, 20);
@@ -1031,7 +1032,7 @@ const Timeline = React.forwardRef<HTMLDivElement, {}>(function Timeline(_props, 
 
   const totalCost = useMemo(() => {
     return timelineItems.reduce((sum, item) => {
-      const effect = EFFECT_LIBRARY.find((e) => e.id === item.effectId);
+      const effect = findEffectById(item.effectId);
       return sum + (effect?.cost ?? 0);
     }, 0);
   }, [timelineItems]);

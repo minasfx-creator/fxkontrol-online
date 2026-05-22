@@ -2,6 +2,7 @@ import { useState, useMemo } from 'react';
 import { FileText, Shield, Cable, Link2, ClipboardList, Map, ChevronDown, ChevronRight, Sparkles } from 'lucide-react';
 import { useProjectStore } from '@/store/useProjectStore';
 import { EFFECT_LIBRARY } from '@/data/effectLibrary';
+import { findEffectById } from '@/data/effectsLibraries/resolveEffect';
 import {
   generateSafetyReport,
   generateWiringReport,
@@ -46,13 +47,13 @@ export default function ReportsPanel({ onClose }: { onClose: () => void }) {
   const handleDownload = (id: ReportId) => downloadReport(generate(id), `${projectName}-${id}.html`);
 
   const stats: QuickStat[] = useMemo(() => {
-    const pyroItems = timelineItems.filter(i => EFFECT_LIBRARY.find(e => e.id === i.effectId)?.type === 'firework');
+    const pyroItems = timelineItems.filter(i => findEffectById(i.effectId)?.type === 'firework');
     const pyroPositions = positions.filter(p => p.type === 'pyro');
     const droneCount = droneFormations.reduce((s, f) => s + f.droneCount, 0);
 
     let maxCaliber = 0;
     pyroItems.forEach(item => {
-      const effect = EFFECT_LIBRARY.find(e => e.id === item.effectId);
+      const effect = findEffectById(item.effectId);
       if (effect) {
         const m = effect.name.match(/(\d+)"/);
         if (m) maxCaliber = Math.max(maxCaliber, parseInt(m[1]));

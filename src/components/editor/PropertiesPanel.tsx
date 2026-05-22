@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useProjectStore } from '@/store/useProjectStore';
 import { EFFECT_LIBRARY } from '@/data/effectLibrary';
+import { findEffectById } from '@/data/effectsLibraries/resolveEffect';
 import { Separator } from '@/components/ui/separator';
 import { exportVVIZ, exportFiringCSV, downloadFile } from '@/lib/exportEngine';
 import SafetyPanel from './SafetyPanel';
@@ -19,12 +20,12 @@ const ExportSection = React.memo(function ExportSection() {
 
   const droneCount = useMemo(() => (droneFormations.length > 0 ? droneFormations[0].droneCount : 0) +
     timelineItems.filter((item) => {
-      const effect = EFFECT_LIBRARY.find((e) => e.id === item.effectId);
+      const effect = findEffectById(item.effectId);
       return effect?.type === 'drone';
     }).length + trajectories.length, [droneFormations, timelineItems, trajectories]);
 
   const pyroCount = useMemo(() => timelineItems.filter((item) => {
-    const effect = EFFECT_LIBRARY.find((e) => e.id === item.effectId);
+    const effect = findEffectById(item.effectId);
     return effect?.type === 'firework';
   }).length, [timelineItems]);
 
@@ -43,7 +44,7 @@ const ExportSection = React.memo(function ExportSection() {
       project: projectName,
       exportedAt: new Date().toISOString(),
       items: timelineItems.map((item) => {
-        const effect = EFFECT_LIBRARY.find((e) => e.id === item.effectId);
+        const effect = findEffectById(item.effectId);
         return { ...item, effectName: effect?.name, effectType: effect?.type };
       }),
       positions,
@@ -177,9 +178,9 @@ export default function PropertiesPanel({ onToggleEffectEditor, showEffectEditor
 
   const selectedItem = timelineItems.find((i) => i.id === selectedTimelineItemId);
   const selectedEffect = selectedItem
-    ? EFFECT_LIBRARY.find((e) => e.id === selectedItem.effectId)
+    ? findEffectById(selectedItem.effectId)
     : selectedEffectId
-      ? EFFECT_LIBRARY.find((e) => e.id === selectedEffectId)
+      ? findEffectById(selectedEffectId)
       : null;
 
   const showPosition = selectedPositionId && !selectedEffect;
@@ -237,7 +238,7 @@ export default function PropertiesPanel({ onToggleEffectEditor, showEffectEditor
                 ) : (
                   <div className="space-y-0.5">
                     {timelineItems.filter(i => i.positionId === selectedPositionId).map(item => {
-                      const eff = EFFECT_LIBRARY.find(e => e.id === item.effectId);
+                      const eff = findEffectById(item.effectId);
                       if (!eff) return null;
                       return (
                         <div key={item.id} className="flex items-center gap-1.5 bg-surface-2 rounded-sm px-2 py-1">

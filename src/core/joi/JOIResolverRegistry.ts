@@ -15,6 +15,7 @@ import { operationalModeGuard } from '@/core/hardware/OperationalModeGuard';
 import { getProvenanceBadge } from '@/core/hardware/provenance';
 import { useProjectStore } from '@/store/useProjectStore';
 import { EFFECT_LIBRARY } from '@/data/effectLibrary';
+import { findEffectById } from '@/data/effectsLibraries/resolveEffect';
 
 export interface JOIResolver {
   name: string;
@@ -335,7 +336,7 @@ const showDesignResolver: JOIResolver = {
     const store = useProjectStore.getState();
     const effectCounts = new Map<string, number>();
     store.timelineItems.forEach(item => {
-      const effect = EFFECT_LIBRARY.find(e => e.id === item.effectId);
+      const effect = findEffectById(item.effectId);
       const name = effect?.name || item.effectId;
       effectCounts.set(name, (effectCounts.get(name) || 0) + 1);
     });

@@ -4,6 +4,7 @@
  */
 import { useProjectStore } from '@/store/useProjectStore';
 import { EFFECT_LIBRARY } from '@/data/effectLibrary';
+import { findEffectById } from '@/data/effectsLibraries/resolveEffect';
 import type { Effect } from '@/data/effectLibrary';
 import { timelineEngine } from '@/core/engine/timelineEngine';
 import { toast } from 'sonner';
@@ -129,7 +130,7 @@ function resolveEffect(params: Record<string, any>): Effect | undefined {
   if (!searchTerm) return undefined;
 
   // 1. Exact ID
-  let effect = EFFECT_LIBRARY.find(e => e.id === searchTerm);
+  let effect = findEffectById(searchTerm);
   if (effect) return effect;
 
   const searchLower = searchTerm.toLowerCase().replace(/["""'']/g, '').trim();
@@ -137,13 +138,13 @@ function resolveEffect(params: Record<string, any>): Effect | undefined {
   // 2. Alias map
   const aliasId = EFFECT_ALIASES[searchLower];
   if (aliasId) {
-    effect = EFFECT_LIBRARY.find(e => e.id === aliasId);
+    effect = findEffectById(aliasId);
     if (effect) return effect;
   }
   // Also try partial alias match
   for (const [alias, id] of Object.entries(EFFECT_ALIASES)) {
     if (searchLower.includes(alias) || alias.includes(searchLower)) {
-      effect = EFFECT_LIBRARY.find(e => e.id === id);
+      effect = findEffectById(id);
       if (effect) return effect;
     }
   }
@@ -432,7 +433,7 @@ function executeCommand(cmd: JoiCommand): JoiCommandResult {
         }
         const effectCounts = new Map<string, number>();
         items.forEach(item => {
-          const effect = EFFECT_LIBRARY.find(e => e.id === item.effectId);
+          const effect = findEffectById(item.effectId);
           const name = effect?.name || item.effectId;
           effectCounts.set(name, (effectCounts.get(name) || 0) + 1);
         });
@@ -507,7 +508,7 @@ function executeCommand(cmd: JoiCommand): JoiCommandResult {
         const s = store;
         const effectCounts = new Map<string, number>();
         s.timelineItems.forEach(item => {
-          const effect = EFFECT_LIBRARY.find(e => e.id === item.effectId);
+          const effect = findEffectById(item.effectId);
           effectCounts.set(effect?.name || item.effectId, (effectCounts.get(effect?.name || item.effectId) || 0) + 1);
         });
         const summary = Array.from(effectCounts.entries()).map(([n, c]) => `${n}×${c}`).join(', ') || 'Nenhum';

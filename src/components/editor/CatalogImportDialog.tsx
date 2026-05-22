@@ -13,6 +13,7 @@ import {
 } from '@/components/ui/dialog';
 import { useProjectStore } from '@/store/useProjectStore';
 import { type Effect, EFFECT_LIBRARY } from '@/data/effectLibrary';
+import { findEffectById } from '@/data/effectsLibraries/resolveEffect';
 import { parseCatalogFile, catalogToEffects, parseAnyFormat, parseCatalogFileWithMappings, type CatalogColumnMapping, type ParsedCatalogEffect } from '@/lib/catalogImporter';
 import { useMyLibrary } from '@/hooks/useMyLibrary';
 import { cn } from '@/lib/utils';
@@ -120,7 +121,7 @@ export default function CatalogImportDialog({ open, onOpenChange }: { open: bool
     
     // Also push to EFFECT_LIBRARY (mutable operation for runtime)
     effects.forEach(eff => {
-      if (!EFFECT_LIBRARY.find(e => e.id === eff.id)) {
+      if (!findEffectById(eff.id)) {
         EFFECT_LIBRARY.push(eff);
       }
     });

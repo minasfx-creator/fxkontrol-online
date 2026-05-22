@@ -5,6 +5,7 @@
 import { useMemo } from 'react';
 import { useProjectStore } from '@/store/useProjectStore';
 import { EFFECT_LIBRARY } from '@/data/effectLibrary';
+import { findEffectById } from '@/data/effectsLibraries/resolveEffect';
 import { useInventoryStore } from '@/store/useInventoryStore';
 
 export interface StockAlert {
@@ -33,7 +34,7 @@ export function useStockValidation() {
       const available = inv?.onHand ?? 0;
       // Only alert if inventory has been initialized (onHand > 0 means tracked)
       if (available > 0 && required > available) {
-        const effect = EFFECT_LIBRARY.find(e => e.id === effectId);
+        const effect = findEffectById(effectId);
         result.push({
           effectId,
           effectName: effect?.name || effectId,

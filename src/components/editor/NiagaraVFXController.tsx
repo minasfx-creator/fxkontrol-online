@@ -20,6 +20,7 @@ import { useFrame, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
 import { useProjectStore } from '@/store/useProjectStore';
 import { EFFECT_LIBRARY } from '@/data/effectLibrary';
+import { findEffectById } from '@/data/effectsLibraries/resolveEffect';
 import { useSceneStore } from '@/store/useSceneStore';
 import {
   createEmitter, createSystem, tickSystem, getSystemParticleCount,
@@ -733,7 +734,7 @@ const NiagaraVFXController = React.forwardRef<THREE.Group, {}>(
       for (const item of timelineItems) {
         const elapsed = currentTime - item.startTime;
         if (elapsed >= 0 && elapsed < 0.06) {
-          const effect = EFFECT_LIBRARY.find(e => e.id === item.effectId);
+          const effect = findEffectById(item.effectId);
           if (!effect || effect.type !== 'firework') continue;
 
           const burstKey = `${item.id}-${Math.floor(currentTime * 20)}`;

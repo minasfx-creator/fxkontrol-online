@@ -1,5 +1,6 @@
 import { type TimelineItem, type Position, type Trajectory, type DroneFormation } from '@/types/projectTypes';
 import { EFFECT_LIBRARY } from '@/data/effectLibrary';
+import { findEffectById } from '@/data/effectsLibraries/resolveEffect';
 import { rgbToVdlString } from '@/lib/vdlQuantizer';
 import { getLiftTime } from '@/lib/pyroPhysics';
 import { resolveCuePresetMetadata, csvCell, type CuePresetMetadata } from '@/core/export/cuePresetMetadata';
@@ -210,12 +211,12 @@ export function exportVVIZ(
 
   // ── Build performances from timeline drone items ──
   const droneItems = timelineItems.filter((item) => {
-    const effect = EFFECT_LIBRARY.find((e) => e.id === item.effectId);
+    const effect = findEffectById(item.effectId);
     return effect?.type === 'drone';
   });
 
   for (const item of droneItems) {
-    const effect = EFFECT_LIBRARY.find((e) => e.id === item.effectId)!;
+    const effect = findEffectById(item.effectId)!;
     const rgb = hexToRgb(effect.color);
     const homeX = item.position.x;
     const homeY = 0;
@@ -388,7 +389,7 @@ export function exportFiringCSV(
   positions: Position[],
 ): string {
   const pyroItems = timelineItems.filter((item) => {
-    const effect = EFFECT_LIBRARY.find((e) => e.id === item.effectId);
+    const effect = findEffectById(item.effectId);
     return effect?.type === 'firework';
   });
 
@@ -398,7 +399,7 @@ export function exportFiringCSV(
   const SLATS_PER_MODULE = 5;
 
   const cues: FiringCue[] = sorted.map((item, index) => {
-    const effect = EFFECT_LIBRARY.find((e) => e.id === item.effectId)!;
+    const effect = findEffectById(item.effectId)!;
     const caliber = extractCaliber(effect.name);
     const pft = calculatePFT(caliber);
 

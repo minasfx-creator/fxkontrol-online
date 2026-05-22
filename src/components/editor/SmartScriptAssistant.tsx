@@ -8,6 +8,7 @@ import { Sparkles, Send, X, Loader2, Wand2, Zap, ChevronDown } from 'lucide-reac
 import { Button } from '@/components/ui/button';
 import { useProjectStore } from '@/store/useProjectStore';
 import { EFFECT_LIBRARY } from '@/data/effectLibrary';
+import { findEffectById } from '@/data/effectsLibraries/resolveEffect';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
@@ -74,7 +75,7 @@ export default function SmartScriptAssistant({ open, onClose }: { open: boolean;
       if (result?.actions && Array.isArray(result.actions)) {
         for (const action of result.actions) {
           if (action.type === 'add_timeline_item') {
-            const effect = EFFECT_LIBRARY.find(e => e.id === action.effectId || e.name.toLowerCase().includes((action.effectName || '').toLowerCase()));
+            const effect = findEffectById(action.effectId) ?? EFFECT_LIBRARY.find(e => e.name.toLowerCase().includes((action.effectName || '').toLowerCase()));
             if (effect) {
               const pos = store.positions.find(p => p.name === action.positionName || p.id === action.positionId);
               store.addTimelineItem({
