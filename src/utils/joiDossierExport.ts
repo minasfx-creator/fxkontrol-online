@@ -132,7 +132,7 @@ function buildReadme(preset: VenueShowPreset, agencies: AgencyType[]): string {
 export async function buildJoiDossier(
   preset: VenueShowPreset,
   options: JoiDossierOptions = {},
-): Promise<{ blob: Blob; filename: string }> {
+): Promise<{ blob: Blob; bytes: Uint8Array; filename: string }> {
   const agencies: AgencyType[] =
     options.agencies && options.agencies.length > 0
       ? options.agencies
