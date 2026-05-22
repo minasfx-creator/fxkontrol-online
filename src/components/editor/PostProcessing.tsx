@@ -10,7 +10,7 @@ import { HighlightDesaturationEffect } from '@/render_ultra/postprocessing/highl
 import { ACESHuePreserveEffect } from '@/render_ultra/postprocessing/acesHuePreserve';
 import { LuminanceFilmGrainEffect } from '@/render_ultra/postprocessing/luminanceFilmGrain';
 import { AtmosphericDepthEffect } from '@/render_ultra/postprocessing/atmosphericDepth';
-import { getFwsimGraphics } from '@/data/fwsimGraphicsConfig';
+import { getFwsimGraphics, getFwsimBloomCalibration } from '@/data/fwsimGraphicsConfig';
 
 
 const TONE_MAP: Record<ViewTransform, ToneMappingMode> = {
