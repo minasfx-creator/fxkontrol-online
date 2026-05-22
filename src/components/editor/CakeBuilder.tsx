@@ -190,7 +190,7 @@ export default function CakeBuilder() {
   );
 
   const selectedEffect = useMemo(() =>
-    EFFECT_LIBRARY.find(e => e.id === config.effectId),
+    findEffectById(config.effectId),
     [config.effectId]
   );
 

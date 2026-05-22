@@ -16,7 +16,7 @@ import { toast } from 'sonner';
 
 // ─── Helper: compute Finale 3D script row data ────────────────────
 function computeScriptRow(item: TimelineItem, positions: ReturnType<typeof useProjectStore.getState>['positions']) {
-  const effect = EFFECT_LIBRARY.find((e) => e.id === item.effectId);
+  const effect = findEffectById(item.effectId);
   if (!effect) return null;
 
   const pft = effect.type === 'firework' ? getPreFireTime(effect.name) : 0;

@@ -46,7 +46,7 @@ export default function RiderPanel({ onClose }: RiderPanelProps) {
     });
 
     const pyroItems = Object.entries(effectCounts).map(([id, qty]) => {
-      const effect = EFFECT_LIBRARY.find(e => e.id === id);
+      const effect = findEffectById(id);
       return { label: effect?.name || id, qty, notes: '' };
     });
 

@@ -140,7 +140,7 @@ export function crossValidate(
 
   const pyroPositions = positions.filter(p => p.type === 'pyro');
   const pyroItems = timelineItems.filter(item => {
-    const effect = EFFECT_LIBRARY.find(e => e.id === item.effectId);
+    const effect = findEffectById(item.effectId);
     return effect?.type === 'firework';
   });
 
@@ -167,7 +167,7 @@ export function crossValidate(
           if (dist < PYRO_EXCLUSION_RADIUS && yDist < PYRO_EXCLUSION_HEIGHT) {
             // Is there an active pyro at this time?
             for (const pi of pyroItems) {
-              const effect = EFFECT_LIBRARY.find(e => e.id === pi.effectId);
+              const effect = findEffectById(pi.effectId);
               if (!effect) continue;
               const pyroEnd = pi.startTime + effect.duration;
               // Check temporal overlap with buffer

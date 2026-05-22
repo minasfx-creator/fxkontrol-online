@@ -193,7 +193,7 @@ export default function AudioWaveform({ pixelsPerSecond }: { pixelsPerSecond: nu
         const store = useProjectStore.getState();
         // Only extend — never shrink below current items
         const maxItemEnd = store.timelineItems.reduce((max, item) => {
-          const effect = EFFECT_LIBRARY.find(e => e.id === item.effectId);
+          const effect = findEffectById(item.effectId);
           return Math.max(max, item.startTime + (effect?.duration ?? 3));
         }, 0);
         const newDuration = Math.max(audioDuration, maxItemEnd);

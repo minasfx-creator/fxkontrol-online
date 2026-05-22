@@ -403,7 +403,7 @@ const LaunchAngleGizmo = forwardRef<THREE.Group, {
   const realCaliber = useMemo(() => {
     let cal = 4;
     for (const item of linkedCues) {
-      const eff = EFFECT_LIBRARY.find(e => e.id === item.effectId);
+      const eff = findEffectById(item.effectId);
       if (eff?.caliber && eff.caliber > cal) cal = eff.caliber;
     }
     return cal;

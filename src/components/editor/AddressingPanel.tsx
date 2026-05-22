@@ -49,14 +49,14 @@ export default function AddressingPanel({ onClose }: { onClose: () => void }) {
   // Build sorted address list
   const sortedItems = useMemo(() => {
     const pyroItems = timelineItems
-      .filter(i => EFFECT_LIBRARY.find(e => e.id === i.effectId)?.type === 'firework')
+      .filter(i => findEffectById(i.effectId)?.type === 'firework')
       .sort((a, b) => a.startTime - b.startTime);
 
     const addrMap = new Map(addresses.map(a => [a.timelineItemId, a]));
 
     const items = pyroItems.map(item => ({
       item,
-      effect: EFFECT_LIBRARY.find(e => e.id === item.effectId)!,
+      effect: findEffectById(item.effectId)!,
       addr: addrMap.get(item.id),
     }));
 

@@ -130,7 +130,7 @@ export default function ScriptingToolsPanel({ onClose }: { onClose: () => void }
         }
         let updated = 0;
         selectedItems.forEach(item => {
-          const effect = EFFECT_LIBRARY.find(e => e.id === item.effectId);
+          const effect = findEffectById(item.effectId);
           if (!effect || effect.type !== 'firework') return;
           const caliber = effect.caliber || 4;
           const comp = calcWindCompensation(caliber, wind.speed, wind.direction, item.pan ?? 90);

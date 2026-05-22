@@ -104,7 +104,7 @@ export default function LaserControlPanel({ onClose }: LaserControlPanelProps) {
 
   // Find if selected timeline item is a laser
   const selectedItem = timelineItems.find(i => i.id === selectedTimelineItemId);
-  const selectedEffect = selectedItem ? EFFECT_LIBRARY.find(e => e.id === selectedItem.effectId) : null;
+  const selectedEffect = selectedItem ? findEffectById(selectedItem.effectId) : null;
   const isLaser = selectedEffect?.type === 'laser';
 
   const handleIldaImport = useCallback(() => {

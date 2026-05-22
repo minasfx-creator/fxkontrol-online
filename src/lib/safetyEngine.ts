@@ -55,12 +55,12 @@ function getDronePositionsAtTime(
 
   // From timeline drone items
   const droneItems = timelineItems.filter((item) => {
-    const effect = EFFECT_LIBRARY.find((e) => e.id === item.effectId);
+    const effect = findEffectById(item.effectId);
     return effect?.type === 'drone';
   });
 
   for (const item of droneItems) {
-    const effect = EFFECT_LIBRARY.find((e) => e.id === item.effectId);
+    const effect = findEffectById(item.effectId);
     if (!effect) continue;
     if (time >= item.startTime && time <= item.startTime + effect.duration) {
       agents.push({

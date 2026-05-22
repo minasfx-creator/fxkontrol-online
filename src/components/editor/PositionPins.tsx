@@ -576,7 +576,7 @@ function DirectionLine({ position, color, isSelected, isHovered, hasEffects }: {
     const linked = timelineItems.filter(t => t.positionId === position.id || t.positionIds?.includes(position.id));
     let cal = 3;
     for (const item of linked) {
-      const eff = EFFECT_LIBRARY.find(e => e.id === item.effectId);
+      const eff = findEffectById(item.effectId);
       if (eff?.caliber && eff.caliber > cal) cal = eff.caliber;
     }
     return cal;

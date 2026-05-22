@@ -38,10 +38,10 @@ function calcPFT(caliber: string): number {
 }
 
 function buildCues(items: TimelineItem[], positions: Position[], pinsPerSlat = 20, slatsPerModule = 5): FiringCue[] {
-  const pyro = items.filter(i => { const e = EFFECT_LIBRARY.find(e => e.id === i.effectId); return e?.type === 'firework'; });
+  const pyro = items.filter(i => { const e = findEffectById(i.effectId); return e?.type === 'firework'; });
   const sorted = [...pyro].sort((a, b) => a.startTime - b.startTime);
   return sorted.map((item, idx) => {
-    const effect = EFFECT_LIBRARY.find(e => e.id === item.effectId)!;
+    const effect = findEffectById(item.effectId)!;
     const caliber = extractCaliber(effect.name);
     const pin = (idx % pinsPerSlat) + 1;
     const slat = Math.floor((idx / pinsPerSlat) % slatsPerModule) + 1;

@@ -32,7 +32,7 @@ export const useInventoryStore = create<InventoryState>((set) => ({
     if (existing) {
       return { items: s.items.map((i) => i.effectId === effectId ? { ...i, ...updates } : i) };
     }
-    const effect = EFFECT_LIBRARY.find((e) => e.id === effectId);
+    const effect = findEffectById(effectId);
     return {
       items: [...s.items, {
         effectId,

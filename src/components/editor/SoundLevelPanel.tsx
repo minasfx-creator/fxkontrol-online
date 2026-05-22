@@ -178,7 +178,7 @@ export default function SoundLevelPanel({ onClose }: { onClose: () => void }) {
 
   const result = useMemo<SoundLevelResult>(() => {
     const effects = timelineItems.map(item => {
-      const eff = EFFECT_LIBRARY.find(e => e.id === item.effectId);
+      const eff = findEffectById(item.effectId);
       return {
         startTime: item.startTime,
         effectName: eff?.name ?? 'Unknown',

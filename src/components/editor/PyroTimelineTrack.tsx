@@ -83,12 +83,12 @@ export default function PyroTimelineTrack({
   const pyroItems = useMemo(() => {
     return timelineItems
       .filter(item => {
-        const effect = EFFECT_LIBRARY.find(e => e.id === item.effectId);
+        const effect = findEffectById(item.effectId);
         return effect?.type === 'firework';
       })
       .map(item => ({
         item,
-        effect: EFFECT_LIBRARY.find(e => e.id === item.effectId)!,
+        effect: findEffectById(item.effectId)!,
       }))
       .sort((a, b) => a.item.startTime - b.item.startTime);
   }, [timelineItems]);

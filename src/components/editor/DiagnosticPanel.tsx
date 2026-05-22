@@ -287,7 +287,7 @@ export default function DiagnosticPanel({ onClose }: { onClose: () => void }) {
 
     // 8. Unlinked timeline items
     const unlinkedItems = timelineItems.filter(item => {
-      const effect = EFFECT_LIBRARY.find(e => e.id === item.effectId);
+      const effect = findEffectById(item.effectId);
       if (!effect || effect.type === 'drone') return false;
       return !item.positionId && (!item.positionIds || item.positionIds.length === 0);
     });
@@ -308,7 +308,7 @@ export default function DiagnosticPanel({ onClose }: { onClose: () => void }) {
         t => t.positionId === pos.id || t.positionIds?.includes(pos.id)
       );
       linkedItems.forEach(item => {
-        const effect = EFFECT_LIBRARY.find(e => e.id === item.effectId);
+        const effect = findEffectById(item.effectId);
         if (effect?.caliber) {
           const safeDist = getSafetyDistance(effect.caliber);
           const distToAudience = Math.abs(pos.z);

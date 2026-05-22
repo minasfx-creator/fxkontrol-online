@@ -78,7 +78,7 @@ class JoiContextBuilder {
 
     const effectCounts = new Map<string, number>();
     store.timelineItems.forEach(item => {
-      const effect = EFFECT_LIBRARY.find(e => e.id === item.effectId);
+      const effect = findEffectById(item.effectId);
       effectCounts.set(effect?.name || item.effectId, (effectCounts.get(effect?.name || item.effectId) || 0) + 1);
     });
     const effectsSummary = effectCounts.size > 0
@@ -86,7 +86,7 @@ class JoiContextBuilder {
       : 'Nenhum';
 
     const recentItems = store.timelineItems.slice(-20).map(item => {
-      const effect = EFFECT_LIBRARY.find(e => e.id === item.effectId);
+      const effect = findEffectById(item.effectId);
       return `${item.id}[${effect?.name || item.effectId}@${item.positionName || '?'},t=${item.startTime.toFixed(1)}s]`;
     }).join(', ') || 'Nenhum';
 

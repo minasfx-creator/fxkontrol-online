@@ -335,7 +335,7 @@ const showDesignResolver: JOIResolver = {
     const store = useProjectStore.getState();
     const effectCounts = new Map<string, number>();
     store.timelineItems.forEach(item => {
-      const effect = EFFECT_LIBRARY.find(e => e.id === item.effectId);
+      const effect = findEffectById(item.effectId);
       const name = effect?.name || item.effectId;
       effectCounts.set(name, (effectCounts.get(name) || 0) + 1);
     });

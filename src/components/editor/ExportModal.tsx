@@ -53,7 +53,7 @@ interface SetupRow {
 
 function generateSetupReport(timelineItems: TimelineItem[], positions: Position[]): SetupRow[] {
   const pyroItems = timelineItems.filter(item => {
-    const effect = EFFECT_LIBRARY.find(e => e.id === item.effectId);
+    const effect = findEffectById(item.effectId);
     return effect?.type === 'firework';
   });
 
@@ -61,7 +61,7 @@ function generateSetupReport(timelineItems: TimelineItem[], positions: Position[
   const groups = new Map<string, Map<string, { effect: string; items: TimelineItem[] }>>();
 
   pyroItems.forEach((item, idx) => {
-    const effect = EFFECT_LIBRARY.find(e => e.id === item.effectId)!;
+    const effect = findEffectById(item.effectId)!;
     const pos = findClosestPosition(item, positions);
     const posName = pos?.name || 'UNASSIGNED';
     const caliber = extractCaliber(effect.name);
@@ -120,12 +120,12 @@ interface FiringPreviewRow {
 
 function generateFiringPreview(timelineItems: TimelineItem[], positions: Position[], limit = 20): FiringPreviewRow[] {
   const pyroItems = timelineItems
-    .filter(item => EFFECT_LIBRARY.find(e => e.id === item.effectId)?.type === 'firework')
+    .filter(item => findEffectById(item.effectId)?.type === 'firework')
     .sort((a, b) => a.startTime - b.startTime)
     .slice(0, limit);
 
   return pyroItems.map((item, i) => {
-    const effect = EFFECT_LIBRARY.find(e => e.id === item.effectId)!;
+    const effect = findEffectById(item.effectId)!;
     const pos = findClosestPosition(item, positions);
     const mins = Math.floor(item.startTime / 60);
     const secs = (item.startTime % 60).toFixed(3);
@@ -151,7 +151,7 @@ export default function ExportModal({ open, onOpenChange }: ExportModalProps) {
   const [activeTab, setActiveTab] = useState('firing');
 
   const pyroCount = useMemo(() =>
-    timelineItems.filter(i => EFFECT_LIBRARY.find(e => e.id === i.effectId)?.type === 'firework').length
+    timelineItems.filter(i => findEffectById(i.effectId)?.type === 'firework').length
   , [timelineItems]);
 
   const firingPreview = useMemo(() => generateFiringPreview(timelineItems, positions), [timelineItems, positions]);

@@ -76,7 +76,7 @@ class ShowStyleManager {
     const effectCounts = new Map<string, { id: string; name: string; count: number }>();
     const effectTypes: Record<string, number> = {};
     items.forEach(item => {
-      const effect = EFFECT_LIBRARY.find(e => e.id === item.effectId);
+      const effect = findEffectById(item.effectId);
       const key = effect?.id || item.effectId;
       const existing = effectCounts.get(key);
       if (existing) {

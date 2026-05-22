@@ -79,11 +79,11 @@ function findNearestPosition(item: TimelineItem, positions: Position[], type: 'p
 
 function buildSafetyData(items: TimelineItem[], positions: Position[]): SafetyRow[] {
   const pyroItems = items
-    .filter(i => EFFECT_LIBRARY.find(e => e.id === i.effectId)?.type === 'firework')
+    .filter(i => findEffectById(i.effectId)?.type === 'firework')
     .sort((a, b) => a.startTime - b.startTime);
 
   return pyroItems.map((item, idx) => {
-    const effect = EFFECT_LIBRARY.find(e => e.id === item.effectId)!;
+    const effect = findEffectById(item.effectId)!;
     const cal = extractCaliberNum(effect.name);
     return {
       cue: idx + 1,
@@ -100,12 +100,12 @@ function buildSafetyData(items: TimelineItem[], positions: Position[]): SafetyRo
 
 function buildWiringData(items: TimelineItem[], positions: Position[]): WiringRow[] {
   const pyroItems = items
-    .filter(i => EFFECT_LIBRARY.find(e => e.id === i.effectId)?.type === 'firework')
+    .filter(i => findEffectById(i.effectId)?.type === 'firework')
     .sort((a, b) => a.startTime - b.startTime);
 
   const PINS = 20, SLATS = 5;
   return pyroItems.map((item, idx) => {
-    const effect = EFFECT_LIBRARY.find(e => e.id === item.effectId)!;
+    const effect = findEffectById(item.effectId)!;
     const pin = (idx % PINS) + 1;
     const slat = Math.floor((idx / PINS) % SLATS) + 1;
     const module = Math.floor(idx / (PINS * SLATS)) + 1;
@@ -134,11 +134,11 @@ function buildChainData(items: TimelineItem[]): ChainRow[] {
 
   return Array.from(chains.entries()).map(([ref, chainItems]) => {
     const sorted = chainItems.sort((a, b) => a.startTime - b.startTime);
-    const effects = sorted.map(i => EFFECT_LIBRARY.find(e => e.id === i.effectId)?.name || '?');
+    const effects = sorted.map(i => findEffectById(i.effectId)?.name || '?');
     const totalGap = sorted.reduce((s, i) => s + (i.chainGap || 0), 0);
     const first = sorted[0].startTime;
     const last = sorted[sorted.length - 1].startTime;
-    const lastEffect = EFFECT_LIBRARY.find(e => e.id === sorted[sorted.length - 1].effectId);
+    const lastEffect = findEffectById(sorted[sorted.length - 1].effectId);
     return {
       chainRef: ref,
       itemCount: sorted.length,
@@ -154,7 +154,7 @@ function buildChainData(items: TimelineItem[]): ChainRow[] {
 function buildCueSheet(items: TimelineItem[], positions: Position[]): CueSheetRow[] {
   const sorted = [...items].sort((a, b) => a.startTime - b.startTime);
   return sorted.map((item, idx) => {
-    const effect = EFFECT_LIBRARY.find(e => e.id === item.effectId);
+    const effect = findEffectById(item.effectId);
     const type = effect?.type === 'firework' ? 'pyro' : 'drone-pad';
     return {
       cue: idx + 1,

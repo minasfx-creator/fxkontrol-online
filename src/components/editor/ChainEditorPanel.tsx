@@ -225,7 +225,7 @@ export default function ChainEditorPanel({ onClose }: { onClose: () => void }) {
                     <div className="border-t border-border/30 bg-muted/20">
                       <div className="px-2 py-1 space-y-0.5">
                         {items.map((item, idx) => {
-                          const eff = EFFECT_LIBRARY.find(e => e.id === item.effectId);
+                          const eff = findEffectById(item.effectId);
                           return (
                             <div
                               key={item.id}

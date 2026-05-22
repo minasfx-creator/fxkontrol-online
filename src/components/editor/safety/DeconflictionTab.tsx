@@ -84,7 +84,7 @@ export default function DeconflictionTab() {
   const warningCount = warnings.filter((w) => w.severity === 'warning').length;
   const failsafeAction = hcaResult ? FAILSAFE_ACTIONS.find(a => a.level === hcaResult.escalation) : null;
 
-  const pyroCount = timelineItems.filter(i => EFFECT_LIBRARY.find(e => e.id === i.effectId)?.type === 'firework').length;
+  const pyroCount = timelineItems.filter(i => findEffectById(i.effectId)?.type === 'firework').length;
   const droneCount = droneFormations.reduce((s, f) => s + f.droneCount, 0);
   const overlapZones = hcaResult?.riskVolumes.filter(v => v.type === 'overlap-zone').length || 0;
 

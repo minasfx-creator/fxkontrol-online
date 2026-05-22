@@ -120,7 +120,7 @@ export default function CatalogImportDialog({ open, onOpenChange }: { open: bool
     
     // Also push to EFFECT_LIBRARY (mutable operation for runtime)
     effects.forEach(eff => {
-      if (!EFFECT_LIBRARY.find(e => e.id === eff.id)) {
+      if (!findEffectById(eff.id)) {
         EFFECT_LIBRARY.push(eff);
       }
     });
