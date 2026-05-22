@@ -191,10 +191,12 @@ export async function downloadJoiDossier(
 // avoid coupling joiDocxExport's DOM download side-effects.
 // ─────────────────────────────────────────────────────────────────────
 async function buildBriefingDocx(markdown: string, title: string): Promise<Blob> {
+  const docx = await import('docx');
   const {
     Document, Paragraph, TextRun, Header, Footer,
     AlignmentType, HeadingLevel, PageNumber, BorderStyle, LevelFormat,
-  } = await import('docx');
+  } = docx;
+  type Para = InstanceType<typeof docx.Paragraph>;
 
   const MARGIN_L = 1701, MARGIN_T = 1701, MARGIN_R = 1134, MARGIN_B = 1134;
 
