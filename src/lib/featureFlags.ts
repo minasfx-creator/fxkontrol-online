@@ -45,8 +45,9 @@ const FLAGS = {
   // ── FWsim graphics.xml canonical tuning (data registered; renderer wiring opt-in) ──
   /** Apply FWsim Bloom AmountOfBloom + Upsampling_Weights to EffectComposer. Renderer wiring pending. */
   r_fwsim_bloom_weights: false,
-  /** Apply FWsim TonemappingConfig (Contrast 1.7, HdrMax 16) to ACES tone-mapper. Renderer wiring pending. */
-  r_fwsim_tonemapping: false,
+  /** Apply FWsim TonemappingConfig (Contrast 1.7, HdrMax 16) to ACES tone-mapper. */
+  r_fwsim_tonemapping: true,
+
   /** Apply FWsim ShellLaunchFlame.SizeDependingOnEnergy + brightness/duration curves to PrefireShell muzzle flash. */
   r_fwsim_launch_flash_v2: true,
 
