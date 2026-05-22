@@ -910,9 +910,9 @@ function executeCommand(cmd: JoiCommand): JoiCommandResult {
         // Fire and forget but capture result for toast/transcript via promise chain.
         void commitJoiDossierToCloud(preset, {
           signedUrlTtlSec: Number.isFinite(ttl) && ttl > 0 ? ttl : undefined,
-        }).then((res) => {
+        }).then((res: any) => {
           if (!res.ok) {
-            toast.error(`commit_dossier_to_cloud falhou`, { description: res.error });
+            toast.error(`commit_dossier_to_cloud falhou`, { description: String(res.error) });
             return;
           }
           toast.success(`Dossiê na nuvem: ${res.filename}`, {
