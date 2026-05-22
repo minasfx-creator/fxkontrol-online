@@ -380,8 +380,10 @@ export default function MineEffect({
       colArr[i * 3 + 1] = g * fadeSq * twinkle * hdrBoost * envelope * smokeBoost;
       colArr[i * 3 + 2] = b * fadeSq * twinkle * hdrBoost * envelope * smokeBoost;
 
-      // Per-particle size
-      sizeArr[i] = basePointSize * particleSizes[i];
+      // Per-particle size — spray layer scaled by FWsim launchSparks.mineMineWidth
+      // (neutral=1 when canonical 0.05; flag-gated, OFF preserves legacy literal).
+      const isSpray = !isColumn && !isDrip && !isBounce;
+      sizeArr[i] = basePointSize * particleSizes[i] * (isSpray ? sparkCalib.widthMult : 1);
     }
 
     // ── Spray comet trails ──
