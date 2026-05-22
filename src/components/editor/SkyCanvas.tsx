@@ -1243,17 +1243,19 @@ function CameraController({ targetPosition, targetLookAt, freeLook, flyMode }: {
     <OrbitControls
       ref={controlsRef}
       enableDamping={false}
-      rotateSpeed={0.6 * sensitivityScale}
-      panSpeed={0.8 * sensitivityScale}
-      zoomSpeed={1.2 * sensitivityScale}
-      minPolarAngle={Math.PI * 0.05}
-      maxPolarAngle={Math.PI * 0.75}
+      rotateSpeed={1.0}
+      panSpeed={1.1}
+      zoomSpeed={1.4}
+      screenSpacePanning
+      minPolarAngle={Math.PI * 0.02}
+      maxPolarAngle={Math.PI * 0.85}
       minDistance={2}
       maxDistance={90000}
       enablePan
     />
   );
 }
+
 
 /** Viewport playback controls — always visible at bottom center of 3D viewport */
 function ViewportPlaybackControls() {
