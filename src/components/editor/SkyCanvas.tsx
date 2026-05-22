@@ -859,6 +859,15 @@ function CameraController({ targetPosition, targetLookAt, freeLook, flyMode }: {
   const _wasClampedLastFrame = useRef(false);
   const _wasDropClampedLastFrame = useRef(false);
 
+  // User-interaction grace: while user is dragging the camera (or for 800ms
+  // after release), suppress any preset/focus auto-animation that would yank
+  // the camera back — eliminates the "drag" feel after rotation.
+  const userActive = useRef(false);
+  const lastUserInteractionAt = useRef(0);
+  const _lastClampPos = useRef(new THREE.Vector3());
+  const _lastClampTarget = useRef(new THREE.Vector3());
+
+
   const clampToWorldBounds = useCallback(() => {
     const controls = controlsRef.current;
     if (!controls) return;
