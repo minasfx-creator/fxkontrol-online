@@ -1201,6 +1201,9 @@ function CameraController({ targetPosition, targetLookAt, freeLook, flyMode }: {
     const _focusCamDir = new THREE.Vector3();
     const handler = (e: Event) => {
       const { x, y, z } = (e as CustomEvent).detail;
+      // Ignore focus requests while user is driving the camera or just released.
+      const sinceUser = performance.now() - lastUserInteractionAt.current;
+      if (userActive.current || sinceUser < 300) return;
       if (controlsRef.current) {
         targetLook.current.set(x, y, z);
         _focusCamDir.subVectors(camera.position, controlsRef.current.target).normalize();
@@ -1209,6 +1212,7 @@ function CameraController({ targetPosition, targetLookAt, freeLook, flyMode }: {
         focusAnimating.current = true;
       }
     };
+
     window.addEventListener('focus-camera-on-point', handler);
     return () => window.removeEventListener('focus-camera-on-point', handler);
   }, [camera]);
