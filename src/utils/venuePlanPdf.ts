@@ -55,7 +55,9 @@ export function renderVenueMapCanvas(preset: VenueShowPreset, width = 1100, heig
   const canvas = document.createElement('canvas');
   canvas.width = width;
   canvas.height = height;
-  const ctx = canvas.getContext('2d')!;
+  const ctx = canvas.getContext('2d');
+  // jsdom / headless: no 2D context — return an empty canvas so PDF still embeds.
+  if (!ctx) return canvas;
   // Background — Vantablack with subtle grid.
   ctx.fillStyle = '#050810';
   ctx.fillRect(0, 0, width, height);
