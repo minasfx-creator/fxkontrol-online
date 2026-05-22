@@ -166,13 +166,43 @@ export function extractFweUniversal(xml: string, fileName: string): FweUniversal
     bengalDurationS = bm ? parseInt(bm[1], 10) : null;
   }
 
+  const stem = fileName.replace(/\.fwe$/i, '');
+  let typeReal = rootType;
+  if (rootType == null || rootType === 'Fountain') {
+    for (const et of EXTENDED_SUBTYPES) {
+      if (new RegExp('\\b' + et + '\\b', 'i').test(stem)) { typeReal = et; break; }
+    }
+  }
+  if (rootType === 'Shell') {
+    for (const sub of SHELL_SUBTYPES) {
+      if (new RegExp('\\b' + sub + '\\b', 'i').test(stem)) { typeReal = sub; break; }
+    }
+  }
+  const colorPhases = parseColorPhases(stem);
+  const tailRef = parseTailRef(stem);
+  const caliberFinal = caliberIn ?? inferCaliberFromName(stem);
+  const caliberSource: 'xml' | 'inferred' | 'unknown' =
+    caliberIn != null ? 'xml' : (caliberFinal != null ? 'inferred' : 'unknown');
+
   return {
     fileName,
     rootType,
+    typeReal,
     distribution,
     palette,
     primary: palette[0] ?? null,
     secondary: palette[1] ?? null,
+    colorPhases,
+    tailRef,
+    hasPistil,
+    hasTailsLink,
+    hasCrackling,
+    subShellCount,
+    caliberIn: caliberFinal,
+    caliberSource,
+    bengalDurationS,
+  };
+}
     hasPistil,
     hasTailsLink,
     hasCrackling,
