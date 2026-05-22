@@ -272,7 +272,9 @@ class RxBuffer {
       const chunk = await raceTimeout(this.reader.read(), remaining);
       if (!chunk || chunk.done) return null;
       // normalize buffer type (chunk.value may be backed by SharedArrayBuffer)
-      this.buf = concat(this.buf, new Uint8Array(chunk.value));
+      const copy = new Uint8Array(chunk.value.byteLength);
+      copy.set(chunk.value);
+      this.buf = concat(this.buf, copy);
     }
   }
 }
