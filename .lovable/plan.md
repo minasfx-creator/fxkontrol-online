@@ -1,192 +1,91 @@
-# Refino — Templates de Shows Reais + Joi Design & Entregáveis + Posicionamento Google Tiles
+# Refino UX da câmera no Editor 3D
 
-Quatro eixos, todos puramente no plano editor/Joi (zero impacto em safety, command center ou hardware).
+## Diagnóstico
 
----
+`CameraController` em `src/components/editor/SkyCanvas.tsx` (linhas 842–1188) tem 3 causas para a sensação de "drag/arrasto" após o usuário girar a visão:
 
-## 1. Templates de show com referências reais (posicionados em coordenadas reais)
+1. **Velocidade subdimensionada** — `rotateSpeed={0.6} × sensitivityScale=0.7 ≈ 0.42`. Sensação de câmera "pesada". `panSpeed` e `zoomSpeed` idem.
+2. **Auto-animação roubando o controle** — o `useEffect` (1020–1032) observa `presetKey = targetPosition+targetLookAt`. Qualquer re-render do pai que altere essas props depois do usuário girar dispara `animating.current = true` e o `useFrame` (1097–1099) começa a interpolar a câmera de volta ao preset com `lerp(0.06)` — é literalmente um "puxão" pós-rotação. O mesmo vale para `focus-camera-on-point` disparado por seleção.
+3. **`clampToWorldBounds()` rodando todo frame** mesmo idle, com `controls.target.set(...)` quando algum eixo bate no limite — gera micro-saltos.
 
-Reescrever `src/lib/showTemplates.ts` para que os BUILTIN_TEMPLATES deixem de ser cascas vazias e virem **packs cinematográficos georreferenciados** baseados em shows reais documentados. Cada template ganha:
+Sem damping (já `enableDamping={false}`), inércia não é a causa.
 
-- `reference`: `{ event, year, location, scale, source }`.
-- `venue`: `{ gps:{lat,lng,altMSL,headingFromAudience}, audienceArea:{lat,lng,radiusM}, launchPoints:[{role,lat,lng,heightHintAGL,calibreMax}], waterFeature?:{kind:'river'|'sea'|'lake'|'bay', polygon:LatLng[]}, noFlyZones?:LatLng[][], landmarks?:[{name,lat,lng}] }`.
-- `joiPrompt`: prompt pronto para `create_choreography` + `apply_template` + `place_on_terrain`.
-- `narrativeBeats`: `{tStart,tEnd,mood,productMix,density}[]` spine do show.
-- `paletteName` + `paletteOverride`, `audioCueHints`.
+## Mudanças (somente `src/components/editor/SkyCanvas.tsx`, escopo UI)
 
-Packs reais (lat/lng/heading verificados; valores indicativos, refináveis):
+### 1. Trava de auto-animação enquanto o usuário interage
 
-| Id | Referência | GPS principal | Heading audiência |
-|----|-----------|---------------|---------------------|
-| reveillon-copa-12min | Réveillon Copacabana RJ 2024, 11 barcas | -22.9711, -43.1822 | 90° (frente p/ orla) |
-| reveillon-paulista-3min | Av. Paulista (MASP) | -23.5613, -46.6565 | 0° |
-| maracana-final-90s | Maracanã RJ | -22.9122, -43.2302 | centro do gramado |
-| festa-junina-arraial-2min | Praça Campina Grande PB | -7.2197, -35.8810 | 180° |
-| casamento-praia-buzios-2min | Praia Ferradura | -22.7647, -41.8814 | 270° (mar p/ praia) |
-| corporativo-launch-indoor-90s | Allianz Parque SP indoor-safe | -23.5273, -46.6783 | 0° |
-| f1-interlagos-podio-45s | Pódio Interlagos | -23.7036, -46.6997 | 0° |
-| olympics-opening-anel-5min | Estádio Tóquio | 35.6779, 139.7148 | centro |
-| coldplay-music-spheres-180s | Wembley | 51.5560, -0.2796 | norte (palco→pit) |
-| natal-shopping-1min | Praça interna shopping | (parametrizável) | livre |
-| 4th-july-macys-style-6min | East River NYC | 40.7411, -73.9712 | barcas alinhadas Manhattan |
-| diwali-skyline-4min | Marine Drive Mumbai | 18.9442, 72.8237 | mar→cidade |
+Adicionar refs `userActive` + `lastUserInteractionAt` e listeners `start`/`end` do próprio OrbitControls:
 
-Cada template gera positions com `lat/lng` reais (não só local XYZ). Ao aplicar, Joi:
-1. Recentra `geoAnchor` no `venue.gps`.
-2. Materializa positions em `geoToLocal` (worker, Float64).
-3. Snap Y em cada position via raycast contra `GoogleTilesGroup` (`raycastTerrainLocal`).
-4. Aplica `headingFromAudience` em todas as positions.
-5. Renderiza polígonos de `audienceArea` / `noFlyZones` / `waterFeature` como overlays no canvas.
+```ts
+useEffect(() => {
+  const c = controlsRef.current; if (!c) return;
+  const onStart = () => {
+    userActive.current = true;
+    animating.current = false;        // cancela preset/focus em andamento
+    focusAnimating.current = false;
+    cancelFlyTo();                    // cancela voo geo se ativo
+  };
+  const onEnd = () => {
+    userActive.current = false;
+    lastUserInteractionAt.current = performance.now();
+  };
+  c.addEventListener('start', onStart);
+  c.addEventListener('end', onEnd);
+  return () => { c.removeEventListener('start', onStart); c.removeEventListener('end', onEnd); };
+}, []);
+```
 
-Files: `src/lib/showTemplates.ts` (tipos `VenueGeo`, `LaunchPointGeo`, `NarrativeBeat`; nova lista); `src/components/editor/ShowTemplatesPanel.tsx` (chip evento/ano/escala; minimapa Google Maps Static do `venue.gps`; botão "Pedir pra Joi montar" injeta `joiPrompt`).
+E no `useFrame` da animação de preset (linha 1093+), respeitar **grace period de 800 ms** após o último `end`:
 
----
+```ts
+const sinceUser = performance.now() - lastUserInteractionAt.current;
+if (userActive.current || sinceUser < 800) {
+  clampToWorldBounds();
+  return;
+}
+```
 
-## 2. Joi — técnicas de design e criação
+O `useEffect` do `presetKey` (1020–1032) também passa a ignorar mudanças quando `userActive.current || sinceUser < 800` — câmera não é mais "puxada de volta" para o preset depois que o usuário girou.
 
-### 2.1 Choreography helpers (`src/utils/joiChoreographyHelpers.ts`)
+### 2. Curvas de sensibilidade mais fluidas
 
-- Presets novos: `heart`, `star5`, `fan_array`, `double_arc`, `crescent`, `cross`, `crown`.
-- Paletas reais: `reveillon_copa`, `rubro_negro`, `tricolor`, `flamengo`, `palmeiras`, `vasco`, `f1_podio`, `coldplay_spheres`, `oscar`, `diwali`, `chinese_newyear`, `independencia_br`.
-- `planNarrativeArc(beats, audioMarkers)` — converte `narrativeBeats[]` + downbeats em janelas de cue com EMA build curve.
-- `quantizeToBeatGrid(time, bpm, subdivision, swing?)`.
-- `windAwareSpacing(positions, windVec, caliberMm)` — leeward shift conforme NFPA 1123 + cone balístico.
-- `palettePhaseRotation(palette, phase)` — luminância crescente intro→climax.
+```tsx
+<OrbitControls
+  ref={controlsRef}
+  enableDamping={false}        // sem inércia/arrasto (mantém comportamento exigido)
+  rotateSpeed={1.0}            // era 0.6 × 0.7 = 0.42
+  panSpeed={1.1}               // era 0.8 × 0.7 = 0.56
+  zoomSpeed={1.4}              // era 1.2 × 0.7 = 0.84
+  screenSpacePanning           // pan respeita o plano da tela — mais previsível
+  minPolarAngle={Math.PI * 0.02}
+  maxPolarAngle={Math.PI * 0.85}
+  minDistance={2}
+  maxDistance={90000}
+  enablePan
+/>
+```
 
-### 2.2 Helpers geo novos (`src/utils/joiGeoHelpers.ts`)
+Remove o `sensitivityScale = 0.7` global (linha 1107).
 
-- `materializeGeoLayout(launchPoints, preset, opts)` — usa lat/lng reais ao invés de XZ sintético.
-- `orientToAudience(positions, audienceCenter)` — calcula heading por position (azimute geo → local Y rotation, respeitando north-up Three.js).
-- `clampToWaterFeature(positions, polygon)` — força barcas dentro do polígono d'água.
-- `enforceNoFlyZones(positions, polygons)` — flag/remove positions dentro de exclusões.
-- `suggestLaunchGrid(audienceCenter, audienceRadiusM, calibreMm, count)` — distribui posições respeitando raio NFPA por calibre.
+### 3. Clamp somente quando há mudança real
 
-### 2.3 Comandos Joi (`src/utils/joiCommandExecutor.ts`)
+`clampToWorldBounds` só roda se `controls.target` ou `camera.position` diferirem do último frame por > 1e-3 (compara contra `_lastClampPos`/`_lastClampTarget` refs). Elimina micro-set por floating-point que cria "tremor".
 
-Novos actions (todos design-only, executam no `useProjectStore` + `useSceneStore.geoAnchor`):
+### 4. Handlers de foco e frame-all respeitam interação ativa
 
-- `set_venue` `{ lat, lng, altMSL?, headingFromAudience?, name? }` — recentra anchor, salva audience heading.
-- `apply_template` `{ templateId }` — materializa template + venue + positions geo-snapped.
-- `expand_template_to_full_show` `{ templateId, duration }`.
-- `place_position_geo` `{ positionId|new, lat, lng, snapToTerrain:true, heading? }` — converte lat/lng→local, raycast Y, aplica.
-- `place_positions_along_polygon` `{ polygon:LatLng[], count, role }` — distribui N positions equidistantes ao longo de polígono/linha (ex.: alinhar barcas na orla).
-- `snap_all_to_terrain` `{}` — força raycast Y em todas as positions atuais.
-- `orient_all_to_audience` `{ audienceLat, audienceLng }`.
-- `apply_audio_sync` `{ audioUrl|trackId, snap:"1/16", swing?:0 }`.
-- `apply_palette_phase` `{ paletteName }`.
-- `mirror_around` `{ axis, anchor }`, `fan_out` `{ angleDeg, count, anchorId }`.
-- `query_terrain_height_geo` `{ lat, lng }` → retorna altura local + altMSL (somente leitura, ajuda Joi a raciocinar).
-- `query_landmarks_near` `{ radiusM }` — usa Google Places (gateway) para sugerir audiência, palco, exclusões.
+`focus-camera-on-point` e `viewport-frame-all` viram **no-op** se `userActive.current` for true (ou descartam se `sinceUser < 300 ms`). UX: clique acidental durante rotação não interrompe o gesto.
 
-### 2.4 Modos & presets (`src/core/joi/joiModes.ts`)
+### 5. Cancelamento de intro mais limpo
 
-Refinar prompts do modo `show` com `set_venue` + `apply_template` + `snap_all_to_terrain` + `orient_all_to_audience` encadeados em um único turno. Acrescentar presets: SAMBÓDROMO, GRAND PRIX, BROADWAY, FESTIVAL EDM, CASTELO HISTÓRICO.
-
-### 2.5 Style-aware generator (`src/core/joi/JOIStyleAwareGenerator.ts` + `ShowStyleManager.ts`)
-
-- `learnStyleFromTemplate(template)`.
-- `crossPollinate(styleA, styleB, ratio)`.
-
----
-
-## 3. Posicionamento e precisão sobre Google 3D Tiles
-
-### 3.1 Anchor management (`src/store/useSceneStore.ts`)
-
-- Nova action `setVenueAnchor({lat,lng,altMSL,headingFromAudience})` que:
-  1. Atualiza `geoAnchorLat/Lon/Alt`.
-  2. Chama `useGeo().recenter()` (worker) e aguarda ack.
-  3. Re-materializa todas as `positions` (`x,z` recalculados a partir de `position.lat/lng` se existirem).
-  4. Dispara `snapAllToTerrain()` após 1 frame (tiles carregados).
-- Persistir `headingFromAudience` em `settings`.
-
-### 3.2 Position schema extension (`src/types/projectTypes.ts`)
-
-Adicionar campos opcionais retro-compatíveis em `Position`:
-- `geo?: { lat:number, lng:number, altAGL?:number }` — autoridade quando presente.
-- `audienceFacing?: boolean` — heading deriva de `audienceCenter`.
-- `snappedToTerrain?: boolean` — Y veio de raycast, não input manual.
-
-Quando `geo` presente, o `useProjectStore` recomputa `x,y,z` a cada mudança de anchor (selector memoizado).
-
-### 3.3 Terrain snap robusto (`src/core/geo/terrainQuery.ts` + `useTerrainHeightCache.ts`)
-
-- `raycastTerrainGeo(lat, lng, scene, anchor) → {y, hit, msl}` — converte via worker e cai em `getTerrainHeight` quando tile pronto.
-- Polling com retry exponencial até 5 s (tiles carregam progressivamente).
-- `useTerrainHeightCache` ganha listener de `tilesLoaded` (event do `GoogleTilesEngine`) para invalidar e re-snap as positions afetadas.
-- Cache key passa a usar `(round(x*10), round(z*10), anchorHash)` para invalidar em recenter.
-
-### 3.4 Audience-aware heading (`src/core/geo/audienceAzimuth.ts` novo)
-
-- `azimuthDeg(fromLat, fromLng, toLat, toLng)` — Haversine bearing.
-- `audienceHeadingFor(pos, audienceCenter)` → 0..360 ENU; converter para Three.js Y rotation (`-azimuth + 90°` mantém north-up).
-- Integração: `orient_all_to_audience` percorre positions e seta `heading`.
-
-### 3.5 Overlay de venue no SkyCanvas (`src/components/editor/VenueShowOverlay.tsx`)
-
-Render passivo (decorativo) quando template ativo:
-- Polígono `audienceArea` (cyan fill α=0.08, stroke α=0.4).
-- Polígonos `noFlyZones` (amber dashed).
-- Polígono `waterFeature` (azul-petróleo, opcional).
-- Pins de `landmarks` com label (Text sprite).
-- Ring NFPA por calibre em cada launch point (raycast Y; cor por calibre).
-- Toggle em `ShowSettingsPanel` (`showVenueOverlays:boolean`).
-
-### 3.6 Precision UX (PositionPins)
-
-Em `src/components/editor/PositionPins.tsx`:
-- Tooltip ao hover mostra `lat, lng, altMSL, altAGL, distância à audiência`.
-- Drag em XZ recomputa `geo.lat/lng` (inversão `localToGeo`) e dispara re-snap Y.
-- Indicator visual quando `snappedToTerrain=false` (warning chip "manual height").
-
-### 3.7 Integração Google Maps Platform
-
-Para `query_landmarks_near` e `place_positions_along_polygon`, usar o connector Google Maps via gateway (`places/v1/places:searchNearby` + `places:searchText`). Já está conectado ao projeto (`GoogleTilesEngine` consome a browser key) — só falta uma edge function fina `joi-places-search` server-side que Joi chama, retornando lat/lng/nome/tipo para overlay. Out-of-scope criar nova conexão se já houver; reaproveitar a managed.
-
----
-
-## 4. Joi — documentação e entregáveis
-
-### 4.1 PDF (`src/utils/joiPdfExport.ts`)
-- Capa premium (nome, evento, data, cliente, escala, QR).
-- Sumário executivo (paleta, arco dramático, peças-chave).
-- **Planta georreferenciada**: print do canvas Google Tiles com overlays venue (audiência, exclusões, NFPA rings), legenda, escala m/ft, norte.
-- Tabela NFPA 1123 `Caliber × Distância × Raio audiência`.
-- BoM agrupado por fornecedor (Showven/Lidu/Magic/Winda/Amazon/FireOne) com subtotais.
-- Timeline operacional (Gantt simples).
-- Matriz de cues (cue#, t, posição com lat/lng, produto, canal, calibre, cor).
-- Anexos: contingências, primeiros socorros, contatos.
-
-### 4.2 DOCX (`src/utils/joiDocxExport.ts`)
-Templates: Proposta Comercial, Contrato de Espetáculo, Ofício DECEA, Declaração de Segurança, Acreditação Bombeiros — preenchidos automaticamente a partir do show ativo + `venue.gps`.
-
-### 4.3 KMZ aéreo (`src/utils/joiAeroKmzExport.ts`)
-- Polígono de exclusão (raio máx calibre + buffer) em torno do `venue.gps`.
-- Anéis concêntricos por altitude (200/400/600/1000 ft).
-- Waypoints com hover (posição/calibre/horário).
-- Estilo NOTAM-friendly + DECEA AISWEB.
-- Exports: `.kmz` + `.kml` + `.csv` WGS84.
-
-### 4.4 Checklist regulatório (`src/utils/regulatoryChecklist.ts`)
-Cobertura BR completa: Exército (R-105, PIE), PolCivil, Bombeiros (AVCB/CLCB), Anvisa (cold sparks indoor), Prefeitura, DECEA (NOTAM), ANAC (drone), seguro RC, ART, prazos típicos, link de origem.
-
-### 4.5 Dossiê do Show (novo)
-`src/utils/joiDossierExport.ts` empacota PDF técnico + DOCX (proposta+contrato+ofícios) + KMZ + CSV BoM + checklist regulatório em `.zip` versionado (`show-<slug>-v<n>.zip`). Action Joi: `export_dossier`. Preset DOCS "DOSSIÊ COMPLETO".
-
----
+`cancelIntro` (912–939) passa a usar `controlsRef.current.addEventListener('start', ..., once)` no lugar do `pointerdown` no canvas — evita race com box-select e gizmo.
 
 ## Fora de escopo
 
-Safety state machine, uiCommandGateway, CommandBus/FieldBus, `/command`, pairing, workMode API, aiGuardrail físico, autenticação, edge functions de hardware. Tudo intocado.
+- Safety state machine, uiCommandGateway, CommandBus/FieldBus, workMode, pairing, edge functions.
+- `GeoCameraController` permanece (apenas honra o novo `cancelFlyTo` em `onStart`, que já existe).
+- `FreeFlyCamera` (pointer-lock) intocado — é outro modo.
 
 ## Verificação
 
-- `bunx vitest run` cobrindo:
-  - `joiChoreographyHelpers` + `joiGeoHelpers` (`audienceAzimuth`, `clampToWaterFeature`, `enforceNoFlyZones`, `suggestLaunchGrid`).
-  - `terrainQuery.raycastTerrainGeo` com mock de scene/tiles.
-  - `useSceneStore.setVenueAnchor` re-materializa positions com `geo`.
-- Smoke visual no `/editor`:
-  - Aplicar Reveillon Copa → câmera vai p/ Copacabana, 11 barcas snapadas no mar.
-  - Aplicar Maracanã Final → câmera no estádio, ring NFPA visível.
-  - Aplicar Coldplay Wembley → palco e pit destacados, beam de audiência.
-- Render 1 PDF + 1 KMZ + 1 dossiê do show "Reveillon Copa" e abrir para inspeção.
+- `bunx vitest run` para garantir zero regressão (suíte 1280+ já existente).
+- Smoke manual: girar com botão esquerdo, soltar — câmera para imediatamente, sem retorno a preset; trocar de aba lateral (que costuma re-renderizar SkyCanvas com `targetPosition` igual) não desloca mais a câmera; pan/zoom continuam responsivos.

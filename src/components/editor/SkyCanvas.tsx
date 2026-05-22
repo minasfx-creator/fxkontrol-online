@@ -105,7 +105,7 @@ import { resetPools } from '@/lib/geometryPool';
 import ViewportGeoTools, { type GeoToolMode, type GeoMarker, type GeoRulerPoint, type GeoPath } from './ViewportGeoTools';
 import GoogleTilesLayer from '@/core/geo/GoogleTilesEngine';
 import GeoCameraController from '@/core/geo/GeoCameraController';
-import { isFlyingTo } from '@/core/camera/geoCamera';
+import { isFlyingTo, cancelFlyTo } from '@/core/camera/geoCamera';
 import ClientPresentationMode from './ClientPresentationMode';
 import { GeoToolsScene, GeoToolClickHandler } from './GeoToolsR3F';
 import { RenderDebugToggle, RenderDebugPanel, setDebugExposure, setDebugBurstLoad, setDebugLOD, setDebugRendererInfo } from './RenderDebugOverlay';
@@ -859,10 +859,33 @@ function CameraController({ targetPosition, targetLookAt, freeLook, flyMode }: {
   const _wasClampedLastFrame = useRef(false);
   const _wasDropClampedLastFrame = useRef(false);
 
+  // User-interaction grace: while user is dragging the camera (or for 800ms
+  // after release), suppress any preset/focus auto-animation that would yank
+  // the camera back — eliminates the "drag" feel after rotation.
+  const userActive = useRef(false);
+  const lastUserInteractionAt = useRef(0);
+  const _lastClampPos = useRef(new THREE.Vector3());
+  const _lastClampTarget = useRef(new THREE.Vector3());
+
+
   const clampToWorldBounds = useCallback(() => {
     const controls = controlsRef.current;
     if (!controls) return;
     if (isFlyingTo()) return;
+
+    // Skip entirely if nothing meaningfully changed since the last frame —
+    // avoids micro float-precision set()s that produce visible jitter.
+    const EPS = 1e-3;
+    if (
+      Math.abs(camera.position.x - _lastClampPos.current.x) < EPS &&
+      Math.abs(camera.position.y - _lastClampPos.current.y) < EPS &&
+      Math.abs(camera.position.z - _lastClampPos.current.z) < EPS &&
+      Math.abs(controls.target.x - _lastClampTarget.current.x) < EPS &&
+      Math.abs(controls.target.y - _lastClampTarget.current.y) < EPS &&
+      Math.abs(controls.target.z - _lastClampTarget.current.z) < EPS
+    ) {
+      return;
+    }
 
     const tx = THREE.MathUtils.clamp(controls.target.x, -WORLD_HALF_EXTENT, WORLD_HALF_EXTENT);
     const ty = THREE.MathUtils.clamp(controls.target.y, 0, 50000);
@@ -879,9 +902,13 @@ function CameraController({ targetPosition, targetLookAt, freeLook, flyMode }: {
 
     if (targetChanged) controls.target.set(tx, ty, tz);
     if (cameraChanged) camera.position.set(cx, cy, cz);
+
+    _lastClampPos.current.set(camera.position.x, camera.position.y, camera.position.z);
+    _lastClampTarget.current.set(controls.target.x, controls.target.y, controls.target.z);
     // Do NOT call controls.update() here — it creates artificial momentum.
     // OrbitControls already updates itself internally each frame.
   }, [camera]);
+
 
   // ── Zero-GC: Pre-allocated vectors for intro animation ──
   const introStartPos = useRef(new THREE.Vector3(-80, 140, 320));
@@ -1016,7 +1043,7 @@ function CameraController({ targetPosition, targetLookAt, freeLook, flyMode }: {
   }, [targetPosition, targetLookAt]);
 
   const presetKey = `${targetPosition.join(',')}_${targetLookAt.join(',')}`;
-  
+
   useEffect(() => {
     if (freeLook) { animating.current = false; return; }
     if (!initialized.current) {
@@ -1025,11 +1052,43 @@ function CameraController({ targetPosition, targetLookAt, freeLook, flyMode }: {
       return;
     }
     if (presetKey === lastPresetKey.current) return;
+    // If the user is actively driving the camera (or just released within
+    // the grace window), don't yank back to a preset — respect intent.
+    const sinceUser = performance.now() - lastUserInteractionAt.current;
+    if (userActive.current || sinceUser < 800) {
+      lastPresetKey.current = presetKey;
+      return;
+    }
     lastPresetKey.current = presetKey;
     targetPos.current.set(...targetPosition);
     targetLook.current.set(...targetLookAt);
     animating.current = true;
   }, [presetKey, freeLook]);
+
+  // ── Track active user interaction with OrbitControls ──
+  useEffect(() => {
+    const c = controlsRef.current;
+    if (!c) return;
+    const onStart = () => {
+      userActive.current = true;
+      // Cancel any in-flight preset/focus animation the moment the user grabs
+      // the camera — eliminates fight-back / drift.
+      animating.current = false;
+      focusAnimating.current = false;
+      try { cancelFlyTo(); } catch {}
+    };
+    const onEnd = () => {
+      userActive.current = false;
+      lastUserInteractionAt.current = performance.now();
+    };
+    c.addEventListener('start', onStart);
+    c.addEventListener('end', onEnd);
+    return () => {
+      c.removeEventListener('start', onStart);
+      c.removeEventListener('end', onEnd);
+    };
+  }, []);
+
 
   useFrame((_, delta) => {
     if (introPhase.current !== 'done') {
@@ -1089,7 +1148,15 @@ function CameraController({ targetPosition, targetLookAt, freeLook, flyMode }: {
       return;
     }
 
-    // Normal preset animation
+    // Normal preset animation — suppressed while the user is interacting
+    // or for an 800ms grace window after release.
+    const sinceUser = performance.now() - lastUserInteractionAt.current;
+    if (userActive.current || sinceUser < 800) {
+      animating.current = false;
+      focusAnimating.current = false;
+      clampToWorldBounds();
+      return;
+    }
     if ((!animating.current && !focusAnimating.current) || !controlsRef.current || freeLook) {
       clampToWorldBounds();
       return;
@@ -1104,7 +1171,7 @@ function CameraController({ targetPosition, targetLookAt, freeLook, flyMode }: {
     clampToWorldBounds();
   });
 
-  const sensitivityScale = 0.7;
+
 
   // Broadcast OrbitControls ref to GeoCameraController
   useEffect(() => {
@@ -1134,6 +1201,9 @@ function CameraController({ targetPosition, targetLookAt, freeLook, flyMode }: {
     const _focusCamDir = new THREE.Vector3();
     const handler = (e: Event) => {
       const { x, y, z } = (e as CustomEvent).detail;
+      // Ignore focus requests while user is driving the camera or just released.
+      const sinceUser = performance.now() - lastUserInteractionAt.current;
+      if (userActive.current || sinceUser < 300) return;
       if (controlsRef.current) {
         targetLook.current.set(x, y, z);
         _focusCamDir.subVectors(camera.position, controlsRef.current.target).normalize();
@@ -1142,6 +1212,7 @@ function CameraController({ targetPosition, targetLookAt, freeLook, flyMode }: {
         focusAnimating.current = true;
       }
     };
+
     window.addEventListener('focus-camera-on-point', handler);
     return () => window.removeEventListener('focus-camera-on-point', handler);
   }, [camera]);
@@ -1176,17 +1247,19 @@ function CameraController({ targetPosition, targetLookAt, freeLook, flyMode }: {
     <OrbitControls
       ref={controlsRef}
       enableDamping={false}
-      rotateSpeed={0.6 * sensitivityScale}
-      panSpeed={0.8 * sensitivityScale}
-      zoomSpeed={1.2 * sensitivityScale}
-      minPolarAngle={Math.PI * 0.05}
-      maxPolarAngle={Math.PI * 0.75}
+      rotateSpeed={1.0}
+      panSpeed={1.1}
+      zoomSpeed={1.4}
+      screenSpacePanning
+      minPolarAngle={Math.PI * 0.02}
+      maxPolarAngle={Math.PI * 0.85}
       minDistance={2}
       maxDistance={90000}
       enablePan
     />
   );
 }
+
 
 /** Viewport playback controls — always visible at bottom center of 3D viewport */
 function ViewportPlaybackControls() {
