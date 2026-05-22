@@ -10,6 +10,7 @@ import { FINALE_SHELL_PRESET_EFFECTS } from '@/data/finaleShellPresetEffects';
 import { FWE_UPLOADED_EFFECTS } from '@/data/fweUploadedEffects';
 import { FWSIM_BUILTIN_EFFECTS } from '@/data/fwsimBuiltinPresets';
 import { FWE_MINE_EFFECTS } from '@/data/fweMineCatalog';
+import { getStandardEffects, STANDARD_EFFECTS_META } from '@/data/standardEffectsCatalog';
 import { getFinaleEffects, FINALE_LIBRARIES_META } from '@/data/effectsLibraries';
 import { parseFweXml } from '@/data/fweImporter';
 import { useImportedFweStore } from '@/store/useImportedFweStore';
