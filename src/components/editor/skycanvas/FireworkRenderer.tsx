@@ -1713,7 +1713,10 @@ export function TimelineEffects() {
           ?? resolveShellPresetId((effect as any).name)
           ?? (effect.id.startsWith('finale-shell-') ? effect.id.slice('finale-shell-'.length) : undefined);
 
-        if (pt === 'mine') return <MineEffect key={item.id} position={pos} color={effect.color} progress={progress} caliber={caliber} angleOffset={vdlAngle} heightMeters={effect.heightMeters} formulationId={effFormulationId} launchHeading={launchHeading} launchPitch={launchPitch} presetId={minePresetId} />;
+        // Mines são dispositivos de chão de spray VERTICAL (90°) por design —
+        // ignorar pitch herdado de posição/cue para que o leque saia simétrico
+        // ao redor do eixo Y, evitando o efeito "sempre angulado".
+        if (pt === 'mine') return <MineEffect key={item.id} position={pos} color={effect.color} progress={progress} caliber={caliber} angleOffset={vdlAngle} heightMeters={effect.heightMeters} formulationId={effFormulationId} launchHeading={launchHeading} launchPitch={90} presetId={minePresetId} />;
         if (pt === 'candle') return <RomanCandleEffect key={item.id} position={pos} color={effect.color} progress={progress} shotCount={effect.shotCount || 8} caliber={caliber} angleOffset={vdlAngle} formulationId={effFormulationId} launchHeading={launchHeading} launchPitch={launchPitch} />;
         if (pt === 'waterfall') return <WaterfallEffect key={item.id} position={pos} color={effect.color} progress={progress} width={scaledHeight} caliber={caliber} formulationId={effFormulationId} />;
         if (pt === 'gerb') return <GerbEffect key={item.id} position={pos} color={effect.color} progress={progress} height={scaledHeight} caliber={caliber} formulationId={effFormulationId} />;

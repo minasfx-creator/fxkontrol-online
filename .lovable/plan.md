@@ -1,111 +1,124 @@
-# Plano Revisado — 100% Conformidade Visual + Edge/Firmware/Twin/UX (multi-specialist review)
 
-Revisão multi-perfil (Interactive Experience · IoT Firmware · Tech Docs · Edge Core TS · OTA · QA HIL/Chaos · Device Twin · Trigger Core · UX Emergency PWA). Zip `Standard_Effects-3.zip` é o mesmo pack já integrado (605 .fwe + 159 .fwc) → eixo principal continua **paridade visual**, mas as outras especialidades adicionam **guard-rails operacionais** que tocam no mesmo PR.
+## Escopo (3 frentes em uma rodada)
 
-Safety/CommandBus/FieldBus/SafetyStateMachine/uiCommandGateway/workMode → **zero alteração** (apenas leitura).
+1. **Joi com liberdade total no editor** + remoção de UI/UX de "desenvolvimento" do produto
+2. **Joi: revisão de gaps na skill de criação de coreografias** (executor + presets + prompt)
+3. **Fix render: mine sempre vertical (90°)** — hoje sai sempre angulado por causa do `launchPitch = 85` default
 
----
-
-## Eixo 1 — Visual Conformity (Interactive Experience)
-
-### 1A. Tail Component Catalog (159 .fwc)
-- `scripts/parse-fwc-components.py` recursivo → `src/data/effectsLibraries/generated/tailComponents.json` (`{id,name,collection,kind:brocade|silver|gold|glitter|crackling|spider|polyp|microstarStrobe|mortarSparks|explosionSparks|snowballs|poppingFlowers|crissCross|cracklingPearls|dragonEggs|none, color[], density, length:short|medium|long|thin|thick|wide, strobe:bool, sparkleHz?}`).
-- `src/lib/fwcTailParser.ts` regex puro (espelho TS, browser-safe).
-- `src/data/tailComponentCatalog.ts` lookup nome + alias (`[Brocade Tail Medium]`, `[Silver Tail Short]`, `[Gold Charcoal Tail Medium, Dense]`, `[none]`).
-
-### 1B. fweUniversalExtractor v2
-- Extrai `<Type>` real (Crossette/Farfalle/Tourbillon/Fountain/Vulcano/PhotoFlash/FlameJet/Lycopodium/Sparkler/Nautical/Rocket/FrontPiece/Whistle).
-- `tailRef` via match `[...]` filename + lookup 1A.
-- `colorPhases[]` populado parseando "X to Y", "X & Y", "to Crackle/Strobe" → `{at:0..1, hex, modifier?:strobe|crackle|glitter|charcoal}`.
-- `caliberIn` inferido por token `(big)=4 / (medium)=2.5 / (small)=1.5 / (XSmall)=0.8` quando XML não tem `<Diameter>`.
-- 3 paletas vazias → resolver via `<Components>` recursivo.
-
-### 1C. Renderer — 23 silhuetas novas + color phases + tails
-- `src/render/silhouettes/`: crown, crownRain, fallingLeaves, saturnRing, heart, bowTie, ring, waterfall, strobePot, fountain, vulcano, photoFlash, flameJet, lycopodium, sparkler, frontPiece, nautical, rocket, ghostShell, halfHalf, fourFour, jellyfish, smiley.
-- `effectRouter.ts` mapeia novos `RendererKinds` → `KNOWN_UNROUTED = 0`.
-- `src/render/tails/applyTailComponent.ts` consome `tailRef` (Points additive). `none` = no tail.
-- `src/render/colorPhase/applyColorPhases.ts` HSV lerp + modifiers (strobe 8Hz square, crackle random pops, glitter sub-emitter, charcoal black-trail).
-- Flags: `r_tail_components_real`, `r_color_phases`, `r_silhouette_all`, `r_caliber_inference` (todas ON, override via localStorage).
-
-### 1D. Adapter + UI
-- `standardEffectsCatalog.ts` propaga `tailRef`/`colorPhases`/`caliberIn` enriquecido (campos opcionais, retrocompat).
-- `resolveEffect.ts` prefere `colorPhases[0]` sobre `palette[0]`.
-- `EffectLibrary.tsx` badge → `+{527+605} effects · 159 tails`.
+> Safety físico (uiCommandGateway / SafetyStateMachine / FieldBus / GlobalEStopButton) **NÃO é tocado**. Editor opera em design/simulation onde por contrato canônico não há bloqueios.
 
 ---
 
-## Eixo 2 — Trigger Core & Transport Adapter (read-only audit)
-- **Não muda nada operacional.** Apenas adiciona `docs/reference/standardEffects-trigger-contract.md` documentando como `caliberIn`/`prefire` (mm/s extraídos no 1B) alimentam `pyroTransportPolicy` e a tabela de prioridade `serial > usb > artnet` (BLE banido em `real_operation`).
-- Spec `standardEffectsTriggerContract.spec.ts` confere que todo effect com `category:pyro` exporta `caliberIn>0` e `prefire>=0` antes de chegar ao Trigger Core (gate fail-closed em build, não em runtime).
+## 1. Joi livre + stripping de UX dev
+
+### 1.1 Modos da Joi reduzidos a 3
+**`src/core/joi/joiModes.ts`** — deixar apenas:
+- **`show`** — Show Design (criação livre, executa imediatamente sem confirmar)
+- **`docs`** — Documentação técnica do show (relatórios, planta NFPA, KMZ aéreo, matrizes)
+- **`executive`** — **NOVO** Secretaria Executiva: orçamentos, contratos, propostas, licitações, NOTAM/DECEA, licenças, prazos, acreditação, ofícios, declarações (absorve presets que já existem em `docs` mas são secretariais)
+
+Remover modos `architect`, `analyst`, `verify`, `hardware_truth`, `planner`, `blueprint` e todos os seus presets.
+
+### 1.2 Joi executa sem confirmação
+**`src/utils/joiCommandExecutor.ts`**:
+- `add_position`, `add_effect`, `update_position`, `update_effect`, `add_formation`, `add_cue_marker`, `set_wind`, `set_duration`, `set_project_name`, `play/pause/seek`, `clear_project`, `create_choreography`, `duplicate_position`, `learn_style/list_styles/apply_style` → **executa direto**, zero gate de readiness/operationalMode/simulationGuard
+- Remover do executor as actions de inspeção (`inspect_showplan`, `inspect_hardware`, `inspect_exports`, `run_verification`, `check_readiness`, `get_system_state`, `get_audit_log`, `generate_mermaid`) — eram UX dev
+- Toasts de erro viram apenas info silenciosa no feedback (nunca bloquear/abrir modal)
+
+**`src/components/FXKAssistant.tsx`** — system prompt da Joi (em `joiContextBuilder`) reforça em todos os modos: **"execute imediatamente, sem pedir confirmação, sem perguntar — como comando de voz"**.
+
+### 1.3 Painéis de inspeção da Joi (dev) — REMOVER + DELETAR
+Imports e uso em `FXKAssistant.tsx` removidos, e arquivos deletados:
+- `src/components/joi/JOIContextRibbon.tsx`
+- `src/components/joi/JOIInsightPanel.tsx`
+- `src/components/joi/JOITruthInspector.tsx`
+- `src/components/joi/JOIExecutionTracePanel.tsx`
+- `src/components/joi/JOIStylePanel.tsx`
+
+**Manter**: `JOIArtifactCanvas.tsx` (preview de docs gerados) + `MermaidRenderer.tsx` (diagramas em docs).
+
+### 1.4 Editor: chrome dev removido
+- **`src/layouts/MainLayout.tsx`**: remover etiqueta "FX KONTROL" + dot pulse + `MinasFX` logo do header em `/editor` (chrome de desenvolvimento). Remover `RenderCounterOverlay` (dev-only).
+- **`src/pages/Index.tsx`**: auditar e remover do editor as abas/painéis de hardware/diagnóstico que pertencem ao Kontrol operacional: `DiagnosticPanel`, `CurrentStateMatrix`, `CueValidationConsole`, `DetectedModulesPanel`, `ConsoleLogos`, `ArtNetDMXMonitor`, `ConnectionManagerPanel`, `ExecutiveReportConsole`, `AddressingPanel`, `FiringExportPanel`. Esses ficam no `/command` (CommandCenter).
+- Editor passa a ter só: Viewport 3D, Timeline, Properties, EffectLibrary, Position tools, Audio, Cake/Chain/Formation builders, Export, **Joi como copiloto**.
+
+### 1.5 Confirmação de delete físico (usuário aprovou)
+**Arquivos deletados** (não só desplugados):
+- 5 painéis Joi de dev acima
+- `src/components/dev/RenderCounterOverlay.tsx`
+- Tabs/imports correspondentes em `Index.tsx`
+
+**Mantidos** (continuam vivos para `/command`):
+- DiagnosticPanel, CurrentStateMatrix, CueValidationConsole, etc. — só saem das tabs do editor
 
 ---
 
-## Eixo 3 — Device Twin & Telemetry Schema
-- Adiciona `src/twin/schemas/effectRender.v1.ts`: shape JSON-Schema do que o **Render Twin** publica por cue (`{cueId, effectId, caliberIn, palette, colorPhases, tailRef, durationMs, kind}`).
-- Versionado (`$schemaVersion:"effectRender.v1"`), backward-compat handler em `src/twin/migrators/effectRenderV0toV1.ts`.
-- Telemetria de render (frame budget já existe) ganha campo opcional `lastEffectKind` no envelope existente — não cria novo canal.
+## 2. Joi: gaps + melhorias na skill de coreografias
+
+Revisar `create_choreography` + presets de `show` mode:
+
+### Gaps identificados
+1. **Sem timing musical** — Joi não usa BPM/audio markers ao criar coreografia. Adicionar param `bpm?: number` e `syncToBeat?: boolean` → quando ligado, alinha `startTime` de cada cue ao grid de batida (1/2, 1/4 beat).
+2. **Sem progressão dramática estruturada** — hoje cria N cues aleatórios. Adicionar campo `dramaticArc: 'intro' | 'build' | 'climax' | 'finale'` por seção; gerador interno distribui densidade (intro 1 cue/3s, build 1/2s, climax 1/0.8s, finale 1/0.4s + multi-position).
+3. **Sem coerência de paleta** — Joi escolhe cores random. Adicionar `palette?: string[]` (hexes) ou `paletteName?: 'reveillon'|'corporativo'|'casamento'|'patriotico'|'neon'` e restringir efeitos à paleta.
+4. **Sem layout espacial inteligente** — `params.positions` é lista crua. Adicionar `layoutPreset?: 'line'|'arc'|'V'|'grid'|'circle'|'stage_front'|'symmetric'` que materializa N posições automaticamente com spacing.
+5. **Sem mirror/symmetry** — adicionar `mirrorX?: boolean` que para cada cue criado, duplica em posição espelhada (essencial para shows simétricos).
+6. **Sem groove de cake/candle** — cakes/candles têm duração própria mas Joi trata como evento pontual. `create_choreography` deve detectar `partType === 'cake'|'candle'` e reservar janela = `cakeDuration` em vez de empilhar próximo cue em cima.
+7. **Sem dedup de match** — `resolveEffect` pode achar o MESMO efeito 50× quando Joi pede "Chrysanthemum"; adicionar rotação por `lastUsed` para variar (anti-monotonia).
+8. **Sem feedback estruturado pós-execução** — retornar `summary` com counts por partType + duração total + densidade média (cue/s) para Joi narrar.
+
+### Implementação
+- Estender `joiCommandExecutor.executeCommand('create_choreography')` com os params novos (todos opcionais — backward compatible)
+- Adicionar helper `src/utils/joiChoreographyHelpers.ts` puro com: `materializeLayout(preset, count, anchor)`, `pickPaletteColor(palette, idx)`, `mirrorPosition(p)`, `densityForArc(arc)`, `beatGrid(bpm, duration, division)`
+- Atualizar presets em `joiModes.ts` para usar os novos params (preset "RÉVEILLON" passa a usar `layoutPreset:'arc'`, `dramaticArc` arrays, `paletteName:'reveillon'`, `mirrorX:true`, `bpm:120`)
+- Adicionar spec `src/utils/__tests__/joiChoreography.spec.ts` cobrindo cada novo param
 
 ---
 
-## Eixo 4 — Edge Core (TypeScript) [aguardando dependência]
-- **Stub-only nesta rodada**: `supabase/functions/effects-catalog-sync/` placeholder + `_PENDING.md` marcando que o sync remoto do catálogo (`getStandardEffects()` → edge cache) entra na próxima rodada quando o esquema do Twin (Eixo 3) for ratificado.
-- Não deploya edge function nesta rodada.
+## 3. Fix: Mine renderiza sempre vertical (90°)
+
+**Causa**: `src/components/editor/skycanvas/FireworkRenderer.tsx` linha 1567 default `launchPitch = 85` aplicado a todos os efeitos. Mines são dispositivos de chão de spray vertical — devem ser 90° sempre, independente de `position.pitch` ou `cuePitch`.
+
+**Fix**:
+- Em `FireworkRenderer.tsx`, quando `pt === 'mine'`, forçar `launchPitch = 90` antes de passar para `<MineEffect>` (override explícito ignora `linkedPos.pitch`)
+- Garantir que `MineEffect` internamente também trata `launchPitch >= 89` como vertical puro (sem rotação adicional)
+- Spec curto em `src/render/silhouettes/__tests__/mineSilhouettes.spec.ts` (ou novo) garantindo que `launchPitch=90` produz Y dominante nas velocidades
 
 ---
 
-## Eixo 5 — OTA Agent & Release Orchestration [aguardando dependência]
-- **Doc-only**: `docs/ota/standard-effects-bundle-strategy.md` define que `standardEffects.json` (~221KB) + `tailComponents.json` (~80KB est.) viajam como **bundle estático versionado** (`fxk.effects.bundle.v1`), distribuído via OTA agent que ainda não existe. Sem código.
+## 4. Arquivos tocados (resumo)
 
----
+```
+DELETE
+  src/components/joi/JOIContextRibbon.tsx
+  src/components/joi/JOIInsightPanel.tsx
+  src/components/joi/JOITruthInspector.tsx
+  src/components/joi/JOIExecutionTracePanel.tsx
+  src/components/joi/JOIStylePanel.tsx
+  src/components/dev/RenderCounterOverlay.tsx
 
-## Eixo 6 — QA / HIL & Chaos
-- `/dev/effects-e2e` re-baseline obrigatório após 1A-D.
-- Spec `effectsLibraryE2E.spec.ts`: `KNOWN_UNROUTED` = **0** (hard assert).
-- Novos specs: `fwcTailParser.spec.ts` (15 fixtures), `tailComponentCatalog.spec.ts` (lookup + alias + fallback), `fweExtractorV2.spec.ts` (Type real + caliber inference + colorPhases + 3 paletas vazias resolvidas), `colorPhases.spec.ts` (lerp HSV + 4 modifiers), 6 specs de silhueta novas (smoke render → bbox + particle count > 0), `effectRenderTwinSchema.spec.ts` (Eixo 3).
-- **Chaos seed**: `src/dev/__tests__/effectsChaosRender.spec.ts` — render 605 effects com seed determinístico, sem GC stalls > 50ms (usa `useFrameBudget` chip BUDGET já existente).
+EDIT
+  src/core/joi/joiModes.ts                     (3 modos, presets atualizados)
+  src/core/joi/JoiContextBuilder.ts            (system prompt "execute como voz")
+  src/utils/joiCommandExecutor.ts              (zero gates, novos params choreography, remover inspect_*)
+  src/components/FXKAssistant.tsx              (drop painéis dev, ribbon, etc.)
+  src/components/JoiCommandPresets.tsx         (presets só show/docs/exec)
+  src/components/JoiCommandFeedback.tsx        (erro = info silenciosa)
+  src/layouts/MainLayout.tsx                   (header editor limpo, sem RenderCounter)
+  src/pages/Index.tsx                          (remover tabs hardware/diagnóstico)
+  src/components/editor/skycanvas/FireworkRenderer.tsx  (mine launchPitch=90)
+  src/components/editor/effects/MineEffect.tsx (tratamento launchPitch≥89 vertical puro)
 
----
+CREATE
+  src/utils/joiChoreographyHelpers.ts          (layouts, paletas, mirror, beat grid)
+  src/utils/__tests__/joiChoreography.spec.ts
+```
 
-## Eixo 7 — UX Designer & Emergency PWA
-- Adiciona `EffectLibrary.tsx` filtro pill bar "Tail: All · Brocade · Silver · Gold · Glitter · Crackling · None" (read-only, não muta showplan).
-- Search bar ganha hint `Try: "red to silver", "(big)", "crown rain"` baseado nos novos campos extraídos.
-- **PWA emergency offline**: pre-cache do bundle (`standardEffects.json` + `tailComponents.json`) via `scripts/vite-plugin-precache-guard.js` já standalone → adiciona entry `effects-bundle` ao manifest do precache (sem ativar service worker — só lista).
+## 5. Garantias
 
----
+- Safety físico: zero mudança em `uiCommandGateway`, `SafetyStateMachine`, `commandBus`, `fieldBus`, `workMode`, `aiGuardrail` (Joi continua sem poder armar/disparar — só design)
+- ShowPlan: schema intacto; apenas mais campos opcionais no payload de `create_choreography`
+- Testes existentes: `effectLookupGuard`, `resolveEffect`, `mineSilhouettes`, simulationGuard suite (17) continuam verdes
+- Sem mudanças em `/command`, `/field-test`, `/pairing/*` — só editor + Joi
 
-## Eixo 8 — Technical Documentation (Tech Docs Specialist)
-- `docs/reference/standard-effects-catalog.md` — fonte canônica: 605 effects × 6 collections, schema, tail catalog, color phases, claim policy (pilot — não validado bench).
-- `docs/reference/fwc-tail-components.md` — 159 .fwc, kinds, density, length convention.
-- `docs/reference/effects-render-twin.md` — Eixo 3 schema + migrator.
-- `mem://funcionalidades/standard-effects-pack-integration` atualizado com Eixos 1A-1D + 2 + 3 + 6 + 7.
-
----
-
-## Fora de escopo (explícito)
-- Safety / workMode / CommandBus / FieldBus / SafetyStateMachine / uiCommandGateway — zero toques.
-- Sem deploy de edge function (Eixo 4 = stub).
-- Sem OTA agent (Eixo 5 = doc).
-- Sem firmware change (FXK16/FXK32Q intocados — IoT Firmware Specialist confirma: pack é puro asset visual, não afeta protocolo PBUS/AES).
-- Sem PNG thumbnails novos, sem shaders WGSL novos.
-- Sem migração breaking do `Effect` type (apenas campos opcionais).
-
----
-
-## Métricas de aceitação (gate consolidado)
-| Critério | Alvo |
-|---|---|
-| `KNOWN_UNROUTED` | 0 |
-| Effects com silhueta dedicada | 605/605 |
-| Paletas fallback `#FFD27A` | 0 |
-| Effects sem `caliberIn` | 0 |
-| `pixel-L2` (`/dev/effects-e2e`) | ≤ baseline + 5% |
-| Frame budget p95 (chaos render) | ≤ 50ms |
-| Trigger contract spec | verde |
-| Twin schema spec | verde |
-| Suite total | ~995/995 (50 novos + 945 atuais) |
-
-## Estimativa
-1 turno de build (Eixos 1+2+3+6+7+8 implementados; Eixos 4+5 só placeholders + doc).
-
-## Ordem de execução
-1A → 1B → 1C → 1D → 6 (re-baseline) → 7 (UI filter) → 2 (contract spec) → 3 (twin schema) → 8 (docs) → 4/5 (placeholders).
+Pronto para construir.

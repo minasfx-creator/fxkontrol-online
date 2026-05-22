@@ -1,6 +1,15 @@
 /**
  * Joi Command Executor — Parses [JOI_CMD]{...}[/JOI_CMD] blocks from AI responses
- * and dispatches platform operations to useProjectStore + system inspection.
+ * and dispatches platform operations to useProjectStore.
+ *
+ * EXECUÇÃO LIVRE: Joi tem liberdade total no editor (design/simulação).
+ * Zero gates de safety/readiness/operationalMode aqui — o editor é por contrato
+ * uma zona de criação. Safety físico continua nos planos hardware/safety,
+ * intocados (uiCommandGateway, SafetyStateMachine, FieldBus).
+ *
+ * Handlers de inspeção dev (inspect_*, run_verification, check_readiness,
+ * inspect_hardware, inspect_exports, get_system_state, get_audit_log,
+ * generate_mermaid) foram REMOVIDOS — Joi não é instrumento de desenvolvimento.
  */
 import { useProjectStore } from '@/store/useProjectStore';
 import { EFFECT_LIBRARY } from '@/data/effectLibrary';
@@ -8,15 +17,13 @@ import { findEffectById } from '@/data/effectsLibraries/resolveEffect';
 import type { Effect } from '@/data/effectLibrary';
 import { timelineEngine } from '@/core/engine/timelineEngine';
 import { toast } from 'sonner';
-import { verificationEngine } from '@/core/verification/VerificationEngine';
-import { readinessEvaluator } from '@/core/hardware/ReadinessEvaluator';
-import { unifiedHardwareRegistry } from '@/core/hardware/UnifiedHardwareRegistry';
-import { exportCoordinator } from '@/core/export/ExportCoordinator';
-import { deviceEventLog } from '@/core/hardware/DeviceEventLog';
-import { operationalModeGuard } from '@/core/hardware/OperationalModeGuard';
-import { getProvenanceBadge, type IntegrationMode } from '@/core/hardware/provenance';
 import { showStyleManager } from '@/core/joi/ShowStyleManager';
 import { supabase } from '@/integrations/supabase/client';
+import {
+  materializeLayout, mirrorPositions, resolvePalette, pickPaletteColor,
+  planArcSchedule, snapToBeat, effectWindowDuration,
+  type LayoutPreset, type PaletteName, type DramaticPhase,
+} from '@/utils/joiChoreographyHelpers';
 
 export interface JoiCommandResult {
   action: string;
@@ -344,41 +351,111 @@ function executeCommand(cmd: JoiCommand): JoiCommandResult {
         const results: JoiCommandResult[] = [];
         const posMap = new Map<number, string>();
         let cueFails = 0;
+        const createdIds: string[] = [];
 
-        // Create positions
-        if (Array.isArray(params.positions)) {
-          params.positions.forEach((p: any, i: number) => {
-            const r = executeCommand({ action: 'add_position', params: p });
-            results.push(r);
-            if (r.success) {
-              const id = p.id || useProjectStore.getState().positions[useProjectStore.getState().positions.length - 1]?.id;
-              posMap.set(i, id);
-            }
+        // ── NOVOS PARÂMETROS (todos opcionais, backward compatible) ──
+        const layoutPreset = params.layoutPreset as LayoutPreset | undefined;
+        const paletteName = params.paletteName as PaletteName | undefined;
+        const customPalette = Array.isArray(params.palette) ? params.palette as string[] : undefined;
+        const mirrorX = params.mirrorX === true;
+        const bpm = typeof params.bpm === 'number' ? params.bpm : undefined;
+        const syncToBeat = params.syncToBeat === true;
+        const dramaticArc = Array.isArray(params.dramaticArc) ? params.dramaticArc as DramaticPhase[] : undefined;
+        const palette = resolvePalette(paletteName, customPalette);
+
+        // 1) Materializa posições via layoutPreset (se fornecido)
+        let inputPositions = Array.isArray(params.positions) ? params.positions : [];
+        if (layoutPreset && (!inputPositions.length || params.count)) {
+          const count = params.count ?? inputPositions.length ?? 6;
+          const generated = materializeLayout(layoutPreset, count, {
+            anchorX: params.anchorX, anchorZ: params.anchorZ,
+            spacing: params.spacing, radius: params.radius,
+            namePrefix: params.positionPrefix ?? 'POS',
           });
+          inputPositions = generated.map(g => ({
+            id: undefined, name: g.name, type: g.type,
+            x: g.x, y: g.y, z: g.z, heading: g.heading, pitch: g.pitch,
+            color: pickPaletteColor(palette, g.index),
+          }));
+          if (mirrorX) {
+            const mirrored = mirrorPositions(generated, generated.length);
+            mirrored.forEach((g, k) => inputPositions.push({
+              id: undefined, name: g.name, type: g.type,
+              x: g.x, y: g.y, z: g.z, heading: g.heading, pitch: g.pitch,
+              color: pickPaletteColor(palette, generated.length + k),
+            }));
+          }
         }
 
-        // Create cues — track individual failures and collect IDs
-        const createdIds: string[] = [];
-        if (Array.isArray(params.cues)) {
-          params.cues.forEach((c: any) => {
-            const posId = posMap.get(c.positionIndex);
-            const storeBefore = useProjectStore.getState().timelineItems.length;
-            const r = executeCommand({
-              action: 'add_effect',
-              params: { ...c, positionId: posId || c.positionId },
-            });
-            if (!r.success) {
-              cueFails++;
-            } else {
-              const storeAfter = useProjectStore.getState();
-              if (storeAfter.timelineItems.length > storeBefore) {
-                createdIds.push(storeAfter.timelineItems[storeAfter.timelineItems.length - 1].id);
+        inputPositions.forEach((p: any, i: number) => {
+          const r = executeCommand({ action: 'add_position', params: p });
+          results.push(r);
+          if (r.success) {
+            const id = p.id || useProjectStore.getState().positions[useProjectStore.getState().positions.length - 1]?.id;
+            posMap.set(i, id);
+          }
+        });
+
+        // 2) Cues: explícitos OU gerados via dramaticArc
+        let cueList: any[] = Array.isArray(params.cues) ? [...params.cues] : [];
+        if (cueList.length === 0 && dramaticArc && dramaticArc.length > 0) {
+          const totalDur = params.duration ?? store.duration ?? 60;
+          const schedule = planArcSchedule(dramaticArc, totalDur);
+          let colorIdx = 0;
+          const posCount = inputPositions.length || 1;
+          schedule.forEach(phaseSlot => {
+            const span = phaseSlot.end - phaseSlot.start;
+            for (let k = 0; k < phaseSlot.cueCount; k++) {
+              const t0 = phaseSlot.start + (span * k) / Math.max(1, phaseSlot.cueCount);
+              const t = bpm && syncToBeat ? snapToBeat(t0, bpm, 2) : t0;
+              cueList.push({
+                effectName: phaseSlot.phase === 'finale' ? 'Grand Peony' : phaseSlot.phase === 'climax' ? 'Chrysanthemum' : phaseSlot.phase === 'build' ? 'Peony' : 'Comet',
+                startTime: t,
+                positionIndex: (k + colorIdx) % posCount,
+                color: pickPaletteColor(palette, colorIdx++),
+              });
+              if (mirrorX && posCount > 1) {
+                cueList.push({
+                  effectName: phaseSlot.phase === 'finale' ? 'Grand Peony' : phaseSlot.phase === 'climax' ? 'Chrysanthemum' : phaseSlot.phase === 'build' ? 'Peony' : 'Comet',
+                  startTime: t,
+                  positionIndex: (posCount - 1) - ((k + colorIdx) % posCount),
+                  color: pickPaletteColor(palette, colorIdx),
+                });
               }
             }
           });
         }
 
-        // Auto-create cue markers for sections
+        // Aplica beat snap a cues explícitos quando syncToBeat=true
+        if (bpm && syncToBeat) {
+          cueList = cueList.map(c => ({ ...c, startTime: snapToBeat(c.startTime ?? 0, bpm, 2) }));
+        }
+
+        // Cake/candle reserva janela própria (não empilha cues em cima)
+        let lastByPos = new Map<number, number>();
+        cueList.forEach((c: any) => {
+          const posId = posMap.get(c.positionIndex);
+          const last = lastByPos.get(c.positionIndex) ?? -Infinity;
+          if (c.startTime !== undefined && c.startTime < last) {
+            c.startTime = last + 0.05;
+          }
+          const storeBefore = useProjectStore.getState().timelineItems.length;
+          const r = executeCommand({ action: 'add_effect', params: { ...c, positionId: posId || c.positionId } });
+          if (!r.success) {
+            cueFails++;
+          } else {
+            const storeAfter = useProjectStore.getState();
+            if (storeAfter.timelineItems.length > storeBefore) {
+              const last = storeAfter.timelineItems[storeAfter.timelineItems.length - 1];
+              createdIds.push(last.id);
+              const eff = findEffectById(last.effectId);
+              const window = effectWindowDuration(eff?.partType, c.duration);
+              lastByPos.set(c.positionIndex, (c.startTime ?? 0) + window);
+            }
+          }
+        });
+
+        // Cue markers de seção
         if (Array.isArray(params.sections)) {
           params.sections.forEach((s: any) => {
             executeCommand({
@@ -388,21 +465,29 @@ function executeCommand(cmd: JoiCommand): JoiCommandResult {
           });
         }
 
-        // Set project name
-        if (params.projectName) {
-          store.setProjectName(params.projectName);
+        if (params.projectName) store.setProjectName(params.projectName);
+        if (params.duration) {
+          store.setDuration(params.duration);
+          timelineEngine.setDuration(params.duration);
         }
 
-        const posCount = params.positions?.length || 0;
-        const cueCount = params.cues?.length || 0;
+        const posCount = inputPositions.length;
+        const cueCount = cueList.length;
+        const totalDur = params.duration ?? store.duration ?? 0;
+        const density = totalDur > 0 ? (cueCount / totalDur).toFixed(2) : '0';
         const failDetail = cueFails > 0 ? ` (${cueFails} falharam)` : '';
-        const idsDetail = createdIds.length > 0 ? `\nIDs criados: ${createdIds.join(', ')}` : '';
+        const layoutDetail = layoutPreset ? ` | layout:${layoutPreset}${mirrorX ? '+mirror' : ''}` : '';
+        const arcDetail = dramaticArc?.length ? ` | arco:${dramaticArc.join('→')}` : '';
+        const bpmDetail = bpm ? ` | ${bpm}BPM${syncToBeat ? ' snap' : ''}` : '';
+        const paletteDetail = paletteName ? ` | paleta:${paletteName}` : '';
         return {
           action, success: true,
           label: `Coreografia criada`,
-          detail: `${posCount} posições + ${cueCount} cues${failDetail}${idsDetail}`,
+          detail: `${posCount} posições + ${cueCount} cues @ ${density}/s${layoutDetail}${arcDetail}${bpmDetail}${paletteDetail}${failDetail}`,
         };
       }
+
+
 
       case 'clear_project': {
         const posCount = store.positions.length;
@@ -502,8 +587,7 @@ function executeCommand(cmd: JoiCommand): JoiCommandResult {
         return { action, success: true, label: `Duração do show: ${d}s` };
       }
 
-      // ── System Inspection Commands ──────────────────────────────
-
+      // ── Inspeção leve do projeto (sem hardware/readiness/verification) ─
       case 'inspect_showplan': {
         const s = store;
         const effectCounts = new Map<string, number>();
@@ -519,118 +603,17 @@ function executeCommand(cmd: JoiCommand): JoiCommandResult {
         };
       }
 
-      case 'run_verification': {
-        const vResult = verificationEngine.run();
-        const errors = vResult.issues.filter(i => !i.passed && i.severity === 'error');
-        const warnings = vResult.issues.filter(i => !i.passed && i.severity === 'warning');
-        return {
-          action, success: true,
-          label: `Verificação: ${vResult.level}`,
-          detail: `${vResult.summary.passed}/${vResult.summary.total} checks passed | ${errors.length} erros | ${warnings.length} avisos${errors.length > 0 ? '\nBlockers: ' + errors.map(e => `${e.label}: ${e.detail}`).join('; ') : ''}`,
-        };
-      }
+      // Comandos de instrumentação de desenvolvimento foram removidos —
+      // Joi opera apenas como show designer + docs técnicos + secretaria.
+      case 'run_verification':
+      case 'check_readiness':
+      case 'inspect_hardware':
+      case 'inspect_exports':
+      case 'get_system_state':
+      case 'get_audit_log':
+      case 'generate_mermaid':
+        return { action, success: true, label: 'Comando de desenvolvimento desativado', detail: 'Joi agora foca em show, documentação e secretaria.' };
 
-      case 'check_readiness': {
-        const readiness = readinessEvaluator.evaluate();
-        return {
-          action, success: true,
-          label: `Readiness: ${readiness.status} (${readiness.mode})`,
-          detail: `Allowed: ${readiness.allowed_operations.join(', ') || 'nenhuma'} | Blocked: ${readiness.blocked_operations.join(', ') || 'nenhuma'}${readiness.issues.length > 0 ? '\nIssues: ' + readiness.issues.map(i => `[${i.severity}] ${i.message}`).join('; ') : ''}`,
-        };
-      }
-
-      case 'inspect_hardware': {
-        const health = unifiedHardwareRegistry.getSystemHealth();
-        const simCount = unifiedHardwareRegistry.getSimulatedCount();
-        const devices = unifiedHardwareRegistry.getDevices();
-        const deviceList = devices.map(d => {
-          const mode = (d.metadata?.integration_mode as IntegrationMode) || 'simulated';
-          const badge = getProvenanceBadge(mode).label;
-          return `${d.label}: ${badge} (${d.connection_state})`;
-        }).join('; ');
-        return {
-          action, success: true,
-          label: `Hardware: ${health.online}/${health.total} online, score ${health.score}`,
-          detail: `Simulated: ${simCount}/${health.total} | Errors: ${health.errors} | Warnings: ${health.warnings}\nDevices: ${deviceList}`,
-        };
-      }
-
-      case 'inspect_exports': {
-        const targets = ['fireone', 'artnet', 'drone'] as const;
-        const lines = targets.map(t => {
-          const last = exportCoordinator.getLastAttempt(t);
-          return `${t}: ${last ? (last.success ? `OK (${last.cueCount} cues)` : `BLOCKED: ${last.issues[0] || '?'}`) : 'Nunca exportado'}`;
-        });
-        const readiness = readinessEvaluator.evaluate();
-        const canExport = readiness.allowed_operations.includes('export');
-        return {
-          action, success: true,
-          label: `Export ${canExport ? 'PERMITIDO' : 'BLOQUEADO'} (${readiness.status})`,
-          detail: lines.join(' | '),
-        };
-      }
-
-      case 'get_system_state': {
-        const health = unifiedHardwareRegistry.getSystemHealth();
-        const vResult2 = verificationEngine.run();
-        const readiness2 = readinessEvaluator.evaluate();
-        const mode = operationalModeGuard.mode;
-        const simCount2 = unifiedHardwareRegistry.getSimulatedCount();
-        const devices2 = unifiedHardwareRegistry.getDevices();
-        const rows = [
-          `ShowPlan: ${store.positions.length > 0 ? 'ACTIVE' : 'EMPTY'} | evidence: adapter_only | source: ProjectStore`,
-          `VerificationPass: ${vResult2.level} | evidence: adapter_only | checks: ${vResult2.summary.passed}/${vResult2.summary.total}`,
-          `ExportCoordinator: ${readiness2.allowed_operations.includes('export') ? 'READY' : 'BLOCKED'} | mode: ${mode}`,
-          ...devices2.map(d => {
-            const im = (d.metadata?.integration_mode as IntegrationMode) || 'simulated';
-            const ev = d.metadata?.evidence_level || 'adapter_only';
-            return `${d.label}: ${d.connection_state} | ${getProvenanceBadge(im).label} | evidence: ${ev}`;
-          }),
-          `AuditTrail: ACTIVE | evidence: adapter_only | events: ${deviceEventLog.getRecent(1).length > 0 ? 'recording' : 'idle'}`,
-          `Unreal Integration: NOT_INTEGRATED | evidence: ui_only`,
-          `BP_SwarmManager: NOT_INTEGRATED | evidence: ui_only`,
-        ];
-        return {
-          action, success: true,
-          label: `System State Matrix (${devices2.length + 5} subsystems)`,
-          detail: rows.join('\n'),
-        };
-      }
-
-      case 'get_audit_log': {
-        const events = deviceEventLog.getRecent(20);
-        if (events.length === 0) {
-          return { action, success: true, label: 'Audit Log vazio', detail: 'Nenhum evento registrado' };
-        }
-        const lines = events.map(e => `[${new Date(e.timestamp).toLocaleTimeString()}] ${e.device_id} (${e.type}): ${e.message}`);
-        return {
-          action, success: true,
-          label: `Audit Log: ${events.length} eventos recentes`,
-          detail: lines.join('\n'),
-        };
-      }
-
-      case 'generate_mermaid': {
-        const type = params.type || 'architecture';
-        let diagram = '';
-        if (type === 'pipeline') {
-          diagram = `graph LR\n  SP[ShowPlan] --> VE[VerificationEngine]\n  VE --> RE[ReadinessEvaluator]\n  RE --> EC[ExportCoordinator]\n  EC --> FO[FireOne .fir]\n  EC --> AN[ArtNet CSV]\n  EC --> DR[Drone CSV]\n  RE --> OMG[OperationalModeGuard]\n  OMG -->|blocks| EC`;
-        } else if (type === 'hardware') {
-          const devices = unifiedHardwareRegistry.getDevices();
-          const nodes = devices.map((d, i) => {
-            const mode = (d.metadata?.integration_mode as IntegrationMode) || 'simulated';
-            return `  D${i}["${d.label}<br/>${getProvenanceBadge(mode).label}"]`;
-          }).join('\n');
-          diagram = `graph TD\n  UHR[UnifiedHardwareRegistry]\n${nodes}\n${devices.map((_, i) => `  UHR --> D${i}`).join('\n')}\n  UHR --> TP[TelemetryPoller]\n  TP --> HHM[HealthMonitor]\n  HHM --> DEL[DeviceEventLog]\n  DEL --> BB[BlackBoxRecorder]`;
-        } else {
-          diagram = `graph TD\n  UI[UI Layer] --> SP[ShowPlan]\n  SP --> VE[VerificationEngine]\n  VE --> RE[ReadinessEvaluator]\n  RE --> EC[ExportCoordinator]\n  RE --> OMG[OperationalModeGuard]\n  OMG --> EC\n  EC --> FO[FireOne]\n  EC --> AN[ArtNet]\n  EC --> DR[Drone]\n  RE --> UHR[UnifiedHardwareRegistry]\n  UHR --> Adapters\n  Adapters --> TP[TelemetryPoller]\n  TP --> HHM[HealthMonitor]\n  HHM --> DEL[DeviceEventLog]\n  DEL --> BB[BlackBoxRecorder]`;
-        }
-        return {
-          action, success: true,
-          label: `Diagrama Mermaid (${type})`,
-          detail: '```mermaid\n' + diagram + '\n```',
-        };
-      }
 
       // ── Style Learning Commands ──────────────────────────────
 

@@ -22,12 +22,9 @@ import { useJoiSpeech } from '@/hooks/useJoiSpeech';
 import joiFaceIcon from '@/assets/joi-face-icon.png';
 import { joiContextBuilder } from '@/core/joi/JoiContextBuilder';
 import { JOI_MODES, JOI_MODE_PRESETS, getPresetsForMode, getModeConfig, type JoiMode } from '@/core/joi/joiModes';
-import { JOIContextRibbon } from '@/components/joi/JOIContextRibbon';
-import { JOIInsightPanel } from '@/components/joi/JOIInsightPanel';
-import { JOITruthInspector } from '@/components/joi/JOITruthInspector';
-import { JOIExecutionTracePanel } from '@/components/joi/JOIExecutionTracePanel';
+// Dev panels (Context Ribbon / Insight / Truth / Trace / Style) DELETADOS —
+// Joi é secretária executiva + show designer, sem UX de desenvolvimento.
 import { JOIArtifactCanvas } from '@/components/joi/JOIArtifactCanvas';
-import { JOIStylePanel } from '@/components/joi/JOIStylePanel';
 import { joiExecutionEngine } from '@/core/joi/JOIExecutionEngine';
 import { joiStyleAwareGenerator } from '@/core/joi/JOIStyleAwareGenerator';
 import type { JOIExecutionTrace } from '@/core/joi/joiTypes';
@@ -952,20 +949,8 @@ export function FXKAssistant() {
         })}
       </div>
 
-      {/* Context Ribbon — truth badges */}
-      <JOIContextRibbon />
-
-      {/* Insight Panel — blockers/warnings */}
-      <JOIInsightPanel />
-
-      {/* Truth Inspector — adapter integration status */}
-      <JOITruthInspector />
-
-      {/* Execution Trace — resolver pipeline visibility */}
-      <JOIExecutionTracePanel trace={lastTrace} />
-
-      {/* Style Panel — active style management */}
-      <JOIStylePanel />
+      {/* Painéis dev (Context Ribbon / Insight / Truth / Trace / Style) removidos —
+          Joi opera em modo execução pura, sem instrumentação de desenvolvimento. */}
 
       {/* Content area */}
       <div className="relative z-10 flex flex-1 overflow-hidden">

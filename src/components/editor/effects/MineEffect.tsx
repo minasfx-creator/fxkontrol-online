@@ -148,8 +148,8 @@ export default function MineEffect({
         // Spray particles: cone width depends on pattern
         // fan/v: tight upward cone ~30°±10° (FWsim look — discrete bright stars rising in a leque)
         // omni:  wide hemisphere 30-80° (legacy ground burst)
-        // Silhouette mode: snap to one of N jet azimuths from FWsim vector,
-        // and dedicate first slice to a tight ground crown.
+        // Silhouette mode: snap to one of N jet azimuths SIMÉTRICAS em 360°
+        // ao redor do eixo Y (não front-fan unilateral), preservando count+jitter.
         if (silhouette && i < crownEnd) {
           // Crown burst: low + wide, short lifetime
           const upAngle = 0.95 + Math.random() * 0.45; // ~55–80° from vertical
@@ -162,8 +162,11 @@ export default function MineEffect({
         } else {
           let jetAzRad: number;
           if (jets && jets.length > 0) {
-            const jetIdx = (i - Math.floor(count * COLUMN_FRAC)) % jets.length;
-            jetAzRad = (jets[jetIdx] * Math.PI) / 180
+            // Distribui jets simetricamente ao redor de 360° → fan radial vertical
+            // em vez de leque frontal (-50°..+50°), eliminando o "sempre angulado".
+            const N = jets.length;
+            const jetIdx = (i - Math.floor(count * COLUMN_FRAC)) % N;
+            jetAzRad = (jetIdx / N) * Math.PI * 2
                      + (Math.random() - 0.5) * 2 * jitterRad;
           } else {
             jetAzRad = azTheta;
