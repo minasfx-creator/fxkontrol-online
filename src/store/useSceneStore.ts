@@ -765,6 +765,11 @@ interface SceneSettingsState {
   terrain: TerrainData | null;
   terrainPreset: string;
   updateSettings: (updates: Partial<SceneSettings>) => void;
+  /**
+   * Set venue geo anchor (lat/lng/alt) and persist audience-facing heading.
+   * Caller is responsible for re-materialising positions in the project store.
+   */
+  setVenueAnchor: (anchor: { lat: number; lng: number; alt?: number; headingFromAudience?: number; name?: string }) => void;
   applyPreset: (presetId: string) => void;
   applyQualityPreset: (preset: QualityPreset) => void;
   resetToDefault: () => void;
