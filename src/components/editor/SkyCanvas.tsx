@@ -1849,6 +1849,8 @@ export default function SkyCanvas() {
         <DoubleClickFocus />
         <SiteModelRenderer />
         <PositionPins />
+        {google3DTilesEnabled && <VenueGeoOverlay />}
+
         <PyroLaunchAngles />
         <PositionTransformGizmo />
         {!isMobile && <Rack3DView />}
