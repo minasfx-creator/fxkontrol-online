@@ -11,6 +11,7 @@ import { FWE_UPLOADED_EFFECTS } from '@/data/fweUploadedEffects';
 import { FWSIM_BUILTIN_EFFECTS } from '@/data/fwsimBuiltinPresets';
 import { FWE_MINE_EFFECTS } from '@/data/fweMineCatalog';
 import { getStandardEffects, STANDARD_EFFECTS_META } from '@/data/standardEffectsCatalog';
+import { TAIL_COMPONENTS_META } from '@/data/tailComponentCatalog';
 import { getFinaleEffects, FINALE_LIBRARIES_META } from '@/data/effectsLibraries';
 import { parseFweXml } from '@/data/fweImporter';
 import { useImportedFweStore } from '@/store/useImportedFweStore';
@@ -758,9 +759,9 @@ export default function EffectLibrary() {
           />
           <span
             className="absolute right-2 top-1/2 -translate-y-1/2 text-[9px] uppercase tracking-wider text-muted-foreground/40"
-            title={`Finale libs: Showven ${FINALE_LIBRARIES_META.summary.showven} · Lidu ${FINALE_LIBRARIES_META.summary.lidu} · Magic ${FINALE_LIBRARIES_META.summary.magic} · Winda ${FINALE_LIBRARIES_META.summary.winda} · Amazon ${FINALE_LIBRARIES_META.summary.amazon} · Standard Effects ${STANDARD_EFFECTS_META.total}`}
+            title={`Finale libs: Showven ${FINALE_LIBRARIES_META.summary.showven} · Lidu ${FINALE_LIBRARIES_META.summary.lidu} · Magic ${FINALE_LIBRARIES_META.summary.magic} · Winda ${FINALE_LIBRARIES_META.summary.winda} · Amazon ${FINALE_LIBRARIES_META.summary.amazon} · Standard Effects ${STANDARD_EFFECTS_META.total} · Tail Components ${TAIL_COMPONENTS_META.total}`}
           >
-            +{FINALE_LIBRARIES_META.total + STANDARD_EFFECTS_META.total}
+            +{FINALE_LIBRARIES_META.total + STANDARD_EFFECTS_META.total} · {TAIL_COMPONENTS_META.total} tails
           </span>
         </div>
 

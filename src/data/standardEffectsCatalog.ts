@@ -185,6 +185,9 @@ export function standardEffectPartToEffect(p: StandardEffectPart): Effect {
     impliesTrail: p.hasTailsLink || undefined,
     colorTransition: p.secondary ? `${color}→${p.secondary}` : undefined,
     finalePresetUrl: buildStandardEffectUrl(p),
+    tailRef: p.tailRef ?? undefined,
+    colorPhases: p.colorPhases && p.colorPhases.length > 0 ? p.colorPhases : undefined,
+    caliberSource: p.caliberSource,
   };
 }
 
