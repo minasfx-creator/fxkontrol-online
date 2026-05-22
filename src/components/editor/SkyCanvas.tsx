@@ -873,6 +873,20 @@ function CameraController({ targetPosition, targetLookAt, freeLook, flyMode }: {
     if (!controls) return;
     if (isFlyingTo()) return;
 
+    // Skip entirely if nothing meaningfully changed since the last frame —
+    // avoids micro float-precision set()s that produce visible jitter.
+    const EPS = 1e-3;
+    if (
+      Math.abs(camera.position.x - _lastClampPos.current.x) < EPS &&
+      Math.abs(camera.position.y - _lastClampPos.current.y) < EPS &&
+      Math.abs(camera.position.z - _lastClampPos.current.z) < EPS &&
+      Math.abs(controls.target.x - _lastClampTarget.current.x) < EPS &&
+      Math.abs(controls.target.y - _lastClampTarget.current.y) < EPS &&
+      Math.abs(controls.target.z - _lastClampTarget.current.z) < EPS
+    ) {
+      return;
+    }
+
     const tx = THREE.MathUtils.clamp(controls.target.x, -WORLD_HALF_EXTENT, WORLD_HALF_EXTENT);
     const ty = THREE.MathUtils.clamp(controls.target.y, 0, 50000);
     const tz = THREE.MathUtils.clamp(controls.target.z, -WORLD_HALF_EXTENT, WORLD_HALF_EXTENT);
@@ -888,9 +902,13 @@ function CameraController({ targetPosition, targetLookAt, freeLook, flyMode }: {
 
     if (targetChanged) controls.target.set(tx, ty, tz);
     if (cameraChanged) camera.position.set(cx, cy, cz);
+
+    _lastClampPos.current.set(camera.position.x, camera.position.y, camera.position.z);
+    _lastClampTarget.current.set(controls.target.x, controls.target.y, controls.target.z);
     // Do NOT call controls.update() here — it creates artificial momentum.
     // OrbitControls already updates itself internally each frame.
   }, [camera]);
+
 
   // ── Zero-GC: Pre-allocated vectors for intro animation ──
   const introStartPos = useRef(new THREE.Vector3(-80, 140, 320));
