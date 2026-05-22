@@ -104,6 +104,7 @@ import { isInFrustum } from '@/lib/spatialCuller';
 import { resetPools } from '@/lib/geometryPool';
 import ViewportGeoTools, { type GeoToolMode, type GeoMarker, type GeoRulerPoint, type GeoPath } from './ViewportGeoTools';
 import GoogleTilesLayer from '@/core/geo/GoogleTilesEngine';
+import VenueGeoOverlay from '@/components/editor/VenueGeoOverlay';
 import GeoCameraController from '@/core/geo/GeoCameraController';
 import { isFlyingTo, cancelFlyTo } from '@/core/camera/geoCamera';
 import ClientPresentationMode from './ClientPresentationMode';
