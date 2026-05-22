@@ -24,6 +24,8 @@ const ACES_HUE_PRESERVE_FRAGMENT = `
 uniform float exposure;
 uniform float huePreserveStrength;
 uniform float highlightThreshold;
+uniform float fwsimContrast;
+uniform float fwsimHdrMax;
 
 // ACES Filmic Tone Mapping (Narkowicz 2015)
 vec3 acesFilmic(vec3 x) {
@@ -44,7 +46,19 @@ vec3 extractHue(vec3 color) {
 
 void mainImage(const in vec4 inputColor, const in vec2 uv, out vec4 outputColor) {
   vec3 color = inputColor.rgb * exposure;
-  
+
+  // r_fwsim_tonemapping: HdrMax clamp (FWsim caps energy before curve)
+  if (fwsimHdrMax > 0.0) {
+    color = min(color, vec3(fwsimHdrMax));
+  }
+
+  // r_fwsim_tonemapping: Contrast preserves luminance, scales chroma around mid-gray.
+  // Neutral when fwsimContrast == 1.0.
+  if (abs(fwsimContrast - 1.0) > 0.001) {
+    vec3 mid = vec3(0.18);
+    color = mid * pow(max(color / mid, vec3(0.0)), vec3(fwsimContrast));
+  }
+
   float lum = dot(color, vec3(0.2126, 0.7152, 0.0722));
   
   // Extract hue ratios BEFORE tone mapping
@@ -82,16 +96,24 @@ export class ACESHuePreserveEffect extends Effect {
     exposure = 1.0,
     huePreserveStrength = 0.7,
     highlightThreshold = 1.5,
+    fwsimContrast = 1.0,
+    fwsimHdrMax = 0.0,
   }: {
     exposure?: number;
     huePreserveStrength?: number;
     highlightThreshold?: number;
+    /** FWsim TonemappingConfig.Contrast (1.7 canonical). 1.0 = neutral/disabled. */
+    fwsimContrast?: number;
+    /** FWsim TonemappingConfig.HdrMax (16 canonical). <=0 = disabled. */
+    fwsimHdrMax?: number;
   } = {}) {
     super('ACESHuePreserveEffect', ACES_HUE_PRESERVE_FRAGMENT, {
       uniforms: new Map([
         ['exposure', new Uniform(exposure)],
         ['huePreserveStrength', new Uniform(huePreserveStrength)],
         ['highlightThreshold', new Uniform(highlightThreshold)],
+        ['fwsimContrast', new Uniform(fwsimContrast)],
+        ['fwsimHdrMax', new Uniform(fwsimHdrMax)],
       ]),
     });
   }
@@ -99,4 +121,7 @@ export class ACESHuePreserveEffect extends Effect {
   set exposure(v: number) { (this.uniforms.get('exposure') as Uniform).value = v; }
   set huePreserveStrength(v: number) { (this.uniforms.get('huePreserveStrength') as Uniform).value = v; }
   set highlightThreshold(v: number) { (this.uniforms.get('highlightThreshold') as Uniform).value = v; }
+  set fwsimContrast(v: number) { (this.uniforms.get('fwsimContrast') as Uniform).value = v; }
+  set fwsimHdrMax(v: number) { (this.uniforms.get('fwsimHdrMax') as Uniform).value = v; }
 }
+
