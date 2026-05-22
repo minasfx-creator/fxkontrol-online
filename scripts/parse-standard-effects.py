@@ -153,9 +153,11 @@ def extract(path):
 def main():
     parts = []
     by_collection = {}
-    files = sorted(glob.glob(os.path.join(ROOT_DIR, '*', '*.fwe')))
+    files = sorted(glob.glob(os.path.join(ROOT_DIR, '**', '*.fwe'), recursive=True))
     for path in files:
         # Skip 'Effect Components' (those are .fwc — fragments, not effects)
+        if 'Effect Components' in path:
+            continue
         rec = extract(path)
         if rec is None:
             continue
