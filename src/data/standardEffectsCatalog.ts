@@ -11,6 +11,12 @@
 import type { Effect, PartType } from '@/data/effectLibrary';
 import bundle from './effectsLibraries/generated/standardEffects.json';
 
+export interface StandardEffectColorPhase {
+  at: number;
+  hex: string;
+  modifier?: 'strobe' | 'crackle' | 'glitter' | 'charcoal';
+}
+
 export interface StandardEffectPart {
   id: string;
   fileName: string;
@@ -18,11 +24,15 @@ export interface StandardEffectPart {
   subPath: string | null;
   displayName: string;
   rootType: string | null;
+  typeReal?: string | null;
   distribution: string | null;
   palette: string[];
   primary: string | null;
   secondary: string | null;
+  colorPhases?: StandardEffectColorPhase[];
+  tailRef?: string | null;
   caliberIn: number | null;
+  caliberSource?: 'xml' | 'inferred' | 'unknown';
   shotCount: number | null;
   cakeRows: number | null;
   starCount: number | null;
