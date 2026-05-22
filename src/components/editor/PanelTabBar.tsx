@@ -74,8 +74,6 @@ export const PANEL_SECTIONS: { title: string; icon: typeof Route; items: { id: P
       { id: 'remotecontrol', label: 'Remote Control', icon: Play },
       { id: 'ma3', label: 'grandMA3', icon: Sliders },
       { id: 'sacnmonitor', label: 'sACN Monitor', icon: Activity },
-      { id: 'diagnostic', label: 'Diagnóstico', icon: Bug, shortcut: 'D' },
-      { id: 'qastudio', label: 'QA Studio', icon: BarChart3 },
     ],
   },
   {
@@ -90,10 +88,7 @@ export const PANEL_SECTIONS: { title: string; icon: typeof Route; items: { id: P
       { id: 'pid', label: 'PID Tuning', icon: Gauge },
       { id: 'battery', label: 'Bateria', icon: Battery },
       { id: 'indoor', label: 'Indoor Sim', icon: Warehouse },
-      { id: 'telemetry', label: 'Telemetria', icon: Activity },
-      { id: 'flightlog', label: 'Flight Log', icon: BookOpen },
       { id: 'geofence', label: 'Geofence', icon: Layers },
-      { id: 'inspector', label: 'Inspetor', icon: Eye },
     ],
   },
   {
