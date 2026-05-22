@@ -151,7 +151,7 @@ export default function ScriptWindow() {
     try {
       const saved = localStorage.getItem('fxk-script-col-widths');
       if (saved) return JSON.parse(saved);
-    } catch {}
+    } catch { /* best-effort: localStorage parse may fail; fall through to default */ }
     return { ...DEFAULT_WIDTHS };
   });
 
@@ -159,7 +159,7 @@ export default function ScriptWindow() {
     try {
       const saved = localStorage.getItem('fxk-script-hidden-cols');
       if (saved) return new Set(JSON.parse(saved));
-    } catch {}
+    } catch { /* best-effort: localStorage parse may fail; fall through to default */ }
     return new Set<ColumnKey>();
   });
 

@@ -7,10 +7,11 @@ import { useVerificationStore } from '@/core/verification/useVerificationStore';
 import { safetyStateMachine } from '@/core/safety/SafetyStateMachine';
 import { cn } from '@/lib/utils';
 import { Shield, CheckCircle2, XOctagon, AlertTriangle, Lock } from 'lucide-react';
+import { useShallow } from 'zustand/react/shallow';
 
 /** Compact inline indicators for top bars */
 export function StatusChips() {
-  const { level, result, runVerification } = useVerificationStore();
+  const { level, result, runVerification } = useVerificationStore(useShallow((s) => ({ level: s.level, result: s.result, runVerification: s.runVerification })));
   const safetyState = safetyStateMachine.state;
 
   useEffect(() => { runVerification(); }, [runVerification]);
@@ -31,8 +32,8 @@ export function StatusChips() {
     BLOCKED: { color: 'text-red-400', bg: 'bg-red-500/10 border-red-500/20', icon: XOctagon, label: 'BLOCKED' },
   }[level] ?? { color: 'text-muted-foreground', bg: 'bg-muted/20 border-border/20', icon: XOctagon, label: level };
 
-  const passed = result?.checks.filter(c => c.passed).length ?? 0;
-  const total = result?.checks.length ?? 0;
+  const passed = result?.summary.passed ?? 0;
+  const total = result?.summary.total ?? 0;
 
   return (
     <div className="flex items-center gap-1.5">
@@ -66,14 +67,14 @@ export function StatusChips() {
 
 /** Sidebar footer widget — more detailed */
 export function SidebarStatusWidget({ collapsed }: { collapsed: boolean }) {
-  const { level, result, runVerification } = useVerificationStore();
+  const { level, result, runVerification } = useVerificationStore(useShallow((s) => ({ level: s.level, result: s.result, runVerification: s.runVerification })));
   const safetyState = safetyStateMachine.state;
 
   useEffect(() => { runVerification(); }, [runVerification]);
 
   const isHot = safetyState === 'ARMED' || safetyState === 'FIRING';
-  const passed = result?.checks.filter(c => c.passed).length ?? 0;
-  const total = result?.checks.length ?? 0;
+  const passed = result?.summary.passed ?? 0;
+  const total = result?.summary.total ?? 0;
 
   if (collapsed) {
     return (

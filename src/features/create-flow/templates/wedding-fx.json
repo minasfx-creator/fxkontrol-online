@@ -1,0 +1,10 @@
+{
+  "name": "Wedding FX Pack",
+  "duration": 90,
+  "segments": ["PYRO", "SFX", "LIGHT"],
+  "positions": [
+    { "id": "p-wed-1", "name": "Aisle L", "x": -3, "y": 0, "z": 0, "type": "pyro", "section": "A" },
+    { "id": "p-wed-2", "name": "Aisle R", "x": 3, "y": 0, "z": 0, "type": "pyro", "section": "A" },
+    { "id": "p-wed-3", "name": "Stage", "x": 0, "y": 0, "z": 6, "type": "sfx", "section": "B" }
+  ]
+}

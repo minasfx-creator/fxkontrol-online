@@ -4,13 +4,37 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useState, useCallback, useRef, useMemo } from 'react';
 import { Search, Star } from 'lucide-react';
+import { isEnabled, type FeatureFlag } from '@/lib/featureFlags';
 
 export type PanelId = 'script' | 'wind' | 'reports' | 'racks' | 'addressing' | 'inventory' | 'waypoints' | 'effects' | 'properties' | 'positions' | 'boids' | 'pid' | 'dmx' | 'battery' | 'mavlink' | 'smpte' | 'maps' | 'diagnostic' | 'logistics' | 'swarmgpt' | 'synesthesia' | 'firing' | 'labels' | 'video' | 'models' | 'safety' | 'scripting' | 'audience' | 'indoor' | 'chains' | 'groups' | 'scene' | 'soundlevel' | 'aroverlay' | 'share' | 'particles' | 'versioning' | 'weather' | 'collisions' | 'approval' | 'trajectory' | 'templates' | 'telemetry' | 'flightlog' | 'marketplace' | 'sitelayout' | 'showsettings' | 'calibration' | 'livefiring' | 'fleet' | 'geofence' | 'storyboard' | 'showcontrol' | 'inspector' | 'lightprogram' | 'safetycheck' | 'takeoffgrid' | 'transitions' | 'lasercontrol' | 'suppliers' | 'usb' | 'videochoreo' | 'showven' | 'generative' | 'sitemodels' | 'setlist' | 'rider' | 'budget' | 'showpreview' | 'mobilelink' | 'linkmonitor' | 'controllers' | 'fieldmap' | 'connections' | 'radio' | 'ma3' | 'sacnmonitor' | 'showcommander' | 'bluetooth' | 'nfc' | 'remotecontrol' | 'dmxoutput' | 'easyconnect' | 'worldshows' | 'qastudio';
 
-export const PANEL_SECTIONS: { title: string; icon: typeof Route; items: { id: PanelId; label: string; icon: typeof Route; shortcut?: string }[] }[] = [
-  // Hardware, conexões, ARM/FIRE, safety NFPA e comandos de show foram
-  // intencionalmente REMOVIDOS do editor. Editor 3D = composição/simulação visual.
-  // Hardware, ARM/FIRE/E-STOP e safety físico vivem só em /command e /pairing/*.
+/** Panels gated by feature flags — hidden when flag is OFF. */
+const PANEL_FLAGS: Partial<Record<PanelId, FeatureFlag>> = {
+  // Mobile Link / pairing surfaces
+  mobilelink: 'module_pairing_mobilelink',
+  linkmonitor: 'module_pairing_mobilelink',
+  bluetooth: 'module_pairing_mobilelink',
+  nfc: 'module_pairing_mobilelink',
+  // Organizer-style menus (grouping/categorization)
+  groups: 'module_organizer_menu',
+  chains: 'module_organizer_menu',
+  labels: 'module_organizer_menu',
+};
+
+/**
+ * Panels owned exclusively by the Toolbar (unified entry point).
+ * Hidden from PanelTabBar to avoid duplicate openers.
+ */
+const TOOLBAR_OWNED: ReadonlySet<PanelId> = new Set<PanelId>(['effects', 'scene', 'showsettings']);
+
+const RAW_PANEL_SECTIONS: { title: string; icon: typeof Route; items: { id: PanelId; label: string; icon: typeof Route; shortcut?: string }[] }[] = [
+  {
+    title: '★ Comando',
+    icon: Target,
+    items: [
+      { id: 'showcommander', label: 'Show Commander', icon: Target, shortcut: 'Q' },
+    ],
+  },
   {
     title: 'Posições',
     icon: MapPin,
@@ -39,7 +63,7 @@ export const PANEL_SECTIONS: { title: string; icon: typeof Route; items: { id: P
     title: 'Coreografia',
     icon: Sparkles,
     items: [
-      { id: 'swarmgpt', label: 'SwarmGPT AI', icon: Sparkles, shortcut: 'A' },
+      // SwarmGPT AI moved to dedicated /swarmgpt page — no longer listed here.
       { id: 'videochoreo', label: 'Video Choreo', icon: Video },
       { id: 'synesthesia', label: 'Audio Sync', icon: Music, shortcut: 'Y' },
       { id: 'templates', label: 'Templates', icon: FolderOpen },
@@ -49,14 +73,57 @@ export const PANEL_SECTIONS: { title: string; icon: typeof Route; items: { id: P
       { id: 'transitions', label: 'Transições', icon: ArrowRightLeft },
       { id: 'collisions', label: 'Colisões', icon: Crosshair },
       { id: 'boids', label: 'Boids', icon: Orbit },
-      { id: 'lightprogram', label: 'LED Program', icon: Lightbulb },
-      { id: 'indoor', label: 'Indoor Sim', icon: Warehouse },
     ],
   },
   {
-    title: 'Catálogo',
+    title: 'Conexões',
+    icon: Cable,
+    items: [
+      { id: 'easyconnect', label: 'Easy Connect', icon: Zap, shortcut: 'E' },
+      { id: 'usb', label: 'USB Connect', icon: Cpu },
+      { id: 'dmx', label: 'DMX512', icon: ScanLine },
+      { id: 'dmxoutput', label: 'DMX Output', icon: Cable },
+      { id: 'bluetooth', label: 'Bluetooth BLE', icon: Radio },
+      { id: 'nfc', label: 'NFC Pair', icon: Zap },
+      { id: 'smpte', label: 'SMPTE/LTC', icon: Timer },
+      { id: 'mavlink', label: 'MAVLink', icon: Radio },
+      { id: 'lasercontrol', label: 'Laser Control', icon: Zap },
+      { id: 'livefiring', label: 'Live SFX', icon: Sparkles },
+      { id: 'mobilelink', label: 'Mobile Link', icon: Cable },
+      { id: 'linkmonitor', label: 'Link Monitor', icon: MonitorPlay },
+      { id: 'remotecontrol', label: 'Remote Control', icon: Play },
+      { id: 'ma3', label: 'grandMA3', icon: Sliders },
+      { id: 'sacnmonitor', label: 'sACN Monitor', icon: Activity },
+      { id: 'diagnostic', label: 'Diagnóstico', icon: Bug, shortcut: 'D' },
+      { id: 'qastudio', label: 'QA Studio', icon: BarChart3 },
+    ],
+  },
+  {
+    title: 'Drone',
+    icon: Plane,
+    items: [
+      { id: 'fleet', label: 'Frota', icon: Radar },
+      { id: 'showcontrol', label: 'Show Control', icon: CircuitBoard },
+      { id: 'takeoffgrid', label: 'Grid Decolagem', icon: Grid3x3 },
+      { id: 'lightprogram', label: 'LED Program', icon: Lightbulb },
+      { id: 'safetycheck', label: 'Safety Check', icon: ShieldCheck },
+      { id: 'pid', label: 'PID Tuning', icon: Gauge },
+      { id: 'battery', label: 'Bateria', icon: Battery },
+      { id: 'indoor', label: 'Indoor Sim', icon: Warehouse },
+      { id: 'telemetry', label: 'Telemetria', icon: Activity },
+      { id: 'flightlog', label: 'Flight Log', icon: BookOpen },
+      { id: 'geofence', label: 'Geofence', icon: Layers },
+      { id: 'inspector', label: 'Inspetor', icon: Eye },
+    ],
+  },
+  {
+    title: 'Hardware',
     icon: Package,
     items: [
+      { id: 'controllers', label: 'Controladores', icon: Cpu },
+      { id: 'connections', label: 'Conexões HW', icon: Cable },
+      { id: 'radio', label: 'Rádio USB', icon: Radio },
+      { id: 'fieldmap', label: 'Field Map', icon: Map },
       { id: 'racks', label: 'Racks', icon: Package },
       { id: 'addressing', label: 'Endereçamento', icon: Cpu },
       { id: 'inventory', label: 'Inventário', icon: DollarSign },
@@ -99,11 +166,27 @@ export const PANEL_SECTIONS: { title: string; icon: typeof Route; items: { id: P
       { id: 'soundlevel', label: 'Nível Sonoro', icon: Volume2 },
       { id: 'particles', label: 'Partículas', icon: Atom },
       { id: 'audience', label: 'Audiência', icon: FileBarChart },
+      { id: 'safety', label: 'Segurança NFPA', icon: Shield, shortcut: 'F' },
       { id: 'showsettings', label: 'Config. Show', icon: Settings2 },
       { id: 'versioning', label: 'Versões', icon: History },
     ],
   },
 ];
+
+/**
+ * Filtered sections — items gated by feature flags are excluded when their
+ * flag is OFF. Empty sections (all items hidden) are also dropped.
+ */
+export const PANEL_SECTIONS = RAW_PANEL_SECTIONS
+  .map(section => ({
+    ...section,
+    items: section.items.filter(item => {
+      if (TOOLBAR_OWNED.has(item.id)) return false;
+      const flag = PANEL_FLAGS[item.id];
+      return !flag || isEnabled(flag);
+    }),
+  }))
+  .filter(section => section.items.length > 0);
 
 interface PanelTabBarProps {
   activePanel: PanelId | null;

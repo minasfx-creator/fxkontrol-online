@@ -152,7 +152,7 @@ export class SACNReceiver {
     this.frameCounters.set(universe, counter);
 
     const existing = this.universeData.get(universe);
-    let mergedChannels = new Uint8Array(512);
+    const mergedChannels = new Uint8Array(512);
 
     if (existing && this.config.mergeMode === 'HTP') {
       // HTP merge

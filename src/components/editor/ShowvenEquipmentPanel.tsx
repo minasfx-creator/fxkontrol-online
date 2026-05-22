@@ -160,7 +160,7 @@ function EquipmentCard({ preset, category, pbusDevices }: { preset: AnyPreset; c
         toast.warning(`⚠️ Art-Net offline — dispositivo adicionado localmente`, { duration: 4000 });
       }
     });
-  }, [preset, category, effectType, meta.color]);
+  }, [preset, effectType, meta.color]);
 
   return (
     <TooltipProvider delayDuration={300}>

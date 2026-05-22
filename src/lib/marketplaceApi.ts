@@ -466,7 +466,7 @@ export async function scanUEProjectFiles(files: FileList): Promise<MarketplaceSe
     const type = inferUEAssetType(path, name);
 
     assets.push({
-      id: `ue-${path.replace(/[\/\\]/g, '-')}`,
+      id: `ue-${path.replace(/[/\\]/g, '-')}`,
       title: name,
       description: `UE Project Asset: ${path}`,
       thumbnail: '',

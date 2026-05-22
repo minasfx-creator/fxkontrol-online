@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Progress } from '@/components/ui/progress';
+import { useFieldTestSession } from '@/hooks/useFieldTestSession';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
 import {
@@ -149,7 +150,8 @@ function SetupPanel({ onStart }: { onStart: (code: string, role: DeviceRole, tra
 // MAIN DESKTOP COMPONENT
 // ═══════════════════════════════════════════════════
 export default function FieldTestDesktop() {
-  const [session, setSession] = useState<FieldTestSession | null>(null);
+  const ftSession = useFieldTestSession();
+  const { session, start, stop, toggleArm, panic, fire, runBenchmark, stopBenchmark, exportReport, getSuggestions } = ftSession;
   const channels = Array.from({ length: 32 }, (_, i) => i + 1);
   const [lastFired, setLastFired] = useState<number | null>(null);
   const [channelResults, setChannelResults] = useState<Record<number, { status: 'idle' | 'fired' | 'ack'; latencyMs?: number }>>(
@@ -158,24 +160,17 @@ export default function FieldTestDesktop() {
   const [benchmarkRunning, setBenchmarkRunning] = useState(false);
   const [benchmarkChannels, setBenchmarkChannels] = useState(16);
 
-  useEffect(() => {
-    const unsub = fieldTestEngine.subscribe(setSession);
-    return () => { unsub(); };
-  }, []);
-
   // Keyboard shortcuts
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if (!session) return;
       if (e.key === ' ' && session.role === 'controller') {
         e.preventDefault();
-        if (session.armed) fieldTestEngine.disarm();
-        else fieldTestEngine.arm();
+        toggleArm('FieldTestDesktop:keyboard');
       }
       if (e.key === 'Escape') {
         e.preventDefault();
-        fieldTestEngine.eStop();
-        haptics.panic();
+        panic('FieldTestDesktop:keyboard');
       }
       // Number keys 1-9 for channels, 0 for ch 10
       const num = parseInt(e.key);
@@ -186,19 +181,16 @@ export default function FieldTestDesktop() {
     };
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
-  }, [session]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [session, toggleArm, panic]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleStart = useCallback(async (code: string, role: DeviceRole, transport: TestTransport) => {
-    const ok = await fieldTestEngine.start(code, role, transport);
-    if (ok) toast.success(`Sessão iniciada como ${role.toUpperCase()}`);
-    else toast.error('Falha ao iniciar');
-  }, []);
+    await start(code, role, transport);
+  }, [start]);
 
   const handleStop = useCallback(async () => {
-    await fieldTestEngine.stop();
+    await stop();
     setChannelResults(Object.fromEntries(channels.map(ch => [ch, { status: 'idle' as const }])));
-    toast.info('Sessão encerrada');
-  }, [channels]);
+  }, [stop, channels]);
 
   const lastFiredTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -208,13 +200,12 @@ export default function FieldTestDesktop() {
 
   const handleFire = useCallback((ch: number) => {
     if (!session?.armed || session.role !== 'controller') return;
-    fieldTestEngine.fire(ch);
-    haptics.fire();
+    fire(ch);
     setLastFired(ch);
     setChannelResults(prev => ({ ...prev, [ch]: { status: 'fired' } }));
     if (lastFiredTimerRef.current) clearTimeout(lastFiredTimerRef.current);
     lastFiredTimerRef.current = setTimeout(() => setLastFired(null), 300);
-  }, [session]);
+  }, [session, fire]);
 
   // Track ACKs
   useEffect(() => {
@@ -232,24 +223,20 @@ export default function FieldTestDesktop() {
   }, [session?.stats.acksReceived]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleBenchmark = async () => {
-    if (!session?.armed) { toast.error('Arme primeiro'); return; }
     setBenchmarkRunning(true);
-    await fieldTestEngine.runBenchmark(benchmarkChannels);
+    await runBenchmark(benchmarkChannels);
     setBenchmarkRunning(false);
-    toast.success('Benchmark completo!');
   };
 
   const handleExport = () => {
-    const report = fieldTestEngine.generateReport();
-    navigator.clipboard?.writeText(report);
-    toast.success('Relatório copiado!');
+    exportReport();
   };
 
   const handleResetChannels = () => {
     setChannelResults(Object.fromEntries(channels.map(ch => [ch, { status: 'idle' as const }])));
   };
 
-  const suggestions = session ? fieldTestEngine.getSuggestions() : [];
+  const suggestions = session ? getSuggestions() : [];
   const firedCount = Object.values(channelResults).filter(r => r.status !== 'idle').length;
   const ackCount = Object.values(channelResults).filter(r => r.status === 'ack').length;
 
@@ -363,14 +350,14 @@ export default function FieldTestDesktop() {
                       ? "bg-amber-600 hover:bg-amber-500 text-white shadow-[0_0_16px_hsl(32_100%_50%/0.3)]"
                       : "bg-amber-600/15 hover:bg-amber-600/25 text-amber-400 border border-amber-600/30"
                   )}
-                  onClick={() => session.armed ? fieldTestEngine.disarm() : fieldTestEngine.arm()}>
+                  onClick={() => toggleArm('FieldTestDesktop')}>
                   <Shield className="w-3.5 h-3.5" />
                   {session.armed ? 'DISARM' : 'ARM'}
                 </Button>
 
                 <Button size="sm"
                   className="h-8 px-4 bg-red-700 hover:bg-red-600 text-white font-mono font-bold text-xs gap-1.5 shadow-[0_0_12px_hsl(0_70%_50%/0.2)]"
-                  onClick={() => { fieldTestEngine.eStop(); haptics.panic(); }}>
+                  onClick={() => panic('FieldTestDesktop')}>
                   <AlertTriangle className="w-3.5 h-3.5" /> E-STOP
                 </Button>
 
@@ -463,7 +450,7 @@ export default function FieldTestDesktop() {
                 ))}
               </div>
               <Button className="w-full h-10 mt-3 font-bold bg-destructive hover:bg-destructive/80 text-destructive-foreground"
-                onClick={() => { fieldTestEngine.eStop(); haptics.panic(); }}>
+                onClick={() => panic('FieldTestDesktop:mobile')}>
                 <AlertTriangle className="w-4 h-4 mr-1" /> E-STOP
               </Button>
             </div>

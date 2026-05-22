@@ -33,7 +33,7 @@ const DEFAULT_TELEMETRY: TelemetryData = {
 };
 
 // Module-level singleton — written from render loop, read by React at 4Hz
-let _telemetry: TelemetryData = { ...DEFAULT_TELEMETRY };
+const _telemetry: TelemetryData = { ...DEFAULT_TELEMETRY };
 
 /** Called externally (from R3F render loop or scene manager) to push data */
 export function updateTelemetry(data: Partial<TelemetryData>) {

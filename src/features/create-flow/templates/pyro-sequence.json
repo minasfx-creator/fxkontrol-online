@@ -1,0 +1,11 @@
+{
+  "name": "Pyro Sequence Pack",
+  "duration": 60,
+  "segments": ["PYRO"],
+  "positions": [
+    { "id": "p-pyro-1", "name": "FL", "x": -8, "y": 0, "z": 0, "type": "pyro", "section": "A" },
+    { "id": "p-pyro-2", "name": "FR", "x": 8, "y": 0, "z": 0, "type": "pyro", "section": "A" },
+    { "id": "p-pyro-3", "name": "ML", "x": -4, "y": 0, "z": 4, "type": "pyro", "section": "B" },
+    { "id": "p-pyro-4", "name": "MR", "x": 4, "y": 0, "z": 4, "type": "pyro", "section": "B" }
+  ]
+}

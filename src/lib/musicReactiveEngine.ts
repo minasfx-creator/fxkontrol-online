@@ -49,7 +49,7 @@ export function generateCuePlacements(
 
   if (effectIds.length === 0) return [];
 
-  let candidates: { time: number; strength: number; source: CuePlacement['source']; onsetType?: Onset['type'] }[] = [];
+  const candidates: { time: number; strength: number; source: CuePlacement['source']; onsetType?: Onset['type'] }[] = [];
 
   // Collect candidates based on mode
   if (mode === 'beats' || mode === 'combined') {

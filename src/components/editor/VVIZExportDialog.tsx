@@ -9,6 +9,8 @@ import { Label } from '@/components/ui/label';
 import { useProjectStore } from '@/store/useProjectStore';
 import { toast } from 'sonner';
 import { Download, FileJson } from 'lucide-react';
+import { useEntitlements } from '@/hooks/useEntitlements';
+import { promptUpgrade } from '@/lib/upgradePrompt';
 
 const getExportEngine = () => import('@/lib/exportEngine');
 
@@ -31,9 +33,15 @@ export default function VVIZExportDialog({ open, onOpenChange }: VVIZExportDialo
   const [coordFrame, setCoordFrame] = useState<'standard' | 'ogl'>('standard');
   const [noTrail, setNoTrail] = useState(false);
   const [exporting, setExporting] = useState(false);
+  const { canExport } = useEntitlements();
 
   const totalPerfs = timelineItems.length + trajectories.length + (droneFormations[0]?.droneCount ?? 0);
   const handleExport = useCallback(async () => {
+    if (!canExport) {
+      promptUpgrade({ reason: 'export', feature: 'VVIZ (Finale 3D)' });
+      onOpenChange(false);
+      return;
+    }
     setExporting(true);
     try {
       const { exportVVIZ, downloadFile } = await getExportEngine();
@@ -50,7 +58,7 @@ export default function VVIZExportDialog({ open, onOpenChange }: VVIZExportDialo
     } finally {
       setExporting(false);
     }
-  }, [projectName, duration, timelineItems, positions, trajectories, droneFormations, showName, positionRate, colorRate, coordFrame, noTrail, onOpenChange]);
+  }, [projectName, duration, timelineItems, positions, trajectories, droneFormations, showName, positionRate, colorRate, coordFrame, noTrail, onOpenChange, canExport]);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>

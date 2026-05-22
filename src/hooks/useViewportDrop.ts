@@ -1,15 +1,23 @@
 /**
  * Viewport drag-and-drop handler — extracted from Index.tsx to reduce main chunk.
+ *
+ * Audio files (mp3/wav/…) are intercepted *before* the file-importer dispatch,
+ * uploaded to the project's `audio` bucket and wired straight into the
+ * timeline's audio player so the user can immediately drag effects onto
+ * timestamps synchronized with the waveform.
  */
 import { useCallback, type DragEvent } from 'react';
 import { useProjectStore } from '@/store/useProjectStore';
 import { useUndoStore } from '@/store/useUndoStore';
 import { toast } from 'sonner';
+import { isAudioFile, uploadAudioForProject } from '@/lib/audioUpload';
+import { supabase } from '@/integrations/supabase/client';
 
 export const SUPPORTED_DROP_EXTENSIONS = [
   'mvr', 'csv', 'json', 'vviz', 'uasset', 'umap', 'copy', 't3d',
   'png', 'jpg', 'jpeg', 'tif', 'tiff', 'bmp',
   'udatasmith', 'ds', 'fbx', 'obj', 'gltf', 'glb', 'skp', 'ifc', '3ds', 'dae', 'dwg',
+  'mp3', 'wav', 'ogg', 'm4a', 'flac', 'aac', 'webm', 'opus',
 ];
 
 export function getDropType(ext: string): string {
@@ -19,6 +27,7 @@ export function getDropType(ext: string): string {
   if (ext === 'uasset' || ext === 'umap') return 'uasset';
   if (['png', 'jpg', 'jpeg', 'tif', 'tiff', 'bmp'].includes(ext)) return 'heightmap';
   if (ext === 't3d') return 'ue5map';
+  if (['mp3', 'wav', 'ogg', 'm4a', 'flac', 'aac', 'webm', 'opus'].includes(ext)) return 'audio';
   if (['udatasmith', 'ds', 'fbx', 'obj', 'gltf', 'glb', 'skp', 'ifc', '3ds', 'dae', 'dwg', 'c4d', 'rvt'].includes(ext)) return 'twinmotion';
   return 'ue5json';
 }
@@ -43,10 +52,21 @@ export function useViewportDrop(setIsDragOver: (v: boolean) => void) {
     if (e.dataTransfer.files?.length > 0) {
       const file = e.dataTransfer.files[0];
       const ext = file.name.split('.').pop()?.toLowerCase() || '';
+
+      // Audio shortcut — drop an MP3/WAV anywhere on the editor and it
+      // becomes the project's synced audio track immediately.
+      if (isAudioFile(file)) {
+        e.preventDefault();
+        supabase.auth.getSession().then(({ data }) => {
+          uploadAudioForProject(file, data.session?.user?.id ?? null);
+        });
+        return;
+      }
+
       if (SUPPORTED_DROP_EXTENSIONS.includes(ext)) {
         e.preventDefault();
         window.dispatchEvent(new CustomEvent('viewport-file-drop', { detail: { file, type: getDropType(ext) } }));
-        toast.info(`📂 ${file.name} dropped — opening importer...`);
+        toast.info(`${file.name} dropped — opening importer...`);
         return;
       }
     }

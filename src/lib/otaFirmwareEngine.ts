@@ -1,7 +1,7 @@
 /**
  * OTA Firmware Update Engine
- * Handles binary firmware upload to FireOne/PBUS modules via WebSerial
- * With SIM mode fallback for testing without hardware
+ * Real WebSerial binary firmware upload to FireOne/PBUS modules.
+ * Simulation paths removed — production cutover.
  */
 
 export type OTATarget = 'fireone' | 'pbus';
@@ -55,17 +55,14 @@ export async function parseFirmwareFile(file: File): Promise<FirmwareInfo> {
   } else if (magic === OTA_HEADER_MAGIC_PBUS || file.name.toLowerCase().includes('pbus')) {
     target = 'pbus';
   } else {
-    // Default to fireone for .bin files
     target = 'fireone';
   }
 
-  // Extract version from header bytes 2–5 if available
   const major = data[2] || 0;
   const minor = data[3] || 0;
   const patch = data[4] || 0;
   const version = `${major}.${minor}.${patch}`;
 
-  // SHA-256 checksum
   const hashBuffer = await crypto.subtle.digest('SHA-256', data);
   const hashArray = new Uint8Array(hashBuffer);
   const checksum = Array.from(hashArray).map(b => b.toString(16).padStart(2, '0')).join('');
@@ -81,85 +78,6 @@ export async function parseFirmwareFile(file: File): Promise<FirmwareInfo> {
 }
 
 export type OTAProgressCallback = (progress: OTAProgress) => void;
-
-/**
- * Simulated OTA update for SIM mode — realistic timing
- */
-export async function simulateOTAUpdate(
-  firmware: FirmwareInfo,
-  _moduleAddr: number,
-  onProgress: OTAProgressCallback,
-  abortSignal?: AbortSignal,
-): Promise<void> {
-  const totalBlocks = Math.ceil(firmware.fileSize / OTA_BLOCK_SIZE);
-  const t0 = performance.now();
-
-  const phases: { status: OTAStatus; durationMs: number }[] = [
-    { status: 'validating', durationMs: 800 },
-    { status: 'erasing', durationMs: 1500 },
-    { status: 'uploading', durationMs: totalBlocks * 30 },
-    { status: 'verifying', durationMs: 1200 },
-    { status: 'rebooting', durationMs: 2000 },
-  ];
-
-  for (const phase of phases) {
-    if (abortSignal?.aborted) throw new Error('OTA cancelled');
-
-    if (phase.status === 'uploading') {
-      // Granular block-by-block progress
-      for (let block = 0; block < totalBlocks; block++) {
-        if (abortSignal?.aborted) throw new Error('OTA cancelled');
-        const bytesWritten = Math.min((block + 1) * OTA_BLOCK_SIZE, firmware.fileSize);
-        const elapsed = performance.now() - t0;
-        const rate = bytesWritten / (elapsed / 1000);
-        const remaining = (firmware.fileSize - bytesWritten) / rate * 1000;
-
-        onProgress({
-          status: 'uploading',
-          percent: Math.round((bytesWritten / firmware.fileSize) * 80) + 10, // 10–90%
-          bytesWritten,
-          totalBytes: firmware.fileSize,
-          currentBlock: block + 1,
-          totalBlocks,
-          checksumOk: null,
-          elapsedMs: elapsed,
-          estimatedRemainingMs: remaining,
-        });
-        await sleep(20 + Math.random() * 15);
-      }
-    } else {
-      const stepPercent = phase.status === 'validating' ? 5
-        : phase.status === 'erasing' ? 10
-        : phase.status === 'verifying' ? 95
-        : 98;
-
-      onProgress({
-        status: phase.status,
-        percent: stepPercent,
-        bytesWritten: phase.status === 'verifying' ? firmware.fileSize : 0,
-        totalBytes: firmware.fileSize,
-        currentBlock: phase.status === 'verifying' ? totalBlocks : 0,
-        totalBlocks,
-        checksumOk: phase.status === 'verifying' ? true : null,
-        elapsedMs: performance.now() - t0,
-        estimatedRemainingMs: phase.durationMs,
-      });
-      await sleep(phase.durationMs);
-    }
-  }
-
-  onProgress({
-    status: 'done',
-    percent: 100,
-    bytesWritten: firmware.fileSize,
-    totalBytes: firmware.fileSize,
-    currentBlock: totalBlocks,
-    totalBlocks,
-    checksumOk: true,
-    elapsedMs: performance.now() - t0,
-    estimatedRemainingMs: 0,
-  });
-}
 
 /**
  * Real OTA upload via WebSerial port
@@ -180,12 +98,10 @@ export async function realOTAUpdate(
   if (!writer || !reader) throw new Error('Serial port not writable/readable');
 
   try {
-    // Phase: Validating
     onProgress({ status: 'validating', percent: 2, bytesWritten: 0, totalBytes: firmware.fileSize, currentBlock: 0, totalBlocks, checksumOk: null, elapsedMs: 0, estimatedRemainingMs: 0 });
 
-    // Send OTA_START command
     const startCmd = new Uint8Array([
-      0xF0, // CMD_OTA_START
+      0xF0,
       moduleAddr & 0xFF,
       firmware.target === 'fireone' ? 0x01 : 0x02,
       (firmware.fileSize >> 24) & 0xFF,
@@ -195,7 +111,6 @@ export async function realOTAUpdate(
     ]);
     await writer.write(startCmd);
 
-    // Wait for ACK (0xF1)
     const ackResult = await Promise.race([
       reader.read(),
       sleep(5000).then(() => { throw new Error('OTA start timeout — no ACK from module'); }),
@@ -205,14 +120,11 @@ export async function realOTAUpdate(
       if (!ack || ack[0] !== 0xF1) throw new Error('Module rejected OTA start');
     }
 
-    // Phase: Erasing
     onProgress({ status: 'erasing', percent: 8, bytesWritten: 0, totalBytes: firmware.fileSize, currentBlock: 0, totalBlocks, checksumOk: null, elapsedMs: performance.now() - t0, estimatedRemainingMs: 0 });
-    await sleep(500); // Wait for flash erase
+    await sleep(500);
 
-    // Phase: Uploading blocks
     for (let block = 0; block < totalBlocks; block++) {
       if (abortSignal?.aborted) {
-        // Send abort command
         await writer.write(new Uint8Array([0xFE, moduleAddr]));
         throw new Error('OTA cancelled');
       }
@@ -222,16 +134,14 @@ export async function realOTAUpdate(
       const paddedBlock = new Uint8Array(OTA_BLOCK_SIZE);
       paddedBlock.set(blockData);
 
-      // Build block frame: [0xF2][blockIdx:2][data:256]
       const frame = new Uint8Array(3 + OTA_BLOCK_SIZE);
-      frame[0] = 0xF2; // CMD_OTA_BLOCK
+      frame[0] = 0xF2;
       frame[1] = (block >> 8) & 0xFF;
       frame[2] = block & 0xFF;
       frame.set(paddedBlock, 3);
 
       await writer.write(frame);
 
-      // Wait for block ACK every 8 blocks
       if (block % 8 === 7 || block === totalBlocks - 1) {
         const blockAck = await Promise.race([
           reader.read(),
@@ -260,10 +170,8 @@ export async function realOTAUpdate(
       });
     }
 
-    // Phase: Verifying
     onProgress({ status: 'verifying', percent: 92, bytesWritten: firmware.fileSize, totalBytes: firmware.fileSize, currentBlock: totalBlocks, totalBlocks, checksumOk: null, elapsedMs: performance.now() - t0, estimatedRemainingMs: 3000 });
 
-    // Send verify command with checksum
     const checksumBytes = new Uint8Array(4);
     const checksumView = new DataView(checksumBytes.buffer);
     checksumView.setUint32(0, parseInt(firmware.checksum.slice(0, 8), 16));
@@ -276,9 +184,8 @@ export async function realOTAUpdate(
     const checksumOk = verifyResult && 'value' in verifyResult && verifyResult.value?.[0] === 0xF4;
     if (!checksumOk) throw new Error('Firmware checksum mismatch — update failed');
 
-    // Phase: Rebooting
     onProgress({ status: 'rebooting', percent: 98, bytesWritten: firmware.fileSize, totalBytes: firmware.fileSize, currentBlock: totalBlocks, totalBlocks, checksumOk: true, elapsedMs: performance.now() - t0, estimatedRemainingMs: 2000 });
-    await writer.write(new Uint8Array([0xF5, moduleAddr])); // CMD_REBOOT
+    await writer.write(new Uint8Array([0xF5, moduleAddr]));
     await sleep(2000);
 
     onProgress({

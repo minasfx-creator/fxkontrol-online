@@ -18,6 +18,7 @@ import { FWE_MINE_EFFECTS } from '@/data/fweMineCatalog';
 import { getStandardEffects } from '@/data/standardEffectsCatalog';
 import bundleJson from './generated/finaleLibrariesParts.json';
 import type { FinaleLibrariesBundle, FinalePart, FinaleLibraryId } from './types';
+import type { FinaleLibrary as LegacyFinaleLibrary, FinalePart as LegacyFinalePart } from './finalePart';
 import { finalePartToEffect, finalePartToEffectId } from './finalePartToEffect';
 import { effectFingerprint } from './effectFingerprint';
 
@@ -49,8 +50,17 @@ export interface MergedEffectsCatalog {
 
 const BUNDLE = bundleJson as unknown as FinaleLibrariesBundle;
 
+const LIBRARY_MANUFACTURERS: Record<FinaleLibraryId, string> = {
+  showven: 'Showven',
+  lidu: 'Lidu',
+  magic: 'Magic Fireworks',
+  winda: 'Winda',
+  amazon: 'Amazon Fireworks',
+};
+
 let _effectsCache: Effect[] | null = null;
 let _byEffectId: Map<string, FinalePart> | null = null;
+let _legacyLibrariesCache: LegacyFinaleLibrary[] | null = null;
 
 export function getFinaleParts(): FinalePart[] {
   return BUNDLE.parts;
@@ -76,6 +86,116 @@ export function findFinalePartByEffectId(id: string): FinalePart | undefined {
     for (const p of BUNDLE.parts) _byEffectId.set(finalePartToEffectId(p), p);
   }
   return _byEffectId.get(id);
+}
+
+function legacyLibraries(): LegacyFinaleLibrary[] {
+  if (_legacyLibrariesCache) return _legacyLibrariesCache;
+
+  const grouped = new Map<FinaleLibraryId, FinalePart[]>();
+  for (const part of BUNDLE.parts) {
+    const current = grouped.get(part.libraryId) ?? [];
+    current.push(part);
+    grouped.set(part.libraryId, current);
+  }
+
+  _legacyLibrariesCache = (Object.keys(LIBRARY_MANUFACTURERS) as FinaleLibraryId[]).map((slug) => {
+    const parts = grouped.get(slug) ?? [];
+    return {
+      manufacturer: LIBRARY_MANUFACTURERS[slug],
+      slug,
+      count: parts.length,
+      parts: parts as unknown as LegacyFinalePart[],
+    };
+  });
+  return _legacyLibrariesCache;
+}
+
+export function listFinaleLibraries(): LegacyFinaleLibrary[] {
+  return legacyLibraries();
+}
+
+export function getFinaleLibrary(slug: string): LegacyFinaleLibrary | undefined {
+  return legacyLibraries().find((library) => library.slug === slug);
+}
+
+export function getFinalePart(id: string): LegacyFinalePart | undefined {
+  for (const library of legacyLibraries()) {
+    const part = library.parts.find((candidate) => `${library.slug}:${candidate.partNumber}` === id);
+    if (part) return part;
+  }
+  return undefined;
+}
+
+export interface SearchOpts {
+  query?: string;
+  manufacturers?: string[];
+  partTypes?: string[];
+  minCaliberIn?: number;
+  maxCaliberIn?: number;
+  limit?: number;
+}
+
+function partCaliberIn(part: LegacyFinalePart): number | undefined {
+  const raw = part.size == null ? '' : String(part.size).trim();
+  if (!raw) return undefined;
+  const value = Number.parseFloat(raw.replace(',', '.'));
+  if (!Number.isFinite(value)) return undefined;
+  return /mm/i.test(raw) ? value / 25.4 : value;
+}
+
+export function searchFinaleParts(opts: SearchOpts = {}): Array<{ part: LegacyFinalePart; lib: LegacyFinaleLibrary }> {
+  const query = opts.query?.trim().toLowerCase();
+  const manufacturers = opts.manufacturers?.length
+    ? new Set(opts.manufacturers.map((manufacturer) => manufacturer.toLowerCase()))
+    : null;
+  const partTypes = opts.partTypes?.length
+    ? new Set(opts.partTypes.map((partType) => partType.toLowerCase()))
+    : null;
+  const limit = opts.limit ?? 1000;
+  const results: Array<{ part: LegacyFinalePart; lib: LegacyFinaleLibrary }> = [];
+
+  for (const lib of legacyLibraries()) {
+    if (manufacturers && !manufacturers.has(lib.manufacturer.toLowerCase())) continue;
+    for (const part of lib.parts) {
+      if (partTypes && !partTypes.has(String(part.partType ?? '').toLowerCase())) continue;
+      const caliber = partCaliberIn(part);
+      if (opts.minCaliberIn != null && (caliber == null || caliber < opts.minCaliberIn)) continue;
+      if (opts.maxCaliberIn != null && (caliber == null || caliber > opts.maxCaliberIn)) continue;
+      if (query) {
+        const haystack = [
+          part.partNumber,
+          part.description,
+          part.vdl,
+          part.manufacturer,
+          lib.manufacturer,
+        ].filter(Boolean).join(' ').toLowerCase();
+        if (!haystack.includes(query)) continue;
+      }
+      results.push({ part, lib });
+      if (results.length >= limit) return results;
+    }
+  }
+
+  return results;
+}
+
+export interface RegistrySummary {
+  totalLibraries: number;
+  totalParts: number;
+  byManufacturer: Array<{ manufacturer: string; slug: string; count: number }>;
+}
+
+export function getRegistrySummary(): RegistrySummary {
+  const libraries = legacyLibraries();
+  return {
+    totalLibraries: libraries.length,
+    totalParts: libraries.reduce((total, library) => total + library.parts.length, 0),
+    byManufacturer: libraries.map((library) => ({
+      manufacturer: library.manufacturer,
+      slug: library.slug,
+      count: library.parts.length,
+    })),
+  };
 }
 
 // ── Manufacturer detection ───────────────────────────────────────────

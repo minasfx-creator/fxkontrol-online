@@ -6,13 +6,12 @@ import { useState, useMemo } from 'react';
 import { useProjectStore } from '@/store/useProjectStore';
 import { type TimelineItem, type Position } from '@/types/projectTypes';
 import { EFFECT_LIBRARY } from '@/data/effectLibrary';
-import { findEffectById } from '@/data/effectsLibraries/resolveEffect';
-import { exportFiringCSV, downloadFile } from '@/lib/exportEngine';
+import { exportFiringCSV, exportFiringJSON, exportVVIZ, exportShowBundleJSON, exportShowBundleCSV, downloadFile } from '@/lib/exportEngine';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
-import { Download, FileSpreadsheet, MapPin, Eye } from 'lucide-react';
+import { Download, FileSpreadsheet, FileJson, MapPin, Eye, Plane } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 
@@ -54,7 +53,7 @@ interface SetupRow {
 
 function generateSetupReport(timelineItems: TimelineItem[], positions: Position[]): SetupRow[] {
   const pyroItems = timelineItems.filter(item => {
-    const effect = findEffectById(item.effectId);
+    const effect = EFFECT_LIBRARY.find(e => e.id === item.effectId);
     return effect?.type === 'firework';
   });
 
@@ -62,7 +61,7 @@ function generateSetupReport(timelineItems: TimelineItem[], positions: Position[
   const groups = new Map<string, Map<string, { effect: string; items: TimelineItem[] }>>();
 
   pyroItems.forEach((item, idx) => {
-    const effect = findEffectById(item.effectId)!;
+    const effect = EFFECT_LIBRARY.find(e => e.id === item.effectId)!;
     const pos = findClosestPosition(item, positions);
     const posName = pos?.name || 'UNASSIGNED';
     const caliber = extractCaliber(effect.name);
@@ -121,12 +120,12 @@ interface FiringPreviewRow {
 
 function generateFiringPreview(timelineItems: TimelineItem[], positions: Position[], limit = 20): FiringPreviewRow[] {
   const pyroItems = timelineItems
-    .filter(item => findEffectById(item.effectId)?.type === 'firework')
+    .filter(item => EFFECT_LIBRARY.find(e => e.id === item.effectId)?.type === 'firework')
     .sort((a, b) => a.startTime - b.startTime)
     .slice(0, limit);
 
   return pyroItems.map((item, i) => {
-    const effect = findEffectById(item.effectId)!;
+    const effect = EFFECT_LIBRARY.find(e => e.id === item.effectId)!;
     const pos = findClosestPosition(item, positions);
     const mins = Math.floor(item.startTime / 60);
     const secs = (item.startTime % 60).toFixed(3);
@@ -147,27 +146,64 @@ function generateFiringPreview(timelineItems: TimelineItem[], positions: Positio
 // ═══════════════════════════════════════════════════════════
 export default function ExportModal({ open, onOpenChange }: ExportModalProps) {
     const projectName = useProjectStore(s => s.projectName);
+  const duration = useProjectStore(s => s.duration);
   const timelineItems = useProjectStore(s => s.timelineItems);
   const positions = useProjectStore(s => s.positions);
+  const trajectories = useProjectStore(s => s.trajectories);
+  const droneFormations = useProjectStore(s => s.droneFormations);
   const [activeTab, setActiveTab] = useState('firing');
 
   const pyroCount = useMemo(() =>
-    timelineItems.filter(i => findEffectById(i.effectId)?.type === 'firework').length
+    timelineItems.filter(i => EFFECT_LIBRARY.find(e => e.id === i.effectId)?.type === 'firework').length
   , [timelineItems]);
+  const droneCount = useMemo(() =>
+    timelineItems.filter(i => EFFECT_LIBRARY.find(e => e.id === i.effectId)?.type === 'drone').length
+    + trajectories.length
+    + (droneFormations[0]?.droneCount ?? 0)
+  , [timelineItems, trajectories, droneFormations]);
 
   const firingPreview = useMemo(() => generateFiringPreview(timelineItems, positions), [timelineItems, positions]);
   const setupRows = useMemo(() => generateSetupReport(timelineItems, positions), [timelineItems, positions]);
 
+  const safeName = projectName.replace(/\s+/g, '_');
+
   const handleDownloadFiring = () => {
     const csv = exportFiringCSV(timelineItems, positions);
-    downloadFile(csv, `${projectName.replace(/\s+/g, '_')}_firing_script.csv`, 'text/csv');
+    downloadFile(csv, `${safeName}_firing_script.csv`, 'text/csv');
     toast.success('Firing Script CSV exportado!');
+  };
+
+  const handleDownloadFiringJSON = () => {
+    const json = exportFiringJSON(projectName, timelineItems, positions);
+    downloadFile(json, `${safeName}_firing_script.json`, 'application/json');
+    toast.success('Firing Script JSON exportado!');
   };
 
   const handleDownloadSetup = () => {
     const csv = exportSetupCSV(timelineItems, positions);
-    downloadFile(csv, `${projectName.replace(/\s+/g, '_')}_setup_report.csv`, 'text/csv');
+    downloadFile(csv, `${safeName}_setup_report.csv`, 'text/csv');
     toast.success('Setup Report CSV exportado!');
+  };
+
+  const handleDownloadVVIZ = () => {
+    const content = exportVVIZ(
+      projectName, duration, timelineItems, positions, trajectories, droneFormations,
+      { showName: projectName, coordinateFrame: 'standard' },
+    );
+    downloadFile(content, `${safeName}.vviz`, 'application/json');
+    toast.success('VVIZ (X, Y, Z, Heading) exportado!');
+  };
+
+  const handleDownloadShowBundleJSON = () => {
+    const content = exportShowBundleJSON(projectName, duration, timelineItems, positions, trajectories, droneFormations);
+    downloadFile(content, `${safeName}_show.json`, 'application/json');
+    toast.success('Show Bundle JSON exportado!');
+  };
+
+  const handleDownloadShowBundleCSV = () => {
+    const content = exportShowBundleCSV(timelineItems, positions);
+    downloadFile(content, `${safeName}_show.csv`, 'text/csv');
+    toast.success('Show Bundle CSV exportado!');
   };
 
   return (
@@ -188,23 +224,35 @@ export default function ExportModal({ open, onOpenChange }: ExportModalProps) {
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col overflow-hidden">
-          <TabsList className="w-full grid grid-cols-2 h-8">
+          <TabsList className="w-full grid grid-cols-4 h-8">
             <TabsTrigger value="firing" className="text-[10px]">
-              <Download className="w-3 h-3 mr-1" /> Firing Script
+              <Download className="w-3 h-3 mr-1" /> Firing
             </TabsTrigger>
             <TabsTrigger value="setup" className="text-[10px]">
-              <MapPin className="w-3 h-3 mr-1" /> Setup Report
+              <MapPin className="w-3 h-3 mr-1" /> Setup
+            </TabsTrigger>
+            <TabsTrigger value="vviz" className="text-[10px]">
+              <Plane className="w-3 h-3 mr-1" /> VVIZ
+            </TabsTrigger>
+            <TabsTrigger value="bundle" className="text-[10px]">
+              <FileJson className="w-3 h-3 mr-1" /> Bundle
             </TabsTrigger>
           </TabsList>
 
           {/* ─── FIRING SCRIPT ─── */}
           <TabsContent value="firing" className="flex-1 overflow-hidden flex flex-col gap-2 mt-2">
             <p className="text-[10px] text-muted-foreground">
-              Ordem cronológica para consolas de disparo (Cobra, FireTEK, FireOne). Colunas: Cue, Module, Pin, EventTime, PreFire, Effect, Caliber, Position.
+              Ordem cronológica para consolas de disparo (Cobra, FireTEK, FireOne, FXcommander).
+              Mesma ordenação para CSV (consolas tradicionais) e JSON (bridges programáticos).
             </p>
-            <Button onClick={handleDownloadFiring} className="w-full" size="sm">
-              <Download className="w-3.5 h-3.5 mr-2" /> Download Firing Script (CSV)
-            </Button>
+            <div className="grid grid-cols-2 gap-2">
+              <Button onClick={handleDownloadFiring} size="sm">
+                <FileSpreadsheet className="w-3.5 h-3.5 mr-2" /> CSV
+              </Button>
+              <Button onClick={handleDownloadFiringJSON} variant="secondary" size="sm">
+                <FileJson className="w-3.5 h-3.5 mr-2" /> JSON
+              </Button>
+            </div>
 
             {/* Preview table */}
             <div className="flex items-center gap-1.5 text-[9px] text-muted-foreground/60 pt-1">
@@ -284,6 +332,52 @@ export default function ExportModal({ open, onOpenChange }: ExportModalProps) {
                 </tbody>
               </table>
             </div>
+          </TabsContent>
+
+          {/* ─── SHOW BUNDLE ─── */}
+          <TabsContent value="bundle" className="flex-1 overflow-auto flex flex-col gap-2 mt-2">
+            <p className="text-[10px] text-muted-foreground">
+              Bundle universal do show: positions, cues (firework + drone + sfx + laser + light),
+              formations e trajectories num único documento. Inclui <strong>X, Y, Z, Heading</strong>,
+              Pitch, Pan/Tilt/Spin, intensity e overrides por cue.
+            </p>
+            <div className="grid grid-cols-3 gap-2 text-[9px]">
+              <Badge variant="outline" className="justify-center">{timelineItems.length} cues</Badge>
+              <Badge variant="outline" className="justify-center">{positions.length} positions</Badge>
+              <Badge variant="outline" className="justify-center">schema 1.0</Badge>
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <Button onClick={handleDownloadShowBundleJSON} size="sm">
+                <FileJson className="w-3.5 h-3.5 mr-2" /> Show JSON
+              </Button>
+              <Button onClick={handleDownloadShowBundleCSV} variant="secondary" size="sm">
+                <FileSpreadsheet className="w-3.5 h-3.5 mr-2" /> Show CSV
+              </Button>
+            </div>
+            <p className="text-[9px] text-muted-foreground/60">
+              JSON é a fonte canônica para auditoria, re-import e bridges programáticos.
+              CSV abre direto em Excel/Sheets para revisão linha-a-linha de cada cue.
+            </p>
+          </TabsContent>
+          {/* ─── VVIZ DRONES ─── */}
+          <TabsContent value="vviz" className="flex-1 overflow-auto flex flex-col gap-2 mt-2">
+            <p className="text-[10px] text-muted-foreground">
+              Coreografia de drones no formato Finale 3D <strong>VVIZ 1.0</strong>.
+              Cada agente é exportado com <code className="text-primary">homeX/homeY/homeZ/homeH</code> e
+              traversal em deltas <code className="text-primary">dx, dy, dz, dh</code> (eixos X direita, Y cima, Z frente).
+            </p>
+            <div className="grid grid-cols-3 gap-2 text-[9px]">
+              <Badge variant="outline" className="justify-center">{droneCount} agentes</Badge>
+              <Badge variant="outline" className="justify-center">X · Y · Z · H</Badge>
+              <Badge variant="outline" className="justify-center">Standard frame</Badge>
+            </div>
+            <Button onClick={handleDownloadVVIZ} className="w-full" size="sm">
+              <Plane className="w-3.5 h-3.5 mr-2" /> Download .vviz
+            </Button>
+            <p className="text-[9px] text-muted-foreground/60">
+              Para opções avançadas (Position/Color rate, OGL frame, no-trail) abra o diálogo
+              dedicado <em>Exportar VVIZ</em> na barra de ferramentas.
+            </p>
           </TabsContent>
         </Tabs>
       </DialogContent>

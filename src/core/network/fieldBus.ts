@@ -33,6 +33,12 @@ export interface FieldBusState {
 const HEARTBEAT_TIMEOUT = 2000;   // 2s no heartbeat → switch
 const FAILOVER_CHECK_MS = 500;
 
+function isNonReplayable(msg: TransportMessage): boolean {
+  // Physical or emergency commands are single-intent. Replaying them after
+  // failover can ignite a late cue or mask an E-STOP delivery failure.
+  return msg.type === 'pyro' || msg.type === 'estop';
+}
+
 export class FieldBus {
   private _transports: Transport[] = [];
   private _activeIdx = 0;
@@ -42,7 +48,8 @@ export class FieldBus {
   private _checkInterval: ReturnType<typeof setInterval> | null = null;
 
   constructor() {
-    // Register default transports (simulated — real impl would use WebSocket/Serial)
+    // Transports start in a "no link" state. Real transports must be wired
+    // via setTransport()/heartbeat() before send() will succeed.
     this._transports = [
       this._createTransport('wifi'),
       this._createTransport('rs485'),
@@ -53,9 +60,11 @@ export class FieldBus {
   private _createTransport(id: TransportId): Transport {
     return {
       id,
-      send: (_msg: TransportMessage) => true, // Simulated: always succeeds
-      isAlive: () => true,                     // Simulated: always alive
-      lastHeartbeat: Date.now(),
+      // No link is wired yet — refuse to "send" so callers see honest failures
+      // instead of silent drops or fake successes.
+      send: (_msg: TransportMessage) => false,
+      isAlive: () => false,
+      lastHeartbeat: 0,
     };
   }
 
@@ -110,10 +119,15 @@ export class FieldBus {
       }
     }
 
-    // Buffer locally
+    if (isNonReplayable(msg)) {
+      blackbox.record('emergency', `FieldBus: refused to buffer non-replayable ${msg.type} command`);
+      return false;
+    }
+
+    // Buffer only replay-safe messages (for example telemetry/heartbeat).
     this._localBuffer.push(msg);
     if (this._localBuffer.length <= 1) {
-      blackbox.record('net', 'FieldBus: buffering locally (transport down)');
+      blackbox.record('net', 'FieldBus: buffering replay-safe message locally (transport down)');
     }
     return false;
   }
@@ -123,11 +137,36 @@ export class FieldBus {
     const active = this._transports[this._activeIdx];
     const count = this._localBuffer.length;
     for (const msg of this._localBuffer) {
+      if (isNonReplayable(msg)) {
+        blackbox.record('emergency', `FieldBus: dropped stale non-replayable ${msg.type} during failover flush`);
+        continue;
+      }
       active.send(msg);
       this._messagesSent++;
     }
     this._localBuffer.length = 0;
     blackbox.record('net', `FieldBus: flushed ${count} buffered messages`);
+  }
+
+  /**
+   * Wire (or revoke) a real transport implementation. Replaces the no-op stub
+   * created by the constructor without touching failover counters or the local
+   * buffer. Pass a stub `{ send: () => false, isAlive: () => false }` to revoke.
+   */
+  setTransport(
+    id: TransportId,
+    impl: Pick<Transport, 'send' | 'isAlive'>,
+  ): void {
+    const idx = this._transports.findIndex(t => t.id === id);
+    if (idx < 0) return;
+    const prev = this._transports[idx];
+    this._transports[idx] = {
+      id,
+      send: impl.send,
+      isAlive: impl.isAlive,
+      lastHeartbeat: prev.lastHeartbeat,
+    };
+    blackbox.record('net', `FieldBus: transport[${id}] wired`);
   }
 
   /** Record a heartbeat for a transport. */

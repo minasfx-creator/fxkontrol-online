@@ -212,7 +212,7 @@ export default function ShowInspectorPanel({ onClose }: ShowInspectorPanelProps)
         return true;
       })
       .sort((a, b) => a.time - b.time);
-  }, [droneFormations, storyboardEntries, timelineItems, effects, positions, duration]);
+  }, [droneFormations, storyboardEntries, timelineItems, positions, duration]);
 
   const filteredCues = searchCue
     ? cueList.filter(c => c.label.toLowerCase().includes(searchCue.toLowerCase()))

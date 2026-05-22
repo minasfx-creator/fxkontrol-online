@@ -11,6 +11,13 @@ import { downloadKMZ, downloadAnimatedKML } from '@/lib/kmzExporter';
 import { exportSkyc, downloadSkycFile, exportShowCSV, exportVideoChoreoSkyc } from '@/lib/skycExporter';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
+import { useEntitlements } from '@/hooks/useEntitlements';
+import { promptUpgrade } from '@/lib/upgradePrompt';
+import {
+  validateFiringExportInputs,
+  formatFinding,
+  ExportValidationError,
+} from '@/core/export/exportValidation';
 
 export default function FiringExportPanel({ onClose }: { onClose: () => void }) {
   const [search, setSearch] = useState('');
@@ -19,6 +26,7 @@ export default function FiringExportPanel({ onClose }: { onClose: () => void }) 
   const positions = useProjectStore(s => s.positions);
   const projectName = useProjectStore(s => s.projectName);
   const hardware = useFireOneHardware();
+  const { canExport } = useEntitlements();
 
   const pyroCount = items.filter(i => {
     const e = useProjectStore.getState().timelineItems.find(t => t.id === i.id);
@@ -32,15 +40,38 @@ export default function FiringExportPanel({ onClose }: { onClose: () => void }) 
   );
 
   const handleExport = useCallback((sys: FiringSystem) => {
+    if (!canExport) {
+      promptUpgrade({ reason: 'export', feature: sys.name });
+      return;
+    }
+    // Pre-flight: block invalid inputs and surface field-level reasons.
+    const report = validateFiringExportInputs(items, positions);
+    if (!report.ok) {
+      const first = report.errors[0];
+      toast.error(`Export blocked · ${report.errors.length} error(s)`, {
+        description: first ? formatFinding(first) : report.summary,
+      });
+      report.errors.slice(0, 3).forEach((e) => console.warn('[export-validation]', formatFinding(e)));
+      return;
+    }
+    if (report.warnings.length > 0) {
+      toast.warning(`${report.warnings.length} warning(s) — proceeding`, {
+        description: formatFinding(report.warnings[0]),
+      });
+    }
     try {
       const content = sys.exportFn(items, positions);
       const filename = `${projectName.replace(/\s+/g, '_')}_${sys.id}.${sys.fileExt}`;
       downloadFile(content, filename, sys.mimeType);
       toast.success(`Exported to ${sys.name} format`);
     } catch (err) {
-      toast.error(`Export failed: ${(err as Error).message}`);
+      if (err instanceof ExportValidationError) {
+        toast.error(`Export failed · validation`, { description: err.message.split('\n')[0] });
+      } else {
+        toast.error(`Export failed: ${(err as Error).message}`);
+      }
     }
-  }, [items, positions, projectName]);
+  }, [items, positions, projectName, canExport]);
 
   const grouped = {
     '🇺🇸 Americas': filtered.filter(s => ['🇺🇸', '🇧🇷', '🌐'].includes(s.country)),
@@ -221,6 +252,7 @@ export default function FiringExportPanel({ onClose }: { onClose: () => void }) 
           <Button
             variant="outline" size="sm" className="w-full h-7 text-[10px] justify-start"
             onClick={() => {
+              if (!canExport) { promptUpgrade({ reason: 'export', feature: 'Animated KML' }); return; }
               try {
                 const store = useProjectStore.getState();
                 downloadAnimatedKML({
@@ -248,6 +280,7 @@ export default function FiringExportPanel({ onClose }: { onClose: () => void }) 
           <Button
             variant="outline" size="sm" className="w-full h-7 text-[10px] justify-start"
             onClick={() => {
+              if (!canExport) { promptUpgrade({ reason: 'export', feature: 'Static KML' }); return; }
               try {
                 const store = useProjectStore.getState();
                 const kml = exportFormationsToKML(
@@ -268,6 +301,7 @@ export default function FiringExportPanel({ onClose }: { onClose: () => void }) 
           <Button
             variant="outline" size="sm" className="w-full h-7 text-[10px] justify-start"
             onClick={() => {
+              if (!canExport) { promptUpgrade({ reason: 'export', feature: 'SKYC (Skybrush)' }); return; }
               try {
                 const store = useProjectStore.getState();
                 const skyc = exportSkyc({
@@ -292,6 +326,7 @@ export default function FiringExportPanel({ onClose }: { onClose: () => void }) 
           <Button
             variant="outline" size="sm" className="w-full h-7 text-[10px] justify-start"
             onClick={() => {
+              if (!canExport) { promptUpgrade({ reason: 'export', feature: 'Show CSV (Skybrush)' }); return; }
               try {
                 const store = useProjectStore.getState();
                 const skyc = exportSkyc({
@@ -317,6 +352,7 @@ export default function FiringExportPanel({ onClose }: { onClose: () => void }) 
           <Button
             variant="outline" size="sm" className="w-full h-7 text-[10px] justify-start"
             onClick={() => {
+              if (!canExport) { promptUpgrade({ reason: 'export', feature: 'Video Choreo SKYC' }); return; }
               try {
                 const store = useProjectStore.getState();
                 // Check if videoChoreoResult exists in store
@@ -349,6 +385,10 @@ export default function FiringExportPanel({ onClose }: { onClose: () => void }) 
         <Button
           variant="outline" size="sm" className="w-full h-7 text-[10px]"
           onClick={() => {
+            if (!canExport) {
+              promptUpgrade({ reason: 'export', feature: 'Export All' });
+              return;
+            }
             FIRING_SYSTEMS.forEach(sys => handleExport(sys));
             toast.success('Exported to all systems!');
           }}
