@@ -161,7 +161,8 @@ export async function buildJoiDossier(
   zip.file('README.txt', buildReadme(preset, agencies));
   zip.file('DISCLAIMER.txt', DISCLAIMER);
 
-  const blob = await zip.generateAsync({ type: 'blob' });
+  const ab = await zip.generateAsync({ type: 'arraybuffer' });
+  const blob = new Blob([ab], { type: 'application/zip' });
   const prefix = options.prefix ?? preset.id;
   const filename = `${prefix}-dossier-${new Date().toISOString().slice(0, 10).replace(/-/g, '')}.zip`;
   return { blob, filename };
