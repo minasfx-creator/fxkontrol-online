@@ -3,6 +3,9 @@ import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { getMortarVelocity, getBreakHeight, getLiftTime, GRAVITY } from '@/lib/pyroPhysics';
 import { hash01 } from '@/lib/pyroNoise';
+import { isEnabled } from '@/lib/featureFlags';
+import { getFwsimGraphics, sampleCurve } from '@/data/fwsimGraphicsConfig';
+
 
 const TRAIL_PARTICLES = 80;
 const SPARK_COUNT = 30;
