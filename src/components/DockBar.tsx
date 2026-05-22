@@ -20,7 +20,7 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from '@/components/ui/tooltip';
 
 interface DockItem {
-  icon: typeof LayoutDashboard;
+  icon: typeof Clapperboard;
   label: string;
   path: string;
   accent?: string;
