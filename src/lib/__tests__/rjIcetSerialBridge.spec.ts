@@ -147,7 +147,7 @@ describe('rjIcetSerialBridge — error paths', () => {
       ackTimeoutMs: 200,
     });
     expect(result.ok).toBe(false);
-    
+    if (!result.ok) {
       expect(result.code).toBe('transfer-error');
       expect(result.cuesSent).toBe(1);
     }
