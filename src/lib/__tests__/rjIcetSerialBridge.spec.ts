@@ -169,7 +169,7 @@ describe('rjIcetSerialBridge — error paths', () => {
       onProgress: progress,
     });
     expect(result.ok).toBe(false);
-    
+    if (!result.ok) {
       expect(['aborted', 'response-timeout']).toContain(result.code);
     }
     expect(progress).toHaveBeenCalled();
