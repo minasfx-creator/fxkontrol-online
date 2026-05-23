@@ -18,6 +18,8 @@ import { cn } from '@/lib/utils';
 export default function FiringExportPanel({ onClose }: { onClose: () => void }) {
   const [search, setSearch] = useState('');
   const [expandedSystem, setExpandedSystem] = useState<string | null>(null);
+  const [directSendOpen, setDirectSendOpen] = useState(false);
+
   const items = useProjectStore(s => s.timelineItems);
   const positions = useProjectStore(s => s.positions);
   const projectName = useProjectStore(s => s.projectName);
