@@ -1,7 +1,11 @@
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route, Navigate, useLocation, useSearchParams } from "react-router-dom";
+import { BrowserRouter, HashRouter, Routes, Route, Navigate, useLocation, useSearchParams } from "react-router-dom";
+
+// Use HashRouter in Electron (file:// protocol) so routing works without a server.
+// BrowserRouter is used for the web version (Lovable, Vercel, etc).
+const AppRouter = (window as any).electronBridge ? HashRouter : BrowserRouter;
 import { AuthProvider, useAuth } from "@/hooks/useAuth";
 import { lazy, Suspense } from "react";
 import PageTransitionOverlay from "@/components/ui/PageTransitionOverlay";
@@ -177,7 +181,7 @@ function App() {
             <Suspense fallback={null}>
               <SonnerToaster />
             </Suspense>
-            <BrowserRouter>
+            <AppRouter>
               <RouteTracker />
               <PageTransitionOverlay />
               <UpgradeDialog />
@@ -317,7 +321,7 @@ function App() {
                   </Routes>
                 </Suspense>
               </LazyChunkBoundary>
-            </BrowserRouter>
+            </AppRouter>
           </TooltipProvider>
         </AuthProvider>
       </QueryClientProvider>
