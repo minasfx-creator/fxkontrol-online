@@ -3,14 +3,17 @@ import { Download, FileDown, Search, X, ChevronDown, ChevronUp, Globe, MapPin, F
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
+import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { useProjectStore } from '@/store/useProjectStore';
 import { useFireOneHardware } from '@/hooks/useFireOneHardware';
 import { FIRING_SYSTEMS, type FiringSystem } from '@/lib/firingSystemExports';
 import { downloadFile, exportFormationsToKML } from '@/lib/exportEngine';
 import { downloadKMZ, downloadAnimatedKML } from '@/lib/kmzExporter';
 import { exportSkyc, downloadSkycFile, exportShowCSV, exportVideoChoreoSkyc } from '@/lib/skycExporter';
+import ICETDirectSendPanel from '@/components/editor/firing/ICETDirectSendPanel';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
+
 
 export default function FiringExportPanel({ onClose }: { onClose: () => void }) {
   const [search, setSearch] = useState('');
