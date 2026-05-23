@@ -93,7 +93,7 @@ describe('rjIcetSerialBridge — sendIcetScript happy path', () => {
     });
 
     expect(result.ok).toBe(true);
-    
+    if (result.ok) {
       expect(result.cuesSent).toBe(3);
       expect(result.firmwareVersion).toBe('ICET-1.5');
     }
