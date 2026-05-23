@@ -182,8 +182,21 @@ export default function FiringExportPanel({ onClose }: { onClose: () => void }) 
                         <Download className="w-3 h-3 mr-1" />
                         Export .{sys.fileExt}
                       </Button>
+                      {sys.directSend && sys.directSender === 'icet' && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="w-full h-7 text-[10px] mt-1 border-status-sync/40 text-status-sync hover:bg-status-sync/10"
+                          onClick={() => setDirectSendOpen(true)}
+                          disabled={items.length === 0}
+                        >
+                          <Usb className="w-3 h-3 mr-1" />
+                          Direct Send (USB ICET)
+                        </Button>
+                      )}
                     </div>
                   )}
+
                 </div>
               ))}
             </div>
