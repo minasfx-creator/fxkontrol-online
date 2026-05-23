@@ -18,6 +18,6 @@ type: feature
 
 **HUD GTA**: MissionTriangle + DialogueSubtitle (typewriter+SPACE skip) + StarRating + MiniMap (top-down SVG, NPC dots, snap points pendentes) + XPPopupLayer (floating +N XP fade-up) + MissionFailedScreen ("WASTED" red overlay com flavor+lesson) + MissionPassedFlash (golden sweep entre stages).
 
-**Safety**: zero impacto em CommandBus / SafetyStateMachine / FieldBus / workMode. Tudo em `simulation`. 
+**Safety**: zero impacto em CommandBus / SafetyStateMachine / FieldBus / workMode. Tudo em `simulation`.
 
 **Tests**: 25/25 (3 files): missionRunner.test (15) + missionScripts.coverage.test (7) + ambientChoreographer.test (3).

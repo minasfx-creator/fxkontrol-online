@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { handleCors, corsHeaders } from "../_shared/cors.ts";
+import { requireAuth } from "../_shared/auth.ts";
 
 const CHECKLIST_DATA: Record<string, { label: string; requiredDocs: string[] }> = {
   exercito: {
@@ -60,6 +61,9 @@ const CHECKLIST_DATA: Record<string, { label: string; requiredDocs: string[] }> 
 serve(async (req) => {
   const preflight = handleCors(req);
   if (preflight) return preflight;
+
+  const auth = await requireAuth(req);
+  if (auth.error) return auth.error;
 
   try {
     const { agency, documents, eventName } = await req.json();

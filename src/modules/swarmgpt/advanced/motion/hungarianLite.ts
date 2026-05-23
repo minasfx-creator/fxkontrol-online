@@ -23,4 +23,3 @@ export function matchPointsByGreedyCost(from: Vec3[], to: Vec3[]): Vec3[] {
 
   return matched;
 }
-

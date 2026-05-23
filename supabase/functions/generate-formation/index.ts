@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { handleCors, corsHeaders } from "../_shared/cors.ts";
+import { requireAuth } from "../_shared/auth.ts";
 import { jsonOk, jsonError } from "../_shared/response.ts";
 
 const GATEWAY = "https://ai.gateway.lovable.dev/v1/chat/completions";
@@ -216,13 +217,8 @@ async function callAI(
   reasoning?: { effort: string },
 ): Promise<any> {
   let lastError: any;
-  // Per-attempt timeout. Total budget across retries must stay under the
-  // 150s gateway idle limit, so cap each attempt aggressively.
-  const PER_ATTEMPT_TIMEOUT_MS = 60_000;
-
+  
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), PER_ATTEMPT_TIMEOUT_MS);
     try {
         const body: any = {
           model, 
@@ -240,7 +236,6 @@ async function callAI(
             "Content-Type": "application/json",
           },
           body: JSON.stringify(body),
-          signal: controller.signal,
         });
 
       if (!response.ok) {
@@ -268,22 +263,12 @@ async function callAI(
       }
       return JSON.parse(toolCall.function.arguments);
     } catch (e: any) {
-      if (e.status === 429 || e.status === 402) {
-        clearTimeout(timeoutId);
-        throw e;
-      }
-      if (e?.name === "AbortError") {
-        console.warn(`AI call (${model}) aborted after ${PER_ATTEMPT_TIMEOUT_MS}ms (attempt ${attempt + 1})`);
-        lastError = new Error(`Modelo AI demorou demais (>${PER_ATTEMPT_TIMEOUT_MS / 1000}s)`);
-      } else {
-        lastError = e;
-      }
+      if (e.status === 429 || e.status === 402) throw e;
+      lastError = e;
       if (attempt < maxRetries) {
         console.warn(`Attempt ${attempt + 1} failed, retrying...`);
         await new Promise(r => setTimeout(r, 800 * (attempt + 1)));
       }
-    } finally {
-      clearTimeout(timeoutId);
     }
   }
   
@@ -2092,10 +2077,7 @@ function selectModels(mode: string, count: number, isFullShow: boolean): { prima
     };
   }
   if (mode === "image") {
-    // Pro is too slow for vision + large drone counts and breaches the 150s
-    // gateway idle timeout. Use the fast-preview vision model as primary and
-    // keep flash as a quick fallback.
-    return { primary: "google/gemini-3-flash-preview", fallback: "google/gemini-2.5-flash" };
+    return { primary: "google/gemini-2.5-pro", fallback: "google/gemini-3-flash-preview" };
   }
   if (count > 500) {
     return { primary: "google/gemini-3-flash-preview", fallback: "google/gemini-2.5-pro" };
@@ -2108,6 +2090,10 @@ function selectModels(mode: string, count: number, isFullShow: boolean): { prima
 serve(async (req) => {
   const preflight = handleCors(req);
   if (preflight) return preflight;
+
+  const auth = await requireAuth(req);
+  if (auth.error) return auth.error;
+
 
   try {
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");

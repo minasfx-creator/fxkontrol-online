@@ -1,0 +1,217 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<CustomComponent xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+  <AuthorSoftwareVersion>
+    <Major>3</Major>
+    <Minor>5</Minor>
+    <Build>0</Build>
+    <Revision>13</Revision>
+  </AuthorSoftwareVersion>
+  <Inserts>
+    <BaseEffectNode xsi:type="StarTails">
+      <Children />
+      <EmitStart>0.05</EmitStart>
+      <EmitEnd>1</EmitEnd>
+      <Density>120</Density>
+      <Width>0.2</Width>
+      <Type>Sparks</Type>
+      <Color>
+        <CustomR>55</CustomR>
+        <CustomG>28</CustomG>
+        <CustomB>0</CustomB>
+        <Color>Custom</Color>
+      </Color>
+      <Life>0.7</Life>
+      <LifeSigma>0.11</LifeSigma>
+      <Strobe>false</Strobe>
+      <StrobeFreqMean>2.7</StrobeFreqMean>
+      <StarSizeFactor>0.7</StarSizeFactor>
+      <Crackle>false</Crackle>
+    </BaseEffectNode>
+    <BaseEffectNode xsi:type="StarTails">
+      <Children />
+      <EmitStart>0.05</EmitStart>
+      <EmitEnd>1</EmitEnd>
+      <Density>250</Density>
+      <Width>0.5</Width>
+      <Type>Sparks</Type>
+      <Color>
+        <CustomR>120</CustomR>
+        <CustomG>70</CustomG>
+        <CustomB>29</CustomB>
+        <Color>Custom</Color>
+      </Color>
+      <Life>0.3</Life>
+      <LifeSigma>0.14</LifeSigma>
+      <Strobe>false</Strobe>
+      <StrobeFreqMean>2.7</StrobeFreqMean>
+      <StarSizeFactor>0.7</StarSizeFactor>
+      <Crackle>false</Crackle>
+    </BaseEffectNode>
+    <BaseEffectNode xsi:type="StarTails">
+      <Children />
+      <EmitStart>0.05</EmitStart>
+      <EmitEnd>1</EmitEnd>
+      <Density>150</Density>
+      <Width>0.3</Width>
+      <Type>Sparks</Type>
+      <Color>
+        <CustomR>51</CustomR>
+        <CustomG>26</CustomG>
+        <CustomB>0</CustomB>
+        <Color>Custom</Color>
+      </Color>
+      <Life>1.7</Life>
+      <LifeSigma>0.2</LifeSigma>
+      <Strobe>false</Strobe>
+      <StrobeFreqMean>14</StrobeFreqMean>
+      <StarSizeFactor>0.55</StarSizeFactor>
+      <Crackle>false</Crackle>
+    </BaseEffectNode>
+    <BaseEffectNode xsi:type="StarTails">
+      <Children />
+      <EmitStart>0.05</EmitStart>
+      <EmitEnd>1</EmitEnd>
+      <Density>20</Density>
+      <Width>0.3</Width>
+      <Type>Sparks</Type>
+      <Color>
+        <CustomR>79</CustomR>
+        <CustomG>39</CustomG>
+        <CustomB>0</CustomB>
+        <Color>Custom</Color>
+      </Color>
+      <Life>1</Life>
+      <LifeSigma>0.4</LifeSigma>
+      <Strobe>false</Strobe>
+      <StrobeFreqMean>2.7</StrobeFreqMean>
+      <StarSizeFactor>0.6</StarSizeFactor>
+      <Crackle>false</Crackle>
+    </BaseEffectNode>
+    <BaseEffectNode xsi:type="StarTails">
+      <Children />
+      <EmitStart>0.05</EmitStart>
+      <EmitEnd>1</EmitEnd>
+      <Density>100</Density>
+      <Width>0.1</Width>
+      <Type>Sparks</Type>
+      <Color>
+        <CustomR>90</CustomR>
+        <CustomG>53</CustomG>
+        <CustomB>22</CustomB>
+        <Color>Custom</Color>
+      </Color>
+      <Life>0.5</Life>
+      <LifeSigma>0.14</LifeSigma>
+      <Strobe>false</Strobe>
+      <StrobeFreqMean>2.7</StrobeFreqMean>
+      <StarSizeFactor>0.7</StarSizeFactor>
+      <Crackle>false</Crackle>
+    </BaseEffectNode>
+    <BaseEffectNode xsi:type="StarTails">
+      <Children />
+      <EmitStart>0.1</EmitStart>
+      <EmitEnd>1</EmitEnd>
+      <Density>5</Density>
+      <Width>0.3</Width>
+      <Type>Sparks</Type>
+      <Color>
+        <CustomR>51</CustomR>
+        <CustomG>26</CustomG>
+        <CustomB>0</CustomB>
+        <Color>Custom</Color>
+      </Color>
+      <Life>1.6</Life>
+      <LifeSigma>2</LifeSigma>
+      <Strobe>false</Strobe>
+      <StrobeFreqMean>14</StrobeFreqMean>
+      <StarSizeFactor>0.55</StarSizeFactor>
+      <Crackle>false</Crackle>
+    </BaseEffectNode>
+    <BaseEffectNode xsi:type="StarTails">
+      <Children />
+      <EmitStart>0.3713</EmitStart>
+      <EmitEnd>1</EmitEnd>
+      <Density>4</Density>
+      <Width>1.5</Width>
+      <Type>Microstars_Medium</Type>
+      <Color>
+        <CustomR>0</CustomR>
+        <CustomG>0</CustomG>
+        <CustomB>0</CustomB>
+        <Color>Red</Color>
+      </Color>
+      <Life>1.5</Life>
+      <LifeSigma>0.92</LifeSigma>
+      <Strobe>true</Strobe>
+      <StrobeFreqMean>19.44</StrobeFreqMean>
+      <StarSizeFactor>1</StarSizeFactor>
+      <Crackle>false</Crackle>
+    </BaseEffectNode>
+    <BaseEffectNode xsi:type="StarTails">
+      <Children />
+      <EmitStart>0.1754</EmitStart>
+      <EmitEnd>1</EmitEnd>
+      <Density>6</Density>
+      <Width>1</Width>
+      <Type>Microstars_Small</Type>
+      <Color>
+        <CustomR>0</CustomR>
+        <CustomG>0</CustomG>
+        <CustomB>0</CustomB>
+        <Color>Red</Color>
+      </Color>
+      <Life>1</Life>
+      <LifeSigma>0.4</LifeSigma>
+      <Strobe>true</Strobe>
+      <StrobeFreqMean>22.86</StrobeFreqMean>
+      <StarSizeFactor>1</StarSizeFactor>
+      <Crackle>false</Crackle>
+    </BaseEffectNode>
+    <BaseEffectNode xsi:type="StarTails">
+      <Children />
+      <EmitStart>0.5923</EmitStart>
+      <EmitEnd>1</EmitEnd>
+      <Density>2</Density>
+      <Width>1.5</Width>
+      <Type>Microstars_Medium</Type>
+      <Color>
+        <CustomR>0</CustomR>
+        <CustomG>0</CustomG>
+        <CustomB>0</CustomB>
+        <Color>Red</Color>
+      </Color>
+      <Life>1.5</Life>
+      <LifeSigma>0.92</LifeSigma>
+      <Strobe>true</Strobe>
+      <StrobeFreqMean>33.56</StrobeFreqMean>
+      <StarSizeFactor>1</StarSizeFactor>
+      <Crackle>false</Crackle>
+    </BaseEffectNode>
+    <BaseEffectNode xsi:type="StarTails">
+      <Children />
+      <EmitStart>0.2</EmitStart>
+      <EmitEnd>1</EmitEnd>
+      <Density>4</Density>
+      <Width>1.5</Width>
+      <Type>Microstars_Large</Type>
+      <Color>
+        <CustomR>0</CustomR>
+        <CustomG>0</CustomG>
+        <CustomB>0</CustomB>
+        <Color>Red</Color>
+      </Color>
+      <Life>0.05</Life>
+      <LifeSigma>0.01</LifeSigma>
+      <Strobe>true</Strobe>
+      <StrobeFreqMean>19.44</StrobeFreqMean>
+      <StarSizeFactor>1</StarSizeFactor>
+      <Crackle>false</Crackle>
+    </BaseEffectNode>
+  </Inserts>
+  <BaseID>
+    <Name>Microstars: Red Strobe</Name>
+    <Author>FWsim</Author>
+  </BaseID>
+  <ReadOnly>false</ReadOnly>
+  <InternalUseOnly>false</InternalUseOnly>
+<Hide>true</Hide></CustomComponent>

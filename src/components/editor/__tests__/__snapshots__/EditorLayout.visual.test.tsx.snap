@@ -122,7 +122,7 @@ exports[`Editor layout — visual regression (dark mode) > TimelineClockPanel (b
   <div
     class="text-[9px] font-mono tabular-nums text-muted-foreground"
   >
-    Δ 
+    Δ
     0.000
     s
   </div>

@@ -12,8 +12,6 @@
 import { Effect } from 'postprocessing';
 import { Uniform } from 'three';
 
-type EffectUniformMap = Map<string, Uniform>;
-
 const HIGHLIGHT_DESAT_FRAGMENT = `
 uniform float intensity;
 uniform float threshold;
@@ -54,10 +52,6 @@ void mainImage(const in vec4 inputColor, const in vec2 uv, out vec4 outputColor)
 `;
 
 export class HighlightDesaturationEffect extends Effect {
-  private get effectUniforms(): EffectUniformMap {
-    return (this as unknown as { uniforms: EffectUniformMap }).uniforms;
-  }
-
   constructor({
     intensity = 0.8,
     threshold = 2.0,
@@ -77,14 +71,14 @@ export class HighlightDesaturationEffect extends Effect {
   }
 
   set intensity(value: number) {
-    (this.effectUniforms.get('intensity') as Uniform).value = value;
+    (this.uniforms.get('intensity') as Uniform).value = value;
   }
 
   set threshold(value: number) {
-    (this.effectUniforms.get('threshold') as Uniform).value = value;
+    (this.uniforms.get('threshold') as Uniform).value = value;
   }
 
   set compression(value: number) {
-    (this.effectUniforms.get('compression') as Uniform).value = value;
+    (this.uniforms.get('compression') as Uniform).value = value;
   }
 }

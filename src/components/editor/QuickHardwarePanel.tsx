@@ -20,6 +20,7 @@ import { usePBusHardware } from '@/hooks/usePBusHardware';
 import type { OTATarget } from '@/lib/otaFirmwareEngine';
 
 const OTAFirmwareDialog = lazy(() => import('@/components/editor/OTAFirmwareDialog'));
+import { DetectedModulesPanel } from '@/components/editor/DetectedModulesPanel';
 
 // ── Transport type definitions ──
 type TransportGroup = 'ble' | 'usb' | 'artnet' | 'pbus' | 'wifi' | 'radio';
@@ -394,9 +395,10 @@ export default function QuickHardwarePanel({ open, onClose, fs }: QuickHardwareP
           })}
         </div>
 
-        {/* Device List */}
-        <div className="flex-1 overflow-y-auto px-3 pb-3 space-y-1.5">
-          {renderDeviceList()}
+        {/* Device List + Detected Modules */}
+        <div className="flex-1 overflow-y-auto px-3 pb-3 space-y-3">
+          <DetectedModulesPanel />
+          <div className="space-y-1.5">{renderDeviceList()}</div>
         </div>
 
         {/* Footer Actions */}

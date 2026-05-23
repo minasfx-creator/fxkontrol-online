@@ -10,8 +10,8 @@ import { HighlightDesaturationEffect } from '@/render_ultra/postprocessing/highl
 import { ACESHuePreserveEffect } from '@/render_ultra/postprocessing/acesHuePreserve';
 import { LuminanceFilmGrainEffect } from '@/render_ultra/postprocessing/luminanceFilmGrain';
 import { AtmosphericDepthEffect } from '@/render_ultra/postprocessing/atmosphericDepth';
+import { getFwsimGraphics, getFwsimBloomCalibration } from '@/data/fwsimGraphicsConfig';
 
-type EffectUniformMap = Map<string, Uniform>;
 
 const TONE_MAP: Record<ViewTransform, ToneMappingMode> = {
   'aces-filmic': ToneMappingMode.ACES_FILMIC,
@@ -49,10 +49,6 @@ void mainImage(const in vec4 inputColor, const in vec2 uv, out vec4 outputColor)
 `;
 
 class SharpenEffect extends Effect {
-  private get effectUniforms(): EffectUniformMap {
-    return (this as unknown as { uniforms: EffectUniformMap }).uniforms;
-  }
-
   constructor({ strength = 0.1 }: { strength?: number } = {}) {
     super('SharpenEffect', SHARPEN_FRAGMENT, {
       uniforms: new Map([['strength', new Uniform(strength)]]),
@@ -60,7 +56,7 @@ class SharpenEffect extends Effect {
   }
 
   set strength(value: number) {
-    (this.effectUniforms.get('strength') as Uniform).value = value;
+    (this.uniforms.get('strength') as Uniform).value = value;
   }
 }
 
@@ -121,10 +117,6 @@ void mainImage(const in vec4 inputColor, const in vec2 uv, out vec4 outputColor)
 `;
 
 class HeatDistortionEffect extends Effect {
-  private get effectUniforms(): EffectUniformMap {
-    return (this as unknown as { uniforms: EffectUniformMap }).uniforms;
-  }
-
   constructor({ intensity = 0.5, scale = 1.0 }: { intensity?: number; scale?: number } = {}) {
     super('HeatDistortionEffect', HEAT_DISTORTION_FRAGMENT, {
       uniforms: new Map([
@@ -136,12 +128,12 @@ class HeatDistortionEffect extends Effect {
   }
 
   update(_renderer: any, _inputBuffer: any, deltaTime: number) {
-    const timeUniform = this.effectUniforms.get('time') as Uniform;
+    const timeUniform = this.uniforms.get('time') as Uniform;
     timeUniform.value += deltaTime;
   }
 
   set intensity(value: number) {
-    (this.effectUniforms.get('intensity') as Uniform).value = value;
+    (this.uniforms.get('intensity') as Uniform).value = value;
   }
 }
 
@@ -188,10 +180,6 @@ void mainImage(const in vec4 inputColor, const in vec2 uv, out vec4 outputColor)
 `;
 
 class MotionBlurEffect extends Effect {
-  private get effectUniforms(): EffectUniformMap {
-    return (this as unknown as { uniforms: EffectUniformMap }).uniforms;
-  }
-
   constructor({ intensity = 0.5 }: { intensity?: number } = {}) {
     super('MotionBlurEffect', MOTION_BLUR_FRAGMENT, {
       uniforms: new Map([['intensity', new Uniform(intensity)]]),
@@ -199,7 +187,7 @@ class MotionBlurEffect extends Effect {
   }
 
   set intensity(value: number) {
-    (this.effectUniforms.get('intensity') as Uniform).value = value;
+    (this.uniforms.get('intensity') as Uniform).value = value;
   }
 }
 
@@ -246,10 +234,6 @@ void mainImage(const in vec4 inputColor, const in vec2 uv, out vec4 outputColor)
 `;
 
 class GodRaysEffect extends Effect {
-  private get effectUniforms(): EffectUniformMap {
-    return (this as unknown as { uniforms: EffectUniformMap }).uniforms;
-  }
-
   constructor({ intensity = 0.5 }: { intensity?: number } = {}) {
     super('GodRaysEffect', GOD_RAYS_FRAGMENT, {
       uniforms: new Map<string, Uniform<number | Vector2>>([
@@ -260,7 +244,7 @@ class GodRaysEffect extends Effect {
   }
 
   set intensity(value: number) {
-    (this.effectUniforms.get('intensity') as Uniform).value = value;
+    (this.uniforms.get('intensity') as Uniform).value = value;
   }
 }
 
@@ -422,10 +406,6 @@ const PRESET_INDEX: Record<ColorGradingPreset, number> = {
 };
 
 class ColorGradingEffect extends Effect {
-  private get effectUniforms(): EffectUniformMap {
-    return (this as unknown as { uniforms: EffectUniformMap }).uniforms;
-  }
-
   constructor({ preset = 'neutral', mixAmount = 1.0 }: { preset?: ColorGradingPreset; mixAmount?: number } = {}) {
     super('ColorGradingEffect', COLOR_LUT_FRAGMENT, {
       uniforms: new Map([
@@ -436,11 +416,11 @@ class ColorGradingEffect extends Effect {
   }
 
   set preset(value: ColorGradingPreset) {
-    (this.effectUniforms.get('preset') as Uniform).value = PRESET_INDEX[value] ?? 0;
+    (this.uniforms.get('preset') as Uniform).value = PRESET_INDEX[value] ?? 0;
   }
 
   set mixAmount(value: number) {
-    (this.effectUniforms.get('mix_amount') as Uniform).value = value;
+    (this.uniforms.get('mix_amount') as Uniform).value = value;
   }
 }
 
@@ -473,10 +453,6 @@ void mainImage(const in vec4 inputColor, const in vec2 uv, out vec4 outputColor)
 `;
 
 class DownSampleBlurEffect extends Effect {
-  private get effectUniforms(): EffectUniformMap {
-    return (this as unknown as { uniforms: EffectUniformMap }).uniforms;
-  }
-
   constructor({ intensity = 0.15, radius = 2.0 }: { intensity?: number; radius?: number } = {}) {
     super('DownSampleBlurEffect', DOWNSAMPLE_BLUR_FRAGMENT, {
       uniforms: new Map([
@@ -485,8 +461,8 @@ class DownSampleBlurEffect extends Effect {
       ]),
     });
   }
-  set intensity(value: number) { (this.effectUniforms.get('intensity') as Uniform).value = value; }
-  set radius(value: number) { (this.effectUniforms.get('radius') as Uniform).value = value; }
+  set intensity(value: number) { (this.uniforms.get('intensity') as Uniform).value = value; }
+  set radius(value: number) { (this.uniforms.get('radius') as Uniform).value = value; }
 }
 
 // ═══ Wrapper Components ═══
@@ -547,13 +523,20 @@ const HighlightDesaturation = forwardRef<HighlightDesaturationEffect, { intensit
   }
 );
 
-const ACESHuePreserve = forwardRef<ACESHuePreserveEffect, { exposure?: number; huePreserveStrength?: number; highlightThreshold?: number }>(
-  function ACESHuePreserve({ exposure = 1.0, huePreserveStrength = 0.7, highlightThreshold = 1.5 }, ref) {
-    const effect = useMemo(() => new ACESHuePreserveEffect({ exposure, huePreserveStrength, highlightThreshold }), []);
-    useMemo(() => { effect.exposure = exposure; effect.huePreserveStrength = huePreserveStrength; effect.highlightThreshold = highlightThreshold; }, [effect, exposure, huePreserveStrength, highlightThreshold]);
+const ACESHuePreserve = forwardRef<ACESHuePreserveEffect, { exposure?: number; huePreserveStrength?: number; highlightThreshold?: number; fwsimContrast?: number; fwsimHdrMax?: number }>(
+  function ACESHuePreserve({ exposure = 1.0, huePreserveStrength = 0.7, highlightThreshold = 1.5, fwsimContrast = 1.0, fwsimHdrMax = 0.0 }, ref) {
+    const effect = useMemo(() => new ACESHuePreserveEffect({ exposure, huePreserveStrength, highlightThreshold, fwsimContrast, fwsimHdrMax }), []);
+    useMemo(() => {
+      effect.exposure = exposure;
+      effect.huePreserveStrength = huePreserveStrength;
+      effect.highlightThreshold = highlightThreshold;
+      effect.fwsimContrast = fwsimContrast;
+      effect.fwsimHdrMax = fwsimHdrMax;
+    }, [effect, exposure, huePreserveStrength, highlightThreshold, fwsimContrast, fwsimHdrMax]);
     return <primitive ref={ref} object={effect} />;
   }
 );
+
 
 const LuminanceFilmGrain = forwardRef<LuminanceFilmGrainEffect, { intensity?: number; luminanceResponse?: number }>(
   function LuminanceFilmGrain({ intensity = 0.08, luminanceResponse = 0.3 }, ref) {
@@ -612,6 +595,21 @@ export default function PostProcessing({ activeBurstCount = 0 }: { activeBurstCo
 
   // Physical bloom calculations (only used when flag is on)
   const pb = usePhysicalBloom(str, bloomMul, activeBurstCount);
+
+  // FWsim bloom calibration (legacy branch only — physical branch keeps its own log curve).
+  // NOTE: legacyBloomMul COMPOUNDS with BLOOM_SCALE[viewTransform]. Canonical FWsim
+  // (amount=0.1, weightsAvg=0.925) yields intensityMul≈0.925, which under
+  // 'standard' viewTransform (×1.3) lands at ~1.20 — that's the intended FWsim
+  // look. Under 'aces-filmic' (×1.0) it sits at ~0.925, a deliberate ~7.5% dim
+  // vs pre-FWsim baseline. If you flip the flag OFF, legacyBloomMul=1.0 restores
+  // the literal pre-Step-4 behaviour bit-equivalent.
+  const fwsimBloomEnabled = isEnabled('r_fwsim_bloom_weights');
+  const fwsimBloom = useMemo(
+    () => (fwsimBloomEnabled ? getFwsimBloomCalibration() : null),
+    [fwsimBloomEnabled],
+  );
+  const legacyBloomMul = fwsimBloom ? fwsimBloom.intensityMul : 1.0;
+  const legacyLargeKernel = fwsimBloom && fwsimBloom.levels >= 10 ? KernelSize.HUGE : KernelSize.LARGE;
 
   // Adaptive: use half-res SSR when enabled for GPU savings
   const ssrResScale = s.ssrHalfRes ? 0.5 : 1.0;
@@ -736,7 +734,7 @@ export default function PostProcessing({ activeBurstCount = 0 }: { activeBurstCo
         <>
           {/* Legacy Layer 1: Core catch — threshold raised to 3.5 for real flashes only */}
           <Bloom
-            intensity={str * 0.04 * bloomMul}
+            intensity={str * 0.04 * bloomMul * legacyBloomMul}
             luminanceThreshold={3.5}
             luminanceSmoothing={0.05}
             kernelSize={KernelSize.MEDIUM}
@@ -746,10 +744,10 @@ export default function PostProcessing({ activeBurstCount = 0 }: { activeBurstCo
           {/* Legacy Layer 2: Star halos — threshold raised to 5.0, intense explosions only */}
           {hasBursts && (
             <Bloom
-              intensity={str * 0.025 * bloomMul}
+              intensity={str * 0.025 * bloomMul * legacyBloomMul}
               luminanceThreshold={5.0}
               luminanceSmoothing={0.2}
-              kernelSize={KernelSize.LARGE}
+              kernelSize={legacyLargeKernel}
               mipmapBlur
             />
           )}
@@ -761,7 +759,7 @@ export default function PostProcessing({ activeBurstCount = 0 }: { activeBurstCo
         <GodRays intensity={0.5 + activeBurstCount * 0.08} />
       ) : (hasHeavyBursts && (
         <Bloom
-          intensity={str * 0.008 * bloomMul}
+          intensity={str * 0.008 * bloomMul * legacyBloomMul}
           luminanceThreshold={6.0}
           luminanceSmoothing={0.5}
           kernelSize={KernelSize.HUGE}
@@ -851,15 +849,23 @@ export default function PostProcessing({ activeBurstCount = 0 }: { activeBurstCo
 
       {/* ═══ Tone Mapping — Studio Mode: ACES Hue-Preserving / Legacy: standard ═══
            Pipeline order per spec: Color Grading → Tone Mapping (final stage) */}
-      {cameraResponseEnabled ? (
-        <ACESHuePreserve
-          exposure={1.0}
-          huePreserveStrength={0.7}
-          highlightThreshold={1.5}
-        />
-      ) : (
+      {cameraResponseEnabled ? (() => {
+        // r_fwsim_tonemapping: apply FWsim TonemappingConfig (contrast 1.7, hdrMax 16) when ON.
+        const useFwsimTM = isEnabled('r_fwsim_tonemapping');
+        const tm = useFwsimTM ? getFwsimGraphics().tonemapping : null;
+        return (
+          <ACESHuePreserve
+            exposure={1.0}
+            huePreserveStrength={0.7}
+            highlightThreshold={1.5}
+            fwsimContrast={tm ? tm.contrast : 1.0}
+            fwsimHdrMax={tm ? tm.hdrMax : 0.0}
+          />
+        );
+      })() : (
         <ToneMapping mode={TONE_MAP[vt]} />
       )}
     </EffectComposer>
   );
 }
+

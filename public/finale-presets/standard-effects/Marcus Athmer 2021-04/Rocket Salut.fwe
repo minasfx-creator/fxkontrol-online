@@ -1,0 +1,45 @@
+<?xml version="1.0"?>
+<FireworkEffect xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <Children>
+    <BaseEffectNode xsi:type="Rocket">
+      <Children>
+        <BaseEffectNode xsi:type="BurstingCharge">
+          <Children />
+          <Auto>false</Auto>
+          <Energy>80</Energy>
+          <Color>
+            <CustomR>0</CustomR>
+            <CustomG>0</CustomG>
+            <CustomB>0</CustomB>
+            <Color>Spark</Color>
+          </Color>
+          <ChangeColor>false</ChangeColor>
+          <Sound>true</Sound>
+          <Delay>1.9</Delay>
+          <TestSound>false</TestSound>
+        </BaseEffectNode>
+      </Children>
+      <ID>0</ID>
+      <AllowRenaming>false</AllowRenaming>
+      <Thrust>60</Thrust>
+      <BurnDuration>2.3</BurnDuration>
+    </BaseEffectNode>
+  </Children>
+  <Protected>false</Protected>
+  <AutotagOverrideQuantity>0</AutotagOverrideQuantity>
+  <AutotagOverrideCaliber>0</AutotagOverrideCaliber>
+  <AutotagOverrideFurther />
+  <Identifier>
+    <Name>Rocket Salut</Name>
+    <Author>FWsim 3.3</Author>
+  </Identifier>
+  <Metadata>
+    <Pieces />
+  </Metadata>
+  <AuthorSoftwareVersion>
+    <Major>3</Major>
+    <Minor>2</Minor>
+    <Build>0</Build>
+    <Revision>101</Revision>
+  </AuthorSoftwareVersion>
+</FireworkEffect>

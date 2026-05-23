@@ -1,0 +1,35 @@
+<?xml version="1.0"?>
+<FireworkEffect xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+  <Children>
+    <BaseEffectNode xsi:type="Shell">
+      <Children>
+        <BaseEffectNode xsi:type="BurstingCharge">
+          <Children>
+            <BaseEffectNode xsi:type="Stars">
+              <Children />
+              <Type>Normal</Type>
+              <Distribution xsi:type="SphericalDistribution">
+                <Speed>1</Speed>
+                <Sigma>0.014994</Sigma>
+              </Distribution>
+              <Color>
+                <Color>Red</Color>
+              </Color>
+              <Count>200</Count>
+              <MinimumLifetime>2.9547</MinimumLifetime>
+              <MaximumLifetime>4.3183</MaximumLifetime>
+            </BaseEffectNode>
+          </Children>
+          <Energy>200</Energy>
+          <Delay>7.5272</Delay>
+        </BaseEffectNode>
+      </Children>
+      <Diameter>0.580000043</Diameter>
+      <LiftingCharge>232.98</LiftingCharge>
+    </BaseEffectNode>
+  </Children>
+  <Identifier>
+    <Name>Peony (huge)</Name>
+    <Author>LT</Author>
+  </Identifier>
+</FireworkEffect>

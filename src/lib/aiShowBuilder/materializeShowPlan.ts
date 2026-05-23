@@ -170,4 +170,3 @@ export function projectHasExistingContent(): boolean {
   const s = useProjectStore.getState();
   return s.positions.length > 0 || s.timelineItems.length > 0 || s.trajectories.length > 0;
 }
-

@@ -309,7 +309,7 @@ export default function Dashboard() {
         <div className="absolute top-0 left-0 right-0 h-[2px]" style={{
           background: 'linear-gradient(90deg, hsl(32 100% 50% / 0.6), hsl(32 100% 50% / 0.1) 30%, hsl(32 100% 50% / 0.1) 70%, hsl(32 100% 50% / 0.6))'
         }} />
-        
+
         <div className="p-3 md:p-7 relative z-10">
           <div className="flex items-start justify-between">
             <div>
@@ -403,7 +403,7 @@ export default function Dashboard() {
                 {/* Corner brackets */}
                 <div className="absolute top-0.5 left-0.5 w-2 h-2 border-t border-l pointer-events-none" style={{ borderColor: `${console.color}30` }} />
                 <div className="absolute bottom-0.5 right-0.5 w-2 h-2 border-b border-r pointer-events-none" style={{ borderColor: `${console.color}15` }} />
-                
+
                 <div className="flex flex-col items-center gap-1">
                   <div className="h-8 w-8 md:h-10 md:w-10 rounded-lg flex items-center justify-center transition-all group-hover:scale-110"
                     style={{ background: `${console.color}12`, border: `1px solid ${console.color}20` }}>

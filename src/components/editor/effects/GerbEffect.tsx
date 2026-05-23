@@ -17,6 +17,8 @@ import { clampNiagaraHDR } from '@/lib/niagaraBlenderRules';
 
 const MAX_GERB_PARTICLES = 700;
 
+export type GerbPreset = 'standard' | 'stage' | 'cold';
+
 export default function GerbEffect({
   position,
   color,
@@ -25,6 +27,7 @@ export default function GerbEffect({
   caliber = 3,
   coldSpark = false,
   formulationId,
+  preset = 'standard',
 }: {
   position: [number, number, number];
   color: string;
@@ -33,12 +36,28 @@ export default function GerbEffect({
   caliber?: number;
   coldSpark?: boolean;
   formulationId?: string;
+  preset?: GerbPreset;
 }) {
   const { scene } = useThree();
+
+  // ── Preset calibration (FWsim "F1" stage gerb reference) ──
+  // - 'stage': dense narrow golden cone, used along proscenium
+  // - 'cold':  lower temp, no smoke, controlled output
+  // - 'standard': legacy behaviour
+  const presetCfg = useMemo(() => {
+    if (preset === 'stage') {
+      return { coneAngleDeg: 4, densityMul: 1.5, lifetimeMul: 1.3, hueOverride: '#ffb060', topBrightnessBoost: 1.3 };
+    }
+    if (preset === 'cold') {
+      return { coneAngleDeg: 8, densityMul: 1.0, lifetimeMul: 1.0, hueOverride: null as string | null, topBrightnessBoost: 1.0 };
+    }
+    return { coneAngleDeg: 8, densityMul: 1.0, lifetimeMul: 1.0, hueOverride: null as string | null, topBrightnessBoost: 1.0 };
+  }, [preset]);
+
   const scaledHeight = height * (0.6 + caliber * 0.15);
-  const SCALED_PARTICLE_COUNT = Math.min(MAX_GERB_PARTICLES, getGerbParticleCount(caliber));
+  const SCALED_PARTICLE_COUNT = Math.min(MAX_GERB_PARTICLES, Math.round(getGerbParticleCount(caliber) * presetCfg.densityMul));
   const particleVisualSize = getParticleSize(caliber) * 0.04;
-  const baseColor = useMemo(() => new THREE.Color(color), [color]);
+  const baseColor = useMemo(() => new THREE.Color(presetCfg.hueOverride ?? color), [color, presetCfg.hueOverride]);
   const pointsRef = useRef<THREE.Points>(null);
 
   // Pre-allocate buffers
@@ -50,6 +69,8 @@ export default function GerbEffect({
 
   useEffect(() => {
     const spraySpeed = scaledHeight * 1.5;
+    const lifetimeMin = 0.4 * presetCfg.lifetimeMul;
+    const lifetimeMax = 1.1 * presetCfg.lifetimeMul;
     const emitter = createEmitter({
       id: `gerb-main-${Date.now()}`,
       name: 'Gerb Spray',
@@ -61,14 +82,14 @@ export default function GerbEffect({
         burstDelay: 0,
       },
       init: {
-        lifetime: [0.4, 1.1],
+        lifetime: [lifetimeMin, lifetimeMax],
         size: [0.3, 1.0],
         velocity: {
           min: new THREE.Vector3(-spraySpeed * 0.06, spraySpeed * 0.65, -spraySpeed * 0.06),
-          max: new THREE.Vector3(spraySpeed * 0.06, spraySpeed * 1.0, spraySpeed * 0.06),
+          max: new THREE.Vector3(spraySpeed * 0.06, spraySpeed * 1.0 * presetCfg.topBrightnessBoost, spraySpeed * 0.06),
         },
         color: baseColor.clone(),
-        spawnShape: { type: 'cone', radius: 0.08, coneAngle: 8 * Math.PI / 180 },
+        spawnShape: { type: 'cone', radius: 0.08, coneAngle: presetCfg.coneAngleDeg * Math.PI / 180 },
       },
       update: [{
         drag: 0.08,
@@ -111,7 +132,7 @@ export default function GerbEffect({
     return () => {
       niagaraSystemRef.current = null;
     };
-  }, [scaledHeight, SCALED_PARTICLE_COUNT, baseColor]);
+  }, [scaledHeight, SCALED_PARTICLE_COUNT, baseColor, presetCfg]);
 
   useFrame(({ clock }, delta) => {
     if (!pointsRef.current || !niagaraSystemRef.current) return;

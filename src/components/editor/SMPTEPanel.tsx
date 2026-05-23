@@ -15,7 +15,6 @@ import { usePBusHardware } from '@/hooks/usePBusHardware';
 import { formatTimecode, encodeTimecodeToLTC, generateMTCQuarterFrames, secondsToTimecode, type SMPTEFrameRate } from '@/lib/smpteEngine';
 import { formatSMPTE } from '@/lib/smpteUtils';
 import { getOSCClient, buildMA3TimecodeSync, buildMA3TimecodeTransport } from '@/lib/oscEngine';
-import { ltcRuntime, updateTimelineClockFromLTCFps } from '@/hardware/transports/ltcRuntime';
 
 interface SMPTEPanelProps {
   onClose: () => void;
@@ -68,9 +67,6 @@ export default function SMPTEPanel({ onClose }: SMPTEPanelProps) {
   const [syncToFireOne, setSyncToFireOne] = useState(false);
   const [syncToPBus, setSyncToPBus] = useState(false);
   const [syncToMA3, setSyncToMA3] = useState(false);
-  const [kalmanEnabled, setKalmanEnabled] = useState(() => ltcRuntime.isKalmanEnabled());
-  const [replaySpeed, setReplaySpeed] = useState('1');
-  const [replayPlaying, setReplayPlaying] = useState(false);
   const syncIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const pbusSyncRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const ma3SyncRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -83,92 +79,6 @@ export default function SMPTEPanel({ onClose }: SMPTEPanelProps) {
   const tcStr = formatTimecode(tc);
   const ltcSignal = store.running ? encodeTimecodeToLTC(tc) : null;
   const mtcFrames = store.running ? generateMTCQuarterFrames(tc) : [];
-  const pllDiagnostics = ltcRuntime.getPLLDiagnostics();
-  const driftSeries = ltcRuntime.getDriftSeries();
-  const telemetrySeries = ltcRuntime.getTelemetrySeries();
-  const transportDiagnostics = ltcRuntime.getDiagnostics();
-  const ltcEvents = ltcRuntime.getEvents().slice(-8).reverse();
-  const replayFrames = ltcRuntime.getReplayRecord();
-  const detectedFrameDuration = pllDiagnostics.fps ? 1 / pllDiagnostics.fps : null;
-  const driftBars = driftSeries.drift.slice(-24).map((value, index) => ({
-    id: `${driftSeries.time[index] ?? index}-${index}`,
-    value,
-  }));
-  const driftWindow = driftSeries.drift.slice(-32);
-  const timeWindow = telemetrySeries.time.slice(-32);
-  const rawWindow = telemetrySeries.raw.slice(-32);
-  const filteredWindow = telemetrySeries.filtered.slice(-32);
-  const clockWindow = telemetrySeries.clock.slice(-32);
-  const maxMagnitude = driftWindow.reduce((peak, value) => Math.max(peak, Math.abs(value)), 0.001);
-  const maxTimeMagnitude = [rawWindow, filteredWindow, clockWindow]
-    .flat()
-    .reduce((range, value) => ({ min: Math.min(range.min, value), max: Math.max(range.max, value) }), { min: Number.POSITIVE_INFINITY, max: Number.NEGATIVE_INFINITY });
-  const timeSpan = Number.isFinite(maxTimeMagnitude.min) && Number.isFinite(maxTimeMagnitude.max)
-    ? Math.max(0.001, maxTimeMagnitude.max - maxTimeMagnitude.min)
-    : 0.001;
-  const driftLinePoints = driftWindow.map((value, index) => {
-    const x = driftWindow.length <= 1 ? 0 : (index / (driftWindow.length - 1)) * 100;
-    const y = 50 - (value / maxMagnitude) * 42;
-    return `${x},${Math.max(4, Math.min(96, y))}`;
-  }).join(' ');
-  const mapTimePoints = (series: number[]) => series.map((value, index) => {
-    const x = series.length <= 1 ? 0 : (index / (series.length - 1)) * 100;
-    const y = 92 - (((value - maxTimeMagnitude.min) / timeSpan) * 84);
-    return `${x},${Math.max(4, Math.min(96, y))}`;
-  }).join(' ');
-  const rawLinePoints = mapTimePoints(rawWindow);
-  const filteredLinePoints = mapTimePoints(filteredWindow);
-  const clockLinePoints = mapTimePoints(clockWindow);
-  const markerEvents = ltcEvents
-    .map((event) => ({ event, index: timeWindow.findIndex((time) => Math.abs(time - event.time / 1000) < 0.2) }))
-    .filter((entry) => entry.index >= 0);
-
-  const handleReplay = () => {
-    const snapshot = ltcRuntime.getReplayRecord();
-    if (!snapshot.length) return;
-    const speed = Number.parseFloat(replaySpeed) || 1;
-    setReplayPlaying(true);
-    ltcRuntime.replayAsync(snapshot, {
-      speed,
-      onFrame: (_, index, total) => {
-        if (index >= total - 1) {
-          setReplayPlaying(false);
-          updateTimelineClockFromLTCFps();
-        }
-      },
-    });
-  };
-
-  const handleClearReplay = () => {
-    ltcRuntime.stopReplay();
-    setReplayPlaying(false);
-    ltcRuntime.clearReplayRecord();
-  };
-
-  const handlePauseReplay = () => {
-    ltcRuntime.stopReplay();
-    setReplayPlaying(false);
-  };
-
-  const handleStepReplay = () => {
-    const snapshot = ltcRuntime.getReplayRecord();
-    if (!snapshot.length) return;
-    ltcRuntime.stepReplay(snapshot, {
-      speed: Number.parseFloat(replaySpeed) || 1,
-      onFrame: () => {
-        setReplayPlaying(false);
-        updateTimelineClockFromLTCFps();
-      },
-    });
-  };
-
-  useEffect(() => {
-    ltcRuntime.setKalmanEnabled(kalmanEnabled);
-  }, [kalmanEnabled]);
-
-  useEffect(() => {
-    ltcRuntime.setChaseMode(store.chaseMode);
-  }, [store.chaseMode]);
 
   useEffect(() => {
     const stc = secondsToTimecode(store.startTimecodeSeconds, store.frameRate, false);
@@ -545,181 +455,6 @@ export default function SMPTEPanel({ onClose }: SMPTEPanelProps) {
           )}
         </div>
 
-        <div className="bg-surface-0 rounded p-2 space-y-2 border border-border">
-          <div className="flex items-center justify-between">
-            <div className="text-[10px] font-mono-code text-muted-foreground font-bold">PLL DIAGNOSTICS</div>
-            <Badge variant="outline" className="h-5 rounded-sm px-1.5 text-[8px] font-mono-code uppercase">
-              {pllDiagnostics.state}
-            </Badge>
-          </div>
-          <div className="flex items-center justify-between rounded border border-border/40 bg-background/30 px-2 py-1.5">
-            <Label className="text-[9px] font-mono-code text-muted-foreground">Kalman input filter</Label>
-            <Switch checked={kalmanEnabled} onCheckedChange={setKalmanEnabled} className="scale-75" />
-          </div>
-          <div className="grid grid-cols-2 gap-x-3 gap-y-1">
-            <MetricRow label="SRC" value={pllDiagnostics.source ?? '—'} />
-            <MetricRow label="FPS" value={pllDiagnostics.fps?.toFixed(2) ?? '—'} />
-            <MetricRow label="RATE" value={pllDiagnostics.rate.toFixed(5)} warn={Math.abs(pllDiagnostics.rate - 1) > 0.01} />
-            <MetricRow label="INT" value={pllDiagnostics.integral.toFixed(5)} />
-            <MetricRow label="DRIFT" value={pllDiagnostics.driftSec.toFixed(4)} warn={Math.abs(pllDiagnostics.driftSec) > 0.01} />
-            <MetricRow label="AVG" value={pllDiagnostics.avgDriftSec.toFixed(4)} />
-            <MetricRow label="PEAK" value={pllDiagnostics.peakDriftSec.toFixed(4)} warn={pllDiagnostics.peakDriftSec > 0.02} />
-            <MetricRow label="FRAME" value={detectedFrameDuration ? `${detectedFrameDuration.toFixed(5)}s` : '—'} />
-          </div>
-        </div>
-
-        <div className="bg-surface-0 rounded p-2 space-y-2 border border-border">
-          <div className="flex items-center justify-between">
-            <div className="text-[10px] font-mono-code text-muted-foreground font-bold">DRIFT HISTORY</div>
-            <span className="text-[8px] font-mono-code text-muted-foreground">{driftSeries.drift.length} frames</span>
-          </div>
-          <div className="h-16 flex items-end gap-px overflow-hidden rounded border border-border/40 bg-background/40 px-1 py-1">
-            {driftBars.length > 0 ? driftBars.map((bar) => {
-              const magnitude = Math.max(8, Math.min(100, Math.abs(bar.value) * 4000));
-              return (
-                <div
-                  key={bar.id}
-                  className={cn('flex-1 rounded-[1px]', bar.value >= 0 ? 'bg-primary/70' : 'bg-warning/70')}
-                  style={{ height: `${magnitude}%` }}
-                  title={bar.value.toFixed(6)}
-                />
-              );
-            }) : (
-              <div className="flex h-full w-full items-center justify-center text-[8px] font-mono-code text-muted-foreground">
-                No drift samples
-              </div>
-            )}
-          </div>
-          <div className="relative rounded border border-border/40 bg-background/40 px-1 py-1">
-            <svg viewBox="0 0 100 100" className="h-20 w-full">
-              <line x1="0" y1="50" x2="100" y2="50" className="stroke-border/60" strokeWidth="1" vectorEffect="non-scaling-stroke" />
-              {driftLinePoints && (
-                <polyline
-                  fill="none"
-                  points={driftLinePoints}
-                  className="stroke-primary"
-                  strokeWidth="1.5"
-                  vectorEffect="non-scaling-stroke"
-                />
-              )}
-              {markerEvents.map(({ event, index }) => {
-                const x = driftWindow.length <= 1 ? 0 : (index / Math.max(1, driftWindow.length - 1)) * 100;
-                return (
-                  <line
-                    key={`${event.type}-${event.sequence}`}
-                    x1={x}
-                    y1="8"
-                    x2={x}
-                    y2="92"
-                    className={cn(event.type === 'source-switch' ? 'stroke-warning' : event.type === 'hard-sync' ? 'stroke-destructive' : 'stroke-success')}
-                    strokeWidth="1"
-                    vectorEffect="non-scaling-stroke"
-                  />
-                );
-              })}
-            </svg>
-          </div>
-        </div>
-
-        <div className="bg-surface-0 rounded p-2 space-y-2 border border-border">
-          <div className="flex items-center justify-between">
-            <div className="text-[10px] font-mono-code text-muted-foreground font-bold">TIMECODE ANALYZER</div>
-            <span className="text-[8px] font-mono-code text-muted-foreground">raw / filtered / clock</span>
-          </div>
-          <div className="relative rounded border border-border/40 bg-background/40 px-1 py-1">
-            <svg viewBox="0 0 100 100" className="h-24 w-full">
-              <line x1="0" y1="50" x2="100" y2="50" className="stroke-border/60" strokeWidth="1" vectorEffect="non-scaling-stroke" />
-              {rawLinePoints && (
-                <polyline fill="none" points={rawLinePoints} className="stroke-warning" strokeWidth="1" vectorEffect="non-scaling-stroke" />
-              )}
-              {filteredLinePoints && (
-                <polyline fill="none" points={filteredLinePoints} className="stroke-primary" strokeWidth="1.5" vectorEffect="non-scaling-stroke" />
-              )}
-              {clockLinePoints && (
-                <polyline fill="none" points={clockLinePoints} className="stroke-success" strokeWidth="1" vectorEffect="non-scaling-stroke" />
-              )}
-              {markerEvents.map(({ event, index }) => {
-                const x = rawWindow.length <= 1 ? 0 : (index / Math.max(1, rawWindow.length - 1)) * 100;
-                return (
-                  <line
-                    key={`analyzer-${event.type}-${event.sequence}`}
-                    x1={x}
-                    y1="6"
-                    x2={x}
-                    y2="94"
-                    className={cn(
-                      event.type === 'source-switch' ? 'stroke-warning' : event.type === 'hard-sync' ? 'stroke-destructive' : event.type === 'drop' ? 'stroke-warning' : 'stroke-success'
-                    )}
-                    strokeWidth="1"
-                    vectorEffect="non-scaling-stroke"
-                  />
-                );
-              })}
-            </svg>
-          </div>
-          <div className="grid grid-cols-3 gap-2 text-[8px] font-mono-code text-muted-foreground">
-            <span className="text-warning">RAW LTC</span>
-            <span className="text-primary">FILTERED</span>
-            <span className="text-success">CLOCK OUT</span>
-          </div>
-        </div>
-
-        <div className="bg-surface-0 rounded p-2 space-y-2 border border-border">
-          <div className="flex items-center justify-between">
-            <div className="text-[10px] font-mono-code text-muted-foreground font-bold">TRANSPORT EVENTS</div>
-            <span className="text-[8px] font-mono-code text-muted-foreground">{ltcRuntime.getEvents().length} total</span>
-          </div>
-          <div className="space-y-1">
-            {ltcEvents.length > 0 ? ltcEvents.map((event, index) => (
-              <div key={`${event.type}-${index}`} className="flex items-center justify-between rounded border border-border/40 bg-background/30 px-2 py-1 text-[8px] font-mono-code">
-                <span className="text-foreground">{event.type}</span>
-                <span className="text-muted-foreground">
-                  {'from' in event ? `${event.from ?? '∅'} → ${event.to}` : 'rate' in event ? event.rate.toFixed(5) : 'frames' in event ? `${event.frames} frames` : 'reason' in event ? event.reason : 'freewheel'}
-                </span>
-              </div>
-            )) : (
-              <div className="text-[8px] font-mono-code text-muted-foreground">No transport events</div>
-            )}
-          </div>
-        </div>
-
-        <div className="bg-surface-0 rounded p-2 space-y-2 border border-border">
-          <div className="flex items-center justify-between">
-            <div className="text-[10px] font-mono-code text-muted-foreground font-bold">REPLAY LAB</div>
-            <span className="text-[8px] font-mono-code text-muted-foreground">{replayFrames.length} recorded</span>
-          </div>
-          <div className="flex gap-1">
-            <Button variant="outline" size="sm" className="h-7 flex-1 text-[9px] font-mono-code" onClick={handleReplay} disabled={replayFrames.length === 0 || replayPlaying}>
-              Play
-            </Button>
-            <Button variant="outline" size="sm" className="h-7 flex-1 text-[9px] font-mono-code" onClick={handlePauseReplay} disabled={!replayPlaying}>
-              Pause
-            </Button>
-          </div>
-          <div className="flex gap-1">
-            <Button variant="outline" size="sm" className="h-7 flex-1 text-[9px] font-mono-code" onClick={handleStepReplay} disabled={replayFrames.length === 0}>
-              Step
-            </Button>
-            <Button variant="outline" size="sm" className="h-7 flex-1 text-[9px] font-mono-code" onClick={handleClearReplay} disabled={replayFrames.length === 0}>
-              Clear Record
-            </Button>
-          </div>
-          <div className="flex items-center gap-2">
-            <Label className="text-[8px] font-mono-code text-muted-foreground">Replay speed</Label>
-            <Select value={replaySpeed} onValueChange={setReplaySpeed}>
-              <SelectTrigger className="h-7 text-[9px] font-mono-code"><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="0.5">0.5x</SelectItem>
-                <SelectItem value="1">1.0x</SelectItem>
-                <SelectItem value="2">2.0x</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="text-[8px] font-mono-code text-muted-foreground">
-            Reaplica a trilha gravada sem recomputar Kalman/PLL, preservando saída determinística quadro a quadro.
-          </div>
-        </div>
-
         {/* LTC Signal */}
         {ltcSignal && (
           <div className="space-y-1">
@@ -761,7 +496,7 @@ export default function SMPTEPanel({ onClose }: SMPTEPanelProps) {
             <div>• SMPTE 12M-2 Linear Timecode (LTC)</div>
             <div>• MTC: MIDI 1.0 Quarter-Frame (F1 xx)</div>
             <div>• WebSocket relay for external generators</div>
-            <div>• Chase modes: Tight / Smooth / Freewheel / External Master</div>
+            <div>• Chase modes: Hard / Soft / Jam Sync</div>
             <div>• Transport: Play / Stop / Locate</div>
           </div>
         </div>

@@ -23,7 +23,7 @@ export class AppErrorBoundary extends Component<{ children: ReactNode }, State> 
   }
 
   componentDidCatch(error: unknown, info: ErrorInfo) {
-     
+
     console.error("[AppErrorBoundary] uncaught render error", error, info);
   }
 

@@ -6,6 +6,7 @@
 
 import { useProjectStore } from '@/store/useProjectStore';
 import { EFFECT_LIBRARY } from '@/data/effectLibrary';
+import { findEffectById } from '@/data/effectsLibraries/resolveEffect';
 import { supabase } from '@/integrations/supabase/client';
 
 // Type-safe wrapper since show_styles may not be in generated types yet
@@ -76,7 +77,7 @@ class ShowStyleManager {
     const effectCounts = new Map<string, { id: string; name: string; count: number }>();
     const effectTypes: Record<string, number> = {};
     items.forEach(item => {
-      const effect = EFFECT_LIBRARY.find(e => e.id === item.effectId);
+      const effect = findEffectById(item.effectId);
       const key = effect?.id || item.effectId;
       const existing = effectCounts.get(key);
       if (existing) {

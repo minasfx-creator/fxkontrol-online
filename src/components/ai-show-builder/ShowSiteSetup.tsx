@@ -278,4 +278,3 @@ function SitePreview3D({ config }: { config: ShowSiteConfig }) {
     </div>
   );
 }
-

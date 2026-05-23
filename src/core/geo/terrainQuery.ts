@@ -102,3 +102,24 @@ export function raycastTerrainLocal(
 
   return null;
 }
+
+// ── Geo-aware terrain raycast ───────────────────────────────────────
+/**
+ * Raycast terrain height by lat/lng. Converts via flat-earth approximation
+ * (good <10 km from anchor) and then raycasts against `GoogleTilesGroup`.
+ *
+ * Returns `{ y, hit }` — `hit=false` and `y=anchorAlt` when tiles are
+ * not yet loaded so callers can fall back gracefully.
+ */
+export function raycastTerrainGeo(
+  lat: number,
+  lng: number,
+  scene: THREE.Scene,
+  anchor: { lat: number; lng: number; alt: number },
+  startHeight = 2000,
+): { y: number; hit: boolean } {
+  const local = geoToLocalSync(lat, lng, startHeight, anchor.lat, anchor.lng, anchor.alt);
+  const y = raycastTerrainLocal(local.x, local.z, scene, startHeight);
+  if (y === null) return { y: anchor.alt, hit: false };
+  return { y, hit: true };
+}

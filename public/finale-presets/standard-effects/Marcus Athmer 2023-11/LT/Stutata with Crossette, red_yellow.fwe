@@ -1,0 +1,97 @@
+<?xml version="1.0"?>
+<FireworkEffect xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+  <Children>
+    <BaseEffectNode xsi:type="Shell">
+      <Children>
+        <BaseEffectNode xsi:type="BurstingCharge">
+          <Children>
+            <BaseEffectNode xsi:type="SubShells">
+              <Children>
+                <BaseEffectNode xsi:type="BurstingCharge">
+                  <Children>
+                    <BaseEffectNode xsi:type="Stars">
+                      <Children>
+                        <BaseEffectNode xsi:type="Crossette">
+                          <Children />
+                          <Type>Normal</Type>
+                          <Distribution xsi:type="SphericalDistribution">
+                            <Speed>1</Speed>
+                            <Sigma>0.14</Sigma>
+                          </Distribution>
+                          <Color>
+                            <CustomR>0</CustomR>
+                            <CustomG>0</CustomG>
+                            <CustomB>0</CustomB>
+                            <Color>Yellow</Color>
+                          </Color>
+                          <Color2>
+                            <CustomR>0</CustomR>
+                            <CustomG>0</CustomG>
+                            <CustomB>0</CustomB>
+                            <Color>Orange</Color>
+                          </Color2>
+                          <ColorChanging>false</ColorChanging>
+                          <Count>60</Count>
+                          <MinimumLifetime>1.5</MinimumLifetime>
+                          <MaximumLifetime>2.1</MaximumLifetime>
+                          <Strobe>false</Strobe>
+                          <StrobeFreqMean>14</StrobeFreqMean>
+                        </BaseEffectNode>
+                      </Children>
+                      <Type>Normal</Type>
+                      <Distribution xsi:type="SphericalDistribution">
+                        <Speed>1</Speed>
+                        <Sigma>0.04</Sigma>
+                      </Distribution>
+                      <Color>
+                        <CustomR>0</CustomR>
+                        <CustomG>0</CustomG>
+                        <CustomB>0</CustomB>
+                        <Color>Red</Color>
+                      </Color>
+                      <Color2>
+                        <CustomR>0</CustomR>
+                        <CustomG>0</CustomG>
+                        <CustomB>0</CustomB>
+                        <Color>Orange</Color>
+                      </Color2>
+                      <ColorChanging>false</ColorChanging>
+                      <Count>60</Count>
+                      <MinimumLifetime>2.5</MinimumLifetime>
+                      <MaximumLifetime>4.2</MaximumLifetime>
+                      <Strobe>true</Strobe>
+                      <StrobeFreqMean>31.9</StrobeFreqMean>
+                    </BaseEffectNode>
+                  </Children>
+                  <Auto>false</Auto>
+                  <Energy>44</Energy>
+                  <Delay>1.9</Delay>
+                </BaseEffectNode>
+              </Children>
+              <Count>12</Count>
+            </BaseEffectNode>
+          </Children>
+          <Auto>false</Auto>
+          <Energy>62</Energy>
+          <Delay>4.3</Delay>
+        </BaseEffectNode>
+      </Children>
+      <ID>0</ID>
+      <AllowRenaming>false</AllowRenaming>
+      <SimpleSize>
+        <DiameterPreset>d200</DiameterPreset>
+      </SimpleSize>
+      <SizeSelection>Simple</SizeSelection>
+      <Diameter>0.2</Diameter>
+      <LiftingCharge>128</LiftingCharge>
+    </BaseEffectNode>
+  </Children>
+  <Identifier>
+    <Name>Stutata with Crossette, red/yellow</Name>
+    <Author>LT</Author>
+  </Identifier>
+  <AuthorSoftwareVersion>
+    <Major>2</Major>
+    <Minor>0</Minor>
+  </AuthorSoftwareVersion>
+<HideInLib>true</HideInLib></FireworkEffect>

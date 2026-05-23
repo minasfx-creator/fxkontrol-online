@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { useAddressingStore, DEFAULT_MODULE_SPECS, type AddressSortMode } from '@/store/useAddressingStore';
 import { useProjectStore } from '@/store/useProjectStore';
 import { EFFECT_LIBRARY } from '@/data/effectLibrary';
+import { findEffectById } from '@/data/effectsLibraries/resolveEffect';
 import { useRackStore } from '@/store/useRackStore';
 import { useFireOneHardware } from '@/hooks/useFireOneHardware';
 import { cn } from '@/lib/utils';
@@ -49,14 +50,14 @@ export default function AddressingPanel({ onClose }: { onClose: () => void }) {
   // Build sorted address list
   const sortedItems = useMemo(() => {
     const pyroItems = timelineItems
-      .filter(i => EFFECT_LIBRARY.find(e => e.id === i.effectId)?.type === 'firework')
+      .filter(i => findEffectById(i.effectId)?.type === 'firework')
       .sort((a, b) => a.startTime - b.startTime);
 
     const addrMap = new Map(addresses.map(a => [a.timelineItemId, a]));
 
     const items = pyroItems.map(item => ({
       item,
-      effect: EFFECT_LIBRARY.find(e => e.id === item.effectId)!,
+      effect: findEffectById(item.effectId)!,
       addr: addrMap.get(item.id),
     }));
 

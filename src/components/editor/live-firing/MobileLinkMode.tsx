@@ -1,6 +1,6 @@
 /**
  * MobileLinkMode — FireOne XL4+ Style Remote Firing Console
- * 
+ *
  * Inspired by the FireOne XL4+ hardware:
  * - Master Key Switch (ARM/SAFE)
  * - 4 independent outputs with redundancy
@@ -147,7 +147,7 @@ export default function MobileLinkMode({ fs, fireChannel, channels, artNetConnec
   const [xl4Mode, setXl4Mode] = useState<XL4Mode>('manual');
   const [keyInserted, setKeyInserted] = useState(false);
   const [selectedModule, setSelectedModule] = useState(1);
-  
+
   const [modules, setModules] = useState<FieldModule[]>(() => {
     try {
       const saved = localStorage.getItem(MODULES_KEY);

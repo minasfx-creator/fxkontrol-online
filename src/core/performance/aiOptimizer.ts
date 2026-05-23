@@ -6,7 +6,6 @@
  */
 
 import { autoScaler, type QualityTier } from '@/core/reliability/autoScaler';
-import { logger } from '@/lib/logger';
 
 export interface PerformanceSnapshot {
   fps: number;
@@ -62,7 +61,7 @@ class AIOptimizer {
     if (this._enabled) return;
     this._enabled = true;
     this.errorWindowStart = Date.now();
-    logger.dev('[AIOptimizer] Started — monitoring performance patterns');
+    console.log('[AIOptimizer] Started — monitoring performance patterns');
   }
 
   stop(): void {
@@ -137,7 +136,7 @@ class AIOptimizer {
     autoScaler.setTier(profile.tier);
     profile.timesApplied++;
 
-    logger.dev(`[AIOptimizer] Scenario: ${scenario} → applied profile "${profile.name}" (tier: ${profile.tier})`);
+    console.log(`[AIOptimizer] Scenario: ${scenario} → applied profile "${profile.name}" (tier: ${profile.tier})`);
 
     for (const l of this.listeners) {
       try { l(scenario, profile); } catch { /* no-op */ }
@@ -160,7 +159,7 @@ class AIOptimizer {
       const idx = tiers.indexOf(profile.tier);
       if (idx < tiers.length - 1) {
         profile.tier = tiers[idx + 1];
-        logger.dev(`[AIOptimizer] Learned: ${scenario} needs lower tier → ${profile.tier}`);
+        console.log(`[AIOptimizer] Learned: ${scenario} needs lower tier → ${profile.tier}`);
       }
     }
 
@@ -170,7 +169,7 @@ class AIOptimizer {
       const idx = tiers.indexOf(profile.tier);
       if (idx > 0) {
         profile.tier = tiers[idx - 1];
-        logger.dev(`[AIOptimizer] Learned: ${scenario} can handle higher tier → ${profile.tier}`);
+        console.log(`[AIOptimizer] Learned: ${scenario} can handle higher tier → ${profile.tier}`);
       }
     }
 
@@ -205,7 +204,7 @@ class AIOptimizer {
         for (const [key, profile] of Object.entries(data)) {
           this.profiles.set(key as ScenarioType, profile);
         }
-        logger.dev('[AIOptimizer] Loaded learned profiles from storage');
+        console.log('[AIOptimizer] Loaded learned profiles from storage');
       }
     } catch { /* ignore */ }
   }
