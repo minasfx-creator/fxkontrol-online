@@ -1,4 +1,5 @@
 import { Toaster } from "@/components/ui/toaster";
+import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, HashRouter, Routes, Route, Navigate, useLocation, useSearchParams } from "react-router-dom";
@@ -8,119 +9,24 @@ import { BrowserRouter, HashRouter, Routes, Route, Navigate, useLocation, useSea
 const AppRouter = (window as any).electronBridge ? HashRouter : BrowserRouter;
 import { AuthProvider, useAuth } from "@/hooks/useAuth";
 import { lazy, Suspense } from "react";
+import MainLayout from "@/layouts/MainLayout";
 import PageTransitionOverlay from "@/components/ui/PageTransitionOverlay";
-import { LazyChunkBoundary } from "@/components/errors/LazyChunkBoundary";
-import { AppErrorBoundary } from "@/components/errors/AppErrorBoundary";
-import CanvasLoaderWithTimeout from "@/components/editor/CanvasLoaderWithTimeout";
-
-// Route-level Suspense fallback. Same timeout-aware loader used inside Studio,
-// so a stalled route-level dynamic import surfaces a "Reload Studio" button
-// after 8s instead of leaving the user trapped on a spinner.
-function RouteLoaderWithTimeout() {
-  return (
-    <div className="min-h-[100dvh] w-full">
-      <CanvasLoaderWithTimeout timeoutMs={8000} label="Loading..." />
-    </div>
-  );
-}
-
-// MainLayout + UpgradeDialog are lazy-split so the public routes
-// (/landing, /auth, /legal/*, /pricing) don't pay for the dashboard
-// chrome (Sidebar, DockBar, Tactical UI) on first load.
-const MainLayout = lazy(() => import("@/layouts/MainLayout"));
-const UpgradeDialog = lazy(() => import("@/components/upgrade/UpgradeDialog"));
-const SonnerToaster = lazy(() =>
-  import("@/components/ui/sonner").then((m) => ({ default: m.Toaster })),
-);
-
-import { lazyRetry } from "@/lib/lazyRetry";
-import { isEnabled } from "@/lib/featureFlags";
-import { useRouteTracing } from "@/observability/useRouteTracing";
-// Profiler is dev-only and lazy so production rota pública doesn't ship it.
-import { useHardwareSyncLoop } from "@/hooks/useHardwareSyncLoop";
-import { startDiscoveryRegistryBridge } from "@/core/hardware/discoveryRegistryBridge";
-
-const PlaybackProfilerProvider = lazy(() =>
-  import("@/core/performance/PlaybackProfilerProvider").then((m) => ({ default: m.PlaybackProfilerProvider })),
-);
-const PlaybackProfilerPanel = lazy(() =>
-  import("@/components/dev/PlaybackProfilerPanel").then((m) => ({ default: m.PlaybackProfilerPanel })),
-);
-const IS_DEV = import.meta.env.DEV;
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
 
-const Install = lazy(lazyRetry(() => import("./pages/Install")));
-const UsbPairingWizard = lazy(lazyRetry(() => import("./pages/UsbPairingWizard")));
-const BlePairingWizard = lazy(lazyRetry(() => import("./pages/BlePairingWizard")));
-const FireOneXL4PairingWizard = lazy(lazyRetry(() => import("./pages/FireOneXL4PairingWizard")));
-const PairingWizard = lazy(lazyRetry(() => import("./pages/PairingWizard")));
-const RealDiscoveryProbe = lazy(lazyRetry(() => import("./pages/RealDiscoveryProbe")));
-
-// SkyCanvas dev lab — unified harness for smoke / r3f / v2 variants.
-// Substitui as 3 rotas dev (/dev/skycanvas-{smoke,3d,2}) com um único
-// chunk lazy + toggle de variante na própria UI (Rodada 6).
-const SkyCanvasLab = lazy(lazyRetry(() => import("./pages/dev/SkyCanvasLab")));
-const UE5BridgePage = lazy(lazyRetry(() => import("./pages/dev/UE5BridgePage")));
-const VideoEditor = lazy(lazyRetry(() => import("./pages/VideoEditor")));
-const SkyCanvasPage = lazy(lazyRetry(() => import("./pages/SkyCanvas")));
-const DesignSystemShowcase = lazy(lazyRetry(() => import("./pages/dev/DesignSystemShowcase")));
-const EditorShellPreview = lazy(lazyRetry(() => import("./pages/dev/EditorShellPreview")));
-const ReadinessAudit = lazy(lazyRetry(() => import("./pages/dev/ReadinessAudit")));
-const ModuleRoster = lazy(lazyRetry(() => import("./pages/dev/ModuleRoster")));
-const E2ETestPage = lazy(lazyRetry(() => import("./pages/dev/E2ETestPage")));
-const GoldenShowsCatalog = lazy(lazyRetry(() => import("./pages/dev/GoldenShows")));
-const BlackBoxInspector = lazy(lazyRetry(() => import("./pages/dev/BlackBoxInspector")));
-const CueConflictsPage = lazy(lazyRetry(() => import("./pages/dev/CueConflicts")));
-const AddressingPage = lazy(lazyRetry(() => import("./pages/dev/Addressing")));
-const PerfBenchPage = lazy(lazyRetry(() => import("./pages/dev/PerfBench")));
-const EffectsLibrariesPage = lazy(lazyRetry(() => import("./pages/dev/EffectsLibraries")));
-
-const FXK16Hub = lazy(lazyRetry(() => import("./pages/dev/FXK16Hub")));
-const FXK32QHub = lazy(lazyRetry(() => import("./pages/dev/FXK32QHub")));
-const DevIndex = lazy(lazyRetry(() => import("./pages/dev/DevIndex")));
-
-// Office — consolidated productivity area (Etapa 1 do refactor 3-áreas)
-const Office = lazy(lazyRetry(() => import("./pages/Office")));
-
-// Create-flow (Action Layer) — Blueprint UX entry funnel
-const Create = lazy(lazyRetry(() => import("./pages/Create")));
-const CreateBlank = lazy(lazyRetry(() => import("./pages/create/CreateBlank")));
-const CreateTemplate = lazy(lazyRetry(() => import("./pages/create/CreateTemplate")));
-const CreateGenerate = lazy(lazyRetry(() => import("./pages/create/CreateGenerate")));
-
 // Lazy-loaded heavy pages
-// NOTE: legacy `pages/Index.tsx` aposentado na Rodada 4. /studio, /editor e
-// /editor/:showId agora redirecionam para /skycanvas (surface canônica DS v1).
-const CommandCenter = lazy(lazyRetry(() => import("./pages/CommandCenter")));
-
-// Field ops console — wraps DevicePairing + FieldTest + MobileLinkPanel as tabs.
-const FieldOps = lazy(lazyRetry(() => import("./pages/FieldOps")));
-const Settings = lazy(lazyRetry(() => import("./pages/Settings")));
-const PlatformStatus = lazy(lazyRetry(() => import("./pages/PlatformStatus")));
-// Legacy AI pages (SwarmGPT / AIChoreography) consolidated under /ai-builder.
-const AIBuilder = lazy(lazyRetry(() => import("./pages/AIBuilder")));
-const DmxPyroDiagnostics = lazy(lazyRetry(() => import("./components/diagnostics/DmxPyroDiagnostics")));
-const NetworkSettings = lazy(lazyRetry(() => import("./pages/NetworkSettings")));
-const Terms = lazy(lazyRetry(() => import("./pages/legal/Terms")));
-const Refund = lazy(lazyRetry(() => import("./pages/legal/Refund")));
-const Privacy = lazy(lazyRetry(() => import("./pages/legal/Privacy")));
-const CheckoutSuccess = lazy(lazyRetry(() => import("./pages/CheckoutSuccess")));
-const Pricing = lazy(lazyRetry(() => import("./pages/Pricing")));
-const Landing = lazy(lazyRetry(() => import("./pages/Landing")));
-const Manifesto = lazy(lazyRetry(() => import("./pages/Manifesto")));
-const Comercial = lazy(lazyRetry(() => import("./pages/Comercial")));
-const IOSReadiness = lazy(lazyRetry(() => import("./pages/IOSReadiness")));
-const Unsubscribe = lazy(lazyRetry(() => import("./pages/Unsubscribe")));
-const Strategy = lazy(lazyRetry(() => import("./pages/Strategy")));
-const TrainingCenter = lazy(lazyRetry(() => import("./pages/TrainingCenter")));
-const PitchUS = lazy(lazyRetry(() => import("./pages/PitchUS")));
+const Index = lazy(() => import("./pages/Index"));
+const PCBViewer = lazy(() => import("./pages/PCBViewer"));
+const CommandCenter = lazy(() => import("./pages/CommandCenter"));
+const ShowTestSimulator = lazy(() => import("./pages/ShowTestSimulator"));
+const Settings = lazy(() => import("./pages/Settings"));
+const FestivalStageDemo = lazy(() => import("./pages/FestivalStageDemo"));
+const PairingTwoWire = lazy(() => import("./pages/PairingTwoWire"));
 
 const queryClient = new QueryClient();
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
-  const location = useLocation();
   if (loading) {
     return (
       <div className="min-h-[100dvh] w-full flex items-center justify-center bg-background">
@@ -128,58 +34,39 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
       </div>
     );
   }
-  if (!user) {
-    // Preserve where the user was trying to go so AuthRoute can resume there
-    // post-login. Skip preservation for entry / public routes — landing back
-    // there after login is never useful.
-    const path = location.pathname;
-    const skip = path === '/' || path === '/landing' || path === '/auth';
-    const next = skip ? '' : `${path}${location.search}${location.hash}`;
-    const search = next ? `?next=${encodeURIComponent(next)}` : '';
-    return <Navigate to={`/auth${search}`} replace />;
-  }
-  return <>{children}</>;
+  return user ? <>{children}</> : <Navigate to="/auth" replace />;
 }
 
 function AuthRoute({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
-  const [params] = useSearchParams();
   if (loading) return null;
-  if (user) {
-    // New pipeline: post-auth, land on Office Dashboard (overview tab) so the
-    // user always starts from the central hub. Safe deep-links are honored.
-    const raw = params.get('next');
-    const safe =
-      raw &&
-      raw.startsWith('/') &&
-      !raw.startsWith('//') &&
-      raw !== '/' &&
-      !raw.startsWith('/auth') &&
-      !raw.startsWith('/landing');
-    const target = safe ? raw! : '/office?tab=overview';
-    return <Navigate to={target} replace />;
-  }
-  return <>{children}</>;
-}
-
-function RouteTracker() {
-  useRouteTracing();
-  return null;
+  return user ? <Navigate to="/" replace /> : <>{children}</>;
 }
 
 function App() {
-  useHardwareSyncLoop(44);
-  // Boot the Discovery → Registry bridge once. Idempotent.
-  // Promotes FXK16ModuleAdapter provenance on real handshake.
-  startDiscoveryRegistryBridge();
   return (
-    <AppErrorBoundary>
-      <QueryClientProvider client={queryClient}>
-        <AuthProvider>
-          <TooltipProvider>
-            <Toaster />
-            <Suspense fallback={null}>
-              <SonnerToaster />
+    <QueryClientProvider client={queryClient}>
+      <AuthProvider>
+        <TooltipProvider>
+          <Toaster />
+          <Sonner />
+          <BrowserRouter>
+            <PageTransitionOverlay />
+            <Suspense fallback={<div className="min-h-[100dvh] w-full flex items-center justify-center bg-background"><div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" /></div>}>
+              <Routes>
+                <Route path="/auth" element={<AuthRoute><Auth /></AuthRoute>} />
+                <Route element={<ProtectedRoute><MainLayout /></ProtectedRoute>}>
+                  <Route path="/" element={<Navigate to="/editor" replace />} />
+                  <Route path="/editor" element={<Index />} />
+                  <Route path="/pcb-viewer" element={<PCBViewer />} />
+                  <Route path="/command" element={<CommandCenter />} />
+                  <Route path="/show-test" element={<ShowTestSimulator />} />
+                  <Route path="/settings" element={<Settings />} />
+                  <Route path="/festival-stage-demo" element={<FestivalStageDemo />} />
+                  <Route path="/pairing/two-wire" element={<PairingTwoWire />} />
+                </Route>
+                <Route path="*" element={<NotFound />} />
+              </Routes>
             </Suspense>
             <AppRouter>
               <RouteTracker />

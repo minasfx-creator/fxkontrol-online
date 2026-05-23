@@ -1,0 +1,997 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<FireworkEffect xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+  <Children>
+    <BaseEffectNode xsi:type="Cake">
+      <Children>
+        <BaseEffectNode xsi:type="Shell">
+          <Children>
+            <BaseEffectNode xsi:type="AscentStar">
+              <Children />
+              <Color>
+                <CustomR>0</CustomR>
+                <CustomG>0</CustomG>
+                <CustomB>0</CustomB>
+                <Color>Spark</Color>
+              </Color>
+              <FI xsi:type="FadeInfo">
+                <A>0.26873857</A>
+                <B>0.535649</B>
+                <C>0.90859234</C>
+                <D>0.999</D>
+              </FI>
+              <SizeInPercent>120</SizeInPercent>
+              <CanOverrideColor>false</CanOverrideColor>
+            </BaseEffectNode>
+            <BaseEffectNode xsi:type="AscentEffect">
+              <Children />
+              <EmitStart>0.03</EmitStart>
+              <EmitEnd>1</EmitEnd>
+              <Density>250</Density>
+              <Width>2</Width>
+              <Type>Sparks</Type>
+              <Color>
+                <CustomR>0</CustomR>
+                <CustomG>0</CustomG>
+                <CustomB>0</CustomB>
+                <Color>Spark</Color>
+              </Color>
+              <Life>0.15</Life>
+              <LifeSigma>0.5</LifeSigma>
+              <Strobe>false</Strobe>
+              <StrobeFreqMean>14</StrobeFreqMean>
+              <StarSizeFactor>0.7</StarSizeFactor>
+              <Crackle>false</Crackle>
+            </BaseEffectNode>
+            <BaseEffectNode xsi:type="AscentEffect">
+              <Children />
+              <EmitStart>0.03</EmitStart>
+              <EmitEnd>1</EmitEnd>
+              <Density>250</Density>
+              <Width>2</Width>
+              <Type>Sparks</Type>
+              <Color>
+                <CustomR>0</CustomR>
+                <CustomG>0</CustomG>
+                <CustomB>0</CustomB>
+                <Color>Spark</Color>
+              </Color>
+              <Life>0.3</Life>
+              <LifeSigma>0.35</LifeSigma>
+              <Strobe>false</Strobe>
+              <StrobeFreqMean>14</StrobeFreqMean>
+              <StarSizeFactor>0.7</StarSizeFactor>
+              <Crackle>false</Crackle>
+            </BaseEffectNode>
+            <BaseEffectNode xsi:type="AscentEffect">
+              <Children />
+              <EmitStart>0.03</EmitStart>
+              <EmitEnd>1</EmitEnd>
+              <Density>60</Density>
+              <Width>0.6</Width>
+              <Type>Sparks</Type>
+              <Color>
+                <CustomR>255</CustomR>
+                <CustomG>184</CustomG>
+                <CustomB>113</CustomB>
+                <Color>Custom</Color>
+              </Color>
+              <Life>0.5</Life>
+              <LifeSigma>0.6</LifeSigma>
+              <Strobe>false</Strobe>
+              <StrobeFreqMean>14</StrobeFreqMean>
+              <StarSizeFactor>0.5</StarSizeFactor>
+              <Crackle>false</Crackle>
+            </BaseEffectNode>
+            <BaseEffectNode xsi:type="AscentEffect">
+              <Children />
+              <EmitStart>0.03</EmitStart>
+              <EmitEnd>1</EmitEnd>
+              <Density>50</Density>
+              <Width>0.8</Width>
+              <Type>Sparks</Type>
+              <Color>
+                <CustomR>255</CustomR>
+                <CustomG>184</CustomG>
+                <CustomB>113</CustomB>
+                <Color>Custom</Color>
+              </Color>
+              <Life>0.4</Life>
+              <LifeSigma>0.65</LifeSigma>
+              <Strobe>false</Strobe>
+              <StrobeFreqMean>14</StrobeFreqMean>
+              <StarSizeFactor>0.5</StarSizeFactor>
+              <Crackle>false</Crackle>
+            </BaseEffectNode>
+            <BaseEffectNode xsi:type="AscentEffect">
+              <Children />
+              <EmitStart>0.03</EmitStart>
+              <EmitEnd>1</EmitEnd>
+              <Density>30</Density>
+              <Width>1.2</Width>
+              <Type>Sparks</Type>
+              <Color>
+                <CustomR>130</CustomR>
+                <CustomG>65</CustomG>
+                <CustomB>0</CustomB>
+                <Color>Custom</Color>
+              </Color>
+              <Life>0.6</Life>
+              <LifeSigma>0.65</LifeSigma>
+              <Strobe>false</Strobe>
+              <StrobeFreqMean>14</StrobeFreqMean>
+              <StarSizeFactor>0.5</StarSizeFactor>
+              <Crackle>false</Crackle>
+            </BaseEffectNode>
+            <BaseEffectNode xsi:type="AscentEffect">
+              <Children />
+              <EmitStart>0.03</EmitStart>
+              <EmitEnd>1</EmitEnd>
+              <Density>200</Density>
+              <Width>1.3</Width>
+              <Type>Sparks</Type>
+              <Color>
+                <CustomR>0</CustomR>
+                <CustomG>0</CustomG>
+                <CustomB>0</CustomB>
+                <Color>Spark</Color>
+              </Color>
+              <Life>0.4</Life>
+              <LifeSigma>1.17</LifeSigma>
+              <Strobe>false</Strobe>
+              <StrobeFreqMean>14</StrobeFreqMean>
+              <StarSizeFactor>0.5</StarSizeFactor>
+              <Crackle>false</Crackle>
+            </BaseEffectNode>
+            <BaseEffectNode xsi:type="AscentEffect">
+              <Children />
+              <EmitStart>0.03</EmitStart>
+              <EmitEnd>1</EmitEnd>
+              <Density>250</Density>
+              <Width>2</Width>
+              <Type>Sparks</Type>
+              <Color>
+                <CustomR>0</CustomR>
+                <CustomG>0</CustomG>
+                <CustomB>0</CustomB>
+                <Color>Spark</Color>
+              </Color>
+              <Life>0.3</Life>
+              <LifeSigma>0.35</LifeSigma>
+              <Strobe>false</Strobe>
+              <StrobeFreqMean>14</StrobeFreqMean>
+              <StarSizeFactor>0.7</StarSizeFactor>
+              <Crackle>false</Crackle>
+            </BaseEffectNode>
+            <BaseEffectNode xsi:type="BurstingCharge">
+              <Children>
+                <BaseEffectNode xsi:type="Stars">
+                  <Children />
+                  <Count>36</Count>
+                  <Distribution xsi:type="SphericalDistribution">
+                    <Speed>1</Speed>
+                    <Sigma>0.14</Sigma>
+                    <PositionSigma>1</PositionSigma>
+                    <Rotation>
+                      <XAxis>0</XAxis>
+                      <YAxis>0</YAxis>
+                      <ZAxis>0</ZAxis>
+                    </Rotation>
+                  </Distribution>
+                  <Phases>
+                    <StarPhase>
+                      <Color>
+                        <CustomR>0</CustomR>
+                        <CustomG>0</CustomG>
+                        <CustomB>0</CustomB>
+                        <Color>Red</Color>
+                      </Color>
+                      <Strobe>false</Strobe>
+                      <StrobeFreqMean>14</StrobeFreqMean>
+                    </StarPhase>
+                  </Phases>
+                  <Color>
+                    <CustomR>0</CustomR>
+                    <CustomG>0</CustomG>
+                    <CustomB>0</CustomB>
+                    <Color>Red</Color>
+                  </Color>
+                  <Type>Small</Type>
+                  <Birthtime>0</Birthtime>
+                  <BirthtimeSigmaRatio>0.1</BirthtimeSigmaRatio>
+                  <MinimumLifetime>0.7</MinimumLifetime>
+                  <MaximumLifetime>1.2</MaximumLifetime>
+                  <CustomDimmcurve>true</CustomDimmcurve>
+                  <FadeRatios>
+                    <A>0.13207547</A>
+                    <B>0.49245283</B>
+                    <C>0.7566038</C>
+                    <D>1</D>
+                  </FadeRatios>
+                  <Strobe>false</Strobe>
+                  <StrobeFreqMean>14</StrobeFreqMean>
+                  <CanOverrideColor>true</CanOverrideColor>
+                  <ColorChanging>false</ColorChanging>
+                  <Color2>
+                    <CustomR>0</CustomR>
+                    <CustomG>0</CustomG>
+                    <CustomB>0</CustomB>
+                    <Color>Orange</Color>
+                  </Color2>
+                  <StrobeSynchronous>false</StrobeSynchronous>
+                </BaseEffectNode>
+                <BaseEffectNode xsi:type="Stars">
+                  <Children />
+                  <Count>36</Count>
+                  <Distribution xsi:type="SphericalDistribution">
+                    <Speed>1</Speed>
+                    <Sigma>0.14</Sigma>
+                    <PositionSigma>1</PositionSigma>
+                    <Rotation>
+                      <XAxis>0</XAxis>
+                      <YAxis>0</YAxis>
+                      <ZAxis>0</ZAxis>
+                    </Rotation>
+                  </Distribution>
+                  <Phases>
+                    <StarPhase>
+                      <Color>
+                        <CustomR>0</CustomR>
+                        <CustomG>0</CustomG>
+                        <CustomB>0</CustomB>
+                        <Color>DarkGreen</Color>
+                      </Color>
+                      <Strobe>false</Strobe>
+                      <StrobeFreqMean>14</StrobeFreqMean>
+                    </StarPhase>
+                  </Phases>
+                  <Color>
+                    <CustomR>0</CustomR>
+                    <CustomG>0</CustomG>
+                    <CustomB>0</CustomB>
+                    <Color>DarkGreen</Color>
+                  </Color>
+                  <Type>Small</Type>
+                  <Birthtime>0</Birthtime>
+                  <BirthtimeSigmaRatio>0.1</BirthtimeSigmaRatio>
+                  <MinimumLifetime>0.7</MinimumLifetime>
+                  <MaximumLifetime>1.37</MaximumLifetime>
+                  <CustomDimmcurve>true</CustomDimmcurve>
+                  <FadeRatios>
+                    <A>0.11132076</A>
+                    <B>0.33773586</B>
+                    <C>0.68679243</C>
+                    <D>1</D>
+                  </FadeRatios>
+                  <Strobe>false</Strobe>
+                  <StrobeFreqMean>14</StrobeFreqMean>
+                  <CanOverrideColor>true</CanOverrideColor>
+                  <ColorChanging>false</ColorChanging>
+                  <Color2>
+                    <CustomR>0</CustomR>
+                    <CustomG>0</CustomG>
+                    <CustomB>0</CustomB>
+                    <Color>Orange</Color>
+                  </Color2>
+                  <StrobeSynchronous>false</StrobeSynchronous>
+                </BaseEffectNode>
+              </Children>
+              <Auto>false</Auto>
+              <Energy>72</Energy>
+              <Color>
+                <CustomR>0</CustomR>
+                <CustomG>0</CustomG>
+                <CustomB>0</CustomB>
+                <Color>Spark</Color>
+              </Color>
+              <ChangeColor>false</ChangeColor>
+              <Sound>true</Sound>
+              <Render>true</Render>
+              <Delay>2.2400002</Delay>
+              <TestSound>false</TestSound>
+            </BaseEffectNode>
+          </Children>
+          <ID>1</ID>
+          <AllowRenaming>true</AllowRenaming>
+          <UserDefinedName>Aquila (Single Shot)</UserDefinedName>
+          <SimpleSize>
+            <DiameterPreset>d75</DiameterPreset>
+          </SimpleSize>
+          <SizeSelection>Simple</SizeSelection>
+          <Diameter>0.075</Diameter>
+          <LiftingCharge>105</LiftingCharge>
+          <Stabilizer>false</Stabilizer>
+        </BaseEffectNode>
+        <BaseEffectNode xsi:type="Shell">
+          <Children>
+            <BaseEffectNode xsi:type="BurstingCharge">
+              <Children>
+                <BaseEffectNode xsi:type="Stars">
+                  <Children>
+                    <BaseEffectNode xsi:type="CustomTailsLink">
+                      <Children />
+                      <ComponentID>
+                        <Name>Brocade (short, thin)</Name>
+                        <Author>Marcus Athmer</Author>
+                      </ComponentID>
+                      <Component>
+                        <AuthorSoftwareVersion>
+                          <Major>3</Major>
+                          <Minor>2</Minor>
+                          <Build>0</Build>
+                          <Revision>101</Revision>
+                        </AuthorSoftwareVersion>
+                        <Inserts>
+                          <BaseEffectNode xsi:type="StarTails">
+                            <Children />
+                            <EmitStart>0.05</EmitStart>
+                            <EmitEnd>1</EmitEnd>
+                            <Density>125</Density>
+                            <Width>0.5</Width>
+                            <Type>Sparks</Type>
+                            <Color>
+                              <CustomR>255</CustomR>
+                              <CustomG>226</CustomG>
+                              <CustomB>174</CustomB>
+                              <Color>Custom</Color>
+                            </Color>
+                            <Life>0.4</Life>
+                            <LifeSigma>0.1</LifeSigma>
+                            <Strobe>false</Strobe>
+                            <StrobeFreqMean>2.5</StrobeFreqMean>
+                            <StarSizeFactor>0.7</StarSizeFactor>
+                            <Crackle>false</Crackle>
+                          </BaseEffectNode>
+                          <BaseEffectNode xsi:type="StarTails">
+                            <Children />
+                            <EmitStart>0.05</EmitStart>
+                            <EmitEnd>1</EmitEnd>
+                            <Density>54</Density>
+                            <Width>0.3</Width>
+                            <Type>Sparks</Type>
+                            <Color>
+                              <CustomR>98</CustomR>
+                              <CustomG>49</CustomG>
+                              <CustomB>0</CustomB>
+                              <Color>Custom</Color>
+                            </Color>
+                            <Life>1.1</Life>
+                            <LifeSigma>0.5</LifeSigma>
+                            <Strobe>false</Strobe>
+                            <StrobeFreqMean>14</StrobeFreqMean>
+                            <StarSizeFactor>0.54</StarSizeFactor>
+                            <Crackle>false</Crackle>
+                          </BaseEffectNode>
+                          <BaseEffectNode xsi:type="StarTails">
+                            <Children />
+                            <EmitStart>0.05</EmitStart>
+                            <EmitEnd>1</EmitEnd>
+                            <Density>26</Density>
+                            <Width>0.3</Width>
+                            <Type>Sparks</Type>
+                            <Color>
+                              <CustomR>147</CustomR>
+                              <CustomG>73</CustomG>
+                              <CustomB>0</CustomB>
+                              <Color>Custom</Color>
+                            </Color>
+                            <Life>0.5</Life>
+                            <LifeSigma>0.65</LifeSigma>
+                            <Strobe>false</Strobe>
+                            <StrobeFreqMean>2.7</StrobeFreqMean>
+                            <StarSizeFactor>0.5</StarSizeFactor>
+                            <Crackle>false</Crackle>
+                          </BaseEffectNode>
+                          <BaseEffectNode xsi:type="StarTails">
+                            <Children />
+                            <EmitStart>0.05</EmitStart>
+                            <EmitEnd>1</EmitEnd>
+                            <Density>4</Density>
+                            <Width>1.6</Width>
+                            <Type>Sparks</Type>
+                            <Color>
+                              <CustomR>166</CustomR>
+                              <CustomG>83</CustomG>
+                              <CustomB>0</CustomB>
+                              <Color>Custom</Color>
+                            </Color>
+                            <Life>0.75</Life>
+                            <LifeSigma>0.14</LifeSigma>
+                            <Strobe>false</Strobe>
+                            <StrobeFreqMean>2.7</StrobeFreqMean>
+                            <StarSizeFactor>0.5</StarSizeFactor>
+                            <Crackle>false</Crackle>
+                          </BaseEffectNode>
+                          <BaseEffectNode xsi:type="StarTails">
+                            <Children />
+                            <EmitStart>0.05</EmitStart>
+                            <EmitEnd>1</EmitEnd>
+                            <Density>5</Density>
+                            <Width>0.6</Width>
+                            <Type>Sparks</Type>
+                            <Color>
+                              <CustomR>255</CustomR>
+                              <CustomG>226</CustomG>
+                              <CustomB>174</CustomB>
+                              <Color>Custom</Color>
+                            </Color>
+                            <Life>1.5</Life>
+                            <LifeSigma>0.17</LifeSigma>
+                            <Strobe>true</Strobe>
+                            <StrobeFreqMean>9</StrobeFreqMean>
+                            <StarSizeFactor>1</StarSizeFactor>
+                            <Crackle>false</Crackle>
+                          </BaseEffectNode>
+                          <BaseEffectNode xsi:type="StarTails">
+                            <Children />
+                            <EmitStart>0.05</EmitStart>
+                            <EmitEnd>1</EmitEnd>
+                            <Density>100</Density>
+                            <Width>0.5</Width>
+                            <Type>Sparks</Type>
+                            <Color>
+                              <CustomR>255</CustomR>
+                              <CustomG>226</CustomG>
+                              <CustomB>174</CustomB>
+                              <Color>Custom</Color>
+                            </Color>
+                            <Life>0.25</Life>
+                            <LifeSigma>0.1</LifeSigma>
+                            <Strobe>false</Strobe>
+                            <StrobeFreqMean>2.5</StrobeFreqMean>
+                            <StarSizeFactor>0.7</StarSizeFactor>
+                            <Crackle>false</Crackle>
+                          </BaseEffectNode>
+                        </Inserts>
+                        <BaseID>
+                          <Name>Brocade (short, thin)</Name>
+                          <Author>Marcus Athmer</Author>
+                        </BaseID>
+                        <ReadOnly>true</ReadOnly>
+                        <InternalUseOnly>false</InternalUseOnly>
+                      </Component>
+                      <Items />
+                      <EmitStartOffset>0</EmitStartOffset>
+                      <EmitEndOffset>0</EmitEndOffset>
+                    </BaseEffectNode>
+                  </Children>
+                  <Count>36</Count>
+                  <Distribution xsi:type="SphericalDistribution">
+                    <Speed>1</Speed>
+                    <Sigma>0.14</Sigma>
+                    <PositionSigma>1</PositionSigma>
+                    <Rotation>
+                      <XAxis>0</XAxis>
+                      <YAxis>0</YAxis>
+                      <ZAxis>0</ZAxis>
+                    </Rotation>
+                  </Distribution>
+                  <Phases>
+                    <StarPhase>
+                      <Color>
+                        <CustomR>0</CustomR>
+                        <CustomG>0</CustomG>
+                        <CustomB>0</CustomB>
+                        <Color>Invisible</Color>
+                      </Color>
+                      <Strobe>false</Strobe>
+                      <StrobeFreqMean>14</StrobeFreqMean>
+                    </StarPhase>
+                  </Phases>
+                  <Color>
+                    <CustomR>0</CustomR>
+                    <CustomG>0</CustomG>
+                    <CustomB>0</CustomB>
+                    <Color>Invisible</Color>
+                  </Color>
+                  <Type>Large</Type>
+                  <Birthtime>0</Birthtime>
+                  <BirthtimeSigmaRatio>0.1</BirthtimeSigmaRatio>
+                  <MinimumLifetime>0.7</MinimumLifetime>
+                  <MaximumLifetime>2</MaximumLifetime>
+                  <CustomDimmcurve>false</CustomDimmcurve>
+                  <FadeRatios>
+                    <A>0.43584907</A>
+                    <B>0.61132073</B>
+                    <C>0.9150943</C>
+                    <D>1</D>
+                  </FadeRatios>
+                  <Strobe>false</Strobe>
+                  <StrobeFreqMean>14</StrobeFreqMean>
+                  <CanOverrideColor>true</CanOverrideColor>
+                  <ColorChanging>false</ColorChanging>
+                  <Color2>
+                    <CustomR>0</CustomR>
+                    <CustomG>0</CustomG>
+                    <CustomB>0</CustomB>
+                    <Color>Orange</Color>
+                  </Color2>
+                  <StrobeSynchronous>false</StrobeSynchronous>
+                </BaseEffectNode>
+              </Children>
+              <Auto>false</Auto>
+              <Energy>72</Energy>
+              <Color>
+                <CustomR>0</CustomR>
+                <CustomG>0</CustomG>
+                <CustomB>0</CustomB>
+                <Color>Spark</Color>
+              </Color>
+              <ChangeColor>true</ChangeColor>
+              <Sound>true</Sound>
+              <Render>true</Render>
+              <Delay>2.2</Delay>
+              <TestSound>false</TestSound>
+            </BaseEffectNode>
+            <BaseEffectNode xsi:type="AscentEffect">
+              <Children />
+              <EmitStart>0.03</EmitStart>
+              <EmitEnd>1</EmitEnd>
+              <Density>125</Density>
+              <Width>0.5</Width>
+              <Type>Sparks</Type>
+              <Color>
+                <CustomR>255</CustomR>
+                <CustomG>226</CustomG>
+                <CustomB>174</CustomB>
+                <Color>Custom</Color>
+              </Color>
+              <Life>0.4</Life>
+              <LifeSigma>0.1</LifeSigma>
+              <Strobe>false</Strobe>
+              <StrobeFreqMean>14</StrobeFreqMean>
+              <StarSizeFactor>0.7</StarSizeFactor>
+              <Crackle>false</Crackle>
+            </BaseEffectNode>
+            <BaseEffectNode xsi:type="AscentEffect">
+              <Children />
+              <EmitStart>0.03</EmitStart>
+              <EmitEnd>1</EmitEnd>
+              <Density>54</Density>
+              <Width>0.3</Width>
+              <Type>Sparks</Type>
+              <Color>
+                <CustomR>100</CustomR>
+                <CustomG>50</CustomG>
+                <CustomB>0</CustomB>
+                <Color>Custom</Color>
+              </Color>
+              <Life>1.1</Life>
+              <LifeSigma>0.5</LifeSigma>
+              <Strobe>false</Strobe>
+              <StrobeFreqMean>14</StrobeFreqMean>
+              <StarSizeFactor>0.55</StarSizeFactor>
+              <Crackle>false</Crackle>
+            </BaseEffectNode>
+            <BaseEffectNode xsi:type="AscentEffect">
+              <Children />
+              <EmitStart>0.03</EmitStart>
+              <EmitEnd>1</EmitEnd>
+              <Density>26</Density>
+              <Width>0.3</Width>
+              <Type>Sparks</Type>
+              <Color>
+                <CustomR>151</CustomR>
+                <CustomG>75</CustomG>
+                <CustomB>0</CustomB>
+                <Color>Custom</Color>
+              </Color>
+              <Life>0.5</Life>
+              <LifeSigma>0.65</LifeSigma>
+              <Strobe>false</Strobe>
+              <StrobeFreqMean>14</StrobeFreqMean>
+              <StarSizeFactor>0.5</StarSizeFactor>
+              <Crackle>false</Crackle>
+            </BaseEffectNode>
+            <BaseEffectNode xsi:type="AscentEffect">
+              <Children />
+              <EmitStart>0.03</EmitStart>
+              <EmitEnd>1</EmitEnd>
+              <Density>2</Density>
+              <Width>1.6</Width>
+              <Type>Sparks</Type>
+              <Color>
+                <CustomR>170</CustomR>
+                <CustomG>85</CustomG>
+                <CustomB>0</CustomB>
+                <Color>Custom</Color>
+              </Color>
+              <Life>0.5</Life>
+              <LifeSigma>0.14</LifeSigma>
+              <Strobe>false</Strobe>
+              <StrobeFreqMean>14</StrobeFreqMean>
+              <StarSizeFactor>0.5</StarSizeFactor>
+              <Crackle>false</Crackle>
+            </BaseEffectNode>
+            <BaseEffectNode xsi:type="AscentEffect">
+              <Children />
+              <EmitStart>0.03</EmitStart>
+              <EmitEnd>1</EmitEnd>
+              <Density>5</Density>
+              <Width>0.6</Width>
+              <Type>Sparks</Type>
+              <Color>
+                <CustomR>255</CustomR>
+                <CustomG>226</CustomG>
+                <CustomB>174</CustomB>
+                <Color>Custom</Color>
+              </Color>
+              <Life>1.5</Life>
+              <LifeSigma>0.17</LifeSigma>
+              <Strobe>true</Strobe>
+              <StrobeFreqMean>10.1</StrobeFreqMean>
+              <StarSizeFactor>1</StarSizeFactor>
+              <Crackle>false</Crackle>
+            </BaseEffectNode>
+            <BaseEffectNode xsi:type="AscentEffect">
+              <Children />
+              <EmitStart>0.03</EmitStart>
+              <EmitEnd>1</EmitEnd>
+              <Density>75</Density>
+              <Width>0.5</Width>
+              <Type>Sparks</Type>
+              <Color>
+                <CustomR>255</CustomR>
+                <CustomG>226</CustomG>
+                <CustomB>174</CustomB>
+                <Color>Custom</Color>
+              </Color>
+              <Life>0.25</Life>
+              <LifeSigma>0.15</LifeSigma>
+              <Strobe>false</Strobe>
+              <StrobeFreqMean>10.1</StrobeFreqMean>
+              <StarSizeFactor>0.7</StarSizeFactor>
+              <Crackle>false</Crackle>
+            </BaseEffectNode>
+          </Children>
+          <ID>2</ID>
+          <AllowRenaming>true</AllowRenaming>
+          <UserDefinedName>25 Karat (Single Shot)</UserDefinedName>
+          <SimpleSize>
+            <DiameterPreset>d150</DiameterPreset>
+          </SimpleSize>
+          <SizeSelection>Advanced</SizeSelection>
+          <Diameter>0.075</Diameter>
+          <LiftingCharge>133</LiftingCharge>
+          <Stabilizer>false</Stabilizer>
+        </BaseEffectNode>
+        <BaseEffectNode xsi:type="Shell">
+          <Children>
+            <BaseEffectNode xsi:type="BurstingCharge">
+              <Children>
+                <BaseEffectNode xsi:type="Stars">
+                  <Children>
+                    <BaseEffectNode xsi:type="CustomTailsLink">
+                      <Children />
+                      <ComponentID>
+                        <Name>Silver (short, thin)</Name>
+                        <Author>Marcus Athmer</Author>
+                      </ComponentID>
+                      <Component>
+                        <AuthorSoftwareVersion>
+                          <Major>3</Major>
+                          <Minor>2</Minor>
+                          <Build>0</Build>
+                          <Revision>101</Revision>
+                        </AuthorSoftwareVersion>
+                        <Inserts>
+                          <BaseEffectNode xsi:type="StarTails">
+                            <Children />
+                            <EmitStart>0.05</EmitStart>
+                            <EmitEnd>1</EmitEnd>
+                            <Density>125</Density>
+                            <Width>0.3</Width>
+                            <Type>Sparks</Type>
+                            <Color>
+                              <CustomR>0</CustomR>
+                              <CustomG>0</CustomG>
+                              <CustomB>0</CustomB>
+                              <Color>Spark</Color>
+                            </Color>
+                            <Life>0.25</Life>
+                            <LifeSigma>0.5</LifeSigma>
+                            <Strobe>false</Strobe>
+                            <StrobeFreqMean>2.7</StrobeFreqMean>
+                            <StarSizeFactor>0.7</StarSizeFactor>
+                            <Crackle>false</Crackle>
+                          </BaseEffectNode>
+                          <BaseEffectNode xsi:type="StarTails">
+                            <Children />
+                            <EmitStart>0.05</EmitStart>
+                            <EmitEnd>1</EmitEnd>
+                            <Density>125</Density>
+                            <Width>0.3</Width>
+                            <Type>Sparks</Type>
+                            <Color>
+                              <CustomR>0</CustomR>
+                              <CustomG>0</CustomG>
+                              <CustomB>0</CustomB>
+                              <Color>Spark</Color>
+                            </Color>
+                            <Life>0.4</Life>
+                            <LifeSigma>0.15</LifeSigma>
+                            <Strobe>false</Strobe>
+                            <StrobeFreqMean>2.7</StrobeFreqMean>
+                            <StarSizeFactor>0.7</StarSizeFactor>
+                            <Crackle>false</Crackle>
+                          </BaseEffectNode>
+                          <BaseEffectNode xsi:type="StarTails">
+                            <Children />
+                            <EmitStart>0.05</EmitStart>
+                            <EmitEnd>1</EmitEnd>
+                            <Density>40</Density>
+                            <Width>0.2</Width>
+                            <Type>Sparks</Type>
+                            <Color>
+                              <CustomR>255</CustomR>
+                              <CustomG>192</CustomG>
+                              <CustomB>130</CustomB>
+                              <Color>Custom</Color>
+                            </Color>
+                            <Life>0.8</Life>
+                            <LifeSigma>0.59</LifeSigma>
+                            <Strobe>false</Strobe>
+                            <StrobeFreqMean>14</StrobeFreqMean>
+                            <StarSizeFactor>0.54</StarSizeFactor>
+                            <Crackle>false</Crackle>
+                          </BaseEffectNode>
+                          <BaseEffectNode xsi:type="StarTails">
+                            <Children />
+                            <EmitStart>0.05</EmitStart>
+                            <EmitEnd>1</EmitEnd>
+                            <Density>31</Density>
+                            <Width>0.2</Width>
+                            <Type>Sparks</Type>
+                            <Color>
+                              <CustomR>168</CustomR>
+                              <CustomG>84</CustomG>
+                              <CustomB>0</CustomB>
+                              <Color>Custom</Color>
+                            </Color>
+                            <Life>0.75</Life>
+                            <LifeSigma>0.65</LifeSigma>
+                            <Strobe>false</Strobe>
+                            <StrobeFreqMean>2.7</StrobeFreqMean>
+                            <StarSizeFactor>0.5</StarSizeFactor>
+                            <Crackle>false</Crackle>
+                          </BaseEffectNode>
+                          <BaseEffectNode xsi:type="StarTails">
+                            <Children />
+                            <EmitStart>0.05</EmitStart>
+                            <EmitEnd>1</EmitEnd>
+                            <Density>20</Density>
+                            <Width>0.2</Width>
+                            <Type>Sparks</Type>
+                            <Color>
+                              <CustomR>138</CustomR>
+                              <CustomG>69</CustomG>
+                              <CustomB>0</CustomB>
+                              <Color>Custom</Color>
+                            </Color>
+                            <Life>1</Life>
+                            <LifeSigma>0.66</LifeSigma>
+                            <Strobe>false</Strobe>
+                            <StrobeFreqMean>14</StrobeFreqMean>
+                            <StarSizeFactor>0.54</StarSizeFactor>
+                            <Crackle>false</Crackle>
+                          </BaseEffectNode>
+                          <BaseEffectNode xsi:type="StarTails">
+                            <Children />
+                            <EmitStart>0.05</EmitStart>
+                            <EmitEnd>1</EmitEnd>
+                            <Density>125</Density>
+                            <Width>0.2</Width>
+                            <Type>Sparks</Type>
+                            <Color>
+                              <CustomR>0</CustomR>
+                              <CustomG>0</CustomG>
+                              <CustomB>0</CustomB>
+                              <Color>Spark</Color>
+                            </Color>
+                            <Life>0.5</Life>
+                            <LifeSigma>0.51</LifeSigma>
+                            <Strobe>false</Strobe>
+                            <StrobeFreqMean>2.7</StrobeFreqMean>
+                            <StarSizeFactor>0.5</StarSizeFactor>
+                            <Crackle>false</Crackle>
+                          </BaseEffectNode>
+                        </Inserts>
+                        <BaseID>
+                          <Name>Silver (short, thin)</Name>
+                          <Author>Marcus Athmer</Author>
+                        </BaseID>
+                        <ReadOnly>true</ReadOnly>
+                        <InternalUseOnly>false</InternalUseOnly>
+                      </Component>
+                      <Items />
+                      <EmitStartOffset>0</EmitStartOffset>
+                      <EmitEndOffset>0</EmitEndOffset>
+                    </BaseEffectNode>
+                  </Children>
+                  <Count>80</Count>
+                  <Distribution xsi:type="SphericalDistribution">
+                    <Speed>1.2</Speed>
+                    <Sigma>0.14</Sigma>
+                    <PositionSigma>1</PositionSigma>
+                    <Rotation>
+                      <XAxis>0</XAxis>
+                      <YAxis>0</YAxis>
+                      <ZAxis>0</ZAxis>
+                    </Rotation>
+                  </Distribution>
+                  <Phases>
+                    <StarPhase>
+                      <Color>
+                        <CustomR>0</CustomR>
+                        <CustomG>0</CustomG>
+                        <CustomB>0</CustomB>
+                        <Color>Invisible</Color>
+                      </Color>
+                      <Strobe>false</Strobe>
+                      <StrobeFreqMean>14</StrobeFreqMean>
+                    </StarPhase>
+                  </Phases>
+                  <Color>
+                    <CustomR>0</CustomR>
+                    <CustomG>0</CustomG>
+                    <CustomB>0</CustomB>
+                    <Color>Invisible</Color>
+                  </Color>
+                  <Type>Large</Type>
+                  <Birthtime>0</Birthtime>
+                  <BirthtimeSigmaRatio>0.1</BirthtimeSigmaRatio>
+                  <MinimumLifetime>0.7</MinimumLifetime>
+                  <MaximumLifetime>2</MaximumLifetime>
+                  <CustomDimmcurve>false</CustomDimmcurve>
+                  <FadeRatios>
+                    <A>0.43584907</A>
+                    <B>0.61132073</B>
+                    <C>0.9150943</C>
+                    <D>1</D>
+                  </FadeRatios>
+                  <Strobe>false</Strobe>
+                  <StrobeFreqMean>14</StrobeFreqMean>
+                  <CanOverrideColor>true</CanOverrideColor>
+                  <ColorChanging>false</ColorChanging>
+                  <Color2>
+                    <CustomR>0</CustomR>
+                    <CustomG>0</CustomG>
+                    <CustomB>0</CustomB>
+                    <Color>Orange</Color>
+                  </Color2>
+                  <StrobeSynchronous>false</StrobeSynchronous>
+                </BaseEffectNode>
+              </Children>
+              <Auto>true</Auto>
+              <Energy>87</Energy>
+              <Color>
+                <CustomR>0</CustomR>
+                <CustomG>0</CustomG>
+                <CustomB>0</CustomB>
+                <Color>Spark</Color>
+              </Color>
+              <ChangeColor>false</ChangeColor>
+              <Sound>true</Sound>
+              <Render>true</Render>
+              <Delay>3.5839996</Delay>
+              <TestSound>false</TestSound>
+            </BaseEffectNode>
+            <BaseEffectNode xsi:type="AscentStar">
+              <Children />
+              <Color>
+                <CustomR>0</CustomR>
+                <CustomG>0</CustomG>
+                <CustomB>0</CustomB>
+                <Color>Gold</Color>
+              </Color>
+              <FI xsi:type="FadeInfo">
+                <A>0.21572211</A>
+                <B>0.6380256</B>
+                <C>0.8939671</C>
+                <D>0.99451554</D>
+              </FI>
+              <SizeInPercent>30</SizeInPercent>
+              <CanOverrideColor>false</CanOverrideColor>
+            </BaseEffectNode>
+          </Children>
+          <ID>3</ID>
+          <AllowRenaming>true</AllowRenaming>
+          <UserDefinedName>Silver Star</UserDefinedName>
+          <SimpleSize>
+            <DiameterPreset>d150</DiameterPreset>
+          </SimpleSize>
+          <SizeSelection>Advanced</SizeSelection>
+          <Diameter>0.15</Diameter>
+          <LiftingCharge>133</LiftingCharge>
+          <Stabilizer>false</Stabilizer>
+        </BaseEffectNode>
+        <BaseEffectNode xsi:type="Bengal">
+          <Children />
+          <ID>4</ID>
+          <AllowRenaming>true</AllowRenaming>
+          <UserDefinedName>Break</UserDefinedName>
+          <Duration>0</Duration>
+          <Strobe>false</Strobe>
+          <StrobeFrequency>2</StrobeFrequency>
+          <Color>
+            <CustomR>0</CustomR>
+            <CustomG>0</CustomG>
+            <CustomB>0</CustomB>
+            <Color>Invisible</Color>
+          </Color>
+        </BaseEffectNode>
+      </Children>
+      <ID>0</ID>
+      <AllowRenaming>false</AllowRenaming>
+      <Chapters>
+        <CakeSequenceList>
+          <List>
+            <CakeSequenceEntry>
+              <NodeID>1</NodeID>
+              <Repetitions>5</Repetitions>
+              <IntervalOverride>2.5</IntervalOverride>
+            </CakeSequenceEntry>
+            <CakeSequenceEntry>
+              <NodeID>1</NodeID>
+              <Repetitions>3</Repetitions>
+              <IntervalOverride>0.1</IntervalOverride>
+            </CakeSequenceEntry>
+            <CakeSequenceEntry>
+              <NodeID>4</NodeID>
+              <Repetitions>1</Repetitions>
+              <IntervalOverride>3</IntervalOverride>
+            </CakeSequenceEntry>
+            <CakeSequenceEntry>
+              <NodeID>2</NodeID>
+              <Repetitions>5</Repetitions>
+              <IntervalOverride>2.5</IntervalOverride>
+            </CakeSequenceEntry>
+            <CakeSequenceEntry>
+              <NodeID>2</NodeID>
+              <Repetitions>3</Repetitions>
+              <IntervalOverride>0.1</IntervalOverride>
+            </CakeSequenceEntry>
+            <CakeSequenceEntry>
+              <NodeID>4</NodeID>
+              <Repetitions>1</Repetitions>
+              <IntervalOverride>1</IntervalOverride>
+            </CakeSequenceEntry>
+            <CakeSequenceEntry>
+              <NodeID>3</NodeID>
+              <Repetitions>4</Repetitions>
+              <IntervalOverride>0.02</IntervalOverride>
+            </CakeSequenceEntry>
+          </List>
+          <Shape>
+            <Shape>None</Shape>
+            <ShotsPerSweep>5</ShotsPerSweep>
+            <Angle>0.6981317</Angle>
+          </Shape>
+          <Interval>0.4</Interval>
+        </CakeSequenceList>
+      </Chapters>
+      <Sequence />
+      <Interval>0</Interval>
+      <PerShotVariance>0.098000005</PerShotVariance>
+      <IntervalVariance>0.05</IntervalVariance>
+      <AutoAssignedIndex>2</AutoAssignedIndex>
+    </BaseEffectNode>
+  </Children>
+  <SimulationVersion>1</SimulationVersion>
+  <Protected>false</Protected>
+  <AutotagOverrideQuantity>0</AutotagOverrideQuantity>
+  <AutotagOverrideCaliber>0</AutotagOverrideCaliber>
+  <AutotagOverrideFurther />
+  <Identifier>
+    <Name>41 Cake (I-Shape)</Name>
+    <Author>Marcus Athmer (Effekt-Vorschau)</Author>
+  </Identifier>
+  <Metadata>
+    <Pieces />
+  </Metadata>
+  <AuthorSoftwareVersion>
+    <Major>3</Major>
+    <Minor>4</Minor>
+    <Build>1</Build>
+    <Revision>112</Revision>
+  </AuthorSoftwareVersion>
+</FireworkEffect>

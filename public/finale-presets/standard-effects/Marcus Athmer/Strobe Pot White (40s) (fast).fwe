@@ -1,0 +1,43 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<FireworkEffect xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+  <Children>
+    <BaseEffectNode xsi:type="Bengal">
+      <Children />
+      <ID>0</ID>
+      <AllowRenaming>false</AllowRenaming>
+      <Duration>40</Duration>
+      <Strobe>true</Strobe>
+      <StrobeFrequency>38.7</StrobeFrequency>
+      <Color>
+        <CustomR>0</CustomR>
+        <CustomG>0</CustomG>
+        <CustomB>0</CustomB>
+        <Color>Spark</Color>
+      </Color>
+    </BaseEffectNode>
+  </Children>
+  <SimulationVersion>0</SimulationVersion>
+  <AutotagOverride>Ground Effect</AutotagOverride>
+  <Subtype>Stroboscope</Subtype>
+  <RackType xsi:nil="true" />
+  <AutotagOverrideQuantity>0</AutotagOverrideQuantity>
+  <AutotagOverrideCaliber>0</AutotagOverrideCaliber>
+  <HideInLib>true</HideInLib>
+  <AutotagOverrideCaliber_Simple xsi:nil="true" />
+  <AutotagOverrideFurther />
+  <Identifier>
+    <Name>Strobe Pot White (40s) (fast)</Name>
+    <Author>Marcus Athmer</Author>
+  </Identifier>
+  <Metadata>
+    <Pieces />
+  </Metadata>
+  <FirstCreated>0001-01-01T00:00:00</FirstCreated>
+  <AuthorSoftwareVersion>
+    <Major>4</Major>
+    <Minor>1</Minor>
+    <Build>3</Build>
+    <Revision>0</Revision>
+  </AuthorSoftwareVersion>
+  <Hints />
+</FireworkEffect>

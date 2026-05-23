@@ -159,18 +159,15 @@ export default function GoogleTilesLayer() {
     (async () => {
       try {
         console.log('[GoogleTiles] Fetching API key...');
-        const { fetchGoogleMapsKey } = await import('@/lib/getMapsKey');
-        const { key, reason, error: keyErr } = await fetchGoogleMapsKey();
-        if (!key) {
-          const msg = reason === 'unauthenticated'
-            ? 'Sign in to load Google 3D Tiles'
-            : (keyErr || reason || 'No key returned');
+        const { data, error } = await supabase.functions.invoke('get-maps-key');
+        if (error || !data?.key) {
+          const msg = error?.message || 'No key returned';
           console.warn('[GoogleTiles] Failed to fetch API key:', msg);
           setLoadingState('error', 0, { errorMsg: `API key: ${msg}` });
           return;
         }
         console.log('[GoogleTiles] API key acquired');
-        setApiKey(key);
+        setApiKey(data.key);
         setLoadingState('loading-tiles', 0, { errorMsg: null });
       } catch (err) {
         console.warn('[GoogleTiles] API key fetch error:', err);

@@ -28,8 +28,6 @@
 import { Effect } from 'postprocessing';
 import { Uniform } from 'three';
 
-type EffectUniformMap = Map<string, Uniform>;
-
 const ACES_HUE_PRESERVE_FRAGMENT = `
 uniform float exposure;
 uniform float huePreserveStrength;
@@ -90,10 +88,6 @@ void mainImage(const in vec4 inputColor, const in vec2 uv, out vec4 outputColor)
 `;
 
 export class ACESHuePreserveEffect extends Effect {
-  private get effectUniforms(): EffectUniformMap {
-    return (this as unknown as { uniforms: EffectUniformMap }).uniforms;
-  }
-
   constructor({
     exposure = 1.0,
     huePreserveStrength = 0.6,   // v2: reduced from 0.7 — plasma goes white faster
@@ -121,3 +115,4 @@ export class ACESHuePreserveEffect extends Effect {
   set highlightThreshold(v: number)  { (this.effectUniforms.get('highlightThreshold') as Uniform).value = v; }
   set luminanceGain(v: number)       { (this.effectUniforms.get('luminanceGain') as Uniform).value = v; }
 }
+

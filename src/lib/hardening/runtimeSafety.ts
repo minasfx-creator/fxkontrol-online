@@ -3,7 +3,6 @@
  * Watchdog, progressive degradation, crash-loop cooldown,
  * API fallback (WebGPU → WebGL2 → static preview).
  */
-import { logger } from '@/lib/logger';
 
 // ── Render API Detection & Fallback ──────────────────────────
 export type RenderAPI = 'webgpu' | 'webgl2' | 'webgl1' | 'static';
@@ -101,20 +100,6 @@ export function reportCrash(): boolean {
 }
 
 export function getCrashRecord(): Readonly<CrashRecord> { return _crashRecord; }
-
-/**
- * Reset the crash-loop record. Used by the user-facing "Retry" button in the
- * WebGL fallback so the operator can manually attempt to recover the renderer
- * after a context-loss cooldown without a full page reload.
- */
-export function resetCrashRecord(): void {
-  _crashRecord.timestamps = [];
-  _crashRecord.inCooldown = false;
-  _crashRecord.cooldownUntil = 0;
-  // Keep totalCrashes for telemetry; only the rolling window is cleared.
-  console.warn('[RuntimeSafety] Crash record reset by user retry');
-}
-
 export function isInCooldown(): boolean {
   if (!_crashRecord.inCooldown) return false;
   if (Date.now() >= _crashRecord.cooldownUntil) {
@@ -182,7 +167,7 @@ export function watchdogTick(currentFPS: number): DegradationLevel {
       const old = _watchdog.level;
       _watchdog.level = newLevel;
       _watchdog.consecutiveLowFrames = 0;
-      logger.dev(`[Watchdog] Degradation: ${old} → ${newLevel} (FPS: ${currentFPS.toFixed(1)})`);
+      console.log(`[Watchdog] Degradation: ${old} → ${newLevel} (FPS: ${currentFPS.toFixed(1)})`);
       _watchdog.callbacks.forEach(cb => cb(newLevel));
     }
   } else {
@@ -263,7 +248,7 @@ export function scanSceneTransforms(scene: { traverse: (cb: (obj: any) => void) 
 
   let corrupted = 0;
   let fixed = 0;
-  const removed = 0;
+  let removed = 0;
 
   scene.traverse((obj: any) => {
     if (!obj.position || !obj.rotation || !obj.scale) return;

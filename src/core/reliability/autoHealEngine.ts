@@ -1,5 +1,3 @@
-import { logger } from '@/lib/logger';
-
 /**
  * ─── Auto-Heal Engine ───────────────────────────────────────────────
  * Detect → Isolate → Fix → Re-test loop for any subsystem failure.
@@ -99,7 +97,7 @@ class AutoHealEngine {
       health.status = 'healthy';
       health.failureCount = 0;
       health.lastError = null;
-      logger.dev(`[AutoHeal] ${id} healed successfully (attempt ${health.failureCount})`);
+      console.log(`[AutoHeal] ${id} healed successfully (attempt ${health.failureCount})`);
     } else {
       health.status = 'degraded';
       console.warn(`[AutoHeal] ${id} heal attempt ${health.failureCount}/${MAX_RETRIES} failed`);
@@ -133,7 +131,7 @@ class AutoHealEngine {
       h.failureCount = 0;
       h.status = 'healthy';
       h.lastError = null;
-      logger.dev(`[AutoHeal] ${id} force-enabled`);
+      console.log(`[AutoHeal] ${id} force-enabled`);
     }
   }
 

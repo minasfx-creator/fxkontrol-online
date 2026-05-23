@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { ViewTransform } from '@/lib/niagaraBlenderRules.types';
+import type { ViewTransform } from '@/lib/niagaraBlenderRules';
 import type { TerrainData, TerrainConfig } from '@/lib/heightmapToTerrain';
 
 export type GroundStyle = 'finale-dark' | 'google-earth' | 'flat-black' | 'concrete' | 'sfx-stage' | 'synthetic-grass' | 'custom';
@@ -716,8 +716,6 @@ export interface EnvironmentState {
   gridSnapResolution: number;    // Snap grid cell size in meters (0.1 – 10)
   droneRendererMode: 'instanced' | 'swarm';  // instanced = PBR/LOD, swarm = tactical engine
   showHUDCrosshairs: boolean;    // AR-style HUD crosshairs overlay
-  showTerrainDebug: boolean;     // Debug overlay: cached vs raycast terrain height per pin (drift > 0.5m highlighted)
-  showTerrainMetrics: boolean;   // Debug HUD: useTerrainHeightCache counters (hits/misses/drift/frame ms)
   arMode: boolean;               // AR overlay mode toggle
   arOverlayOpacity: number;      // 0-1 AR overlay opacity
   arBlendMode: 'screen' | 'add' | 'normal' | 'overlay';
@@ -767,6 +765,11 @@ interface SceneSettingsState {
   terrain: TerrainData | null;
   terrainPreset: string;
   updateSettings: (updates: Partial<SceneSettings>) => void;
+  /**
+   * Set venue geo anchor (lat/lng/alt) and persist audience-facing heading.
+   * Caller is responsible for re-materialising positions in the project store.
+   */
+  setVenueAnchor: (anchor: { lat: number; lng: number; alt?: number; headingFromAudience?: number; name?: string }) => void;
   applyPreset: (presetId: string) => void;
   applyQualityPreset: (preset: QualityPreset) => void;
   resetToDefault: () => void;
@@ -801,8 +804,6 @@ const DEFAULT_ENVIRONMENT: EnvironmentState = {
   gridSnapResolution: 1,
   droneRendererMode: 'instanced',
   showHUDCrosshairs: false,
-  showTerrainDebug: false,
-  showTerrainMetrics: false,
   arMode: false,
   arOverlayOpacity: 0.85,
   arBlendMode: 'screen',
@@ -831,6 +832,14 @@ export const useSceneStore = create<SceneSettingsState>((set) => ({
     }
     return { settings: next };
   }),
+  setVenueAnchor: (anchor) => set(s => ({
+    settings: {
+      ...s.settings,
+      geoAnchorLat: anchor.lat,
+      geoAnchorLon: anchor.lng,
+      geoAnchorAlt: anchor.alt ?? s.settings.geoAnchorAlt,
+    },
+  })),
   applyPreset: (presetId) => {
     const preset = SCENE_PRESETS[presetId];
     if (preset) set(s => ({ settings: { ...DEFAULT_SETTINGS, ...preset.settings } }));

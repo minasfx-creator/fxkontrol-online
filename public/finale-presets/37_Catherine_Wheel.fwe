@@ -1,0 +1,216 @@
+<?xml version="1.0"?>
+<FireworkEffect xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <Children>
+    <BaseEffectNode xsi:type="Sun">
+      <Children>
+        <BaseEffectNode xsi:type="Stars">
+          <Children>
+            <BaseEffectNode xsi:type="CustomTailsLink">
+              <Children />
+              <ComponentID>
+                <Name>Brocade (short)</Name>
+                <Author>Marcus Athmer</Author>
+              </ComponentID>
+              <Component>
+                <AuthorSoftwareVersion>
+                  <Major>3</Major>
+                  <Minor>2</Minor>
+                  <Build>0</Build>
+                  <Revision>101</Revision>
+                </AuthorSoftwareVersion>
+                <Inserts>
+                  <BaseEffectNode xsi:type="StarTails">
+                    <Children />
+                    <Color>
+                      <CustomR>255</CustomR>
+                      <CustomG>226</CustomG>
+                      <CustomB>174</CustomB>
+                      <Color>Custom</Color>
+                    </Color>
+                    <Crackle>false</Crackle>
+                    <Width>1</Width>
+                    <Density>250</Density>
+                    <EmitStart>0.05</EmitStart>
+                    <EmitEnd>1</EmitEnd>
+                    <Life>0.4</Life>
+                    <Strobe>false</Strobe>
+                    <StrobeFreqMean>2.5</StrobeFreqMean>
+                    <StarSizeFactor>0.7</StarSizeFactor>
+                    <LifeSigma>0.1</LifeSigma>
+                  </BaseEffectNode>
+                  <BaseEffectNode xsi:type="StarTails">
+                    <Children />
+                    <Color>
+                      <CustomR>98</CustomR>
+                      <CustomG>49</CustomG>
+                      <CustomB>0</CustomB>
+                      <Color>Custom</Color>
+                    </Color>
+                    <Crackle>false</Crackle>
+                    <Width>0.6</Width>
+                    <Density>108</Density>
+                    <EmitStart>0.05</EmitStart>
+                    <EmitEnd>1</EmitEnd>
+                    <Life>1.1</Life>
+                    <Strobe>false</Strobe>
+                    <StrobeFreqMean>14</StrobeFreqMean>
+                    <StarSizeFactor>0.54</StarSizeFactor>
+                    <LifeSigma>0.5</LifeSigma>
+                  </BaseEffectNode>
+                  <BaseEffectNode xsi:type="StarTails">
+                    <Children />
+                    <Color>
+                      <CustomR>147</CustomR>
+                      <CustomG>73</CustomG>
+                      <CustomB>0</CustomB>
+                      <Color>Custom</Color>
+                    </Color>
+                    <Crackle>false</Crackle>
+                    <Width>0.6</Width>
+                    <Density>52</Density>
+                    <EmitStart>0.05</EmitStart>
+                    <EmitEnd>1</EmitEnd>
+                    <Life>0.5</Life>
+                    <Strobe>false</Strobe>
+                    <StrobeFreqMean>2.7</StrobeFreqMean>
+                    <StarSizeFactor>0.5</StarSizeFactor>
+                    <LifeSigma>0.65</LifeSigma>
+                  </BaseEffectNode>
+                  <BaseEffectNode xsi:type="StarTails">
+                    <Children />
+                    <Color>
+                      <CustomR>166</CustomR>
+                      <CustomG>83</CustomG>
+                      <CustomB>0</CustomB>
+                      <Color>Custom</Color>
+                    </Color>
+                    <Crackle>false</Crackle>
+                    <Width>3.2</Width>
+                    <Density>4</Density>
+                    <EmitStart>0.05</EmitStart>
+                    <EmitEnd>1</EmitEnd>
+                    <Life>0.8</Life>
+                    <Strobe>false</Strobe>
+                    <StrobeFreqMean>2.7</StrobeFreqMean>
+                    <StarSizeFactor>0.5</StarSizeFactor>
+                    <LifeSigma>0.14</LifeSigma>
+                  </BaseEffectNode>
+                  <BaseEffectNode xsi:type="StarTails">
+                    <Children />
+                    <Color>
+                      <CustomR>255</CustomR>
+                      <CustomG>226</CustomG>
+                      <CustomB>174</CustomB>
+                      <Color>Custom</Color>
+                    </Color>
+                    <Crackle>false</Crackle>
+                    <Width>1.2</Width>
+                    <Density>5</Density>
+                    <EmitStart>0.05</EmitStart>
+                    <EmitEnd>1</EmitEnd>
+                    <Life>1.5</Life>
+                    <Strobe>true</Strobe>
+                    <StrobeFreqMean>9</StrobeFreqMean>
+                    <StarSizeFactor>1</StarSizeFactor>
+                    <LifeSigma>0.17</LifeSigma>
+                  </BaseEffectNode>
+                  <BaseEffectNode xsi:type="StarTails">
+                    <Children />
+                    <Color>
+                      <CustomR>255</CustomR>
+                      <CustomG>226</CustomG>
+                      <CustomB>174</CustomB>
+                      <Color>Custom</Color>
+                    </Color>
+                    <Crackle>false</Crackle>
+                    <Width>1</Width>
+                    <Density>200</Density>
+                    <EmitStart>0.05</EmitStart>
+                    <EmitEnd>1</EmitEnd>
+                    <Life>0.25</Life>
+                    <Strobe>false</Strobe>
+                    <StrobeFreqMean>2.5</StrobeFreqMean>
+                    <StarSizeFactor>0.7</StarSizeFactor>
+                    <LifeSigma>0.1</LifeSigma>
+                  </BaseEffectNode>
+                </Inserts>
+                <BaseID>
+                  <Name>Brocade (short)</Name>
+                  <Author>Marcus Athmer</Author>
+                </BaseID>
+                <ReadOnly>true</ReadOnly>
+              </Component>
+              <Items />
+              <EmitStartOffset>0</EmitStartOffset>
+              <EmitEndOffset>0</EmitEndOffset>
+            </BaseEffectNode>
+          </Children>
+          <Count>500</Count>
+          <Distribution xsi:type="MineDistribution">
+            <Speed>1</Speed>
+            <Sigma>0.023</Sigma>
+            <PositionSigma>0.25</PositionSigma>
+            <Rotation>
+              <XAxis>0</XAxis>
+              <YAxis>0</YAxis>
+              <ZAxis>0</ZAxis>
+            </Rotation>
+            <Spread>0.160586491</Spread>
+          </Distribution>
+          <Color>
+            <CustomR>0</CustomR>
+            <CustomG>0</CustomG>
+            <CustomB>0</CustomB>
+            <Color>Invisible</Color>
+          </Color>
+          <Type>Sparks</Type>
+          <Birthtime>0</Birthtime>
+          <BirthtimeSigmaRatio>0.1</BirthtimeSigmaRatio>
+          <MinimumLifetime>0.82</MinimumLifetime>
+          <MaximumLifetime>1.43</MaximumLifetime>
+          <CustomDimmcurve>false</CustomDimmcurve>
+          <FadeRatios>
+            <A>0</A>
+            <B>0.09</B>
+            <C>0.65</C>
+            <D>1</D>
+          </FadeRatios>
+          <Strobe>false</Strobe>
+          <StrobeFreqMean>14</StrobeFreqMean>
+          <CanOverrideColor>true</CanOverrideColor>
+          <ColorChanging>false</ColorChanging>
+          <Color2>
+            <CustomR>0</CustomR>
+            <CustomG>0</CustomG>
+            <CustomB>0</CustomB>
+            <Color>PastelRed</Color>
+          </Color2>
+          <StrobeSynchronous>false</StrobeSynchronous>
+        </BaseEffectNode>
+      </Children>
+      <ID>0</ID>
+      <AllowRenaming>false</AllowRenaming>
+      <Radius>10</Radius>
+      <EruptionEnergy>50</EruptionEnergy>
+      <Duration>15</Duration>
+    </BaseEffectNode>
+  </Children>
+  <SimulationVersion>0</SimulationVersion>
+  <Protected>false</Protected>
+  <AutotagOverrideQuantity>0</AutotagOverrideQuantity>
+  <AutotagOverrideCaliber>0</AutotagOverrideCaliber>
+  <AutotagOverrideFurther />
+  <Identifier>
+    <Name>37 Catherine Wheel</Name>
+    <Author>Marcus Athmer (Effekt-Vorschau)</Author>
+  </Identifier>
+  <Metadata>
+    <Pieces />
+  </Metadata>
+  <AuthorSoftwareVersion>
+    <Major>3</Major>
+    <Minor>3</Minor>
+    <Build>0</Build>
+    <Revision>26</Revision>
+  </AuthorSoftwareVersion>
+</FireworkEffect>

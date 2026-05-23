@@ -1,10 +1,14 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { handleCors, corsHeaders } from "../_shared/cors.ts";
+import { requireAuth } from "../_shared/auth.ts";
 import { SYSTEM_PROMPT } from "./systemPrompt.ts";
 
 serve(async (req) => {
   const preflight = handleCors(req);
   if (preflight) return preflight;
+
+  const auth = await requireAuth(req);
+  if (auth.error) return auth.error;
 
   try {
     const { messages } = await req.json();

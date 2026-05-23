@@ -1,0 +1,257 @@
+<?xml version="1.0"?>
+<FireworkEffect xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <Children>
+    <BaseEffectNode xsi:type="Cake">
+      <Children>
+        <BaseEffectNode xsi:type="Cake">
+          <Children>
+            <BaseEffectNode xsi:type="Cake">
+              <Children>
+                <BaseEffectNode xsi:type="Mine">
+                  <Children>
+                    <BaseEffectNode xsi:type="BurstingCharge">
+                      <Children>
+                        <BaseEffectNode xsi:type="Stars">
+                          <Children>
+                            <BaseEffectNode xsi:type="StarTails">
+                              <Children />
+                              <Color>
+                                <CustomR>62</CustomR>
+                                <CustomG>31</CustomG>
+                                <CustomB>0</CustomB>
+                                <Color>Custom</Color>
+                              </Color>
+                              <Crackle>false</Crackle>
+                              <Width>0.6</Width>
+                              <Density>61</Density>
+                              <EmitStart>0</EmitStart>
+                              <EmitEnd>0.13</EmitEnd>
+                              <Life>0.3</Life>
+                              <Strobe>true</Strobe>
+                              <StrobeFreqMean>2.7</StrobeFreqMean>
+                              <StarSizeFactor>1.1</StarSizeFactor>
+                              <LifeSigma>0.11</LifeSigma>
+                            </BaseEffectNode>
+                            <BaseEffectNode xsi:type="StarTails">
+                              <Children />
+                              <Color>
+                                <CustomR>128</CustomR>
+                                <CustomG>64</CustomG>
+                                <CustomB>0</CustomB>
+                                <Color>Custom</Color>
+                              </Color>
+                              <Crackle>false</Crackle>
+                              <Width>0.7</Width>
+                              <Density>52</Density>
+                              <EmitStart>0</EmitStart>
+                              <EmitEnd>0.13</EmitEnd>
+                              <Life>0.25</Life>
+                              <Strobe>false</Strobe>
+                              <StrobeFreqMean>2.7</StrobeFreqMean>
+                              <StarSizeFactor>1</StarSizeFactor>
+                              <LifeSigma>0.14</LifeSigma>
+                            </BaseEffectNode>
+                            <BaseEffectNode xsi:type="StarTails">
+                              <Children />
+                              <Color>
+                                <CustomR>81</CustomR>
+                                <CustomG>40</CustomG>
+                                <CustomB>0</CustomB>
+                                <Color>Custom</Color>
+                              </Color>
+                              <Crackle>false</Crackle>
+                              <Width>0.3</Width>
+                              <Density>54</Density>
+                              <EmitStart>0</EmitStart>
+                              <EmitEnd>0.13</EmitEnd>
+                              <Life>0.8</Life>
+                              <Strobe>false</Strobe>
+                              <StrobeFreqMean>14</StrobeFreqMean>
+                              <StarSizeFactor>0.54</StarSizeFactor>
+                              <LifeSigma>0.22</LifeSigma>
+                            </BaseEffectNode>
+                            <BaseEffectNode xsi:type="StarTails">
+                              <Children />
+                              <Color>
+                                <CustomR>251</CustomR>
+                                <CustomG>222</CustomG>
+                                <CustomB>170</CustomB>
+                                <Color>Custom</Color>
+                              </Color>
+                              <Crackle>false</Crackle>
+                              <Width>0.3</Width>
+                              <Density>24</Density>
+                              <EmitStart>0</EmitStart>
+                              <EmitEnd>0.13</EmitEnd>
+                              <Life>1.25</Life>
+                              <Strobe>true</Strobe>
+                              <StrobeFreqMean>3</StrobeFreqMean>
+                              <StarSizeFactor>0.7</StarSizeFactor>
+                              <LifeSigma>0.22</LifeSigma>
+                            </BaseEffectNode>
+                          </Children>
+                          <Count>1</Count>
+                          <Distribution xsi:type="MineDistribution">
+                            <Speed>1.5</Speed>
+                            <Sigma>0.067</Sigma>
+                            <PositionSigma>0.541</PositionSigma>
+                            <Rotation>
+                              <XAxis>0</XAxis>
+                              <YAxis>0</YAxis>
+                              <ZAxis>0</ZAxis>
+                            </Rotation>
+                            <Spread>0</Spread>
+                          </Distribution>
+                          <Color>
+                            <CustomR>0</CustomR>
+                            <CustomG>0</CustomG>
+                            <CustomB>0</CustomB>
+                            <Color>Orange</Color>
+                          </Color>
+                          <Type>Small</Type>
+                          <Birthtime>0</Birthtime>
+                          <BirthtimeSigmaRatio>0.1</BirthtimeSigmaRatio>
+                          <MinimumLifetime>1.27</MinimumLifetime>
+                          <MaximumLifetime>1.77</MaximumLifetime>
+                          <CustomDimmcurve>false</CustomDimmcurve>
+                          <FadeRatios>
+                            <A>0.49622643</A>
+                            <B>0.635849059</B>
+                            <C>0.8528302</C>
+                            <D>1</D>
+                          </FadeRatios>
+                          <Strobe>false</Strobe>
+                          <StrobeFreqMean>14</StrobeFreqMean>
+                          <ColorChanging>false</ColorChanging>
+                          <Color2>
+                            <CustomR>64</CustomR>
+                            <CustomG>0</CustomG>
+                            <CustomB>128</CustomB>
+                            <Color>Custom</Color>
+                          </Color2>
+                          <StrobeSynchronous>false</StrobeSynchronous>
+                        </BaseEffectNode>
+                      </Children>
+                      <Auto>false</Auto>
+                      <Energy>100</Energy>
+                      <Color>
+                        <CustomR>0</CustomR>
+                        <CustomG>0</CustomG>
+                        <CustomB>0</CustomB>
+                        <Color>Invisible</Color>
+                      </Color>
+                      <ChangeColor>true</ChangeColor>
+                      <Sound>true</Sound>
+                      <Delay>0</Delay>
+                      <TestSound>false</TestSound>
+                    </BaseEffectNode>
+                  </Children>
+                  <ID>1</ID>
+                  <AllowRenaming>true</AllowRenaming>
+                  <UserDefinedName>Feuertopf 2</UserDefinedName>
+                  <SimpleSize>
+                    <DiameterPreset>d200</DiameterPreset>
+                  </SimpleSize>
+                  <SizeSelection>Simple</SizeSelection>
+                  <Diameter>0.2</Diameter>
+                  <LiftingCharge>0</LiftingCharge>
+                </BaseEffectNode>
+              </Children>
+              <ID>1</ID>
+              <AllowRenaming>true</AllowRenaming>
+              <UserDefinedName>Effekt 1.1</UserDefinedName>
+              <Chapters>
+                <CakeSequenceList>
+                  <List>
+                    <CakeSequenceEntry>
+                      <NodeID>1</NodeID>
+                      <Repetitions>1</Repetitions>
+                      <IntervalOverride>-1</IntervalOverride>
+                    </CakeSequenceEntry>
+                  </List>
+                  <Shape>
+                    <Shape>None</Shape>
+                    <ShotsPerSweep>4</ShotsPerSweep>
+                    <Angle>0.5235988</Angle>
+                  </Shape>
+                  <Interval>0</Interval>
+                </CakeSequenceList>
+              </Chapters>
+              <Sequence />
+              <Interval>0</Interval>
+              <PerShotVariance>0</PerShotVariance>
+              <IntervalVariance>0.05</IntervalVariance>
+              <AutoAssignedIndex>2</AutoAssignedIndex>
+            </BaseEffectNode>
+          </Children>
+          <ID>1</ID>
+          <AllowRenaming>true</AllowRenaming>
+          <UserDefinedName>Weiß</UserDefinedName>
+          <Chapters>
+            <CakeSequenceList>
+              <List>
+                <CakeSequenceEntry>
+                  <NodeID>1</NodeID>
+                  <Repetitions>1</Repetitions>
+                  <IntervalOverride>-1</IntervalOverride>
+                </CakeSequenceEntry>
+              </List>
+              <Shape>
+                <Shape>None</Shape>
+                <ShotsPerSweep>5</ShotsPerSweep>
+                <Angle>0.6981317</Angle>
+              </Shape>
+              <Interval>0</Interval>
+            </CakeSequenceList>
+          </Chapters>
+          <Sequence />
+          <Interval>0</Interval>
+          <PerShotVariance>0</PerShotVariance>
+          <IntervalVariance>0.05</IntervalVariance>
+          <AutoAssignedIndex>4</AutoAssignedIndex>
+        </BaseEffectNode>
+      </Children>
+      <ID>0</ID>
+      <AllowRenaming>false</AllowRenaming>
+      <Chapters>
+        <CakeSequenceList>
+          <List>
+            <CakeSequenceEntry>
+              <NodeID>1</NodeID>
+              <Repetitions>75</Repetitions>
+              <IntervalOverride>-1</IntervalOverride>
+            </CakeSequenceEntry>
+          </List>
+          <Shape>
+            <Shape>None</Shape>
+            <ShotsPerSweep>5</ShotsPerSweep>
+            <Angle>0.69813174</Angle>
+          </Shape>
+          <Interval>0.25</Interval>
+        </CakeSequenceList>
+      </Chapters>
+      <Sequence />
+      <Interval>0</Interval>
+      <PerShotVariance>0.8</PerShotVariance>
+      <IntervalVariance>0.08</IntervalVariance>
+      <AutoAssignedIndex>7</AutoAssignedIndex>
+    </BaseEffectNode>
+  </Children>
+  <Protected>false</Protected>
+  <AutotagOverrideQuantity>0</AutotagOverrideQuantity>
+  <AutotagOverrideCaliber>0</AutotagOverrideCaliber>
+  <AutotagOverrideFurther />
+  <Identifier>
+    <Name>Cake: Stars Orange (I-Shape, 75 Shots, 20s)</Name>
+    <Author>Marcus Athmer</Author>
+  </Identifier>
+  <Metadata>
+    <Pieces />
+  </Metadata>
+  <AuthorSoftwareVersion>
+    <Major>3</Major>
+    <Minor>1</Minor>
+    <Build>2</Build>
+    <Revision>18</Revision>
+  </AuthorSoftwareVersion>
+</FireworkEffect>

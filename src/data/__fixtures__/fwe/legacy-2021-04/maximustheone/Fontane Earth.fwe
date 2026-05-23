@@ -1,0 +1,45 @@
+<?xml version="1.0"?>
+<FireworkEffect xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+  <Children>
+    <BaseEffectNode xsi:type="Shell">
+      <Children>
+        <BaseEffectNode xsi:type="Eruption">
+          <Children>
+            <BaseEffectNode xsi:type="Stars">
+              <Children />
+              <Type>Sparks</Type>
+              <Distribution xsi:type="EruptionDistribution">
+                <Speed>1</Speed>
+                <Sigma>0</Sigma>
+                <Spread>0.5668</Spread>
+              </Distribution>
+              <Color>
+                <CustomR>0</CustomR>
+                <CustomG>0</CustomG>
+                <CustomB>0</CustomB>
+                <Color>Blue</Color>
+              </Color>
+              <Count>1948</Count>
+              <MinimumLifetime>4.0523</MinimumLifetime>
+              <MaximumLifetime>6.1712</MaximumLifetime>
+              <Strobe>true</Strobe>
+              <StrobeFreqMean>14</StrobeFreqMean>
+            </BaseEffectNode>
+          </Children>
+          <Duration>6.396</Duration>
+          <Speed>102.54</Speed>
+        </BaseEffectNode>
+      </Children>
+      <Diameter>0.142</Diameter>
+      <LiftingCharge>0</LiftingCharge>
+    </BaseEffectNode>
+  </Children>
+  <Identifier>
+    <Name>Fountain Earth</Name>
+    <Author>maximus</Author>
+  </Identifier>
+  <AuthorSoftwareVersion>
+    <Major>1</Major>
+    <Minor>0</Minor>
+  </AuthorSoftwareVersion>
+</FireworkEffect>

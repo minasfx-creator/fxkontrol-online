@@ -5,7 +5,6 @@
 
 import { useEffect, useState } from 'react';
 import { muxReaderAdapter } from '@/core/hardware/adapters/MuxReaderAdapterCD4051';
-import { shouldAdapterTick } from '@/core/hardware/adapterTickGate';
 import { cn } from '@/lib/utils';
 import { Radio, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -22,7 +21,6 @@ export default function MuxContinuityMonitor() {
   const [muxStates, setMuxStates] = useState<MultiplexerState[]>(muxReaderAdapter.getState());
 
   useEffect(() => {
-    if (!shouldAdapterTick(muxReaderAdapter)) return;
     const iv = setInterval(() => {
       muxReaderAdapter.pollTelemetry();
       setMuxStates(muxReaderAdapter.getState());

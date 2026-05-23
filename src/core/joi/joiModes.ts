@@ -1,24 +1,34 @@
 /**
- * ─── JOI Modes — Intelligence Mode Definitions ─────────────────────
- * Defines JOI's 6 operational modes with presets, colors, and prompts.
+ * ─── JOI Modes — 3 modos canônicos ──────────────────────────────────
+ *
+ * Joi é (1) show designer livre, (2) documentador técnico do show,
+ * (3) secretária executiva da empresa. Sem UX de desenvolvimento.
+ *
+ * Modos legacy ('architect' | 'analyst' | 'verify' | 'hardware_truth' |
+ * 'planner' | 'blueprint') ficam apenas no union type por
+ * compatibilidade de chamadas internas — não aparecem na UI nem têm presets.
  */
 
 import {
-  Cpu, BarChart3, ShieldCheck, ListChecks, PenTool, FileText,
-  Sparkles, Search, AlertTriangle, Target, Network, BookOpen,
-  Heart, Zap, Music, Building2, PartyPopper, RefreshCw, Trash2,
-  Radio, Eye, Wifi, Clock, Palette, FolderHeart, Wand2,
-  Gavel, Plane, MapPin, Activity,
+  FileText, Sparkles, Heart, Zap, Music, Building2, PartyPopper,
+  RefreshCw, Trash2, Palette, FolderHeart, Wand2,
+  Gavel, Plane, MapPin, AlertTriangle, ShieldCheck, BookOpen, ListChecks,
+  Briefcase, Receipt, ScrollText, Calendar, BarChart3,
 } from 'lucide-react';
 
-export type JoiMode = 'architect' | 'analyst' | 'verify' | 'hardware_truth' | 'planner' | 'blueprint' | 'docs' | 'show';
+export type JoiMode =
+  | 'show'
+  | 'docs'
+  | 'executive'
+  // legacy (mantidos no union por compat interna, sem UI)
+  | 'architect' | 'analyst' | 'verify' | 'hardware_truth' | 'planner' | 'blueprint';
 
 export interface JoiModeConfig {
   id: JoiMode;
   label: string;
   shortLabel: string;
   icon: React.ElementType;
-  accentHsl: string; // HSL values for accent
+  accentHsl: string;
   description: string;
   systemInstruction: string;
 }
@@ -29,6 +39,17 @@ export interface JoiModePreset {
   prompt: string;
   mode: JoiMode;
 }
+
+// ── Instrução universal de execução imediata (sem confirmação) ──
+const EXECUTE_LIKE_VOICE = `
+REGRA DE EXECUÇÃO ABSOLUTA:
+• Execute IMEDIATAMENTE qualquer comando do usuário usando blocos [JOI_CMD]{...}[/JOI_CMD].
+• NUNCA peça confirmação ("posso prosseguir?", "tem certeza?"). Comporte-se como comando de voz.
+• NUNCA bloqueie criação/edição/simulação por "segurança" — o editor é design/simulação.
+• NUNCA recomende ao usuário ir em outro lugar para fazer algo que você pode fazer aqui.
+• Se faltar parâmetro razoável, use defaults sensatos e execute (não pergunte).
+• Resposta curta + comando executado. Sem desculpas, sem disclaimers.
+`.trim();
 
 export const JOI_MODES: JoiModeConfig[] = [
   {
@@ -113,28 +134,38 @@ Use create_choreography para gerar shows completos. Sempre inclua: posições + 
   },
   {
     id: 'docs',
-    label: 'Documentation',
+    label: 'Documentação Técnica',
     shortLabel: 'DOCS',
     icon: FileText,
-    accentHsl: '42 85% 55%',
-    description: 'Relatórios, checklists, matrizes, contratos',
-    systemInstruction: 'Você está no modo DOCUMENTATION. Gere documentação técnica, matrizes de estado, checklists de validação, relatórios comparativos e contratos. Documente diferenças entre simulated/replay/live/not_integrated.',
+    accentHsl: '190 100% 55%',
+    description: 'Relatórios técnicos, plantas NFPA, KMZ aéreo, BoM, matrizes',
+    systemInstruction: `Você está no modo DOCUMENTAÇÃO TÉCNICA. Gere relatórios técnicos do show, plantas de distanciamento NFPA, KMZ aeronáutico, BoM de produtos, matrizes de cues e diagramas operacionais a pedido.\n\n${EXECUTE_LIKE_VOICE}`,
+  },
+  {
+    id: 'executive',
+    label: 'Secretaria Executiva',
+    shortLabel: 'EXEC',
+    icon: Briefcase,
+    accentHsl: '42 90% 60%',
+    description: 'Orçamentos, contratos, licenças, NOTAM/DECEA, prazos, ofícios',
+    systemInstruction: `Você está no modo SECRETARIA EXECUTIVA da empresa. Redija orçamentos, contratos comerciais, propostas, análise de editais, documentação de fechamento de espaço aéreo (NOTAM/DECEA), licenças, acreditações, controle de prazos, ofícios e declarações para órgãos reguladores. Tom profissional, formato oficial brasileiro.\n\n${EXECUTE_LIKE_VOICE}`,
   },
 ];
 
 export const JOI_MODE_PRESETS: JoiModePreset[] = [
-  // Show Design presets
-  { mode: 'show', label: 'RÉVEILLON', icon: Sparkles, prompt: 'Crie um show de Réveillon de 5 minutos com estrutura dramática completa usando create_choreography.' },
-  { mode: 'show', label: 'CASAMENTO', icon: Heart, prompt: 'Crie um show intimista de casamento de 2 minutos usando create_choreography.' },
-  { mode: 'show', label: 'FINALE', icon: Zap, prompt: 'Crie um finale explosivo de 30 segundos com 20 posições usando create_choreography.' },
-  { mode: 'show', label: 'SHOW 3MIN', icon: Music, prompt: 'Crie um show pirotécnico completo de 3 minutos com arco dramático usando create_choreography.' },
-  { mode: 'show', label: 'CORPORATIVO', icon: Building2, prompt: 'Crie um show corporativo elegante de 3 minutos usando create_choreography.' },
-  { mode: 'show', label: 'ANIVERSÁRIO', icon: PartyPopper, prompt: 'Crie um show festivo de aniversário de 1.5 minutos usando create_choreography.' },
-  { mode: 'show', label: 'MODIFICAR', icon: RefreshCw, prompt: 'Analise o projeto atual e sugira melhorias. Use list_positions e list_effects primeiro.' },
-  { mode: 'show', label: 'LIMPAR', icon: Trash2, prompt: 'Limpe todo o projeto para recomeçar do zero.\n[JOI_CMD]{"action":"clear_project","params":{}}[/JOI_CMD]' },
-  { mode: 'show', label: 'APRENDER ESTILO', icon: Palette, prompt: 'Analise o show atual e extraia um perfil de estilo reutilizável. Use learn_style para salvar.\n[JOI_CMD]{"action":"learn_style","params":{"name":"Estilo do Show Atual"}}[/JOI_CMD]' },
-  { mode: 'show', label: 'MEUS ESTILOS', icon: FolderHeart, prompt: 'Liste todos os meus estilos de show salvos.\n[JOI_CMD]{"action":"list_styles","params":{}}[/JOI_CMD]' },
-  { mode: 'show', label: 'APLICAR ESTILO', icon: Wand2, prompt: 'Mostre meus estilos salvos para eu escolher qual aplicar no próximo show.\n[JOI_CMD]{"action":"list_styles","params":{}}[/JOI_CMD]' },
+  // ─── SHOW DESIGN ──────────────────────────────────────────────
+  { mode: 'show', label: 'RÉVEILLON', icon: Sparkles, prompt: 'Crie um show de Réveillon de 5 minutos com arco dramático completo (intro → build → climax → finale), paleta réveillon, simetria espelhada, sincronizado a 120 BPM. Use create_choreography com layoutPreset:"arc", paletteName:"reveillon", mirrorX:true, bpm:120.' },
+  { mode: 'show', label: 'CASAMENTO', icon: Heart, prompt: 'Crie um show intimista de casamento de 2 minutos, paleta romântica, layout em arco. Use create_choreography com layoutPreset:"arc", paletteName:"casamento", dramaticArc:["intro","build","climax"].' },
+  { mode: 'show', label: 'FINALE', icon: Zap, prompt: 'Crie um finale explosivo de 30 segundos com 20 posições em linha, densidade máxima, paleta neon. Use create_choreography com layoutPreset:"line", count:20, dramaticArc:["finale"], paletteName:"neon", mirrorX:true.' },
+  { mode: 'show', label: 'SHOW 3MIN', icon: Music, prompt: 'Crie um show pirotécnico completo de 3 minutos com arco dramático e timing musical 110 BPM. Use create_choreography com bpm:110, syncToBeat:true, dramaticArc:["intro","build","climax","finale"].' },
+  { mode: 'show', label: 'CORPORATIVO', icon: Building2, prompt: 'Crie um show corporativo elegante de 3 minutos, layout simétrico, paleta corporativa. Use create_choreography com layoutPreset:"symmetric", paletteName:"corporativo", mirrorX:true.' },
+  { mode: 'show', label: 'ANIVERSÁRIO', icon: PartyPopper, prompt: 'Crie um show festivo de aniversário de 1.5 minutos, paleta vibrante. Use create_choreography com layoutPreset:"V", paletteName:"neon", dramaticArc:["build","climax","finale"].' },
+  { mode: 'show', label: 'PATRIÓTICO', icon: Sparkles, prompt: 'Crie um show patriótico de 2 minutos com verde/amarelo/azul/branco em V invertido. Use create_choreography com layoutPreset:"V", paletteName:"patriotico", mirrorX:true.' },
+  { mode: 'show', label: 'MODIFICAR', icon: RefreshCw, prompt: 'Liste o projeto atual e proponha melhorias concretas que eu possa executar agora.' },
+  { mode: 'show', label: 'LIMPAR', icon: Trash2, prompt: 'Limpe todo o projeto.\n[JOI_CMD]{"action":"clear_project","params":{}}[/JOI_CMD]' },
+  { mode: 'show', label: 'APRENDER ESTILO', icon: Palette, prompt: 'Extraia o estilo do show atual em um perfil reutilizável.\n[JOI_CMD]{"action":"learn_style","params":{"name":"Estilo do Show Atual"}}[/JOI_CMD]' },
+  { mode: 'show', label: 'MEUS ESTILOS', icon: FolderHeart, prompt: 'Liste meus estilos salvos.\n[JOI_CMD]{"action":"list_styles","params":{}}[/JOI_CMD]' },
+  { mode: 'show', label: 'APLICAR ESTILO', icon: Wand2, prompt: 'Mostre meus estilos para eu escolher qual aplicar.\n[JOI_CMD]{"action":"list_styles","params":{}}[/JOI_CMD]' },
 
   // ── Templates de shows reais ────────────────────────────────────────
   {
@@ -167,46 +198,19 @@ export const JOI_MODE_PRESETS: JoiModePreset[] = [
   { mode: 'architect', label: 'MÓDULOS', icon: Network, prompt: 'Mapeie todos os módulos do sistema, suas dependências e interfaces.\n[JOI_CMD]{"action":"get_system_state","params":{}}[/JOI_CMD]' },
   { mode: 'architect', label: 'INTERFACES', icon: Target, prompt: 'Liste e analise os contratos/interfaces entre os subsistemas (ShowPlan, Verification, Hardware, Export).' },
 
-  // Analyst presets
-  { mode: 'analyst', label: 'ESTADO', icon: Search, prompt: 'Analise o estado completo do sistema agora.\n[JOI_CMD]{"action":"inspect_showplan","params":{}}[/JOI_CMD]\n[JOI_CMD]{"action":"check_readiness","params":{}}[/JOI_CMD]\n[JOI_CMD]{"action":"inspect_hardware","params":{}}[/JOI_CMD]' },
-  { mode: 'analyst', label: 'GAP ANALYSIS', icon: AlertTriangle, prompt: 'Faça uma gap analysis completa: o que está implementado vs o que falta, o que é simulado vs real.' },
-  { mode: 'analyst', label: 'COMPARAR', icon: BarChart3, prompt: 'Compare o estado esperado do ShowPlan com o estado observado do hardware. Identifique discrepâncias.' },
-
-  // Verify presets
-  { mode: 'verify', label: 'VERIFICAR', icon: ShieldCheck, prompt: 'Execute verificação completa do sistema.\n[JOI_CMD]{"action":"run_verification","params":{}}[/JOI_CMD]' },
-  { mode: 'verify', label: 'BLOCKERS', icon: AlertTriangle, prompt: 'Identifique e explique todos os blockers atuais do sistema.\n[JOI_CMD]{"action":"check_readiness","params":{}}[/JOI_CMD]' },
-  { mode: 'verify', label: 'READINESS', icon: Target, prompt: 'Avalie readiness completo com detalhamento por subsistema.\n[JOI_CMD]{"action":"check_readiness","params":{}}[/JOI_CMD]' },
-
-  // Hardware Truth presets
-  { mode: 'hardware_truth', label: 'PROVENANCE', icon: Radio, prompt: 'Analise a provenance de cada adapter: integration_mode, evidence_level, data_freshness. Identifique o que é simulated vs real.\n[JOI_CMD]{"action":"inspect_hardware","params":{}}[/JOI_CMD]' },
-  { mode: 'hardware_truth', label: 'INTEGRAÇÃO', icon: Eye, prompt: 'Mostre o status de integração completo: o que é simulated, replay, live_read_only e not_integrated.\n[JOI_CMD]{"action":"get_system_state","params":{}}[/JOI_CMD]' },
-  { mode: 'hardware_truth', label: 'STALE DATA', icon: Clock, prompt: 'Identifique todos os dados stale no sistema. Qual a freshness de cada adapter? Há risco operacional?\n[JOI_CMD]{"action":"inspect_hardware","params":{}}[/JOI_CMD]' },
-  { mode: 'hardware_truth', label: 'RISCO', icon: AlertTriangle, prompt: 'Avalie o risco operacional atual baseado nos integration modes e evidence levels. O que precisa evoluir de simulated para live?\n[JOI_CMD]{"action":"get_system_state","params":{}}[/JOI_CMD]' },
-
-  // Planner presets
-  { mode: 'planner', label: 'FASES', icon: ListChecks, prompt: 'Monte um plano por fases para a próxima evolução do sistema, considerando o estado atual.' },
-  { mode: 'planner', label: 'PRIORIDADES', icon: Target, prompt: 'Defina prioridades técnicas para os próximos sprints baseado nos gaps e blockers atuais.' },
-  { mode: 'planner', label: 'DEPENDÊNCIAS', icon: Network, prompt: 'Mapeie dependências entre os módulos e identifique o caminho crítico.' },
-
-  // Blueprint presets
-  { mode: 'blueprint', label: 'PIPELINE', icon: PenTool, prompt: 'Gere um diagrama Mermaid do pipeline ShowPlan → Verification → Readiness → Export.\n[JOI_CMD]{"action":"generate_mermaid","params":{"type":"pipeline"}}[/JOI_CMD]' },
-  { mode: 'blueprint', label: 'HARDWARE', icon: Cpu, prompt: 'Gere um diagrama da topologia de hardware com todos os adapters e seus estados.\n[JOI_CMD]{"action":"generate_mermaid","params":{"type":"hardware"}}[/JOI_CMD]' },
-  { mode: 'blueprint', label: 'DASHBOARD', icon: BarChart3, prompt: 'Proponha um layout ideal para o dashboard do CommandCenter com todos os consoles necessários.' },
-
-  // Docs presets — includes legacy document presets
-  { mode: 'docs', label: 'RELATÓRIO', icon: FileText, prompt: 'Gere um relatório técnico do estado atual do sistema com todos os subsistemas, seus status de integração e recomendações.\n[JOI_CMD]{"action":"get_system_state","params":{}}[/JOI_CMD]' },
-  { mode: 'docs', label: 'CHECKLIST', icon: ListChecks, prompt: 'Gere um checklist de validação pré-show cobrindo hardware, safety, verificação e export.' },
-  { mode: 'docs', label: 'MATRIZ', icon: BarChart3, prompt: 'Gere a Current State Matrix completa com módulo, status, integration mode, evidence level, source e detail.\n[JOI_CMD]{"action":"get_system_state","params":{}}[/JOI_CMD]' },
-  { mode: 'docs', label: 'AUDITORIA', icon: BookOpen, prompt: 'Gere um resumo da trilha de auditoria com eventos recentes, verificações e exportações.\n[JOI_CMD]{"action":"get_audit_log","params":{}}[/JOI_CMD]' },
-  { mode: 'docs', label: 'ORÇAMENTO', icon: Sparkles, prompt: 'Me ajude a criar um orçamento detalhado para um show pirotécnico. Preciso incluir itens, quantidades, calibres e custos.' },
-  { mode: 'docs', label: 'LICENÇAS', icon: ShieldCheck, prompt: 'Quais documentos e licenças preciso para realizar este show? Liste todos os órgãos, prazos e requisitos.' },
-  { mode: 'docs', label: 'CONTRATO', icon: Zap, prompt: 'Me ajude a redigir uma proposta comercial / contrato de prestação de serviços para um show.' },
-  { mode: 'docs', label: 'LICITAÇÃO', icon: Gavel, prompt: 'Me ajude a analisar um edital de licitação e preparar a proposta técnica e de preços.' },
-  { mode: 'docs', label: 'ESPAÇO AÉREO', icon: Plane, prompt: 'Me ajude a preparar a documentação de fechamento de espaço aéreo (NOTAM/DECEA) e planta de distanciamento de segurança.' },
-  { mode: 'docs', label: 'PLANTA', icon: MapPin, prompt: 'Gere uma planta de distanciamento de segurança conforme NFPA 1123 para este show.' },
-  { mode: 'docs', label: 'ACREDITAÇÃO', icon: ShieldCheck, prompt: 'Me ajude a preparar toda a documentação para acreditação junto aos órgãos fiscalizadores.' },
-  { mode: 'docs', label: 'PRAZOS', icon: AlertTriangle, prompt: 'Verifique prazos de licenças, certificados e seguros. Me alerte sobre vencimentos e renovações urgentes.' },
-  { mode: 'docs', label: 'DECLARAÇÃO', icon: FileText, prompt: 'Preciso redigir uma declaração/ofício para um órgão regulador. Me ajude com o formato oficial completo.' },
+  // ─── SECRETARIA EXECUTIVA ──────────────────────────────────────
+  { mode: 'executive', label: 'ORÇAMENTO', icon: Receipt, prompt: 'Me ajude a montar um orçamento detalhado para o show atual (produtos, mão de obra, logística, licenças, seguros, margem).' },
+  { mode: 'executive', label: 'PROPOSTA', icon: FileText, prompt: 'Redija uma proposta comercial profissional para apresentação ao cliente, com escopo, contrapartidas, prazo e investimento.' },
+  { mode: 'executive', label: 'CONTRATO', icon: ScrollText, prompt: 'Redija um contrato de prestação de serviços de espetáculo pirotécnico, com cláusulas de segurança, força maior, cancelamento, pagamento e responsabilidade civil.' },
+  { mode: 'executive', label: 'LICITAÇÃO', icon: Gavel, prompt: 'Me ajude a analisar um edital de licitação e estruturar a proposta técnica e comercial.' },
+  { mode: 'executive', label: 'NOTAM/DECEA', icon: Plane, prompt: 'Prepare a documentação completa de fechamento de espaço aéreo (NOTAM via AISWEB/DECEA) com coordenadas, altitude máxima, horário, raio de exclusão.' },
+  { mode: 'executive', label: 'LICENÇAS', icon: ShieldCheck, prompt: 'Liste todas as licenças, certificados e documentos necessários para realizar este show (Exército, Polícia, Bombeiros, Anvisa, prefeitura), com prazos.' },
+  { mode: 'executive', label: 'ACREDITAÇÃO', icon: ShieldCheck, prompt: 'Prepare a documentação de acreditação junto aos órgãos fiscalizadores.' },
+  { mode: 'executive', label: 'PRAZOS', icon: Calendar, prompt: 'Verifique prazos de licenças, certificados, seguros e contratos. Alerte sobre vencimentos e renovações.' },
+  { mode: 'executive', label: 'OFÍCIO', icon: FileText, prompt: 'Redija um ofício oficial para órgão regulador no formato brasileiro.' },
+  { mode: 'executive', label: 'DECLARAÇÃO', icon: ScrollText, prompt: 'Redija uma declaração formal para fins de comprovação junto a terceiros.' },
+  { mode: 'executive', label: 'AGENDA', icon: BookOpen, prompt: 'Organize a agenda da empresa para a próxima semana, priorizando vencimentos, reuniões com clientes e prazos regulatórios.' },
+  { mode: 'executive', label: 'ALERTAS', icon: AlertTriangle, prompt: 'Quais documentos, contratos ou licenças vencem nos próximos 30 dias? O que precisa de ação imediata?' },
 ];
 
 export function getPresetsForMode(mode: JoiMode): JoiModePreset[] {

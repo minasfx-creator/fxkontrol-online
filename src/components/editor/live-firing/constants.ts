@@ -353,13 +353,6 @@ export const DEFAULT_SETTINGS: FXCSettings = {
   networkIp: '10.171.3.120',
   networkMask: '255.255.255.0',
   networkGateway: '10.171.3.1',
-  dualConfirmRequired: true,
-  fireWindowMs: 2000,
-  hilModeEnabled: false,
-  hilBaseDelayMs: 40,
-  hilJitterMs: 15,
-  hilPacketLossRate: 0,
-  hilReorderRate: 0,
 };
 
 export const MAX_CUES_PER_SCENE = 128;

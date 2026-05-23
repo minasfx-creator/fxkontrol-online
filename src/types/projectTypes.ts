@@ -25,8 +25,6 @@ export interface TimelineItem {
   positionName?: string;
   notes?: string;
   flightCount?: number;
-  /** Per-item color override; if set, replaces the library effect color for this cue only. */
-  colorOverride?: string;
   hazard?: string;
   rack?: number;
   tube?: number;
@@ -38,17 +36,21 @@ export interface TimelineItem {
   positionIds?: string[];
   cueHeading?: number;
   cuePitch?: number;
-  /** Per-item intensity 0-100 (default 100). Scales glow/height/beam brightness live. */
-  intensity?: number;
-  /** Per-item prefire override in seconds (visual lift-time). */
-  prefireOverride?: number;
-  /** Per-item caliber override (inches), affects shell apex height. */
-  caliberOverride?: number;
-  /** Per-item beam count for laser cues. */
-  beamCountOverride?: number;
 }
 
 export type PositionType = 'pyro' | 'drone-pad' | 'light';
+
+/**
+ * Optional geo anchor for a Position. When present, it is the authoritative
+ * source: `x,y,z` are derived (re-materialised) from `geo` whenever the scene
+ * anchor changes. Plain `x,y,z` positions (no `geo`) remain untouched.
+ */
+export interface PositionGeo {
+  lat: number;
+  lng: number;
+  /** Altitude above ground level in meters. If omitted, snap-to-terrain is used. */
+  altAGL?: number;
+}
 
 export interface Position {
   id: string;
@@ -62,6 +64,12 @@ export interface Position {
   roll: number;
   color: string;
   section?: string;
+  /** Geo-authoritative anchor (lat/lng). When set, `x,y,z` are derived from it. */
+  geo?: PositionGeo;
+  /** Heading derives from audience azimuth when true. */
+  audienceFacing?: boolean;
+  /** True when `y` came from a terrain raycast (not user input). */
+  snappedToTerrain?: boolean;
 }
 
 export interface BezierHandle {

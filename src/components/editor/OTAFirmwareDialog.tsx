@@ -1,6 +1,6 @@
 /**
  * OTAFirmwareDialog — Firmware update UI for FireOne/PBUS modules
- * Real WebSerial upload only. Requires a connected port (passed by caller).
+ * Supports real WebSerial upload + SIM mode simulation
  */
 import { useState, useCallback, useRef } from 'react';
 import {
@@ -12,7 +12,7 @@ import { haptics } from '@/lib/haptics';
 import { Progress } from '@/components/ui/progress';
 import {
   parseFirmwareFile,
-  realOTAUpdate,
+  simulateOTAUpdate,
   type FirmwareInfo,
   type OTAProgress,
   type OTAStatus,
@@ -26,8 +26,8 @@ interface OTAFirmwareDialogProps {
   deviceName?: string;
   deviceAddr?: number;
   deviceTarget?: OTATarget;
-  /** Connected WebSerial port for the upload (required to start). */
-  serialPort?: unknown;
+  /** Is SIM mode active */
+  simMode?: boolean;
 }
 
 const STATUS_LABELS: Record<OTAStatus, string> = {
@@ -53,7 +53,7 @@ const STATUS_COLORS: Record<OTAStatus, string> = {
 };
 
 export default function OTAFirmwareDialog({
-  open, onClose, deviceName, deviceAddr, deviceTarget, serialPort,
+  open, onClose, deviceName, deviceAddr, deviceTarget, simMode,
 }: OTAFirmwareDialogProps) {
   const [firmware, setFirmware] = useState<FirmwareInfo | null>(null);
   const [progress, setProgress] = useState<OTAProgress | null>(null);
@@ -81,17 +81,14 @@ export default function OTAFirmwareDialog({
 
   const handleStartUpdate = useCallback(async () => {
     if (!firmware) return;
-    if (!serialPort) {
-      setParseError('No serial port connected. Open the DMX/Module port before starting OTA.');
-      return;
-    }
     haptics.tap();
 
     abortRef.current = new AbortController();
     const addr = deviceAddr ?? 1;
 
     try {
-      await realOTAUpdate(serialPort, firmware, addr, setProgress, abortRef.current.signal);
+      // Always use SIM for now (real WebSerial requires connected port reference)
+      await simulateOTAUpdate(firmware, addr, setProgress, abortRef.current.signal);
       haptics.tap();
     } catch (err: any) {
       setProgress(prev => prev ? {
@@ -100,7 +97,7 @@ export default function OTAFirmwareDialog({
         errorMessage: err.message,
       } : null);
     }
-  }, [firmware, deviceAddr, serialPort]);
+  }, [firmware, deviceAddr]);
 
   const handleCancel = useCallback(() => {
     haptics.tap();
@@ -133,7 +130,7 @@ export default function OTAFirmwareDialog({
             <div>
               <h3 className="text-xs font-bold text-foreground tracking-tight">Firmware Update OTA</h3>
               <p className="text-[9px] text-[hsl(var(--muted-foreground))] font-mono">
-                {deviceName || 'Selecione o módulo'} {!serialPort && '• NO PORT'}
+                {deviceName || 'Selecione o módulo'} {simMode && '• SIM'}
               </p>
             </div>
           </div>
