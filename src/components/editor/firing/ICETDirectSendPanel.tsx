@@ -38,10 +38,13 @@ export default function ICETDirectSendPanel({ onClose }: Props) {
   const [title, setTitle] = useState(() => projectName.slice(0, ICET_TITLE_MAX));
   const [busy, setBusy] = useState(false);
   const [progress, setProgress] = useState({ sent: 0, total: 0 });
+  const [startedAt, setStartedAt] = useState<number | null>(null);
+  const [now, setNow] = useState<number>(() => Date.now());
   const [lastResult, setLastResult] = useState<IcetSendResult | null>(null);
   const [pairedLabel, setPairedLabel] = useState<string | null>(null);
   const portRef = useRef<SerialPortLike | null>(null);
   const abortRef = useRef<AbortController | null>(null);
+  const tickRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const build = useMemo(
     () => buildIcetScript(items, positions, { title }),
