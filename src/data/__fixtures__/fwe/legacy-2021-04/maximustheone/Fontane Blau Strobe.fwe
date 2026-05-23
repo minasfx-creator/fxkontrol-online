@@ -1,0 +1,44 @@
+<?xml version="1.0"?>
+<FireworkEffect xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+  <Children>
+    <BaseEffectNode xsi:type="Shell">
+      <Children>
+        <BaseEffectNode xsi:type="Eruption">
+          <Children>
+            <BaseEffectNode xsi:type="Stars">
+              <Children />
+              <Type>Sparks</Type>
+              <Distribution xsi:type="MineDistribution">
+                <Speed>1</Speed>
+                <Sigma>0.131334</Sigma>
+              </Distribution>
+              <Color>
+                <CustomR>0</CustomR>
+                <CustomG>0</CustomG>
+                <CustomB>0</CustomB>
+                <Color>Blue</Color>
+              </Color>
+              <Count>1602</Count>
+              <MinimumLifetime>1.5</MinimumLifetime>
+              <MaximumLifetime>3.8227</MaximumLifetime>
+              <Strobe>true</Strobe>
+              <StrobeFreqMean>14</StrobeFreqMean>
+            </BaseEffectNode>
+          </Children>
+          <Duration>3</Duration>
+          <Speed>119.8</Speed>
+        </BaseEffectNode>
+      </Children>
+      <Diameter>0.292846024</Diameter>
+      <LiftingCharge>0</LiftingCharge>
+    </BaseEffectNode>
+  </Children>
+  <Identifier>
+    <Name>Fountain blue Strobe</Name>
+    <Author>maximus</Author>
+  </Identifier>
+  <AuthorSoftwareVersion>
+    <Major>0</Major>
+    <Minor>5</Minor>
+  </AuthorSoftwareVersion>
+</FireworkEffect>

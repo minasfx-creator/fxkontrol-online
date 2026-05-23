@@ -7,6 +7,7 @@ import { useMemo, useState, useRef, useEffect } from 'react';
 import { useProjectStore } from '@/store/useProjectStore';
 import { type TimelineItem } from '@/types/projectTypes';
 import { EFFECT_LIBRARY, type Effect } from '@/data/effectLibrary';
+import { findEffectById } from '@/data/effectsLibraries/resolveEffect';
 import { cn } from '@/lib/utils';
 import { Flame, ChevronDown, ChevronRight } from 'lucide-react';
 
@@ -83,12 +84,12 @@ export default function PyroTimelineTrack({
   const pyroItems = useMemo(() => {
     return timelineItems
       .filter(item => {
-        const effect = EFFECT_LIBRARY.find(e => e.id === item.effectId);
+        const effect = findEffectById(item.effectId);
         return effect?.type === 'firework';
       })
       .map(item => ({
         item,
-        effect: EFFECT_LIBRARY.find(e => e.id === item.effectId)!,
+        effect: findEffectById(item.effectId)!,
       }))
       .sort((a, b) => a.item.startTime - b.item.startTime);
   }, [timelineItems]);

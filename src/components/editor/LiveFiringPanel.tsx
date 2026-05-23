@@ -10,17 +10,19 @@ import { haptics } from '@/lib/haptics';
 import { createPortal } from 'react-dom';
 import { useIsMobile } from '@/hooks/use-mobile';
 import {
-  AlertTriangle, Check, Radio, Lock, Unlock, Timer,
-  Shield, Settings, Signal, Eye, EyeOff,
+  Flame, Wind, Sparkles, Zap, Play, Square, Plus, Trash2,
+  AlertTriangle, Check, Radio, Lightbulb, ChevronDown,
+  RotateCcw, Save, Upload, Lock, Unlock, Timer, Power,
+  Shield, ShieldAlert, Gauge, Settings, FolderOpen, Wifi,
+  Signal, Thermometer, Activity, Volume2, Eye, EyeOff,
   Maximize2, Minimize2, Battery, Hand, ChevronLeft, ChevronRight,
-  Map,
+  Cable, Globe, Map, Cpu, Smartphone, Plug
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Slider } from '@/components/ui/slider';
 import { Switch } from '@/components/ui/switch';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import BridgeSecurityAlert from '@/components/editor/network/BridgeSecurityAlert';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
@@ -29,15 +31,9 @@ import { useLiveSfxStore } from '@/store/useLiveSfxStore';
 import { useSfxChannelStore } from '@/store/useSfxChannelStore';
 import { useFireOneHardware } from '@/hooks/useFireOneHardware';
 import { usePBusHardware } from '@/hooks/usePBusHardware';
-import { buildBridgeWebSocketProtocols, buildBridgeWebSocketUrl, evaluateBridgeWebSocketConnection, getBridgeSecurityDiagnostic, openBridgeWebSocket, parseBridgeGatewayUrl, saveBridgeGatewayConfig } from '@/lib/bridgeGateway';
-import { bridgePhysicalController, evaluateFireLockout } from '@/lib/bridgePhysicalControl';
 
 import type { SFXChannel, CueEntry, FXCMode, FXCSettings, DeviceLibEntry } from './live-firing/types';
 import { FIRING_RULES, SFX_TYPES, DEFAULT_CHANNELS, DEFAULT_SETTINGS, CUES_PER_PAGE, formatTimecode, SHOWVEN_LIBRARY } from './live-firing/constants';
-import MobileModeTabs from './live-firing/MobileModeTabs';
-import LockoutPanel from './live-firing/LockoutPanel';
-import CueKey from './live-firing/CueKey';
-import DeviceRow from './live-firing/DeviceRow';
 import AutoFirePanel from './live-firing/AutoFirePanel';
 import CheckSlavePanel from './live-firing/CheckSlavePanel';
 import FXKNetPanel from './live-firing/FXKNetPanel';
@@ -51,13 +47,289 @@ import ShowCommanderPanel from './ShowCommanderPanel';
 import DMXMonitorPanel from './dmx/DMXMonitorPanel';
 import DroneCommandPanel from './DroneCommandPanel';
 import EasyConnectPanel from './EasyConnectPanel';
-
+import { RISK_GROUP_LABELS, RISK_GROUP_COLORS, type RiskGroup } from '@/lib/pyroPhysics';
 
 // ═══════════════════════════════════════════════════════════
-// MODE CONFIGURATION
+// MOBILE MODE TABS — Categorized grid for mobile Live FX
 // ═══════════════════════════════════════════════════════════
+const MODE_CATEGORIES = [
+  {
+    label: 'EXECUTION', modes: [
+      { key: 'super_dmx' as FXCMode, label: 'FXK-DMX', icon: Zap },
+      { key: 'pyro_fire' as FXCMode, label: 'FXK-PYRO', icon: Flame },
+    ],
+  },
+  {
+    label: 'MONITORING', modes: [
+      { key: 'show_control' as FXCMode, label: 'SHOW CTRL', icon: Activity },
+      { key: 'dmx_monitor' as FXCMode, label: 'DMX MON', icon: Radio },
+      { key: 'fxk_light' as FXCMode, label: 'FXK-LIGHT', icon: Gauge },
+    ],
+  },
+  {
+    label: 'HARDWARE', modes: [
+      { key: 'module' as FXCMode, label: 'MODULE', icon: Globe },
+      { key: 'ble_scan' as FXCMode, label: 'CONNECT', icon: Signal },
+    ],
+  },
+];
+
 const SELF_CONTAINED_PANEL_MODES: FXCMode[] = ['pyro_fire', 'fxk_light', 'ma3', 'show_control', 'dmx_monitor', 'drone_ops'];
 const isSelfContainedMode = (mode: FXCMode) => SELF_CONTAINED_PANEL_MODES.includes(mode);
+
+function MobileModeTabs({ mode, onModeChange }: { mode: FXCMode; onModeChange: (m: FXCMode) => void }) {
+  const [expanded, setExpanded] = useState(true);
+  const currentCategory = MODE_CATEGORIES.find(c => c.modes.some(m => m.key === mode));
+  const currentMode = MODE_CATEGORIES.flatMap(c => c.modes).find(m => m.key === mode);
+
+  if (!expanded) {
+    return (
+      <button
+        onClick={() => setExpanded(true)}
+        className="w-full flex items-center gap-2 px-3 py-2 text-[10px] font-bold uppercase tracking-wider text-muted-foreground/60"
+        style={{ background: 'hsl(220 10% 7%)' }}
+      >
+        <ChevronDown className="w-3 h-3" />
+        {currentCategory?.label} › {currentMode?.label}
+      </button>
+    );
+  }
+
+  return (
+    <div className="px-2 py-2 space-y-2" style={{ background: 'hsl(220 10% 6%)' }}>
+      {/* Quick access bar */}
+      <div className="flex gap-1.5">
+        {[
+          { key: 'super_dmx' as FXCMode, label: 'DMX', icon: Zap },
+          { key: 'pyro_fire' as FXCMode, label: 'Pyro', icon: Flame },
+          { key: 'show_control' as FXCMode, label: 'Show', icon: Activity },
+          { key: 'artnet_modules' as FXCMode, label: 'Module', icon: Globe },
+        ].map(q => (
+          <button
+            key={q.key}
+            onClick={() => { onModeChange(q.key); setExpanded(false); }}
+            className={cn(
+              "flex-1 flex items-center justify-center gap-1.5 rounded-lg border-2 py-2.5 font-bold uppercase text-[9px] tracking-wider transition-all min-h-[44px]",
+              mode === q.key
+                ? "border-primary/50 bg-primary/10 text-primary"
+                : "border-border/15 bg-[hsl(220_10%_10%)] text-muted-foreground/40"
+            )}
+          >
+            <q.icon className="w-4 h-4" />
+            {q.label}
+          </button>
+        ))}
+      </div>
+      {/* Categories grid */}
+      {MODE_CATEGORIES.map(cat => (
+        <div key={cat.label}>
+          <div className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground/30 mb-1 px-1">{cat.label}</div>
+          <div className="grid grid-cols-3 gap-1.5">
+            {cat.modes.map(m => (
+              <button
+                key={m.key}
+                onClick={() => { onModeChange(m.key); setExpanded(false); }}
+                className={cn(
+                  "flex flex-col items-center justify-center gap-1 rounded-lg border py-3 transition-all min-h-[56px]",
+                  mode === m.key
+                    ? "border-primary/40 bg-primary/10 text-primary"
+                    : "border-border/10 bg-[hsl(220_10%_9%)] text-muted-foreground/40 active:bg-[hsl(220_10%_14%)]"
+                )}
+              >
+                <m.icon className="w-5 h-5" />
+                <span className="text-[10px] font-bold uppercase tracking-wider">{m.label}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════
+// LOCKOUT PANEL — Finale 3D Risk Group Lockout System
+// ═══════════════════════════════════════════════════════════
+function LockoutPanel({ fs, mob }: { fs: boolean; mob: boolean }) {
+    const activeLockouts = useProjectStore(s => s.activeLockouts);
+  const toggleLockout = useProjectStore(s => s.toggleLockout);
+  const groups: RiskGroup[] = ['A', 'B', 'C', 'D', 'E'];
+
+  return (
+    <div className={cn("border-t border-border/15", fs && mob ? "px-3 py-1.5" : fs ? "px-4 py-2" : "px-2 py-1")} style={{ background: 'hsl(220 12% 7%)' }}>
+      <div className={cn("flex items-center gap-2 mb-1", fs ? "text-[9px]" : "text-[8px]")}>
+        <Shield className={cn(fs ? "w-3.5 h-3.5" : "w-2.5 h-2.5", "text-amber-400/60")} />
+        <span className="font-bold text-muted-foreground/50 uppercase tracking-wider">Lockout Groups</span>
+      </div>
+      <div className={cn("flex gap-1", fs && mob ? "flex-wrap" : "")}>
+        {groups.map(g => {
+          const locked = activeLockouts.includes(g);
+          return (
+            <button
+              key={g}
+              onClick={() => toggleLockout(g)}
+              className={cn(
+                "flex-1 rounded border-2 font-bold uppercase transition-all flex flex-col items-center",
+                fs && mob ? "py-2 text-[9px] min-w-[60px]" : fs ? "py-1.5 text-[10px]" : "py-1 text-[10px]",
+                locked
+                  ? "border-red-500/60 bg-red-500/15 text-red-400"
+                  : "border-border/20 bg-[hsl(220_10%_10%)] text-muted-foreground/40 hover:border-border/40"
+              )}
+            >
+              <span className="font-black" style={{ color: locked ? undefined : RISK_GROUP_COLORS[g] }}>{g}</span>
+              <span className={cn("font-normal", fs ? "text-[10px]" : "text-[10px]")}>
+                {locked ? 'LOCKED' : RISK_GROUP_LABELS[g].split(' ')[0]}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+      {activeLockouts.length > 0 && (
+        <div className={cn("text-center font-bold text-red-400/70 uppercase mt-1", fs ? "text-[10px]" : "text-[10px]")}>
+          {activeLockouts.length} GROUP{activeLockouts.length > 1 ? 'S' : ''} LOCKED OUT
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════
+// CUE KEY — hardware key replica with Lock/Tap mode
+// ═══════════════════════════════════════════════════════════
+function CueKey({
+  index, cue, firing, onPress, onRelease, onLongPress, pyroArmed, dmxArmed, fs, mobile,
+}: {
+  index: number; cue?: CueEntry; firing: boolean;
+  onPress: () => void; onRelease: () => void; onLongPress: () => void;
+  pyroArmed: boolean; dmxArmed: boolean; fs: boolean; mobile?: boolean;
+}) {
+  const isArmed = pyroArmed || dmxArmed;
+  const hasAssignment = !!cue;
+  const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const isLocked = cue?.keyMode === 'lock';
+  const isBig = fs && mobile;
+
+  const handleDown = () => {
+    onPress();
+    longPressTimer.current = setTimeout(() => { onLongPress(); }, 800);
+  };
+  const handleUp = () => {
+    if (longPressTimer.current) clearTimeout(longPressTimer.current);
+    onRelease();
+  };
+
+  return (
+    <button
+      onMouseDown={handleDown}
+      onMouseUp={handleUp}
+      onMouseLeave={() => { if (longPressTimer.current) clearTimeout(longPressTimer.current); if (firing && !isLocked) onRelease(); }}
+      onTouchStart={(e) => { e.preventDefault(); handleDown(); }}
+      onTouchEnd={(e) => { e.preventDefault(); handleUp(); }}
+      disabled={!isArmed || !hasAssignment}
+      className={cn(
+        "relative flex flex-col items-center justify-center rounded-md transition-all select-none border-2",
+        isBig ? "min-h-[72px] rounded-xl" : fs ? "min-h-[100px] rounded-lg" : "min-h-[52px]",
+        firing
+          ? "bg-red-600 border-red-400 scale-[0.96]"
+          : isArmed && hasAssignment
+            ? "bg-[hsl(220_12%_12%)] border-border/50 hover:bg-[hsl(220_12%_16%)] active:scale-[0.96] active:bg-red-700/80 cursor-pointer"
+            : hasAssignment
+              ? "bg-[hsl(220_10%_10%)] border-border/20"
+              : "bg-[hsl(220_10%_7%)] border-border/10"
+      )}
+      style={firing ? { boxShadow: '0 0 20px rgba(255,60,30,0.5)' } : undefined}
+    >
+      <div className={cn(
+        "absolute rounded-full",
+        isBig ? "w-2.5 h-2.5 top-1.5 left-1.5" : fs ? "w-3 h-3 top-1.5 left-1.5" : "w-1.5 h-1.5 top-0.5 left-0.5",
+        firing ? "bg-red-400" : isArmed && hasAssignment ? "bg-green-500" : "bg-muted-foreground/20"
+      )} style={firing ? { boxShadow: '0 0 6px #ff4444' } : isArmed && hasAssignment ? { boxShadow: '0 0 4px #22cc44' } : undefined} />
+
+      {isLocked && (
+        <Lock className={cn(
+          "absolute text-amber-400/50",
+          isBig ? "w-3 h-3 top-1.5 right-1.5" : fs ? "w-3 h-3 top-1.5 right-1.5" : "w-2 h-2 top-0.5 right-0.5"
+        )} />
+      )}
+
+      <span className={cn(
+        "font-mono font-bold",
+        isBig ? "text-[9px] mb-0.5" : fs ? "text-xs mb-1" : "text-[8px]",
+        firing ? "text-white" : "text-muted-foreground/50"
+      )}>KEY{index + 1}</span>
+
+      {cue ? (
+        <>
+          <span className={cn(
+            "font-black uppercase tracking-wide leading-tight text-center px-0.5 truncate w-full",
+            isBig ? "text-[10px]" : fs ? "text-sm" : "text-[10px]",
+            firing ? "text-white" : "text-foreground/80"
+          )} style={{ color: firing ? undefined : cue.keyColor }}>
+            {cue.keyLabel || cue.effect}
+          </span>
+          <span className={cn(
+            "font-mono",
+            isBig ? "text-[8px] mt-0.5" : fs ? "text-[10px] mt-0.5" : "text-[10px]",
+            firing ? "text-red-200" : "text-muted-foreground/40"
+          )}>
+            {cue.deviceIds.length}dev · {FIRING_RULES.find(r => r.key === cue.firingRule)?.label}
+          </span>
+        </>
+      ) : (
+        <span className={cn(isBig ? "text-xs" : fs ? "text-sm" : "text-[8px]", "text-muted-foreground/20")}>—</span>
+      )}
+    </button>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════
+// DEVICE TABLE ROW
+// ═══════════════════════════════════════════════════════════
+function DeviceRow({
+  channel, index, selected, onSelect, dmxArmed, fs,
+}: {
+  channel: SFXChannel; index: number; selected: boolean;
+  onSelect: () => void; dmxArmed: boolean; fs: boolean;
+}) {
+  const sfxType = SFX_TYPES.find(t => t.key === channel.type);
+  const hasSafety = channel.safetyChannel !== undefined;
+
+  return (
+    <button onClick={onSelect}
+      className={cn(
+        "w-full flex items-center gap-1 border-b border-border/10 transition-all text-left",
+        fs ? "px-2.5 py-1.5 gap-2" : "px-1.5 py-1 gap-1",
+        selected ? "bg-primary/15 border-primary/20" :
+        dmxArmed && channel.enabled && hasSafety && channel.firing ? "bg-red-600/15" :
+        dmxArmed && channel.enabled && hasSafety ? "bg-[hsl(210_80%_25%_/_0.2)]" :
+        dmxArmed && channel.enabled ? "bg-[hsl(220_10%_12%)] hover:bg-[hsl(220_10%_15%)]" :
+        "hover:bg-[hsl(220_10%_10%)]",
+        !channel.enabled && "opacity-40"
+      )}>
+      <span className={cn("font-mono text-muted-foreground/40 text-right shrink-0", fs ? "text-[10px] w-4" : "text-[8px] w-3")}>{index + 1}</span>
+      <div className={cn("rounded-sm shrink-0", fs ? "w-2 h-7" : "w-1.5 h-6")} style={{ backgroundColor: sfxType?.color || '#888' }} />
+      <div className="flex-1 min-w-0">
+        <div className={cn("font-bold uppercase truncate leading-tight", fs ? "text-[10px]" : "text-[10px]", selected ? "text-primary" : "text-foreground/80")}>
+          {channel.name}
+        </div>
+        <div className={cn("font-mono text-muted-foreground/40 leading-tight", fs ? "text-[10px]" : "text-[10px]")}>
+          {sfxType?.label} · U{channel.dmxUniverse}.{String(channel.dmxAddress).padStart(3, '0')}
+        </div>
+      </div>
+      <div className="flex flex-col items-end gap-0.5 shrink-0">
+        {channel.temperature !== undefined && (
+          <span className={cn("font-mono", fs ? "text-[10px]" : "text-[10px]", channel.temperature > 600 ? "text-red-400" : "text-green-400/70")}>
+            {channel.temperature}°
+          </span>
+        )}
+        {channel.pressure !== undefined && (
+          <span className={cn("font-mono text-cyan-400/70", fs ? "text-[10px]" : "text-[10px]")}>{channel.pressure}bar</span>
+        )}
+      </div>
+      {channel.firing && <div className={cn("rounded-full bg-red-500 animate-pulse shrink-0", fs ? "w-2.5 h-2.5" : "w-2 h-2")} />}
+    </button>
+  );
+}
 
 // ═══════════════════════════════════════════════════════════
 // MAIN PANEL
@@ -108,118 +380,41 @@ export default function LiveFiringPanel({ onClose, initialMode, standalone }: { 
   const [firingStartTime, setFiringStartTime] = useState<number | null>(null);
   const [batteryVoltage] = useState(11.82);
   const [relayConnected, setRelayConnected] = useState(false);
-  const [relayUrl, setRelayUrl] = useState(() => buildBridgeWebSocketUrl({ path: '' }));
+  const [relayUrl, setRelayUrl] = useState('ws://localhost:9001');
   const [showMode, setShowMode] = useState(false);
   const showModeTapRef = useRef<number>(0);
   const sequenceRef = useRef(0);
   const fireTimers = useRef(new globalThis.Map<string, ReturnType<typeof setTimeout>>());
-  const fireWindowTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const relayWs = useRef<WebSocket | null>(null);
-  const [dualConfirmArmed, setDualConfirmArmed] = useState(false);
-  const [fireWindowEndsAt, setFireWindowEndsAt] = useState<number | null>(null);
-  const [physicalRevision, setPhysicalRevision] = useState(0);
-  const relayDiagnostic = useMemo(() => getBridgeSecurityDiagnostic(relayUrl), [relayUrl]);
-  const physicalSnapshot = useMemo(() => bridgePhysicalController.getSnapshot(), [physicalRevision]);
-  const hilLogs = useMemo(() => bridgePhysicalController.getHilLogs(), [physicalRevision]);
-  const commandTimeline = useMemo(() => bridgePhysicalController.getCommandTimeline(), [physicalRevision]);
 
   useEffect(() => {
     if (!initialMode) return;
     setMode(initialMode as FXCMode);
   }, [initialMode]);
 
-  useEffect(() => bridgePhysicalController.subscribe(() => setPhysicalRevision((value) => value + 1)), []);
-
-  useEffect(() => {
-    bridgePhysicalController.configureHil(settings.hilModeEnabled, {
-      baseDelayMs: settings.hilBaseDelayMs,
-      jitterMs: settings.hilJitterMs,
-      packetLossRate: settings.hilPacketLossRate,
-      reorderRate: settings.hilReorderRate,
-    });
-  }, [settings.hilModeEnabled, settings.hilBaseDelayMs, settings.hilJitterMs, settings.hilPacketLossRate, settings.hilReorderRate]);
-
-  useEffect(() => {
-    if (!physicalSnapshot.autoDisarmed || (!pyroArm && !dmxArm)) return;
-    setPyroArm(false);
-    setDmxArm(false);
-    setDeadmanHeld(false);
-    setDualConfirmArmed(false);
-    setFireWindowEndsAt(null);
-    toast.error('Watchdog físico forçou AUTO DISARM por perda de heartbeat', { duration: 5000 });
-  }, [physicalSnapshot.autoDisarmed, pyroArm, dmxArm]);
-
   // ─── WebSocket Relay connection ───
   const connectRelay = useCallback(() => {
     if (relayWs.current?.readyState === WebSocket.OPEN) return;
     try {
-      const guard = evaluateBridgeWebSocketConnection(relayUrl);
-      if (!guard.allowed) {
-        toast.error(guard.reason ?? 'Bridge local bloqueado no contexto atual');
-        return;
-      }
-      const protocols = buildBridgeWebSocketProtocols();
-      const parsed = parseBridgeGatewayUrl(relayUrl);
-      if (parsed) saveBridgeGatewayConfig(parsed);
-      const ws = openBridgeWebSocket(relayUrl, protocols);
-      ws.onopen = () => {
-        setRelayConnected(true);
-        bridgePhysicalController.startWatchdog((heartbeat) => {
-          if (ws.readyState === WebSocket.OPEN) {
-            ws.send(JSON.stringify({ action: 'heartbeat', heartbeat }));
-          }
-        });
-        ws.send(JSON.stringify({ action: 'clock-sync', t0: performance.now() }));
-        toast.success('🔌 Relay UDP conectado');
-      };
-      ws.onclose = () => {
-        setRelayConnected(false);
-        relayWs.current = null;
-        bridgePhysicalController.stopWatchdog();
-      };
-      ws.onerror = () => {
-        setRelayConnected(false);
-        bridgePhysicalController.stopWatchdog();
-        toast.error('Falha ao conectar relay');
-      };
+      const ws = new WebSocket(relayUrl);
+      ws.onopen = () => { setRelayConnected(true); toast.success('🔌 Relay UDP conectado'); };
+      ws.onclose = () => { setRelayConnected(false); relayWs.current = null; };
+      ws.onerror = () => { setRelayConnected(false); toast.error('Falha ao conectar relay'); };
       ws.onmessage = (e) => {
-        try {
-          const msg = JSON.parse(e.data);
-          if (msg.action === 'pong' || msg.action === 'heartbeat-pong' || msg.heartbeat) {
-            bridgePhysicalController.ingestHeartbeat(msg.heartbeat ?? msg);
-          }
-          if (msg.action === 'clock-sync' && typeof msg.t0 === 'number' && typeof msg.t1 === 'number' && typeof msg.t2 === 'number') {
-            bridgePhysicalController.recordClockSync({ t0: msg.t0, t1: msg.t1, t2: msg.t2, t3: performance.now() });
-          }
-          if (msg.commandId && typeof msg.state === 'string') {
-            try {
-              bridgePhysicalController.transitionCommand(msg.commandId, msg.state, msg.reason);
-            } catch {
-              if (msg.state === 'failed' && msg.reason) bridgePhysicalController.failCommand(msg.commandId, msg.reason);
-            }
-          }
-          if (msg.error) console.warn('[Relay]', msg.error);
-        } catch {}
+        try { const msg = JSON.parse(e.data); if (msg.error) console.warn('[Relay]', msg.error); } catch {}
       };
       relayWs.current = ws;
     } catch { toast.error('URL do relay inválida'); }
   }, [relayUrl]);
 
-  const handleRelayUrlChange = useCallback((url: string) => {
-    setRelayUrl(url);
-    const parsed = parseBridgeGatewayUrl(url);
-    if (parsed) saveBridgeGatewayConfig(parsed);
-  }, []);
-
   const disconnectRelay = useCallback(() => {
     relayWs.current?.close();
     relayWs.current = null;
     setRelayConnected(false);
-    bridgePhysicalController.stopWatchdog();
   }, []);
 
   // Cleanup relay on unmount
-  useEffect(() => { return () => { relayWs.current?.close(); bridgePhysicalController.stopWatchdog(); if (fireWindowTimerRef.current) clearTimeout(fireWindowTimerRef.current); }; }, []);
+  useEffect(() => { return () => { relayWs.current?.close(); }; }, []);
 
   // ─── Remote LiveFX relay listener ───
   useEffect(() => {
@@ -359,15 +554,6 @@ export default function LiveFiringPanel({ onClose, initialMode, standalone }: { 
   // ─── ARM controls ───
   const handlePyroArm = useCallback((armed: boolean) => {
     setPyroArm(armed);
-    bridgePhysicalController.setSystemArmed(armed || dmxArm);
-    if (!armed) {
-      setDualConfirmArmed(false);
-      setFireWindowEndsAt(null);
-      if (fireWindowTimerRef.current) {
-        clearTimeout(fireWindowTimerRef.current);
-        fireWindowTimerRef.current = null;
-      }
-    }
     if (armed) {
       toast.warning('⚠️ PYRO ARMED — LIVE SYSTEM', { duration: 3000 });
       if (fireone.isConnected) fireone.armAll().catch(() => {});
@@ -378,26 +564,14 @@ export default function LiveFiringPanel({ onClose, initialMode, standalone }: { 
       if (fireone.isConnected) fireone.disarmAll().catch(() => {});
       if (pbus.isConnected) pbus.disarmAll().catch(() => {});
     }
-  }, [dmxArm, fireone, pbus]);
+  }, [fireone, pbus]);
 
   const handleDmxArm = useCallback((armed: boolean) => {
     setDmxArm(armed);
-    bridgePhysicalController.setSystemArmed(pyroArm || armed);
     setChannels(prev => prev.map(ch => ({ ...ch, armed: ch.locked ? false : armed })));
     if (armed) toast.warning('DMX ARMED', { duration: 2000 });
-    else {
-      toast.info('DMX disarmed');
-      setLockedKeys(new Set());
-      if (!pyroArm) {
-        setDualConfirmArmed(false);
-        setFireWindowEndsAt(null);
-        if (fireWindowTimerRef.current) {
-          clearTimeout(fireWindowTimerRef.current);
-          fireWindowTimerRef.current = null;
-        }
-      }
-    }
-  }, [pyroArm]);
+    else { toast.info('DMX disarmed'); setLockedKeys(new Set()); }
+  }, []);
 
   const handlePanic = useCallback(() => {
     // Strong haptic burst for PANIC
@@ -410,14 +584,6 @@ export default function LiveFiringPanel({ onClose, initialMode, standalone }: { 
     setPyroArm(false);
     setDmxArm(false);
     setDeadmanHeld(false);
-    setDualConfirmArmed(false);
-    setFireWindowEndsAt(null);
-    bridgePhysicalController.setSystemArmed(false);
-    bridgePhysicalController.stopWatchdog();
-    if (fireWindowTimerRef.current) {
-      clearTimeout(fireWindowTimerRef.current);
-      fireWindowTimerRef.current = null;
-    }
     setFiringStartTime(null);
     // E-STOP all connected hardware
     if (fireone.isConnected) fireone.emergencyStop().catch(() => {});
@@ -427,34 +593,6 @@ export default function LiveFiringPanel({ onClose, initialMode, standalone }: { 
 
   // ─── Fire logic ───
   const fireChannel = useCallback((id: string) => {
-    const hilValidation = bridgePhysicalController.validateHilBeforeFire();
-    if (!hilValidation.ok) {
-      toast.error(`HIL blocked: ${hilValidation.reason}`);
-      return;
-    }
-
-    const lockout = evaluateFireLockout({
-      systemArmed: pyroArm || dmxArm,
-      deadmanHeld: deadmanHeld || !settings.pyroArmRequired,
-      dualConfirmRequired: settings.dualConfirmRequired,
-      dualConfirmed: dualConfirmArmed,
-      alreadyFired: bridgePhysicalController.wasChannelFired(id),
-      requiresWatchdog: relayDiagnostic.watchdogRequired,
-      watchdogState: physicalSnapshot.watchdogState,
-    });
-    if (!lockout.allowed) {
-      toast.error(lockout.reason ?? 'FIRE bloqueado pela camada física');
-      return;
-    }
-
-    const commandId = `phys-${id}-${Date.now()}-${sequenceRef.current++}`;
-    bridgePhysicalController.beginCommand(commandId, 'manual-fire', id);
-    bridgePhysicalController.transitionCommand(commandId, 'queued');
-    bridgePhysicalController.transitionCommand(commandId, 'sent');
-    bridgePhysicalController.transitionCommand(commandId, 'acked');
-    bridgePhysicalController.transitionCommand(commandId, 'armed');
-    bridgePhysicalController.transitionCommand(commandId, 'fired');
-
     // Haptic feedback on mobile
     haptics.fire();
     setChannels(prev => { const updated = prev.map(ch => ch.id === id ? { ...ch, firing: true } : ch); sendArtNetPacket(updated); return updated; });
@@ -479,79 +617,19 @@ export default function LiveFiringPanel({ onClose, initialMode, standalone }: { 
       }
       useLiveSfxStore.getState().fireEffect({ id: ch.id, type: ch.type as any, position: pos3d, color: ch.color, intensity: ch.intensity, startedAt: performance.now(), duration: ch.duration });
       if (!firingStartTime) setFiringStartTime(Date.now());
-      const finalizeCommand = () => {
-        setChannels(prev => { const updated = prev.map(c => c.id === id ? { ...c, firing: false } : c); sendArtNetPacket(updated); return updated; });
-        bridgePhysicalController.transitionCommand(commandId, 'confirmed');
-        bridgePhysicalController.transitionCommand(commandId, 'done');
-        bridgePhysicalController.clearHilTimer(commandId);
-        fireTimers.current.delete(id);
-      };
       const timer = setTimeout(() => {
-        if (settings.hilModeEnabled) {
-          void bridgePhysicalController.simulateHilFire(id, (_channelId, meta) => {
-            if (meta.reordered) {
-              const log = `HIL reorder: ${id} +${Math.round(meta.delayMs)}ms`;
-              toast.warning(log, { duration: 1500 });
-            }
-            finalizeCommand();
-          }).then((ok) => {
-            if (!ok) {
-              bridgePhysicalController.failCommand(commandId, 'HIL simulated packet loss');
-              bridgePhysicalController.clearHilTimer(commandId);
-              fireTimers.current.delete(id);
-              setChannels(prev => { const updated = prev.map(c => c.id === id ? { ...c, firing: false } : c); sendArtNetPacket(updated); return updated; });
-              toast.error(`HIL fault: packet loss em ${id}`);
-            }
-          });
-          return;
-        }
-        finalizeCommand();
+        setChannels(prev => { const updated = prev.map(c => c.id === id ? { ...c, firing: false } : c); sendArtNetPacket(updated); return updated; });
+        fireTimers.current.delete(id);
       }, ch.duration);
-      bridgePhysicalController.registerHilTimer(commandId, timer);
       fireTimers.current.set(id, timer);
     }
-  }, [channels, sendArtNetPacket, positions, firingStartTime, fireone, pbus, pyroArm, dmxArm, deadmanHeld, settings.pyroArmRequired, settings.dualConfirmRequired, settings.hilModeEnabled, dualConfirmArmed, relayDiagnostic.watchdogRequired, physicalSnapshot.watchdogState]);
+  }, [channels, sendArtNetPacket, positions, firingStartTime, fireone, pbus]);
 
   const stopChannel = useCallback((id: string) => {
     const timer = fireTimers.current.get(id);
     if (timer) { clearTimeout(timer); fireTimers.current.delete(id); }
     setChannels(prev => { const updated = prev.map(ch => ch.id === id ? { ...ch, firing: false } : ch); sendArtNetPacket(updated); return updated; });
   }, [sendArtNetPacket]);
-
-  const armFireWindow = useCallback(() => {
-    if (!(pyroArm || dmxArm)) {
-      toast.error('Arme PYRO ou DMX antes de abrir a FIRE WINDOW');
-      return;
-    }
-    setDualConfirmArmed(true);
-    const endsAt = Date.now() + settings.fireWindowMs;
-    setFireWindowEndsAt(endsAt);
-    if (fireWindowTimerRef.current) clearTimeout(fireWindowTimerRef.current);
-    fireWindowTimerRef.current = setTimeout(() => {
-      setDualConfirmArmed(false);
-      setFireWindowEndsAt(null);
-      handlePyroArm(false);
-      handleDmxArm(false);
-      toast.warning('FIRE WINDOW encerrada — AUTO DISARM executado');
-    }, settings.fireWindowMs);
-    toast.success(`FIRE WINDOW aberta por ${(settings.fireWindowMs / 1000).toFixed(1)}s`);
-  }, [pyroArm, dmxArm, settings.fireWindowMs, handlePyroArm, handleDmxArm]);
-
-  const cancelLiveHil = useCallback(() => {
-    const latest = [...commandTimeline].reverse().find((entry) => !entry.doneAt && !entry.failedAt && !entry.ackAt);
-    if (!latest) {
-      toast.info('Nenhum comando HIL ativo para cancelar');
-      return;
-    }
-    bridgePhysicalController.cancelHilCommand(latest.commandId);
-    const pendingTimer = fireTimers.current.get(latest.channel);
-    if (pendingTimer) {
-      clearTimeout(pendingTimer);
-      fireTimers.current.delete(latest.channel);
-    }
-    setChannels(prev => prev.map((channel) => channel.id === latest.channel ? { ...channel, firing: false } : channel));
-    toast.warning(`CANCEL LIVE aplicado em ${latest.channel}`);
-  }, [commandTimeline, setChannels]);
 
   // ─── CUE Key firing with Lock/Tap + firing rules ───
   const fireCueKey = useCallback((keyIndex: number) => {
@@ -1215,58 +1293,25 @@ export default function LiveFiringPanel({ onClose, initialMode, standalone }: { 
         </div>
         {(dmxArm || pyroArm) && (
           <button
-            onClick={() => {
-              if (settings.dualConfirmRequired && !dualConfirmArmed) {
-                armFireWindow();
-                return;
-              }
-              if (deadmanHeld || !settings.pyroArmRequired) channels.filter(ch => ch.enabled).forEach(ch => fireChannel(ch.id));
-            }}
-            onMouseDown={() => { if ((!settings.dualConfirmRequired || dualConfirmArmed) && (deadmanHeld || !settings.pyroArmRequired)) channels.filter(ch => ch.enabled).forEach(ch => fireChannel(ch.id)); }}
+            onMouseDown={() => { if (deadmanHeld || !settings.pyroArmRequired) channels.filter(ch => ch.enabled).forEach(ch => fireChannel(ch.id)); }}
             onMouseUp={() => channels.forEach(ch => stopChannel(ch.id))}
-            onTouchStart={(e) => { e.preventDefault(); if ((!settings.dualConfirmRequired || dualConfirmArmed) && (deadmanHeld || !settings.pyroArmRequired)) channels.filter(ch => ch.enabled).forEach(ch => fireChannel(ch.id)); }}
+            onTouchStart={(e) => { e.preventDefault(); if (deadmanHeld || !settings.pyroArmRequired) channels.filter(ch => ch.enabled).forEach(ch => fireChannel(ch.id)); }}
             onTouchEnd={(e) => { e.preventDefault(); channels.forEach(ch => stopChannel(ch.id)); }}
-            disabled={(settings.pyroArmRequired && !deadmanHeld) || (settings.dualConfirmRequired && !dualConfirmArmed && !!fireWindowEndsAt)}
+            disabled={settings.pyroArmRequired && !deadmanHeld}
             className={cn(
               "w-full rounded-xl font-black uppercase transition-all border-2",
               isMobileFire ? "py-5 text-lg tracking-[0.3em]" : fs ? "py-5 text-base tracking-[0.3em]" : "py-3 text-[12px] tracking-[0.3em]",
-              (deadmanHeld || !settings.pyroArmRequired) && (!settings.dualConfirmRequired || dualConfirmArmed)
+              deadmanHeld || !settings.pyroArmRequired
                 ? "bg-gradient-to-b from-red-600 via-red-700 to-red-800 text-white border-red-500/40 hover:from-red-500"
                 : "bg-[hsl(220_10%_10%)] text-muted-foreground/20 border-border/10"
             )} style={deadmanHeld ? { boxShadow: '0 0 24px rgba(239,68,68,0.3)' } : undefined}>
-            {settings.dualConfirmRequired && !dualConfirmArmed ? 'ARM FIRE WINDOW' : `⚡ FIRE ALL (${enabledCount})`}
+            ⚡ FIRE ALL ({enabledCount})
           </button>
         )}
         {settings.pyroArmRequired && !deadmanHeld && (pyroArm || dmxArm) && (
           <div className={cn("text-center text-amber-400/50 font-bold uppercase", isMobileFire ? "text-xs" : fs ? "text-[10px]" : "text-[8px]")}>
             Hold DEADMAN to enable firing
           </div>
-        )}
-        {settings.dualConfirmRequired && (pyroArm || dmxArm) && (
-          <div className={cn("text-center font-bold uppercase", isMobileFire ? "text-xs" : fs ? "text-[10px]" : "text-[8px]", dualConfirmArmed ? 'text-primary' : 'text-muted-foreground/50')}>
-            {dualConfirmArmed && fireWindowEndsAt
-              ? `FIRE WINDOW ACTIVE · ${Math.max(0, Math.ceil((fireWindowEndsAt - Date.now()) / 1000))}s`
-              : 'Dual confirm required before FIRE'}
-          </div>
-        )}
-        {settings.hilModeEnabled && (
-          <>
-            <Button variant="outline" onClick={cancelLiveHil} className={cn("w-full", isMobileFire ? "h-12 text-sm" : fs ? "h-10 text-xs" : "h-8 text-[10px]")}>
-              CANCEL LIVE
-            </Button>
-            <div className="rounded-md border border-border/40 bg-background/40 p-2 text-[10px] text-muted-foreground">
-              <div className="mb-1 font-semibold text-foreground">HIL live log</div>
-              <div className="space-y-1 max-h-24 overflow-y-auto">
-                {hilLogs.slice(-6).reverse().map((entry, index) => (
-                  <div key={`${entry.time}-${index}`} className="flex items-center justify-between gap-2">
-                    <span>{entry.channel}</span>
-                    <span>{entry.event}</span>
-                    <span>{entry.delayMs ? `${Math.round(entry.delayMs)}ms` : '—'}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </>
         )}
         {/* 2 cols on mobile, 4 on desktop — bigger touch targets on mobile */}
         <div className={cn("grid gap-2", isMobileFire ? "grid-cols-2 gap-3" : fs ? "grid-cols-4 gap-1.5" : "grid-cols-2 gap-1.5")}>
@@ -1368,7 +1413,7 @@ export default function LiveFiringPanel({ onClose, initialMode, standalone }: { 
       case 'ma3': return <MA3ControlPanel fs={fs} />;
       case 'drone_ops': return <DroneCommandPanel fs={fs} />;
       case 'controllers': return <VirtualControllerHub fs={fs} onSelectMode={(m) => setMode(m as FXCMode)} />;
-      case 'settings': return <SettingsPanel fs={fs} settings={settings} onSettingsChange={setSettings} relayConnected={relayConnected} relayUrl={relayUrl} relayDiagnostic={relayDiagnostic} onRelayUrlChange={handleRelayUrlChange} onConnectRelay={connectRelay} onDisconnectRelay={disconnectRelay} />;
+      case 'settings': return <SettingsPanel fs={fs} settings={settings} onSettingsChange={setSettings} relayConnected={relayConnected} relayUrl={relayUrl} onRelayUrlChange={setRelayUrl} onConnectRelay={connectRelay} onDisconnectRelay={disconnectRelay} />;
       default: return renderSimpleDmx(fs);
     }
   };

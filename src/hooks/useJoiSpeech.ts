@@ -46,7 +46,7 @@ export function useJoiSpeech() {
   const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
 
   useEffect(() => {
-    try { localStorage.setItem(VOICE_PREF_KEY, String(enabled)); } catch {}
+    try { localStorage.setItem(VOICE_PREF_KEY, String(enabled)); } catch { /* best-effort: localStorage may be disabled */ }
   }, [enabled]);
 
   // Load voices (they load async in some browsers)

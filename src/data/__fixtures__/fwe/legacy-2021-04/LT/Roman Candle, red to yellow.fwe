@@ -1,0 +1,60 @@
+<?xml version="1.0"?>
+<FireworkEffect xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+  <Children>
+    <BaseEffectNode xsi:type="Shell">
+      <Children>
+        <BaseEffectNode xsi:type="Eruption">
+          <Children>
+            <BaseEffectNode xsi:type="Stars">
+              <Children />
+              <Type>Normal</Type>
+              <Distribution xsi:type="MineDistribution">
+                <Speed>1</Speed>
+                <Sigma>0.04</Sigma>
+                <Spread>0.160586491</Spread>
+              </Distribution>
+              <Color>
+                <CustomR>0</CustomR>
+                <CustomG>0</CustomG>
+                <CustomB>0</CustomB>
+                <Color>Red</Color>
+              </Color>
+              <Color2>
+                <CustomR>0</CustomR>
+                <CustomG>0</CustomG>
+                <CustomB>0</CustomB>
+                <Color>Yellow</Color>
+              </Color2>
+              <ColorChanging>true</ColorChanging>
+              <Count>203</Count>
+              <MinimumLifetime>1.5</MinimumLifetime>
+              <MaximumLifetime>2.1</MaximumLifetime>
+              <Strobe>false</Strobe>
+              <StrobeFreqMean>14</StrobeFreqMean>
+            </BaseEffectNode>
+          </Children>
+          <Duration>7.6</Duration>
+          <Speed>108</Speed>
+        </BaseEffectNode>
+      </Children>
+      <ID>0</ID>
+      <AllowRenaming>false</AllowRenaming>
+      <SimpleSize>
+        <DiameterPreset>d75</DiameterPreset>
+      </SimpleSize>
+      <SizeSelection>Advanced</SizeSelection>
+      <Diameter>0.075</Diameter>
+      <LiftingCharge>0</LiftingCharge>
+    </BaseEffectNode>
+  </Children>
+  <Identifier>
+    <Name>Roman Candle, red to yellow</Name>
+    <Author>LT</Author>
+  </Identifier>
+  <IsReadonly>false</IsReadonly>
+  <AuthorSoftwareVersion>
+    <Major>2</Major>
+    <Minor>0</Minor>
+  </AuthorSoftwareVersion>
+  <MD5Hash />
+</FireworkEffect>

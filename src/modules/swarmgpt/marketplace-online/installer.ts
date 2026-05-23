@@ -55,7 +55,7 @@ export async function installOnlinePackage(
   await verifyOnlineSignature(version, key);
 
   let bytes: Uint8Array | null = useCache ? await getCached(version.sha256) : null;
-  let fromCache = bytes !== null;
+  const fromCache = bytes !== null;
   if (!bytes) {
     const res = await fetch(version.artifactUrl, { signal: opts.signal });
     if (!res.ok) {

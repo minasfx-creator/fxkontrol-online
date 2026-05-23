@@ -34,7 +34,7 @@ export default function WaterfallEffect({
   formulationId?: string;
 }) {
   const scaledWidth = width * (0.7 + caliber * 0.12);
-  const SCALED_PARTICLE_COUNT = Math.min(800, Math.round(PARTICLE_COUNT * (0.7 + caliber * 0.12)));
+  const SCALED_PARTICLE_COUNT = Math.min(800, Math.round(PARTICLE_COUNT * (0.7 + caliber * 0.12) * 1.4));
   const pointsRef = useRef<THREE.Points>(null);
   const splashRef = useRef<THREE.Points>(null);
 
@@ -43,8 +43,10 @@ export default function WaterfallEffect({
     return fId ? getChemistryForRendering(fId) : null;
   }, [formulationId, color, caliber]);
 
+  // Default golden Niagara (FWsim ref) when caller doesn't override
   const baseColor = useMemo(() => {
     if (chemistry?.resultColor) return chemistry.resultColor.clone();
+    if (!color || color === '#ffffff') return new THREE.Color('#ffa840');
     return new THREE.Color(color);
   }, [color, chemistry]);
 
@@ -62,14 +64,14 @@ export default function WaterfallEffect({
     for (let i = 0; i < SCALED_PARTICLE_COUNT; i++) {
       s.push({
         x: (Math.random() - 0.5) * scaledWidth,
-        vy0: -0.3 - Math.random() * 0.5, // initial downward velocity
-        vx: (Math.random() - 0.5) * 0.12,
-        vz: (Math.random() - 0.5) * 0.08,
-        lt: 2.0 + Math.random() * 3.5,
+        vy0: -0.3 - Math.random() * 0.5,
+        vx: (Math.random() - 0.5) * 0.04,   // ↓ from 0.12 — parallel falling sparks (FWsim cascade)
+        vz: (Math.random() - 0.5) * 0.03,   // ↓ from 0.08
+        lt: 4.4 + Math.random() * 3.0,      // lifetime ×2.2 — long persistence
         phase: Math.random() * Math.PI * 2,
         seed: Math.random() * 999 + i,
         turbFreq: 1.5 + Math.random() * 3,
-        turbAmp: 0.02 + Math.random() * 0.04,
+        turbAmp: 0.008 + Math.random() * 0.018,  // tighter parallel streaks
       });
     }
     return s;
@@ -96,7 +98,7 @@ export default function WaterfallEffect({
   useFrame(({ clock }) => {
     if (!pointsRef.current) return;
     const time = clock.getElapsedTime();
-    const GRAVITY = 9.81;
+    const GRAVITY = 9.81 * 1.4; // ×1.4 — more visible accelerated fall (FWsim cascade)
     const RESTITUTION = 0.15;
     const GROUND_Y = -0.05;
 
@@ -197,7 +199,7 @@ export default function WaterfallEffect({
           <bufferAttribute attach="attributes-position" args={[posArr, 3]} />
           <bufferAttribute attach="attributes-color" args={[colArr, 3]} />
         </bufferGeometry>
-        <pointsMaterial size={0.055} vertexColors transparent opacity={0.92} depthWrite={false} depthTest={false} blending={THREE.AdditiveBlending} sizeAttenuation />
+        <pointsMaterial size={0.047} vertexColors transparent opacity={0.95} depthWrite={false} depthTest={false} blending={THREE.AdditiveBlending} sizeAttenuation />
       </points>
 
       {/* Ground splash particles */}

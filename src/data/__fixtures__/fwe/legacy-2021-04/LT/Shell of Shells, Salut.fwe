@@ -1,0 +1,34 @@
+<?xml version="1.0"?>
+<FireworkEffect xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+  <Children>
+    <BaseEffectNode xsi:type="Shell">
+      <Children>
+        <BaseEffectNode xsi:type="BurstingCharge">
+          <Children>
+            <BaseEffectNode xsi:type="SubShells">
+              <Children>
+                <BaseEffectNode xsi:type="BurstingCharge">
+                  <Children />
+                  <Energy>126.880005</Energy>
+                  <Delay>1.6776</Delay>
+                </BaseEffectNode>
+              </Children>
+              <Count>24</Count>
+              <Distribution xsi:type="SphericalDistribution">
+                <MinimumSpeed>0.9</MinimumSpeed>
+                <MaximumSpeed>1</MaximumSpeed>
+              </Distribution>
+            </BaseEffectNode>
+          </Children>
+          <Energy>200</Energy>
+          <Delay>3.14</Delay>
+        </BaseEffectNode>
+      </Children>
+      <LiftingCharge>208.62</LiftingCharge>
+    </BaseEffectNode>
+  </Children>
+  <Identifier>
+    <Name>Shell of Shells, Salut</Name>
+    <Author>LT</Author>
+  </Identifier>
+</FireworkEffect>

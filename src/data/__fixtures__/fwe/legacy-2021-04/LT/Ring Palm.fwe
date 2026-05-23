@@ -1,0 +1,44 @@
+<?xml version="1.0"?>
+<FireworkEffect xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+  <Children>
+    <BaseEffectNode xsi:type="Shell">
+      <Children>
+        <BaseEffectNode xsi:type="AscentEffect">
+          <Children />
+          <EmitStart>0.5368</EmitStart>
+          <EmitEnd>1</EmitEnd>
+        </BaseEffectNode>
+        <BaseEffectNode xsi:type="BurstingCharge">
+          <Children>
+            <BaseEffectNode xsi:type="Stars">
+              <Children>
+                <BaseEffectNode xsi:type="StarTails">
+                  <Children />
+                  <EmitStart>0.05</EmitStart>
+                  <EmitEnd>0.6493</EmitEnd>
+                </BaseEffectNode>
+              </Children>
+              <Distribution xsi:type="RingDistribution">
+                <MinimumSpeed>0.9</MinimumSpeed>
+                <MaximumSpeed>1</MaximumSpeed>
+              </Distribution>
+              <Color>
+                <Color>Green</Color>
+              </Color>
+              <Count>52</Count>
+              <MinimumLifetime>1.5</MinimumLifetime>
+              <MaximumLifetime>2.1</MaximumLifetime>
+            </BaseEffectNode>
+          </Children>
+          <Energy>175.26</Energy>
+          <Delay>2.968</Delay>
+        </BaseEffectNode>
+      </Children>
+      <LiftingCharge>130</LiftingCharge>
+    </BaseEffectNode>
+  </Children>
+  <Identifier>
+    <Name>Ring Palm</Name>
+    <Author>LT</Author>
+  </Identifier>
+</FireworkEffect>

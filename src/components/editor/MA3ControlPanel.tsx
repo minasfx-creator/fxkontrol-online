@@ -241,7 +241,7 @@ export default function MA3ControlPanel({ fs = false, onClose }: MA3ControlPanel
       setSacnState('error');
       toast.error('sACN connection failed');
     }
-  }, [sacnBridgeUrl]);
+  }, []);
 
   const disconnectSACN = useCallback(() => {
     sacnReceiver.current.disconnect();

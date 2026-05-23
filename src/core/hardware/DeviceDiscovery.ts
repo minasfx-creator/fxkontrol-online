@@ -1,10 +1,11 @@
 /**
- * ─── Device Discovery — Simulated Enumeration ──────────────────────
- * Enumerates available hardware adapters with scan simulation.
- * Provides discovery status per device for UI "Scanning..." states.
+ * ─── Device Discovery — Real Hardware Facade ───────────────────────
+ * Backwards-compatible facade over `unifiedDiscovery` so existing UI
+ * (HardwareOverview) continues to work, while the actual scan now
+ * enumerates real authorized ports + USB + BLE + Art-Net nodes.
  */
 
-import { unifiedHardwareRegistry } from './UnifiedHardwareRegistry';
+import { unifiedDiscovery } from '@/core/discovery/UnifiedDiscoveryService';
 import type { HardwareDeviceCategory } from './types';
 
 export type DiscoveryStatus = 'idle' | 'scanning' | 'found' | 'not_found' | 'timeout';
@@ -18,58 +19,60 @@ export interface DiscoveryResult {
   scanDuration_ms: number;
 }
 
+const TRANSPORT_TO_CATEGORY: Record<string, HardwareDeviceCategory> = {
+  webserial: 'controller',
+  webusb: 'controller',
+  webble: 'controller',
+  'mdns-artnet': 'artnet-node',
+};
+
 class DeviceDiscovery {
-  private _results = new Map<string, DiscoveryResult>();
   private _isScanning = false;
   private _listeners = new Set<() => void>();
+  private _lastScanStart = 0;
 
   get isScanning(): boolean { return this._isScanning; }
 
   getResults(): DiscoveryResult[] {
-    return Array.from(this._results.values());
+    const devices = unifiedDiscovery.getDevices();
+    return devices.map(d => ({
+      deviceId: d.id,
+      deviceType: TRANSPORT_TO_CATEGORY[d.transport] ?? 'controller',
+      label: d.label,
+      status: d.online ? 'found' : 'not_found',
+      discoveredAt: d.online ? d.lastSeen : null,
+      scanDuration_ms: this._lastScanStart > 0 ? Math.max(0, Date.now() - this._lastScanStart) : 0,
+    }));
   }
 
-  /** Run simulated scan — resolves after staggered "discovery" */
-  async scan(): Promise<DiscoveryResult[]> {
+  /** Real scan — light by default. Pass `{ deep: true }` for Art-Net poll. */
+  async scan(opts?: { deep?: boolean }): Promise<DiscoveryResult[]> {
     if (this._isScanning) return this.getResults();
     this._isScanning = true;
+    this._lastScanStart = Date.now();
     this._notify();
-
-    const adapters = unifiedHardwareRegistry.getAllAdapters();
-
-    // Mark all as scanning
-    for (const a of adapters) {
-      this._results.set(a.deviceId, {
-        deviceId: a.deviceId, deviceType: a.deviceType, label: a.label,
-        status: 'scanning', discoveredAt: null, scanDuration_ms: 0,
-      });
-    }
-    this._notify();
-
-    // Stagger discovery (simulate bus enumeration)
-    for (const a of adapters) {
-      const delay = 200 + Math.random() * 800;
-      await new Promise(r => setTimeout(r, delay));
-
-      const conn = a.getConnectionState();
-      const found = conn !== 'disconnected';
-      this._results.set(a.deviceId, {
-        deviceId: a.deviceId, deviceType: a.deviceType, label: a.label,
-        status: found ? 'found' : 'not_found',
-        discoveredAt: found ? Date.now() : null,
-        scanDuration_ms: Math.round(delay),
-      });
+    try {
+      if (opts?.deep) {
+        await unifiedDiscovery.scanDeep();
+      } else {
+        await unifiedDiscovery.scanLight();
+      }
+      this._notify();
+      return this.getResults();
+    } finally {
+      this._isScanning = false;
       this._notify();
     }
-
-    this._isScanning = false;
-    this._notify();
-    return this.getResults();
   }
 
   onChange(fn: () => void): () => void {
     this._listeners.add(fn);
-    return () => this._listeners.delete(fn);
+    // Bridge unified discovery events into legacy listeners.
+    const off = unifiedDiscovery.watch(() => this._notify());
+    return () => {
+      this._listeners.delete(fn);
+      off();
+    };
   }
 
   private _notify(): void { for (const fn of this._listeners) fn(); }

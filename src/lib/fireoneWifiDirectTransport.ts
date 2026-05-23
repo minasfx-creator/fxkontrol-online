@@ -17,7 +17,6 @@ import {
   type FireOneTransport,
 } from '@/lib/fireoneTransport';
 import { deriveKey, encrypt, decrypt } from '@/lib/fireoneAesCrypto';
-import { assertBridgeWebSocketAllowed, buildBridgeWebSocketProtocols, buildBridgeWebSocketUrl, openBridgeWebSocket } from '@/lib/bridgeGateway';
 
 const WIFI_DIRECT_DISCOVERY_ENDPOINTS = [
   { host: 'fxk-xl4.local', port: 81, label: 'XL4 Gateway' },
@@ -66,7 +65,6 @@ export class WiFiDirectTransport implements FireOneTransport {
   private _encrypted = false;
   private _encryptionKey: CryptoKey | null = null;
   private _psk?: string;
-  private _bridgeKey?: string;
 
   constructor(id?: string) {
     this.id = id || `wifi-direct-${Date.now()}`;
@@ -96,7 +94,6 @@ export class WiFiDirectTransport implements FireOneTransport {
     const targetHost = config?.targetHost as string | undefined;
     const targetPort = config?.targetPort as number | undefined;
     const psk = config?.psk as string | undefined;
-    this._bridgeKey = config?.bridgeKey as string | undefined;
     this.autoReconnect = config?.autoReconnect !== false;
 
     // Derive encryption key if PSK provided
@@ -107,15 +104,7 @@ export class WiFiDirectTransport implements FireOneTransport {
     }
 
     if (targetHost) {
-      const port = targetPort || 81;
-      const url = buildBridgeWebSocketUrl({
-        host: targetHost,
-        port,
-        secure: config?.secure,
-        path: '',
-        defaultInsecurePort: port,
-        defaultSecurePort: port,
-      });
+      const url = `ws://${targetHost}:${targetPort || 81}`;
       await this.tryConnect(url, targetHost);
       return;
     }
@@ -123,13 +112,7 @@ export class WiFiDirectTransport implements FireOneTransport {
     // Auto-discovery
     this.setState('connecting');
     for (const endpoint of WIFI_DIRECT_DISCOVERY_ENDPOINTS) {
-      const url = buildBridgeWebSocketUrl({
-        host: endpoint.host,
-        port: endpoint.port,
-        path: '',
-        defaultInsecurePort: endpoint.port,
-        defaultSecurePort: endpoint.port,
-      });
+      const url = `ws://${endpoint.host}:${endpoint.port}`;
       try {
         await this.tryConnect(url, endpoint.label);
         this._deviceType = this.inferDeviceType(endpoint.host);
@@ -163,14 +146,7 @@ export class WiFiDirectTransport implements FireOneTransport {
         reject(new Error(`Timeout ${url}`));
       }, DISCOVERY_TIMEOUT);
 
-      const protocols = buildBridgeWebSocketProtocols(this._bridgeKey);
-      try {
-        assertBridgeWebSocketAllowed(url);
-      } catch (error) {
-        reject(error instanceof Error ? error : new Error('Bridge local bloqueado para Wi‑Fi Direct'));
-        return;
-      }
-      const ws = openBridgeWebSocket(url, protocols);
+      const ws = new WebSocket(url);
       ws.binaryType = 'arraybuffer';
 
       ws.onopen = () => {
@@ -310,14 +286,7 @@ export class WiFiDirectTransport implements FireOneTransport {
 
     const checks = WIFI_DIRECT_DISCOVERY_ENDPOINTS.map(async (ep) => {
       try {
-        const url = buildBridgeWebSocketUrl({
-          host: ep.host,
-          port: ep.port,
-          path: '',
-          defaultInsecurePort: ep.port,
-          defaultSecurePort: ep.port,
-        });
-        const ws = new WebSocket(url);
+        const ws = new WebSocket(`ws://${ep.host}:${ep.port}`);
         const ok = await new Promise<boolean>((resolve) => {
           const t = setTimeout(() => { ws.close(); resolve(false); }, SCAN_TIMEOUT);
           ws.onopen = () => { clearTimeout(t); ws.close(); resolve(true); };

@@ -21,6 +21,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { timelineClock, type TimelineClockState } from '@/core/timeline/TimelineClock';
 import { useSMPTEStore } from '@/store/useSMPTEStore';
+import { useShallow } from 'zustand/react/shallow';
 
 export type ExternalSyncSource = 'SMPTE' | 'MTC' | 'OSC' | 'external' | null;
 
@@ -108,12 +109,12 @@ function compute(
 
 export function useExternalSyncDiagnostics(): ExternalSyncDiagnostics {
   const [clockState, setClockState] = useState<TimelineClockState>(() => timelineClock.getState());
-  const smpteSlice = useSMPTEStore((s) => ({
+  const smpteSlice = useSMPTEStore(useShallow((s) => ({
     externalEnabled: s.externalEnabled,
     status: s.status,
     mode: s.mode,
     lastPacketAt: s.lastPacketAt,
-  }));
+  })));
 
   useEffect(() => timelineClock.onChange(setClockState), []);
 

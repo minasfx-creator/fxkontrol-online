@@ -1,0 +1,60 @@
+<?xml version="1.0"?>
+<FireworkEffect xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+  <Children>
+    <BaseEffectNode xsi:type="Shell">
+      <Children>
+        <BaseEffectNode xsi:type="BurstingCharge">
+          <Children>
+            <BaseEffectNode xsi:type="Stars">
+              <Children />
+              <Type>Normal</Type>
+              <Distribution xsi:type="MineDistribution">
+                <Speed>1</Speed>
+                <Sigma>0.074</Sigma>
+                <Spread>0.160586491</Spread>
+              </Distribution>
+              <Color>
+                <CustomR>0</CustomR>
+                <CustomG>0</CustomG>
+                <CustomB>0</CustomB>
+                <Color>Spark</Color>
+              </Color>
+              <Color2>
+                <CustomR>0</CustomR>
+                <CustomG>0</CustomG>
+                <CustomB>0</CustomB>
+                <Color>Orange</Color>
+              </Color2>
+              <ColorChanging>false</ColorChanging>
+              <Count>128</Count>
+              <MinimumLifetime>1</MinimumLifetime>
+              <MaximumLifetime>1.5</MaximumLifetime>
+              <Strobe>false</Strobe>
+              <StrobeFreqMean>14</StrobeFreqMean>
+            </BaseEffectNode>
+          </Children>
+          <Auto>true</Auto>
+          <Energy>82</Energy>
+          <Delay>0</Delay>
+        </BaseEffectNode>
+      </Children>
+      <ID>0</ID>
+      <AllowRenaming>false</AllowRenaming>
+      <SizeSelection>Advanced</SizeSelection>
+      <Diameter>0.142</Diameter>
+      <LiftingCharge>0</LiftingCharge>
+    </BaseEffectNode>
+  </Children>
+  <Identifier>
+    <Name>Mine, white &amp; fast</Name>
+    <Author>LT</Author>
+  </Identifier>
+  <IsReadonly>true</IsReadonly>
+  <AuthorSoftwareVersion>
+    <Major>2</Major>
+    <Minor>0</Minor>
+  </AuthorSoftwareVersion>
+  <MD5Hash>
+    <Value>vzUW/VtRfkl1F3Y0yJB0Kw==</Value>
+  </MD5Hash>
+</FireworkEffect>

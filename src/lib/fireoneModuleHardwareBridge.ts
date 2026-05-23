@@ -22,63 +22,11 @@
  */
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { isIOSWebKit, requiresSecureBridgeTransport } from '@/lib/bridgeGateway';
-
 export type BridgeTransport = 'ble' | 'ble_lr' | 'usb' | 'websocket' | 'wifi_direct' | 'direct_relay' | 'none';
-
-/**
- * Standardized reason codes for bridge errors / link state.
- * Stable, machine-readable identifiers — UI translates for display.
- */
-export type BridgeReasonCode =
-  | 'OK'
-  | 'UNSUPPORTED_TRANSPORT'
-  | 'TRANSPORT_UNAVAILABLE'
-  | 'PERMISSION_DENIED'
-  | 'HANDSHAKE_TIMEOUT'
-  | 'HEARTBEAT_TIMEOUT'
-  | 'TRANSPORT_DISCONNECTED'
-  | 'WEBSOCKET_OPEN_FAILED'
-  | 'WEBSOCKET_INVALID_URL'
-  | 'SERIAL_OPEN_FAILED'
-  | 'BLE_GATT_FAILED'
-  | 'SEND_FAILED'
-  | 'NOT_CONNECTED'
-  | 'LINK_NOT_HEALTHY'
-  | 'STALE_SESSION'
-  | 'COMMAND_TIMEOUT'
-  | 'RETRY_RATE_LIMITED'
-  | 'CONNECT_IN_PROGRESS'
-  | 'UNKNOWN';
-
-export interface BridgeError {
-  code: BridgeReasonCode;
-  message: string;
-  transport?: BridgeTransport;
-  detail?: string;
-  at: number;
-}
-
-export type LinkHealth = 'disconnected' | 'handshaking' | 'healthy';
-
-export interface BridgeDiagnostics {
-  rateLimitedTotal: number;
-  rateLimitedByKey: Record<string, number>;
-  retryByKey: Record<string, number>;
-  retryByCommandType: Partial<Record<BridgeCommandType, number>>;
-  retryCount: number;
-  retryRateLimit: number;
-  sessionId: number;
-  pendingCount: number;
-  pendingKeys: string[];
-  linkHealth?: 'disconnected' | 'handshaking' | 'healthy';
-  oldestPendingAgeMs?: number;
-}
 
 export interface BridgeStatus {
   transport: BridgeTransport;
   connected: boolean;
-  connecting: boolean;
   deviceName: string;
   batteryVoltage?: number;
   firmwareVersion?: string;
@@ -87,89 +35,9 @@ export interface BridgeStatus {
   rxBytes: number;
   rssi?: number;
   estimatedDistance?: number;
-  lastError?: string;
-  lastErrorCode?: BridgeReasonCode;
-  linkHealth?: 'disconnected' | 'handshaking' | 'healthy';
-  sessionId?: number;
-  diagnostics?: BridgeDiagnostics;
-}
-
-export interface BridgeTransportSupport {
-  ble: boolean;
-  ble_lr: boolean;
-  usb: boolean;
-  websocket: boolean;
-  wifi_direct: boolean;
-  direct_relay: boolean;
 }
 
 export type BridgeEventHandler = (event: string, data: unknown) => void;
-
-/** Command class enum — used by retry policy + command inspection. */
-export type BridgeCommandType =
-  | 'HANDSHAKE' | 'HEARTBEAT' | 'VERSION' | 'STATUS'
-  | 'CONT' | 'CDS' | 'CONFIRM'
-  | 'FIRE' | 'BATCH' | 'GPIO' | 'ESTOP'
-  | 'UNKNOWN';
-
-/** Reason a single retry attempt missed (for diagnostics). */
-export type BridgeRetryReason = 'empty_drain' | 'parse_miss' | 'timeout' | 'rate_limited';
-
-/** Per-command retry rule. */
-export interface BridgeRetryRule {
-  maxRetries: number;
-  perAttemptTimeoutMs: number;
-}
-
-/** Command classes safe to auto-retry (read-only / lifecycle). */
-export const RETRYABLE_COMMAND_TYPES: ReadonlySet<BridgeCommandType> = new Set<BridgeCommandType>([
-  'HEARTBEAT', 'VERSION', 'STATUS', 'CONT', 'CDS',
-]);
-
-/** Command classes that MUST NEVER auto-retry (destructive / single-intent). */
-export const NON_RETRYABLE_COMMAND_TYPES: ReadonlySet<BridgeCommandType> = new Set<BridgeCommandType>([
-  'HANDSHAKE', 'CONFIRM', 'FIRE', 'BATCH', 'GPIO', 'ESTOP', 'UNKNOWN',
-]);
-
-/** Type guard: is this command class allowed to auto-retry? */
-export function isRetryableCommandType(t: BridgeCommandType): boolean {
-  return RETRYABLE_COMMAND_TYPES.has(t);
-}
-
-/**
- * Default per-class retry rules.
- *
- * Only retryable command classes are listed (CONT/CDS). Heartbeat/version are
- * driven by their own loops and never use `readWithRetry`.
- */
-export const DEFAULT_RETRY_POLICY: Readonly<Partial<Record<BridgeCommandType, BridgeRetryRule>>> = Object.freeze({
-  CONT: { maxRetries: 2, perAttemptTimeoutMs: 2000 },
-  CDS:  { maxRetries: 2, perAttemptTimeoutMs: 2000 },
-});
-
-/**
- * Default rate limit for retry attempts. Sliding window:
- *  - per-key:  10 retries / 60s
- *  - total:    60 retries / 60s
- */
-export const DEFAULT_RETRY_RATE_LIMIT: Readonly<{
-  windowMs: number;
-  maxRetriesPerKey: number;
-  maxRetriesTotal: number;
-}> = Object.freeze({
-  windowMs: 60_000,
-  maxRetriesPerKey: 10,
-  maxRetriesTotal: 60,
-});
-
-/** Internal pending-response record (session-scoped to drop stale frames). */
-interface PendingResponse {
-  key: string;
-  resolver: (value: string) => void;
-  sessionId: number;
-  commandType: BridgeCommandType;
-  createdAt: number;
-}
 
 // BLE Service/Characteristic UUIDs (custom for FXK-ESP32)
 const BLE_SERVICE_UUID = '0000ffe0-0000-1000-8000-00805f9b34fb';
@@ -182,7 +50,6 @@ const FIRE_CONFIRM_TIMEOUT = 2000;
 export class FireOneHardwareBridge {
   private transport: BridgeTransport = 'none';
   private connected = false;
-  private connecting = false;
   private deviceName = '';
   private firmwareVersion = '';
   private batteryVoltage?: number;
@@ -191,8 +58,6 @@ export class FireOneHardwareBridge {
   private lastPing = 0;
   private rssi?: number;
   private estimatedDistance?: number;
-  private lastError?: string;
-  private linkHealth: 'disconnected' | 'handshaking' | 'healthy' = 'disconnected';
 
   private bleDevice: any = null;
   private bleCharTx: any = null;
@@ -203,7 +68,7 @@ export class FireOneHardwareBridge {
   private ws: WebSocket | null = null;
 
   private responseBuffer = '';
-  private pendingResolves: Map<string, PendingResponse> = new Map();
+  private pendingResolves: Map<string, (value: string) => void> = new Map();
   private onEvent: BridgeEventHandler | null = null;
   private heartbeatTimer: ReturnType<typeof setInterval> | null = null;
   private rssiTimer: ReturnType<typeof setInterval> | null = null;
@@ -213,129 +78,15 @@ export class FireOneHardwareBridge {
   private maxReconnectAttempts = 3;
   private lastConnectArgs: { method: string; args?: any } | null = null;
 
-  // ── Session + retry diagnostics ──
-  private sessionId = 0;
-  private connectingSessionId = 0;
-  private lastErrorCode?: BridgeReasonCode;
-  private retryPolicy: Partial<Record<BridgeCommandType, BridgeRetryRule>> = { ...DEFAULT_RETRY_POLICY };
-  private retryRateLimit: { windowMs: number; maxRetriesPerKey: number; maxRetriesTotal: number } = {
-    ...DEFAULT_RETRY_RATE_LIMIT,
-  };
-  private retryCount = 0;
-  private retryByKey: Record<string, number> = {};
-  private retryByCommandType: Partial<Record<BridgeCommandType, number>> = {};
-  private rateLimitedTotal = 0;
-  private rateLimitedByKey: Record<string, number> = {};
-  private retryTimestampsAll: number[] = [];
-  private retryTimestampsByKey: Map<string, number[]> = new Map();
-
-  // ── Internal helpers ──
-  private setError(code: BridgeReasonCode, message: string): void {
-    this.lastErrorCode = code;
-    this.lastError = message;
-  }
-  private registerPending(key: string, commandType: BridgeCommandType, resolver: (val: string) => void): void {
-    this.pendingResolves.set(key, {
-      key,
-      resolver,
-      sessionId: this.sessionId,
-      commandType,
-      createdAt: Date.now(),
-    });
-  }
-  isHealthy(): boolean {
-    return this.connected && this.linkHealth === 'healthy';
-  }
-  getDiagnostics(): BridgeDiagnostics {
-    let oldestPendingAgeMs = 0;
-    if (this.pendingResolves.size > 0) {
-      const now = Date.now();
-      let oldest = now;
-      for (const p of this.pendingResolves.values()) {
-        if (p.createdAt < oldest) oldest = p.createdAt;
-      }
-      oldestPendingAgeMs = Math.max(0, now - oldest);
-    }
-    return {
-      rateLimitedTotal: this.rateLimitedTotal,
-      rateLimitedByKey: { ...this.rateLimitedByKey },
-      retryByKey: { ...this.retryByKey },
-      retryByCommandType: { ...this.retryByCommandType },
-      retryCount: this.retryCount,
-      retryRateLimit: this.retryRateLimit.maxRetriesPerKey,
-      sessionId: this.sessionId,
-      pendingCount: this.pendingResolves.size,
-      pendingKeys: Array.from(this.pendingResolves.keys()),
-      linkHealth: this.linkHealth,
-      oldestPendingAgeMs,
-    };
-  }
-  setRetryRateLimit(limit: number | { windowMs?: number; maxRetriesPerKey?: number; maxRetriesTotal?: number }): void {
-    if (typeof limit === 'number') {
-      this.retryRateLimit.maxRetriesPerKey = limit;
-    } else {
-      this.retryRateLimit = { ...this.retryRateLimit, ...limit };
-    }
-  }
-  setRetryPolicy(policy: Partial<Record<BridgeCommandType, BridgeRetryRule>>): void {
-    this.retryPolicy = { ...this.retryPolicy, ...policy };
-  }
-  getRetryPolicy(): Readonly<Partial<Record<BridgeCommandType, BridgeRetryRule>>> {
-    return { ...this.retryPolicy };
-  }
-
   constructor(eventHandler?: BridgeEventHandler) {
     this.onEvent = eventHandler ?? null;
-  }
-
-  static detectTransportSupport(): BridgeTransportSupport {
-    if (typeof navigator === 'undefined' || typeof window === 'undefined') {
-      return {
-        ble: false,
-        ble_lr: false,
-        usb: false,
-        websocket: false,
-        wifi_direct: false,
-        direct_relay: false,
-      };
-    }
-
-    const nav = navigator as any;
-    const hasBluetooth = Boolean(nav.bluetooth);
-    const hasSerial = Boolean(nav.serial);
-    const secureRequired = requiresSecureBridgeTransport(window.location, nav);
-    const iosWebKit = isIOSWebKit(nav);
-    const websocketAllowed = typeof WebSocket !== 'undefined';
-
-    return {
-      ble: hasBluetooth,
-      ble_lr: hasBluetooth,
-      usb: hasSerial,
-      direct_relay: hasSerial,
-      websocket: websocketAllowed,
-      wifi_direct: websocketAllowed && !secureRequired && !iosWebKit,
-    };
-  }
-
-  getTransportSupport(): BridgeTransportSupport {
-    return FireOneHardwareBridge.detectTransportSupport();
   }
 
   // ─── Connection Methods ──────────────────────────────
 
   /** BLE padrão — alcance ~30m */
   async connectBLE(): Promise<boolean> {
-    if (this.connecting) {
-      this.lastError = 'Conexão em andamento. Aguarde.';
-      return false;
-    }
-    this.connecting = true;
     try {
-      if (!this.getTransportSupport().ble) {
-        this.lastError = 'BLE não suportado neste navegador/dispositivo';
-        this.onEvent?.('unsupported_transport', { transport: 'ble' });
-        return false;
-      }
       const nav = navigator as any;
       if (!nav.bluetooth) throw new Error('Web Bluetooth not supported');
 
@@ -344,29 +95,17 @@ export class FireOneHardwareBridge {
         optionalServices: [BLE_SERVICE_UUID],
       });
 
-      return await this.setupBLEDevice(device, 'ble');
+      await this.setupBLEDevice(device, 'ble');
+      return true;
     } catch (err) {
-      this.lastError = err instanceof Error ? err.message : 'Falha ao conectar BLE';
       console.warn('[HardwareBridge] BLE connect failed:', err);
       return false;
-    } finally {
-      this.connecting = false;
     }
   }
 
   /** BLE Long Range (Coded PHY / BLE 5.0) — alcance ~1km */
   async connectBLELongRange(): Promise<boolean> {
-    if (this.connecting) {
-      this.lastError = 'Conexão em andamento. Aguarde.';
-      return false;
-    }
-    this.connecting = true;
     try {
-      if (!this.getTransportSupport().ble_lr) {
-        this.lastError = 'BLE Long Range não suportado neste navegador/dispositivo';
-        this.onEvent?.('unsupported_transport', { transport: 'ble_lr' });
-        return false;
-      }
       const nav = navigator as any;
       if (!nav.bluetooth) throw new Error('Web Bluetooth not supported');
 
@@ -378,18 +117,16 @@ export class FireOneHardwareBridge {
         optionalServices: [BLE_SERVICE_UUID],
       });
 
-      return await this.setupBLEDevice(device, 'ble_lr');
+      await this.setupBLEDevice(device, 'ble_lr');
+      return true;
     } catch (err) {
-      this.lastError = err instanceof Error ? err.message : 'Falha ao conectar BLE LR';
       console.warn('[HardwareBridge] BLE LR connect failed:', err);
       return false;
-    } finally {
-      this.connecting = false;
     }
   }
 
   /** Shared BLE setup for both standard and Long Range */
-  private async setupBLEDevice(device: any, transport: 'ble' | 'ble_lr'): Promise<boolean> {
+  private async setupBLEDevice(device: any, transport: 'ble' | 'ble_lr'): Promise<void> {
     const server = await device.gatt!.connect();
     const service = await server.getPrimaryService(BLE_SERVICE_UUID);
     this.bleCharTx = await service.getCharacteristic(BLE_CHAR_TX_UUID);
@@ -406,32 +143,18 @@ export class FireOneHardwareBridge {
     device.addEventListener('gattserverdisconnected', this.bleDisconnectHandler);
 
     this.bleDevice = device;
-    const ok = await this.establishHealthyLink(
-      transport,
-      device.name || (transport === 'ble_lr' ? 'FXK-LR' : 'ESP32-FXK'),
-    );
-    if (ok) {
-      this.lastConnectArgs = { method: transport };
-      this.reconnectAttempts = 0;
-      this.startRssiPolling();
-      return true;
-    }
-    try { device.gatt?.disconnect?.(); } catch { /* ignore */ }
-    return false;
+    this.transport = transport;
+    this.connected = true;
+    this.deviceName = device.name || (transport === 'ble_lr' ? 'FXK-LR' : 'ESP32-FXK');
+    this.lastPing = Date.now();
+    this.lastConnectArgs = { method: transport };
+    this.reconnectAttempts = 0;
+    this.onConnect();
+    this.startRssiPolling();
   }
 
   async connectUSB(baudRate = 115200): Promise<boolean> {
-    if (this.connecting) {
-      this.lastError = 'Conexão em andamento. Aguarde.';
-      return false;
-    }
-    this.connecting = true;
     try {
-      if (!this.getTransportSupport().usb) {
-        this.lastError = 'USB/WebSerial não suportado neste navegador/dispositivo';
-        this.onEvent?.('unsupported_transport', { transport: 'usb' });
-        return false;
-      }
       if (!('serial' in navigator)) throw new Error('WebSerial not supported');
 
       const port = await (navigator as any).serial.requestPort();
@@ -441,36 +164,24 @@ export class FireOneHardwareBridge {
       this.serialReader = port.readable!.getReader();
       this.serialWriter = port.writable!.getWriter();
 
+      this.transport = 'usb';
+      this.connected = true;
+      this.deviceName = 'ESP32-USB';
+      this.lastPing = Date.now();
+      this.lastConnectArgs = { method: 'usb' };
+      this.reconnectAttempts = 0;
+
       this.readSerialLoop();
-      const ok = await this.establishHealthyLink('usb', 'ESP32-USB');
-      if (ok) {
-        this.lastConnectArgs = { method: 'usb' };
-        this.reconnectAttempts = 0;
-        return true;
-      }
-      await this.disconnect();
-      return false;
+      this.onConnect();
+      return true;
     } catch (err) {
-      this.lastError = err instanceof Error ? err.message : 'Falha ao conectar USB';
       console.warn('[HardwareBridge] USB connect failed:', err);
       return false;
-    } finally {
-      this.connecting = false;
     }
   }
 
   async connectDirectRelay(baudRate = 115200): Promise<boolean> {
-    if (this.connecting) {
-      this.lastError = 'Conexão em andamento. Aguarde.';
-      return false;
-    }
-    this.connecting = true;
     try {
-      if (!this.getTransportSupport().direct_relay) {
-        this.lastError = 'Direct Relay/WebSerial não suportado neste navegador/dispositivo';
-        this.onEvent?.('unsupported_transport', { transport: 'direct_relay' });
-        return false;
-      }
       if (!('serial' in navigator)) throw new Error('WebSerial not supported');
 
       const port = await (navigator as any).serial.requestPort();
@@ -480,43 +191,28 @@ export class FireOneHardwareBridge {
       this.serialReader = port.readable!.getReader();
       this.serialWriter = port.writable!.getWriter();
 
+      this.transport = 'direct_relay';
+      this.connected = true;
+      this.deviceName = 'DirectRelay-USB';
+      this.lastPing = Date.now();
+      this.lastConnectArgs = { method: 'direct_relay' };
+      this.reconnectAttempts = 0;
+
       this.readSerialLoop();
-      const ok = await this.establishHealthyLink('direct_relay', 'DirectRelay-USB');
-      if (ok) {
-        this.lastConnectArgs = { method: 'direct_relay' };
-        this.reconnectAttempts = 0;
-        return true;
-      }
-      await this.disconnect();
-      return false;
+      this.onConnect();
+      return true;
     } catch (err) {
-      this.lastError = err instanceof Error ? err.message : 'Falha ao conectar Direct Relay';
       console.warn('[HardwareBridge] Direct Relay connect failed:', err);
       return false;
-    } finally {
-      this.connecting = false;
     }
   }
 
   async connectWebSocket(url = 'ws://192.168.4.1:81'): Promise<boolean> {
-    if (this.connecting) {
-      this.lastError = 'Conexão em andamento. Aguarde.';
-      return false;
-    }
-    this.connecting = true;
-    if (!this.getTransportSupport().websocket) {
-      this.lastError = 'WebSocket não suportado neste navegador/dispositivo';
-      this.onEvent?.('unsupported_transport', { transport: 'websocket' });
-      this.connecting = false;
-      return false;
-    }
-    const endpoint = this.normalizeWebSocketUrl(url);
-    const ok = await this.tryWebSocketConnect(endpoint, 'websocket', 5000);
+    const ok = await this.tryWebSocketConnect(url, 'websocket', 5000);
     if (ok) {
-      this.lastConnectArgs = { method: 'websocket', args: endpoint };
+      this.lastConnectArgs = { method: 'websocket', args: url };
       this.reconnectAttempts = 0;
     }
-    this.connecting = false;
     return ok;
   }
 
@@ -525,92 +221,44 @@ export class FireOneHardwareBridge {
    * Tenta auto-discovery via mDNS antes de fallback para IP fixo.
    */
   async connectWiFiDirect(url?: string): Promise<boolean> {
-    if (this.connecting) {
-      this.lastError = 'Conexão em andamento. Aguarde.';
-      return false;
-    }
-    this.connecting = true;
-    const support = this.getTransportSupport();
-    if (!support.wifi_direct) {
-      this.lastError = 'Wi‑Fi Direct indisponível neste ambiente';
-      this.onEvent?.('unsupported_transport', { transport: 'wifi_direct' });
-      this.connecting = false;
-      return false;
-    }
-    const endpoints = this.getWiFiDirectEndpoints(url);
+    const endpoints = [
+      url,
+      'ws://fxk-esp32.local:81',
+      'ws://192.168.4.1:81',
+      'ws://192.168.1.1:81',
+    ].filter(Boolean) as string[];
 
     for (const endpoint of endpoints) {
       const ok = await this.tryWebSocketConnect(endpoint, 'wifi_direct', 3000);
       if (ok) {
         this.lastConnectArgs = { method: 'wifi_direct', args: endpoint };
         this.reconnectAttempts = 0;
-        this.connecting = false;
         return true;
       }
     }
-    this.connecting = false;
     return false;
-  }
-
-  private getWiFiDirectEndpoints(customUrl?: string): string[] {
-    const secureRequired = requiresSecureBridgeTransport();
-    const scheme = secureRequired ? 'wss' : 'ws';
-    return [
-      customUrl ? this.normalizeWebSocketUrl(customUrl) : null,
-      `${scheme}://fxk-esp32.local:81`,
-      `${scheme}://192.168.4.1:81`,
-      `${scheme}://192.168.1.1:81`,
-    ].filter(Boolean) as string[];
-  }
-
-  private normalizeWebSocketUrl(raw: string): string {
-    const secureRequired = requiresSecureBridgeTransport();
-    const defaultScheme = secureRequired ? 'wss' : 'ws';
-    const withScheme = /^[a-z]+:\/\//i.test(raw) ? raw : `${defaultScheme}://${raw}`;
-    try {
-      const parsed = new URL(withScheme);
-      if (secureRequired && parsed.protocol === 'ws:') {
-        parsed.protocol = 'wss:';
-      }
-      return parsed.toString();
-    } catch {
-      return withScheme;
-    }
   }
 
   private async tryWebSocketConnect(url: string, transport: BridgeTransport, timeout = 5000): Promise<boolean> {
     return new Promise((resolve) => {
       try {
-        let opened = false;
         const ws = new WebSocket(url);
         const timer = setTimeout(() => { ws.close(); resolve(false); }, timeout);
 
         ws.onopen = () => {
-          opened = true;
           clearTimeout(timer);
           this.ws = ws;
-          this.establishHealthyLink(
-            transport,
-            `FXK-${transport === 'wifi_direct' ? 'P2P' : 'WS'}(${url})`,
-          ).then((ok) => {
-            if (!ok) ws.close();
-            resolve(ok);
-          });
+          this.transport = transport;
+          this.connected = true;
+          this.deviceName = `FXK-${transport === 'wifi_direct' ? 'P2P' : 'WS'}(${url})`;
+          this.lastPing = Date.now();
+          this.onConnect();
+          resolve(true);
         };
         ws.onmessage = (ev) => this.handleResponse(String(ev.data));
-        ws.onclose = () => {
-          clearTimeout(timer);
-          if (opened || this.connected) this.handleDisconnect();
-        };
-        ws.onerror = () => {
-          this.lastError = `Falha ao conectar WebSocket (${url})`;
-          clearTimeout(timer);
-          resolve(false);
-        };
-      } catch {
-        this.lastError = `URL de WebSocket inválida (${url})`;
-        resolve(false);
-      }
+        ws.onclose = () => { clearTimeout(timer); this.handleDisconnect(); };
+        ws.onerror = () => { clearTimeout(timer); resolve(false); };
+      } catch { resolve(false); }
     });
   }
 
@@ -651,195 +299,55 @@ export class FireOneHardwareBridge {
 
   // ─── Command Methods ─────────────────────────────────
 
-  /**
-   * Health gate for command execution. Returns null if OK to proceed,
-   * otherwise a `BridgeReasonCode` to surface to the caller.
-   *
-   * NOTE: `eStop()` intentionally bypasses this gate — emergency stop must
-   * always attempt transmission, even on a degraded link.
-   */
-  private requireHealthy(): BridgeReasonCode | null {
-    if (!this.connected) return 'NOT_CONNECTED';
-    if (this.linkHealth !== 'healthy') return 'LINK_NOT_HEALTHY';
-    return null;
-  }
-
   async fire(pin: number, durationMs: number): Promise<boolean> {
-    const gate = this.requireHealthy();
-    if (gate) {
-      this.setError(gate, `fire(${pin}) blocked: ${gate}`);
-      return false;
-    }
     const key = `OK:FIRE:${pin}`;
     return this.sendAndWaitConfirm(`FIRE:${pin}:${durationMs}\n`, key);
   }
 
   async fireBatch(mask: number, durationMs: number): Promise<boolean> {
-    const gate = this.requireHealthy();
-    if (gate) {
-      this.setError(gate, `fireBatch blocked: ${gate}`);
-      return false;
-    }
     const maskHex = (mask >>> 0).toString(16).padStart(8, '0');
     return this.sendAndWaitConfirm(`BATCH:${maskHex}:${durationMs}\n`, 'OK:BATCH');
   }
 
-  /**
-   * Emergency stop — bypasses requireHealthy() by design.
-   * Always logs an audit event with current link state for post-event analysis,
-   * regardless of whether transmission succeeds.
-   */
   async eStop(): Promise<boolean> {
-    this.onEvent?.('estop_attempt', {
-      linkHealth: this.linkHealth,
-      connected: this.connected,
-      transport: this.transport,
-      sessionId: this.sessionId,
-      at: Date.now(),
-    });
-    const ok = await this.sendCommand('ESTOP\n');
-    this.onEvent?.('estop_result', {
-      ok,
-      sessionId: this.sessionId,
-      at: Date.now(),
-    });
-    return ok;
+    return this.sendCommand('ESTOP\n');
   }
 
-  async readContinuity(pin: number, maxRetries?: number): Promise<number> {
-    const rule = this.retryPolicy.CONT;
-    return this.readWithRetry('CONT', pin, maxRetries ?? rule.maxRetries, rule.perAttemptTimeoutMs);
-  }
-
-  async readCdsVoltage(pin: number, maxRetries?: number): Promise<number> {
-    const rule = this.retryPolicy.CDS;
-    return this.readWithRetry('CDS', pin, maxRetries ?? rule.maxRetries, rule.perAttemptTimeoutMs);
-  }
-
-  /**
-   * Shared retrying-read helper for CONT/CDS.
-   *
-   * Retry policy:
-   *  - only fires for command types in `RETRYABLE_COMMAND_TYPES` (compile-time enforced via param type)
-   *  - aborts the moment `linkHealth !== 'healthy'` (no retries on degraded link)
-   *  - aborts if `sessionId` changes mid-retry (reconnect happened)
-   *  - bounded by `maxRetries`; per-class default lives in `DEFAULT_RETRY_POLICY`
-   *
-   * Physical commands (FIRE/BATCH/GPIO/ESTOP) deliberately do NOT use this path.
-   */
-  private async readWithRetry(
-    commandType: 'CONT' | 'CDS',
-    pin: number,
-    maxRetries: number,
-    perAttemptTimeoutMs: number,
-  ): Promise<number> {
-    const sessionAtStart = this.sessionId;
-    const key = `${commandType}:${pin}`;
-
-    /** Returns [value, reasonIfMiss]. value !== null = real response. */
-    const attemptOnce = (): Promise<{ value: number | null; reason: BridgeRetryReason | null }> =>
-      new Promise((resolve) => {
-        this.registerPending(key, commandType, (val) => {
-          // Empty val = drain sentinel from disconnect → retryable miss.
-          if (!val) { resolve({ value: null, reason: 'empty_drain' }); return; }
-          const parts = val.split(':');
-          if (parts.length < 3) { resolve({ value: null, reason: 'parse_miss' }); return; }
-          const parsed = parseFloat(parts[2]);
-          if (Number.isNaN(parsed)) { resolve({ value: null, reason: 'parse_miss' }); return; }
-          resolve({ value: parsed, reason: null });
-        });
-        this.sendCommand(`${commandType}:${pin}\n`);
-        setTimeout(() => {
-          if (this.pendingResolves.has(key)) {
-            this.pendingResolves.delete(key);
-            resolve({ value: null, reason: 'timeout' });
-          }
-        }, perAttemptTimeoutMs);
+  async readContinuity(pin: number): Promise<number> {
+    const key = `CONT:${pin}`;
+    return new Promise<number>((resolve) => {
+      this.pendingResolves.set(key, (val) => {
+        const parts = val.split(':');
+        resolve(parts.length >= 3 ? parseFloat(parts[2]) : 0);
       });
-
-    for (let attempt = 0; attempt <= maxRetries; attempt++) {
-      // Healthy + same session gate — re-checked before EACH attempt.
-      if (this.linkHealth !== 'healthy' || this.sessionId !== sessionAtStart) {
-        return 0;
-      }
-      const { value, reason } = await attemptOnce();
-      if (value !== null) return value;
-      // miss → maybe retry
-      if (attempt < maxRetries) {
-        // Rate-limit gate — evaluated BEFORE consuming a retry slot.
-        const limit = this.checkRetryRateLimit(key);
-        if (limit !== null) {
-          this.rateLimitedTotal++;
-          this.rateLimitedByKey[key] = (this.rateLimitedByKey[key] ?? 0) + 1;
-          this.setError('RETRY_RATE_LIMITED', `Retry suppressed for ${key}: ${limit}`);
-          this.onEvent?.('retry_rate_limited', {
-            key,
-            commandType,
-            scope: limit, // 'per_key' | 'total'
-            retryCountForKey: this.retryByKey[key] ?? 0,
-            retryCountTotal: this.retryCount,
-            windowMs: this.retryRateLimit.windowMs,
-            sessionId: this.sessionId,
-            at: Date.now(),
-          });
-          return 0;
+      this.sendCommand(`CONT:${pin}\n`);
+      setTimeout(() => {
+        if (this.pendingResolves.has(key)) {
+          this.pendingResolves.delete(key);
+          resolve(0);
         }
-
-        const now = Date.now();
-        this.recordRetryTimestamp(key, now);
-        this.retryCount++;
-        this.retryByCommandType[commandType] = (this.retryByCommandType[commandType] ?? 0) + 1;
-        this.retryByKey[key] = (this.retryByKey[key] ?? 0) + 1;
-        this.onEvent?.('retry', {
-          commandType,
-          key,
-          attempt: attempt + 1,
-          maxRetries,
-          sessionId: this.sessionId,
-          linkHealth: this.linkHealth,
-          reason: reason ?? 'timeout',
-          at: now,
-        });
-      }
-    }
-    return 0;
+      }, 2000);
+    });
   }
 
-  /**
-   * Returns null if a retry is allowed; otherwise the scope that tripped
-   * (`'per_key'` or `'total'`). Uses a sliding window of `windowMs`.
-   */
-  private checkRetryRateLimit(key: string): 'per_key' | 'total' | null {
-    const now = Date.now();
-    const { windowMs, maxRetriesPerKey, maxRetriesTotal } = this.retryRateLimit;
-    const cutoff = now - windowMs;
-
-    // Prune + count global
-    this.retryTimestampsAll = this.retryTimestampsAll.filter(t => t >= cutoff);
-    if (this.retryTimestampsAll.length >= maxRetriesTotal) return 'total';
-
-    // Prune + count per-key
-    const stamps = this.retryTimestampsByKey.get(key) ?? [];
-    const pruned = stamps.filter(t => t >= cutoff);
-    if (pruned.length !== stamps.length) this.retryTimestampsByKey.set(key, pruned);
-    if (pruned.length >= maxRetriesPerKey) return 'per_key';
-
-    return null;
-  }
-
-  private recordRetryTimestamp(key: string, ts: number): void {
-    this.retryTimestampsAll.push(ts);
-    const stamps = this.retryTimestampsByKey.get(key) ?? [];
-    stamps.push(ts);
-    this.retryTimestampsByKey.set(key, stamps);
+  async readCdsVoltage(pin: number): Promise<number> {
+    const key = `CDS:${pin}`;
+    return new Promise<number>((resolve) => {
+      this.pendingResolves.set(key, (val) => {
+        const parts = val.split(':');
+        resolve(parts.length >= 3 ? parseFloat(parts[2]) : 0);
+      });
+      this.sendCommand(`CDS:${pin}\n`);
+      setTimeout(() => {
+        if (this.pendingResolves.has(key)) {
+          this.pendingResolves.delete(key);
+          resolve(0);
+        }
+      }, 2000);
+    });
   }
 
   async setGpio(pin: number, high: boolean): Promise<boolean> {
-    const gate = this.requireHealthy();
-    if (gate) {
-      this.setError(gate, `setGpio(${pin}) blocked: ${gate}`);
-      return false;
-    }
     return this.sendCommand(`GPIO:${pin}:${high ? 'HIGH' : 'LOW'}\n`);
   }
 
@@ -851,7 +359,6 @@ export class FireOneHardwareBridge {
     return {
       transport: this.transport,
       connected: this.connected,
-      connecting: this.connecting,
       deviceName: this.deviceName,
       batteryVoltage: this.batteryVoltage,
       firmwareVersion: this.firmwareVersion,
@@ -860,11 +367,6 @@ export class FireOneHardwareBridge {
       rxBytes: this.rxBytes,
       rssi: this.rssi,
       estimatedDistance: this.estimatedDistance,
-      lastError: this.lastError,
-      lastErrorCode: this.lastErrorCode,
-      linkHealth: this.linkHealth,
-      sessionId: this.sessionId,
-      diagnostics: this.getDiagnostics(),
     };
   }
 
@@ -882,7 +384,7 @@ export class FireOneHardwareBridge {
       if (!this.connected) return;
       const key = 'PONG';
       const responded = await new Promise<boolean>((resolve) => {
-        this.registerPending(key, 'HEARTBEAT', () => resolve(true));
+        this.pendingResolves.set(key, () => resolve(true));
         this.sendCommand('HEARTBEAT\n');
         setTimeout(() => {
           if (this.pendingResolves.has(key)) {
@@ -893,7 +395,6 @@ export class FireOneHardwareBridge {
       });
       if (!responded && this.connected) {
         console.warn('[HardwareBridge] Heartbeat timeout — disconnecting');
-        this.setError('HEARTBEAT_TIMEOUT', 'Heartbeat timeout — link lost');
         this.handleDisconnect();
         this.onEvent?.('heartbeat_timeout', null);
       }
@@ -951,9 +452,7 @@ export class FireOneHardwareBridge {
 
   private async sendAndWaitConfirm(cmd: string, confirmKey: string): Promise<boolean> {
     return new Promise<boolean>((resolve) => {
-      // Resolver receives the matched line. A non-empty match = real confirmation.
-      // Empty string is the disconnect drain sentinel → resolve false (NOT a confirm).
-      this.registerPending(confirmKey, 'CONFIRM', (val) => resolve(Boolean(val)));
+      this.pendingResolves.set(confirmKey, () => resolve(true));
       this.sendCommand(cmd);
       setTimeout(() => {
         if (this.pendingResolves.has(confirmKey)) {
@@ -964,12 +463,6 @@ export class FireOneHardwareBridge {
     });
   }
 
-  /**
-   * Low-level send. **Intentionally does NOT check linkHealth** — this lets the
-   * handshake (`waitForHandshake`) transmit during `linkHealth: 'handshaking'`
-   * and lets `eStop()` transmit on a degraded link. Health gating lives in
-   * `requireHealthy()` and is enforced by the public command methods only.
-   */
   private async sendCommand(cmd: string): Promise<boolean> {
     const bytes = new TextEncoder().encode(cmd);
     this.txBytes += bytes.length;
@@ -1002,13 +495,9 @@ export class FireOneHardwareBridge {
       }
     } catch (err) {
       console.warn('[HardwareBridge] Send failed:', err);
-      this.setError('SEND_FAILED', err instanceof Error ? err.message : 'Send failed');
     }
     return false;
   }
-
-
-
 
   private handleResponse(data: string): void {
     this.rxBytes += data.length;
@@ -1028,38 +517,18 @@ export class FireOneHardwareBridge {
         continue;
       }
 
-      for (const token of trimmed.split(';')) {
-        const chunk = token.trim();
-        if (!chunk) continue;
-        if (chunk.startsWith('BAT:')) {
-          const bat = parseFloat(chunk.substring(4));
-          if (!Number.isNaN(bat)) this.batteryVoltage = bat;
-        }
-        if (chunk.startsWith('RSSI:')) {
-          const rssi = parseInt(chunk.substring(5), 10);
-          if (!Number.isNaN(rssi)) {
-            this.rssi = rssi;
-            this.estimatedDistance = this.estimateDistance(rssi);
-          }
-        }
+      if (trimmed.startsWith('BAT:')) {
+        this.batteryVoltage = parseFloat(trimmed.substring(4));
       }
 
+      if (trimmed.startsWith('RSSI:')) {
+        this.rssi = parseInt(trimmed.substring(5));
+        this.estimatedDistance = this.estimateDistance(this.rssi);
+      }
 
-      for (const [key, pending] of this.pendingResolves) {
+      for (const [key, resolver] of this.pendingResolves) {
         if (trimmed.startsWith(key) || trimmed === key) {
-          // Stale-session guard: ignore frames whose pending was registered
-          // in an older session (can happen if a late frame arrives after
-          // a disconnect+reconnect cycle drained but didn't catch this key).
-          if (pending.sessionId !== this.sessionId && pending.sessionId !== this.connectingSessionId) {
-            this.onEvent?.('stale_response_dropped', {
-              key, frame: trimmed,
-              pendingSession: pending.sessionId,
-              currentSession: this.sessionId,
-            });
-            this.pendingResolves.delete(key);
-            break;
-          }
-          pending.resolver(trimmed);
+          resolver(trimmed);
           this.pendingResolves.delete(key);
           break;
         }
@@ -1069,57 +538,13 @@ export class FireOneHardwareBridge {
     }
   }
 
-  /**
-   * Transport drop / explicit disconnect handler.
-   *
-   * Critical contract (safety):
-   *  - All pending resolvers are drained with the empty-string sentinel so
-   *    callers (fire / handshake / readWithRetry) settle as `false`/0 and
-   *    never linger as a false confirmation.
-   *  - `connectingSessionId` is bumped so any in-flight handshake or stale
-   *    response from the previous session is invalidated immediately.
-   *  - The `disconnected` event carries full reconstruction context for the
-   *    audit log (reasonCode, transport, linkHealth, sessionId, at).
-   */
-  private handleDisconnect(reasonCode: BridgeReasonCode = 'TRANSPORT_DISCONNECTED'): void {
+  private handleDisconnect(): void {
     const wasConnected = this.connected;
-    const previousTransport = this.transport;
-    const previousSessionId = this.sessionId;
-
-    // Drain pending resolvers BEFORE we clear/reset state. Empty string is
-    // the documented sentinel: sendAndWaitConfirm → false, readWithRetry →
-    // 'empty_drain' (which then surfaces as 0). Never a confirmation.
-    if (this.pendingResolves.size > 0) {
-      const drained = Array.from(this.pendingResolves.values());
-      this.pendingResolves.clear();
-      for (const p of drained) {
-        try { p.resolver(''); } catch { /* swallow */ }
-      }
-    }
-
     this.connected = false;
-    this.connecting = false;
     this.transport = 'none';
-    this.linkHealth = 'disconnected';
-    // Invalidate any handshake/response-matching that referenced the old
-    // session — late frames from the previous transport will hit the
-    // stale-session guard in handleResponse.
-    this.connectingSessionId++;
-    this.lastErrorCode = reasonCode;
-    this.lastError = `Disconnected: ${reasonCode}`;
     this.stopHeartbeat();
     this.stopRssiPolling();
-
-    if (wasConnected) {
-      this.onEvent?.('disconnected', {
-        reasonCode,
-        transport: 'none',
-        previousTransport,
-        linkHealth: 'disconnected',
-        sessionId: previousSessionId,
-        at: Date.now(),
-      });
-    }
+    this.onEvent?.('disconnected', null);
     if (wasConnected && this.lastConnectArgs) {
       this.attemptReconnect();
     }
@@ -1138,80 +563,5 @@ export class FireOneHardwareBridge {
     } catch {
       // Port closed or error
     }
-  }
-
-  private async establishHealthyLink(transport: BridgeTransport, deviceName: string): Promise<boolean> {
-    this.transport = transport;
-    this.deviceName = deviceName;
-    this.lastPing = Date.now();
-    this.linkHealth = 'handshaking';
-    // Stamp this attempt. If `connectingSessionId` advances mid-handshake
-    // (handleDisconnect or a competing connect), we abort with STALE_SESSION.
-    const handshakeSession = ++this.connectingSessionId;
-    const ok = await this.waitForHandshake(3000, handshakeSession);
-    if (!ok) {
-      // Don't overwrite a more specific reason set by handleDisconnect /
-      // stale-session detection in waitForHandshake.
-      if (!this.lastErrorCode || this.lastErrorCode === 'OK') {
-        this.lastErrorCode = 'HANDSHAKE_TIMEOUT';
-      }
-      this.lastError = this.lastError ?? `Handshake failed (${transport})`;
-      // Only call handleDisconnect if we still have transport state to clean
-      // up — handleDisconnect may have already run via drain path.
-      if (this.connected || this.transport !== 'none') {
-        this.handleDisconnect(this.lastErrorCode);
-      } else {
-        this.linkHealth = 'disconnected';
-      }
-      return false;
-    }
-    // Successful handshake — promote session.
-    this.sessionId++;
-    this.connected = true;
-    this.lastError = undefined;
-    this.lastErrorCode = 'OK';
-    this.linkHealth = 'healthy';
-    this.onConnect();
-    return true;
-  }
-
-  /**
-   * Wait for first PONG or VER frame within `timeoutMs`. Honors stale-session
-   * detection: if `connectingSessionId` advances while we wait, this resolves
-   * `false` and records `STALE_SESSION` so the caller surfaces the right code.
-   * Also resolves `false` on the disconnect-drain sentinel (empty resolver
-   * value) without recording a redundant error code (handleDisconnect already
-   * set TRANSPORT_DISCONNECTED).
-   */
-  private async waitForHandshake(timeoutMs = 3000, expectedSession?: number): Promise<boolean> {
-    return new Promise((resolve) => {
-      let done = false;
-      let timer: ReturnType<typeof setTimeout> | null = null;
-      const finish = (ok: boolean) => {
-        if (done) return;
-        done = true;
-        if (timer) clearTimeout(timer);
-        this.pendingResolves.delete('PONG');
-        this.pendingResolves.delete('VER:');
-        resolve(ok);
-      };
-      const handle = (val: string) => {
-        // Empty-string sentinel from handleDisconnect drain.
-        if (!val) { finish(false); return; }
-        // Stale-session check: did a competing connect/disconnect happen?
-        if (expectedSession !== undefined && this.connectingSessionId !== expectedSession) {
-          this.lastErrorCode = 'STALE_SESSION';
-          this.lastError = 'Handshake invalidated by newer session';
-          finish(false);
-          return;
-        }
-        finish(true);
-      };
-      this.registerPending('PONG', 'HEARTBEAT', handle);
-      this.registerPending('VER:', 'VERSION', handle);
-      this.sendCommand('VERSION\n');
-      this.sendCommand('HEARTBEAT\n');
-      timer = setTimeout(() => finish(false), timeoutMs);
-    });
   }
 }

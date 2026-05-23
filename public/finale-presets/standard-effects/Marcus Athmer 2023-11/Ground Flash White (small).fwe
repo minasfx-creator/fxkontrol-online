@@ -1,0 +1,49 @@
+<?xml version="1.0"?>
+<FireworkEffect xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <Children>
+    <BaseEffectNode xsi:type="Shell">
+      <Children>
+        <BaseEffectNode xsi:type="BurstingCharge">
+          <Children />
+          <Auto>false</Auto>
+          <Energy>101</Energy>
+          <Color>
+            <CustomR>0</CustomR>
+            <CustomG>0</CustomG>
+            <CustomB>0</CustomB>
+            <Color>Spark</Color>
+          </Color>
+          <ChangeColor>false</ChangeColor>
+          <Sound>false</Sound>
+          <Delay>0.1</Delay>
+          <TestSound>false</TestSound>
+        </BaseEffectNode>
+      </Children>
+      <ID>0</ID>
+      <AllowRenaming>false</AllowRenaming>
+      <SimpleSize>
+        <DiameterPreset>d75</DiameterPreset>
+      </SimpleSize>
+      <SizeSelection>Advanced</SizeSelection>
+      <Diameter>0.01</Diameter>
+      <LiftingCharge>1</LiftingCharge>
+    </BaseEffectNode>
+  </Children>
+  <Protected>false</Protected>
+  <AutotagOverrideQuantity>0</AutotagOverrideQuantity>
+  <AutotagOverrideCaliber>0</AutotagOverrideCaliber>
+  <AutotagOverrideFurther />
+  <Identifier>
+    <Name>Ground Flash White (small)</Name>
+    <Author>Marcus Athmer</Author>
+  </Identifier>
+  <Metadata>
+    <Pieces />
+  </Metadata>
+  <AuthorSoftwareVersion>
+    <Major>3</Major>
+    <Minor>0</Minor>
+    <Build>0</Build>
+    <Revision>5</Revision>
+  </AuthorSoftwareVersion>
+</FireworkEffect>

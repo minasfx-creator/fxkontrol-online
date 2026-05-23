@@ -308,7 +308,7 @@ function cpuHash31(x: number, y: number, z: number): number {
 
 function cpuNoise3(px: number, py: number, pz: number): number {
   const ix = Math.floor(px), iy = Math.floor(py), iz = Math.floor(pz);
-  let fx = px - ix, fy = py - iy, fz = pz - iz;
+  const fx = px - ix, fy = py - iy, fz = pz - iz;
   // Smoothstep
   const ux = fx * fx * (3 - 2 * fx);
   const uy = fy * fy * (3 - 2 * fy);

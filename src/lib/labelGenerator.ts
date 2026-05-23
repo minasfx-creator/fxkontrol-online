@@ -6,6 +6,7 @@
 
 import { type TimelineItem, type Position } from '@/types/projectTypes';
 import { EFFECT_LIBRARY } from '@/data/effectLibrary';
+import { findEffectById } from '@/data/effectsLibraries/resolveEffect';
 
 export interface LabelConfig {
   labelsPerRow: number;
@@ -77,11 +78,11 @@ export function generateLabels(
   positions: Position[],
 ): LabelData[] {
   const pyro = items
-    .filter(i => { const e = EFFECT_LIBRARY.find(e => e.id === i.effectId); return e?.type === 'firework'; })
+    .filter(i => { const e = findEffectById(i.effectId); return e?.type === 'firework'; })
     .sort((a, b) => a.startTime - b.startTime);
 
   return pyro.map((item, idx) => {
-    const effect = EFFECT_LIBRARY.find(e => e.id === item.effectId)!;
+    const effect = findEffectById(item.effectId)!;
     const pyroPos = positions.filter(p => p.type === 'pyro');
     let posName = '';
     if (pyroPos.length > 0) {

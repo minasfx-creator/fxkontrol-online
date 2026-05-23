@@ -6,6 +6,11 @@ import { getThreeBlending } from '@/lib/niagaraBlenderRules';
 import { useProjectStore } from '@/store/useProjectStore';
 import { readDensityAt, injectDensity, injectVelocity, type FluidGrid } from '@/render_ultra/fireworks/niagaraFluids';
 import { getChemistryForRendering, autoMatchFormulation } from '@/render_ultra/fireworks/particleChemistry';
+import { resolveMinePresetProps } from '@/data/finalePresets';
+import { selectMineSilhouette } from '@/render/silhouettes/mineSilhouettes';
+import { isEnabled } from '@/lib/featureFlags';
+import { getFwsimGraphics, sampleCurve } from '@/data/fwsimGraphicsConfig';
+import { getFwsimSmokeTexture } from '@/render/textures/fwsimSmokeTexture';
 
 /**
  * Mine Effect — Multi-phase ground burst (PyroJam 2026 reference)
@@ -16,12 +21,14 @@ import { getChemistryForRendering, autoMatchFormulation } from '@/render_ultra/f
  */
 
 // Particle class boundaries (index ranges)
-const COLUMN_FRAC = 0.20;
+const COLUMN_FRAC = 0.28;
 const SPRAY_FRAC = 0.60; // 20-80%
 const DRIP_FRAC = 0.10;  // 80-90%
 const BOUNCE_FRAC = 0.10; // 90-100% — ground bounce sparks
 
 const SMOKE_COUNT = 40;
+
+export type MinePattern = 'omni' | 'fan' | 'v';
 
 export default function MineEffect({
   position,
@@ -33,6 +40,8 @@ export default function MineEffect({
   formulationId,
   launchHeading = 0,
   launchPitch = 85,
+  pattern = 'fan',
+  presetId,
 }: {
   position: [number, number, number];
   color: string;
@@ -43,7 +52,19 @@ export default function MineEffect({
   formulationId?: string;
   launchHeading?: number;
   launchPitch?: number;
+  pattern?: MinePattern;
+  /** Canonical Finale Mine preset id (rev5–7). Overrides body color and applies tail strobe. */
+  presetId?: string;
 }) {
+  // Resolve canonical Finale Mine preset (rev5–7). Overrides body color and
+  // tail strobe. Geometry/lifetime/count remain renderer-driven for now.
+  const preset = useMemo(
+    () => (presetId ? resolveMinePresetProps(presetId) : undefined),
+    [presetId],
+  );
+  const effectiveColor = preset?.color ?? color;
+  const tailStrobeHz = preset?.strobeHz ?? 0;
+
   const count = useMemo(() => Math.min(600, Math.round(200 + caliber * caliber * 14)), [caliber]);
   const pointsRef = useRef<THREE.Points>(null);
   const smokePointsRef = useRef<THREE.Points>(null);
@@ -60,14 +81,14 @@ export default function MineEffect({
 
   // Chemistry-enhanced color: use formulation if available, else auto-match by color+type
   const chemistry = useMemo(() => {
-    const fId = formulationId || autoMatchFormulation(color, 'mine', caliber);
+    const fId = formulationId || autoMatchFormulation(effectiveColor, 'mine', caliber);
     return fId ? getChemistryForRendering(fId) : null;
-  }, [formulationId, color, caliber]);
+  }, [formulationId, effectiveColor, caliber]);
 
   const baseColor = useMemo(() => {
     if (chemistry?.resultColor) return chemistry.resultColor.clone();
-    return new THREE.Color(color);
-  }, [color, chemistry]);
+    return new THREE.Color(effectiveColor);
+  }, [effectiveColor, chemistry]);
   const emberColor = useMemo(() => new THREE.Color().setHSL(0.05, 0.8, 0.12), []);
   const charcoalColor = useMemo(() => new THREE.Color(0.15, 0.08, 0.03), []);
 
@@ -82,6 +103,15 @@ export default function MineEffect({
   const trailPosRef = useMemo(() => new Float32Array(sprayCount * TRAIL_SEGS * 6), [sprayCount]);
   const trailColRef = useMemo(() => new Float32Array(sprayCount * TRAIL_SEGS * 6), [sprayCount]);
 
+  // Silhouette-driven jet allocation (FWsim Mine_01/02/03 vectors).
+  // When enabled, spray particles cluster around N discrete azimuthal jets +
+  // a denser ground crown — matches the FWsim leque reference instead of
+  // a uniform 360° hemisphere.
+  const silhouette = useMemo(
+    () => (isEnabled('r_silhouette_mines') ? selectMineSilhouette({ caliber, numDevices: 1 }) : null),
+    [caliber],
+  );
+
   const { velocities, lifetimes, sparkleSeeds, particleSizes, smokeSeeds } = useMemo(() => {
     const v = new Float32Array(count * 3);
     const l = new Float32Array(count);
@@ -89,8 +119,23 @@ export default function MineEffect({
     const ps = new Float32Array(count);
     const ss = new Float32Array(SMOKE_COUNT);
 
+    const jets = silhouette?.jetAnglesDeg ?? null;
+    const jitterRad = silhouette ? (silhouette.jitterDeg * Math.PI) / 180 : 0;
+    const crownEnd = silhouette
+      ? Math.floor(count * (COLUMN_FRAC + SPRAY_FRAC * silhouette.crownRatio))
+      : -1;
+
     for (let i = 0; i < count; i++) {
       const theta = Math.random() * Math.PI * 2;
+
+      // Pattern-aware azimuth: 'fan' = 360° around vertical (single tight upward cone),
+      // 'v' = two opposite leques (split into 2 lateral cones), 'omni' = original hemisphere.
+      let azTheta = theta;
+      if (pattern === 'v') {
+        // Bias to two opposite arcs ±60° around horizontal axis
+        const side = Math.random() < 0.5 ? -1 : 1;
+        azTheta = side * (Math.PI / 2) + (Math.random() - 0.5) * (Math.PI / 3);
+      }
 
       if (i < Math.floor(count * COLUMN_FRAC)) {
         // Column particles: narrow cone (5-15°), high velocity
@@ -99,17 +144,45 @@ export default function MineEffect({
         v[i * 3] = Math.cos(theta) * Math.sin(upAngle) * speed;
         v[i * 3 + 1] = Math.cos(upAngle) * speed + 3;
         v[i * 3 + 2] = Math.sin(theta) * Math.sin(upAngle) * speed;
-        l[i] = 0.3 + Math.random() * 0.3;
-        ps[i] = 0.6;
+        l[i] = 0.18 + Math.random() * 0.25;
+        ps[i] = 0.55;
       } else if (i < Math.floor(count * (COLUMN_FRAC + SPRAY_FRAC))) {
-        // Spray particles: wide hemisphere (30-80°), jittered lifetime
-        const upAngle = 0.35 + Math.random() * 0.85;
-        const speed = 10 + Math.random() * 18 + caliber * 4;
-        v[i * 3] = Math.cos(theta) * Math.sin(upAngle) * speed;
-        v[i * 3 + 1] = Math.cos(upAngle) * speed + 2;
-        v[i * 3 + 2] = Math.sin(theta) * Math.sin(upAngle) * speed;
-        l[i] = (0.4 + Math.random() * 1.0) * (0.6 + Math.random() * 0.8);
-        ps[i] = 0.8 + Math.random() * 1.0;
+        // Spray particles: cone width depends on pattern
+        // fan/v: tight upward cone ~30°±10° (FWsim look — discrete bright stars rising in a leque)
+        // omni:  wide hemisphere 30-80° (legacy ground burst)
+        // Silhouette mode: snap to one of N jet azimuths SIMÉTRICAS em 360°
+        // ao redor do eixo Y (não front-fan unilateral), preservando count+jitter.
+        if (silhouette && i < crownEnd) {
+          // Crown burst: low + wide, short lifetime
+          const upAngle = 0.95 + Math.random() * 0.45; // ~55–80° from vertical
+          const speed = 6 + Math.random() * 8 + caliber * 2;
+          v[i * 3] = Math.cos(theta) * Math.sin(upAngle) * speed;
+          v[i * 3 + 1] = Math.cos(upAngle) * speed + 1.4;
+          v[i * 3 + 2] = Math.sin(theta) * Math.sin(upAngle) * speed;
+          l[i] = silhouette.crownLifetimeS * (0.7 + Math.random() * 0.6);
+          ps[i] = 0.6 + Math.random() * 0.4;
+        } else {
+          let jetAzRad: number;
+          if (jets && jets.length > 0) {
+            // Distribui jets simetricamente ao redor de 360° → fan radial vertical
+            // em vez de leque frontal (-50°..+50°), eliminando o "sempre angulado".
+            const N = jets.length;
+            const jetIdx = (i - Math.floor(count * COLUMN_FRAC)) % N;
+            jetAzRad = (jetIdx / N) * Math.PI * 2
+                     + (Math.random() - 0.5) * 2 * jitterRad;
+          } else {
+            jetAzRad = azTheta;
+          }
+          const upAngle = pattern === 'omni'
+            ? 0.35 + Math.random() * 0.85
+            : 0.30 + Math.random() * 0.35; // ~17–37° from vertical
+          const speed = 10 + Math.random() * 18 + caliber * 4;
+          v[i * 3] = Math.cos(jetAzRad) * Math.sin(upAngle) * speed;
+          v[i * 3 + 1] = Math.cos(upAngle) * speed + 2;
+          v[i * 3 + 2] = Math.sin(jetAzRad) * Math.sin(upAngle) * speed;
+          l[i] = (0.4 + Math.random() * 1.0) * (0.6 + Math.random() * 0.8);
+          ps[i] = 0.8 + Math.random() * 1.0;
+        }
       } else if (i < Math.floor(count * (COLUMN_FRAC + SPRAY_FRAC + DRIP_FRAC))) {
         // Drip particles: low velocity, high drag, fall back
         const upAngle = 0.1 + Math.random() * 0.5;
@@ -138,7 +211,7 @@ export default function MineEffect({
     }
 
     return { velocities: v, lifetimes: l, sparkleSeeds: s, particleSizes: ps, smokeSeeds: ss };
-  }, [count, caliber, columnEnd, sprayEnd]);
+  }, [count, caliber, columnEnd, sprayEnd, pattern, silhouette]);
 
   // Smoke initial velocities (radial expansion)
   const smokeVelocities = useMemo(() => {
@@ -163,13 +236,17 @@ export default function MineEffect({
     const t = progress * 2.5;
     const GRAV = -9.81;
     const time = clock.getElapsedTime();
-    const envelope = attackReleaseEnvelope(progress, 0.02, 0.85, 2.5);
+    const envelope = attackReleaseEnvelope(progress, 0.015, 0.55, 3.2);
 
-    // Wind integration
+    // Wind integration — mines are heavy ground spray (fast burn, dense ejecta).
+    // Real-world wind tilts the smoke column, NOT the bright jets. The previous
+    // coefficient (0.08) caused every burst to drift in the same direction →
+    // user reported "todas tombadas pro mesmo lado". Drop to 0.012 so the jets
+    // stay vertical-symmetric and only smoke/drips show a subtle lean.
     const { wind } = useProjectStore.getState();
     const windRad = (wind.direction * Math.PI) / 180;
-    const windX = wind.enabled ? Math.sin(windRad) * wind.speed * 0.08 : 0;
-    const windZ = wind.enabled ? Math.cos(windRad) * wind.speed * 0.08 : 0;
+    const windX = wind.enabled ? Math.sin(windRad) * wind.speed * 0.012 : 0;
+    const windZ = wind.enabled ? Math.cos(windRad) * wind.speed * 0.012 : 0;
 
     // Inject density into fluid grid on burst (once)
     const fluidGrid = (window as any).__niagaraFluidGrid as FluidGrid | undefined;
@@ -183,7 +260,7 @@ export default function MineEffect({
     const fluidDensity = fluidGrid ? readDensityAt(fluidGrid, position[0], position[2]) : 0;
     const smokeBoost = 1 + fluidDensity * 0.3;
 
-    const basePointSize = 0.22 + caliber * 0.05;
+    const basePointSize = 0.18 + caliber * 0.04;
 
     for (let i = 0; i < count; i++) {
       const vx = velocities[i * 3];
@@ -248,10 +325,18 @@ export default function MineEffect({
       posArr[i * 3 + 1] = bounced ? Math.abs(rawY) * restitution : rawY;
       posArr[i * 3 + 2] = vz * t * dragH + windZ * t * t * 0.5;
 
-      // Combustion flicker for column particles, temporal for spray/drips
-      const twinkle = isColumn
+      // Combustion flicker for column particles, temporal for spray/drips.
+      // When a Finale Mine preset declares a tail strobeHz (e.g. Gold Glitter
+      // 29.4 Hz), we modulate the spray twinkle by a square-wave at that rate
+      // so the canonical strobe character is visible.
+      let twinkle = isColumn
         ? combustionFlicker(sparkleSeeds[i], time, 1.2)
         : temporalFlicker(sparkleSeeds[i], time, 0.6, 0.34, 0.36);
+      if (!isColumn && tailStrobeHz > 0) {
+        const phase = (time * tailStrobeHz + sparkleSeeds[i] * 0.137) % 1;
+        const strobeGate = phase < 0.5 ? 1 : 0.35;
+        twinkle *= strobeGate;
+      }
 
       const flashIntensity = Math.max(0, 1 - progress * 15);
       const emberPhase = Math.max(0, (progress - 0.35) / 0.65);
@@ -295,8 +380,10 @@ export default function MineEffect({
       colArr[i * 3 + 1] = g * fadeSq * twinkle * hdrBoost * envelope * smokeBoost;
       colArr[i * 3 + 2] = b * fadeSq * twinkle * hdrBoost * envelope * smokeBoost;
 
-      // Per-particle size
-      sizeArr[i] = basePointSize * particleSizes[i];
+      // Per-particle size — spray layer scaled by FWsim launchSparks.mineMineWidth
+      // (neutral=1 when canonical 0.05; flag-gated, OFF preserves legacy literal).
+      const isSpray = !isColumn && !isDrip && !isBounce;
+      sizeArr[i] = basePointSize * particleSizes[i] * (isSpray ? sparkCalib.widthMult : 1);
     }
 
     // ── Spray comet trails ──
@@ -388,23 +475,76 @@ export default function MineEffect({
       const smokeGeo = smokePointsRef.current.geometry;
       const sPosAttr = smokeGeo.getAttribute('position') as THREE.BufferAttribute;
       const sColAttr = smokeGeo.getAttribute('color') as THREE.BufferAttribute;
+      const sSizeAttr = smokeGeo.getAttribute('size') as THREE.BufferAttribute;
       if (sPosAttr) sPosAttr.needsUpdate = true;
       if (sColAttr) sColAttr.needsUpdate = true;
+      // BUGFIX: size buffer was mutated every frame but never re-uploaded → smoke
+      // sprites stayed at gl_PointSize = 0 (Float32Array init) and the FWsim
+      // smoke texture (r_fwsim_smoke_texture Step 1) appeared empty.
+      if (sSizeAttr) sSizeAttr.needsUpdate = true;
     }
   });
 
   const screenBlend = useMemo(() => getThreeBlending('screen'), []);
 
-  // Compute launch direction quaternion from heading/pitch
-  const launchRotation = useMemo(() => {
-    const headingRad = -(launchHeading || 0) * Math.PI / 180;
-    const pitchRad = (90 - (launchPitch || 85)) * Math.PI / 180;
-    const euler = new THREE.Euler(pitchRad, headingRad, 0, 'YXZ');
-    return euler;
-  }, [launchHeading, launchPitch]);
+  // FWsim graphics.xml canonical tuning (opt-in via r_fwsim_mine_calibration).
+  // mineFlame.sizeDependingOnEnergy maps caliber→size multiplier; brightness
+  // and duration come from the same canonical block. When OFF, fall back to
+  // the legacy literal constants used before the FWsim integration.
+  const mineCalib = useMemo(() => {
+    if (!isEnabled('r_fwsim_mine_calibration')) {
+      return { sizeMult: 1, brightness: 0.7, durationMult: 1 };
+    }
+    const cfg = getFwsimGraphics().flashes.mineFlame;
+    // caliber stored in inches; FWsim curve is x = launch energy ≈ shell mm.
+    const calibMm = Math.max(16, Math.min(100, caliber * 25.4));
+    const sizeMult = sampleCurve(
+      cfg.sizeDependingOnEnergy as unknown as ReadonlyArray<readonly [number, number]>,
+      calibMm,
+    );
+    return {
+      sizeMult: Math.max(0.2, sizeMult),
+      brightness: Math.max(0.1, Math.min(1, cfg.brightness * 0.5)), // brightness 2 → opacity ~1
+      durationMult: Math.max(0.5, cfg.duration / 0.15),
+    };
+  }, [caliber]);
+
+  // FWsim launchSparks.mine* canonical tuning (opt-in via r_fwsim_launch_sparks_mine).
+  // Maps spec block { mineNrStars, mineExplosionRelativeSpeed, mineSpeedVariance,
+  // mineMineWidth } into multiplicative factors over the legacy spray spark layer.
+  // Canonical values (75 / 1.0 / 0.14 / 0.05) are intentionally neutral so OFF and
+  // ON-with-default produce identical rendered sizes (bit-equivalent fallback).
+  const sparkCalib = useMemo(() => {
+    if (!isEnabled('r_fwsim_launch_sparks_mine')) {
+      return { widthMult: 1, speedMult: 1, variance: 0.14, nrStarsTarget: sprayCount };
+    }
+    const cfg = getFwsimGraphics().launchSparks as unknown as {
+      mineNrStars?: number;
+      mineExplosionRelativeSpeed?: number;
+      mineSpeedVariance?: number;
+      mineMineWidth?: number;
+    };
+    const baseWidth = 0.05; // canonical reference width — neutral when matched.
+    const widthMult = Math.max(0.25, Math.min(4, (cfg.mineMineWidth ?? baseWidth) / baseWidth));
+    const speedMult = Math.max(0.25, Math.min(4, cfg.mineExplosionRelativeSpeed ?? 1));
+    const variance = Math.max(0, Math.min(1, cfg.mineSpeedVariance ?? 0.14));
+    const nrStarsTarget = Math.max(8, Math.round(cfg.mineNrStars ?? 75));
+    return { widthMult, speedMult, variance, nrStarsTarget };
+  }, [sprayCount]);
+
+  // Mines are omnidirectional — root group is intentionally NOT rotated.
+  // launchHeading/launchPitch are still accepted in the props for future
+  // selective use (e.g. sutil column tilt ≤10°), but never tip the cloud.
+  void launchHeading; void launchPitch;
 
   // Combustion-modulated muzzle flash
-  const muzzleFlashOpacity = useMemo(() => 0.7, []);
+  const muzzleFlashOpacity = useMemo(() => 0.7 * mineCalib.brightness / 0.7, [mineCalib]);
+
+  // FWsim smoke sprite (opt-in via r_fwsim_smoke_texture).
+  const smokeMap = useMemo(
+    () => (isEnabled('r_fwsim_smoke_texture') ? getFwsimSmokeTexture() : null),
+    [],
+  );
 
   // Per-particle size shader
   const sizeVertexShader = `
@@ -431,15 +571,19 @@ export default function MineEffect({
   `;
 
   return (
-    <group position={position} rotation={launchRotation} renderOrder={50}>
+    <group position={position} renderOrder={50}>
+      {/* launchHeading/launchPitch intentionally NOT applied to the root group:
+          mines are omnidirectional ground bursts (NFPA) — column rises vertical,
+          spray fans hemispherically, drips fall by gravity. Tilting the whole
+          group would tip the ground ring and the entire particle field. */}
       {/* Combustion muzzle flash with flicker */}
-      {progress < 0.08 && (
+      {progress < 0.08 * mineCalib.durationMult && (
         <mesh position={[0, 0.3, 0]}>
-          <sphereGeometry args={[1.2 + caliber * 0.5 + progress * 20, 16, 16]} />
+          <sphereGeometry args={[(0.6 + caliber * 0.3 + progress * 8) * mineCalib.sizeMult, 16, 16]} />
           <meshBasicMaterial
             color="#FFFFF0"
             transparent
-            opacity={muzzleFlashOpacity * (1 - progress / 0.08)}
+            opacity={muzzleFlashOpacity * (1 - progress / (0.08 * mineCalib.durationMult))}
             blending={screenBlend.blending}
             blendEquation={screenBlend.blendEquation}
             blendSrc={screenBlend.blendSrc as any}
@@ -453,11 +597,11 @@ export default function MineEffect({
       {/* Ground ring flash */}
       {progress < 0.2 && (
         <mesh position={[0, 0.02, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-          <ringGeometry args={[1, 3 + progress * 30 + caliber * 2, 32]} />
+          <ringGeometry args={[1, 2 + progress * 15 + caliber * 1.2, 32]} />
           <meshBasicMaterial
             color={color}
             transparent
-            opacity={0.12 * (1 - progress / 0.2)}
+            opacity={0.08 * (1 - progress / 0.2)}
             blending={screenBlend.blending}
             blendEquation={screenBlend.blendEquation}
             blendSrc={screenBlend.blendSrc as any}
@@ -512,8 +656,17 @@ export default function MineEffect({
             <bufferAttribute attach="attributes-size" args={[smokeSizeRef, 1]} />
           </bufferGeometry>
           <shaderMaterial
+            key={smokeMap ? 'fwsim-tex' : 'procedural'}
             vertexShader={sizeVertexShader}
-            fragmentShader={`
+            fragmentShader={smokeMap ? `
+              uniform sampler2D uSmokeTex;
+              varying vec3 vColor;
+              void main() {
+                vec4 tex = texture2D(uSmokeTex, gl_PointCoord);
+                if (tex.a < 0.02) discard;
+                gl_FragColor = vec4(vColor * tex.rgb, tex.a * 0.18);
+              }
+            ` : `
               varying vec3 vColor;
               void main() {
                 float dist = length(gl_PointCoord - vec2(0.5));
@@ -522,6 +675,7 @@ export default function MineEffect({
                 gl_FragColor = vec4(vColor, alpha);
               }
             `}
+            uniforms={smokeMap ? { uSmokeTex: { value: smokeMap } } : undefined}
             transparent
             depthWrite={false}
             depthTest={false}

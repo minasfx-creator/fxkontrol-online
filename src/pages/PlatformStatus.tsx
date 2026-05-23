@@ -60,8 +60,12 @@ export default function PlatformStatus() {
   const [loading, setLoading] = useState(true);
   const [physicalRevision, setPhysicalRevision] = useState(0);
   const bridgeDiagnostic = useMemo(() => getBridgeSecurityDiagnostic({ path: '/ws' }), []);
+  // `physicalRevision` is a forced-recompute signal — controller state is mutable.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   const physicalSnapshot = useMemo(() => bridgePhysicalController.getSnapshot(), [physicalRevision]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   const hilLogs = useMemo(() => bridgePhysicalController.getHilLogs(), [physicalRevision]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   const hilReport = useMemo(() => bridgePhysicalController.exportHilReport(), [physicalRevision]);
   const drift = useMemo(() => computeHilDrift(hilReport), [hilReport]);
   const regression = useMemo(

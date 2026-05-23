@@ -291,12 +291,20 @@ export class ParticleGPGPU {
   // ── Cleanup ──
 
   dispose(): void {
+    // Render targets — free GPU-allocated FBOs + their depth/stencil buffers.
     this.positionRT[0].dispose();
     this.positionRT[1].dispose();
     this.velocityRT[0].dispose();
     this.velocityRT[1].dispose();
+    // Compute materials (shader programs).
     this.positionMaterial.dispose();
     this.velocityMaterial.dispose();
+    // Internal copy material used by _renderToTarget reseed path.
+    this._copyMaterial.dispose();
+    // Compute scene wrappers — detach mesh so references are not pinned.
+    this.computeScene.remove(this.computeMesh);
+    // NOTE: _quadGeometry and _orthoCamera are module-level singletons
+    // shared across all ParticleGPGPU instances — never dispose them here.
   }
 
   // ── Internal: render a texture to a render target ──

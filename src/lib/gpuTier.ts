@@ -30,8 +30,32 @@
  */
 
 export type GpuTier = 'high' | 'low';
+export type GlassQualityPref = 'auto' | 'high' | 'low';
 
+const STORAGE_KEY = 'fxk:glass-quality';
 let cachedTier: GpuTier | null = null;
+const listeners = new Set<(tier: GpuTier, pref: GlassQualityPref) => void>();
+
+export function getGlassQualityPref(): GlassQualityPref {
+  if (typeof localStorage === 'undefined') return 'auto';
+  const v = localStorage.getItem(STORAGE_KEY);
+  return v === 'high' || v === 'low' ? v : 'auto';
+}
+
+export function setGlassQualityPref(pref: GlassQualityPref): GpuTier {
+  if (typeof localStorage !== 'undefined') {
+    if (pref === 'auto') localStorage.removeItem(STORAGE_KEY);
+    else localStorage.setItem(STORAGE_KEY, pref);
+  }
+  const tier = applyGpuTier();
+  listeners.forEach((l) => l(tier, pref));
+  return tier;
+}
+
+export function subscribeGlassQuality(cb: (tier: GpuTier, pref: GlassQualityPref) => void): () => void {
+  listeners.add(cb);
+  return () => listeners.delete(cb);
+}
 
 const LOW_GPU_PATTERNS = [
   /mali/i,
@@ -88,11 +112,14 @@ export function getGpuTier(): GpuTier {
 
 /**
  * Detect once and write `<html data-gpu-tier="...">`. Idempotent.
+ * User preference (localStorage) overrides the auto-detected tier.
  * Call from app entry (e.g. main.tsx) before first paint.
  */
 export function applyGpuTier(): GpuTier {
   if (typeof document === 'undefined') return 'high';
-  const tier = getGpuTier();
+  const pref = getGlassQualityPref();
+  const tier: GpuTier = pref === 'auto' ? getGpuTier() : pref;
   document.documentElement.dataset.gpuTier = tier;
+  document.documentElement.dataset.glassPref = pref;
   return tier;
 }

@@ -5,6 +5,7 @@
  */
 
 import type { DeviceEvent, HealthTimelineEntry } from './types';
+import { realOnlyGate } from './realOnlyGate';
 
 class DeviceEventLog {
   private _events: DeviceEvent[] = [];
@@ -12,6 +13,12 @@ class DeviceEventLog {
   private _listeners = new Set<() => void>();
 
   log(device_id: string, type: DeviceEvent['type'], message: string, data?: Record<string, unknown>): void {
+    // ── Real-Only Gate ─────────────────────────────────────────
+    // Drop telemetry events from devices without a verified handshake.
+    // Lifecycle events (connected/disconnected/state_change/warning/error)
+    // always pass so operators see connection attempts.
+    if (!realOnlyGate.acceptEvent({ device_id, type })) return;
+
     this._events.push({
       id: `evt-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
       device_id, timestamp: Date.now(), type, message, data,

@@ -2,8 +2,8 @@
  * MobileLinkPanel — Test Art-Net/Relay connectivity & trigger virtual fixtures
  * from mobile → desktop via Supabase Realtime broadcast.
  */
-import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
-import { Cable, Wifi, WifiOff, Plus, Trash2, Flame, X, Lightbulb, Zap, Wind, Sparkles, Smartphone } from 'lucide-react';
+import { useState, useEffect, useCallback, useRef } from 'react';
+import { Cable, Wifi, WifiOff, Plus, Trash2, Flame, X, Lightbulb, Zap, Wind, Snowflake, Sparkles, Smartphone } from 'lucide-react';
 import { haptics } from '@/lib/haptics';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -11,21 +11,14 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Slider } from '@/components/ui/slider';
 import { Card, CardContent } from '@/components/ui/card';
-import BridgeSecurityAlert from '@/components/editor/network/BridgeSecurityAlert';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
 import { useLiveSfxStore } from '@/store/useLiveSfxStore';
 import { useProjectStore } from '@/store/useProjectStore';
-import {
-  buildBridgeWebSocketProtocols,
-  evaluateBridgeWebSocketConnection,
-  getBridgeSecurityDiagnostic,
-  getMobileGatewayChannelName,
-  openBridgeWebSocket,
-} from '@/lib/bridgeGateway';
 
 const FIXTURES_KEY = 'fxk-virtual-fixtures';
+const CHANNEL_NAME = 'mobile-link';
 
 type FixtureType = 'par' | 'wash' | 'strobe' | 'flame' | 'co2' | 'spark';
 
@@ -90,8 +83,6 @@ export default function MobileLinkPanel({ onClose }: MobileLinkPanelProps) {
   const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
   const fireEffect = useLiveSfxStore((s) => s.fireEffect);
   const projectId = useProjectStore((s) => s.projectId);
-  const channelName = useMemo(() => getMobileGatewayChannelName(projectId), [projectId]);
-  const bridgeDiagnostic = useMemo(() => getBridgeSecurityDiagnostic({ path: '/ws' }), []);
 
   // Load fixtures from localStorage
   useEffect(() => {
@@ -109,7 +100,7 @@ export default function MobileLinkPanel({ onClose }: MobileLinkPanelProps) {
 
   // Subscribe to Realtime broadcast
   useEffect(() => {
-    const ch = supabase.channel(channelName, { config: { broadcast: { self: false } } });
+    const ch = supabase.channel(CHANNEL_NAME);
     ch.on('broadcast', { event: 'fixture-fire' }, (msg) => {
       const p = msg.payload as { fixtureId: string; type: FixtureType; color: string; intensity: number };
       fireEffect({
@@ -127,7 +118,7 @@ export default function MobileLinkPanel({ onClose }: MobileLinkPanelProps) {
     });
     channelRef.current = ch;
     return () => { supabase.removeChannel(ch); };
-  }, [channelName, fireEffect]);
+  }, [fireEffect]);
 
   // Test Art-Net
   const testArtNet = useCallback(async () => {
@@ -154,17 +145,10 @@ export default function MobileLinkPanel({ onClose }: MobileLinkPanelProps) {
     setRelayStatus('testing');
     const t0 = performance.now();
     try {
-      const guard = evaluateBridgeWebSocketConnection(bridgeDiagnostic.endpoint);
-      if (!guard.allowed) {
-        setRelayLatency(null);
-        setRelayStatus('fail');
-        return;
-      }
-      const protocols = buildBridgeWebSocketProtocols();
-      const ws = openBridgeWebSocket(bridgeDiagnostic.endpoint, protocols);
+      const ws = new WebSocket('ws://localhost:9001');
       const timeout = setTimeout(() => { ws.close(); setRelayStatus('fail'); }, 3000);
       ws.onopen = () => {
-        ws.send(JSON.stringify({ type: 'ping', source: 'mobile-link', secure: bridgeDiagnostic.secure }));
+        ws.send(JSON.stringify({ type: 'ping' }));
       };
       ws.onmessage = () => {
         clearTimeout(timeout);
@@ -180,7 +164,7 @@ export default function MobileLinkPanel({ onClose }: MobileLinkPanelProps) {
     } catch {
       setRelayStatus('fail');
     }
-  }, [bridgeDiagnostic.endpoint, bridgeDiagnostic.secure]);
+  }, []);
 
   // Add fixture
   const addFixture = useCallback(() => {
@@ -318,7 +302,6 @@ export default function MobileLinkPanel({ onClose }: MobileLinkPanelProps) {
         {/* Connection Tests */}
         <div className="space-y-2">
           <h3 className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Conexão</h3>
-          <BridgeSecurityAlert diagnostic={bridgeDiagnostic} compact />
           <div className="grid grid-cols-2 gap-2">
             <Button
               variant="outline"
@@ -337,12 +320,9 @@ export default function MobileLinkPanel({ onClose }: MobileLinkPanelProps) {
               onClick={testRelay}
               disabled={relayStatus === 'testing'}
             >
-              <span className="text-[10px] font-bold">{bridgeDiagnostic.secure ? 'Gateway HTTPS' : 'Relay UDP'}</span>
+              <span className="text-[10px] font-bold">Relay UDP</span>
               {statusBadge(relayStatus, relayLatency)}
             </Button>
-          </div>
-          <div className="text-[9px] text-muted-foreground font-mono truncate">
-            {bridgeDiagnostic.endpoint}
           </div>
         </div>
 

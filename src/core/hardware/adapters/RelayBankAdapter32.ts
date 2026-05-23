@@ -7,6 +7,7 @@
 
 import type { HardwareAdapter, HardwareCapabilities, HardwareStatusSnapshot, DeviceConnectionState, RelayBankState, RelayChannelState } from '../types';
 import { createSimulatedProvenance, type ProvenanceInfo } from '../provenance';
+import { isHardwareSimulatorEnabled } from '@/lib/featureFlags';
 
 export class RelayBankAdapter32 implements HardwareAdapter<RelayBankState> {
   readonly deviceId = 'relay-bank-32ch';
@@ -78,6 +79,7 @@ export class RelayBankAdapter32 implements HardwareAdapter<RelayBankState> {
 
   pollTelemetry(): void {
     if (this._connected !== 'connected') return;
+    if (!isHardwareSimulatorEnabled()) return;
     const now = Date.now();
     for (const ch of this._state.channel_states) {
       ch.last_checked = now;

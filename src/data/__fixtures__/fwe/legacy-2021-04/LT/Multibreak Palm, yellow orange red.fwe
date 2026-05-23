@@ -1,0 +1,89 @@
+<?xml version="1.0"?>
+<FireworkEffect xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+  <Children>
+    <BaseEffectNode xsi:type="Shell">
+      <Children>
+        <BaseEffectNode xsi:type="BurstingCharge">
+          <Children>
+            <BaseEffectNode xsi:type="Stars">
+              <Children />
+              <Type>Normal</Type>
+              <Distribution xsi:type="SphericalDistribution">
+                <Speed>1</Speed>
+                <Sigma>0.1</Sigma>
+              </Distribution>
+              <Color>
+                <Color>Yellow</Color>
+              </Color>
+              <Count>145</Count>
+              <MinimumLifetime>1.5</MinimumLifetime>
+              <MaximumLifetime>2.1</MaximumLifetime>
+              <Strobe>false</Strobe>
+            </BaseEffectNode>
+          </Children>
+          <Energy>55.92</Energy>
+          <Delay>0.688</Delay>
+        </BaseEffectNode>
+        <BaseEffectNode xsi:type="BurstingCharge">
+          <Children>
+            <BaseEffectNode xsi:type="Stars">
+              <Children />
+              <Type>Normal</Type>
+              <Distribution xsi:type="SphericalDistribution">
+                <Speed>1</Speed>
+                <Sigma>0.1</Sigma>
+              </Distribution>
+              <Color>
+                <Color>Orange</Color>
+              </Color>
+              <Count>200</Count>
+              <MinimumLifetime>1.5</MinimumLifetime>
+              <MaximumLifetime>2.1</MaximumLifetime>
+              <Strobe>false</Strobe>
+            </BaseEffectNode>
+          </Children>
+          <Energy>64.52</Energy>
+          <Delay>1.548</Delay>
+        </BaseEffectNode>
+        <BaseEffectNode xsi:type="BurstingCharge">
+          <Children>
+            <BaseEffectNode xsi:type="Stars">
+              <Children>
+                <BaseEffectNode xsi:type="StarTails">
+                  <Children />
+                  <Color>
+                    <Color>Gold</Color>
+                  </Color>
+                  <Width>0.99</Width>
+                  <EmitStart>0.3015</EmitStart>
+                  <EmitEnd>0.86</EmitEnd>
+                  <Density>24</Density>
+                </BaseEffectNode>
+              </Children>
+              <Type>Normal</Type>
+              <Distribution xsi:type="SphericalDistribution">
+                <Speed>1</Speed>
+                <Sigma>0.013566</Sigma>
+              </Distribution>
+              <Color>
+                <Color>Red</Color>
+              </Color>
+              <Count>200</Count>
+              <MinimumLifetime>3.1367</MinimumLifetime>
+              <MaximumLifetime>3.9543</MaximumLifetime>
+              <Strobe>false</Strobe>
+            </BaseEffectNode>
+          </Children>
+          <Energy>138.7</Energy>
+          <Delay>4.0432</Delay>
+        </BaseEffectNode>
+      </Children>
+      <Diameter>0.239865</Diameter>
+      <LiftingCharge>184.26</LiftingCharge>
+    </BaseEffectNode>
+  </Children>
+  <Identifier>
+    <Name>Multibreak Palm, yellow orange red</Name>
+    <Author>LT</Author>
+  </Identifier>
+</FireworkEffect>

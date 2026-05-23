@@ -21,6 +21,7 @@ Allow: /
 
 User-agent: *
 Allow: /
+Allow: /editor-ds
 Disallow: /editor
 Disallow: /command
 Disallow: /admin

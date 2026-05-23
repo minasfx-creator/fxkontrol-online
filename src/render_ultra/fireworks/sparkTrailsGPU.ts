@@ -41,37 +41,50 @@ export function createSparkTrailSystem() {
       attribute float opacity;
       attribute vec3 color;
       attribute vec3 aVelocity;
-      
+
       uniform float uVelocityStretchFactor;
-      
+
       varying float vOpacity;
       varying vec3 vColor;
-      
+
       void main() {
         vOpacity = opacity;
         vColor = color;
-        
+
         vec4 mvPos = modelViewMatrix * vec4(position, 1.0);
         gl_Position = projectionMatrix * mvPos;
-        
-        // Base point size
-        float baseSize = max(1.0, 4.0 * opacity);
-        
-        // Velocity stretching — elongate point along velocity direction
+
+        // Base point size — tapered: head thicker, tail thinner.
+        // opacity already encodes (trailFade * lifeRatio), so size follows
+        // a non-linear curve to keep the head punchy while the tail
+        // pinches to a single pixel before vanishing.
+        float baseSize = max(0.6, 4.5 * pow(opacity, 0.65));
+
+        // Velocity stretching — elongate along velocity (Niagara-style).
         vec3 viewVel = (modelViewMatrix * vec4(aVelocity, 0.0)).xyz;
         float speed = length(viewVel);
         float stretchFactor = 1.0 + speed * uVelocityStretchFactor;
-        
-        gl_PointSize = baseSize * stretchFactor;
+
+        // Distance attenuation: clamp so far sparks remain visible
+        // without bloating near sparks.
+        float distAtten = clamp(80.0 / max(0.001, -mvPos.z), 0.5, 1.4);
+
+        gl_PointSize = baseSize * stretchFactor * distAtten;
       }
     `,
     fragmentShader: `
       varying float vOpacity;
       varying vec3 vColor;
       void main() {
-        float d = length(gl_PointCoord - 0.5) * 2.0;
-        float glow = exp(-d * d * 3.0);
-        gl_FragColor = vec4(vColor * (1.0 + vOpacity * 2.0), glow * vOpacity);
+        vec2 uv = gl_PointCoord - 0.5;
+        float d2 = dot(uv, uv) * 4.0;
+        // Sharper hot core + softer halo (two-lobe gaussian)
+        float core = exp(-d2 * 6.0);
+        float halo = exp(-d2 * 1.6) * 0.45;
+        float glow = core + halo;
+        // Hot core pushes color toward white at peak opacity
+        vec3 hot = mix(vColor, vec3(1.0), core * vOpacity * 0.85);
+        gl_FragColor = vec4(hot * (1.0 + vOpacity * 1.6), glow * vOpacity);
       }
     `,
     uniforms: {
@@ -90,12 +103,60 @@ export function createSparkTrailSystem() {
 }
 
 /**
- * Update spark trail — pushes current position into history buffer.
+ * Cheap pseudo-3D curl-like turbulence (no noise texture).
+ * Uses interfering trig fields for divergence-free-ish swirl.
+ * Cost: ~12 ops/spark/frame — safe at 2k sparks.
  */
-export function updateSparkTrail(spark: SparkState, dt: number, drag: number, gravity: number) {
+function turbulence(p: THREE.Vector3, t: number, out: THREE.Vector3) {
+  const f = 0.18; // spatial frequency
+  const a = 0.65; // amplitude (m/s²)
+  const x = p.x * f, y = p.y * f, z = p.z * f;
+  out.x = a * (Math.sin(y + t * 1.3) - Math.cos(z * 1.7 - t * 0.9));
+  out.y = a * (Math.sin(z + t * 1.1) - Math.cos(x * 1.5 + t * 0.7));
+  out.z = a * (Math.sin(x + t * 0.8) - Math.cos(y * 1.3 + t * 1.2));
+}
+
+const _turb = new THREE.Vector3();
+const _step = new THREE.Vector3();
+
+/**
+ * Update spark trail — pushes current position into history buffer.
+ * Now models quadratic drag (more realistic at low Reynolds for embers)
+ * and adds cheap curl-like turbulence so trails don't look ballistic.
+ *
+ * @param spark   the spark
+ * @param dt      seconds since last update
+ * @param drag    quadratic drag coefficient (try 0.04..0.12)
+ * @param gravity m/s² (negative for downward in Y-up; e.g. -9.81)
+ * @param time    elapsed seconds — used to advect turbulence over time
+ * @param turbAmt 0..1 turbulence strength multiplier (0 disables)
+ */
+export function updateSparkTrail(
+  spark: SparkState,
+  dt: number,
+  drag: number,
+  gravity: number,
+  time: number = 0,
+  turbAmt: number = 1
+) {
+  // Quadratic drag: F_drag ∝ |v| · v  (more honest than linear damp)
+  const speed = spark.velocity.length();
+  const dragCoef = Math.min(0.95, drag * speed * dt);
+  spark.velocity.multiplyScalar(1 - dragCoef);
+
+  // Gravity
   spark.velocity.y += gravity * dt;
-  spark.velocity.multiplyScalar(1 - drag * dt);
-  spark.position.add(spark.velocity.clone().multiplyScalar(dt));
+
+  // Turbulence — fades as the spark cools (using life ratio as proxy)
+  if (turbAmt > 0) {
+    turbulence(spark.position, time, _turb);
+    const cool = Math.max(0, spark.life / spark.maxLife);
+    spark.velocity.addScaledVector(_turb, turbAmt * cool * dt);
+  }
+
+  // Integrate position (no allocation)
+  _step.copy(spark.velocity).multiplyScalar(dt);
+  spark.position.add(_step);
   spark.life -= dt;
 
   spark.trailHistory.push(spark.position.clone());
@@ -128,11 +189,18 @@ export function writeSparkTrailsToBuffers(
         positions[idx + 1] = pt.y;
         positions[idx + 2] = pt.z;
         
-        const trailFade = 1 - t / trail.length;
+        // Tail thins exponentially (Beer-Lambert-ish absorption along
+        // the trail) instead of linearly — gives the "fading wick" look
+        // and removes the chunky tail boundary.
+        const u = t / trail.length;
+        const trailFade = Math.exp(-u * 2.4);
         const alpha = trailFade * lifeRatio;
-        colors[idx] = spark.color.r * (1 + trailFade);
-        colors[idx + 1] = spark.color.g * (1 + trailFade * 0.5);
-        colors[idx + 2] = spark.color.b * trailFade;
+        // Color cools toward red as it ages (Newton + blackbody hint):
+        // head keeps the source color, tail loses blue first then green.
+        const cool = trailFade;
+        colors[idx]     = spark.color.r * (1 + cool * 0.6);
+        colors[idx + 1] = spark.color.g * (0.4 + cool * 0.6);
+        colors[idx + 2] = spark.color.b * (cool * cool);
         opacities[vertIdx] = alpha;
 
         // Write velocity for stretching

@@ -1,0 +1,62 @@
+<?xml version="1.0"?>
+<FireworkEffect xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+  <Children>
+    <BaseEffectNode xsi:type="Shell">
+      <Children>
+        <BaseEffectNode xsi:type="BurstingCharge">
+          <Children>
+            <BaseEffectNode xsi:type="Stars">
+              <Children />
+              <Type>Normal</Type>
+              <Distribution xsi:type="HeartDistribution">
+                <Speed>1</Speed>
+                <Sigma>0.011</Sigma>
+              </Distribution>
+              <Color>
+                <CustomR>0</CustomR>
+                <CustomG>0</CustomG>
+                <CustomB>0</CustomB>
+                <Color>Red</Color>
+              </Color>
+              <Color2>
+                <CustomR>0</CustomR>
+                <CustomG>0</CustomG>
+                <CustomB>0</CustomB>
+                <Color>Spark</Color>
+              </Color2>
+              <ColorChanging>true</ColorChanging>
+              <Count>133</Count>
+              <MinimumLifetime>1.5</MinimumLifetime>
+              <MaximumLifetime>2.1</MaximumLifetime>
+              <Strobe>false</Strobe>
+              <StrobeFreqMean>14</StrobeFreqMean>
+            </BaseEffectNode>
+          </Children>
+          <Auto>true</Auto>
+          <Energy>87</Energy>
+          <Delay>3.78879952</Delay>
+        </BaseEffectNode>
+      </Children>
+      <ID>0</ID>
+      <AllowRenaming>false</AllowRenaming>
+      <SimpleSize>
+        <DiameterPreset>d150</DiameterPreset>
+      </SimpleSize>
+      <SizeSelection>Simple</SizeSelection>
+      <Diameter>0.15</Diameter>
+      <LiftingCharge>133</LiftingCharge>
+    </BaseEffectNode>
+  </Children>
+  <Identifier>
+    <Name>Heart shell, red to white</Name>
+    <Author>LT</Author>
+  </Identifier>
+  <IsReadonly>false</IsReadonly>
+  <AuthorSoftwareVersion>
+    <Major>2</Major>
+    <Minor>0</Minor>
+  </AuthorSoftwareVersion>
+  <MD5Hash>
+    <Value>aWz6+i6XZBVJ1Pn3iPoi3A==</Value>
+  </MD5Hash>
+</FireworkEffect>

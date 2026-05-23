@@ -1,0 +1,123 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<FireworkEffect xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+  <Children>
+    <BaseEffectNode xsi:type="Shell">
+      <Children>
+        <BaseEffectNode xsi:type="BurstingCharge">
+          <Children>
+            <BaseEffectNode xsi:type="Stars">
+              <Children />
+              <Count>463</Count>
+              <Distribution xsi:type="MineDistribution">
+                <Speed>1</Speed>
+                <Sigma>0.14</Sigma>
+                <PositionSigma>0.25</PositionSigma>
+                <Rotation>
+                  <XAxis>0</XAxis>
+                  <YAxis>0</YAxis>
+                  <ZAxis>0</ZAxis>
+                </Rotation>
+                <Spread>1</Spread>
+              </Distribution>
+              <Phases>
+                <StarPhase>
+                  <Color>
+                    <CustomR>0</CustomR>
+                    <CustomG>0</CustomG>
+                    <CustomB>0</CustomB>
+                    <Color>Blue</Color>
+                  </Color>
+                  <Strobe>false</Strobe>
+                </StarPhase>
+              </Phases>
+              <Color>
+                <CustomR>0</CustomR>
+                <CustomG>0</CustomG>
+                <CustomB>0</CustomB>
+                <Color>Blue</Color>
+              </Color>
+              <Type>Small</Type>
+              <Mass>0.8</Mass>
+              <Birthtime>0</Birthtime>
+              <BirthtimeSigmaRatio>0.1</BirthtimeSigmaRatio>
+              <MinimumLifetime>0</MinimumLifetime>
+              <MaximumLifetime>1.2</MaximumLifetime>
+              <CustomDimmcurve>false</CustomDimmcurve>
+              <FadeRatios>
+                <A>0</A>
+                <B>0.09</B>
+                <C>0.85</C>
+                <D>1</D>
+              </FadeRatios>
+              <Strobe>false</Strobe>
+              <StrobeType>Regular</StrobeType>
+              <StrobeOnTime>0.1</StrobeOnTime>
+              <StrobeFreqMean>14</StrobeFreqMean>
+              <CanOverrideColor>true</CanOverrideColor>
+              <Motorized>false</Motorized>
+              <Motor>
+                <StartPropulsionAt>0.5</StartPropulsionAt>
+                <PropulsionStrength>0</PropulsionStrength>
+                <Curvature>0</Curvature>
+              </Motor>
+              <ColorChanging>false</ColorChanging>
+              <Color2>
+                <CustomR>0</CustomR>
+                <CustomG>0</CustomG>
+                <CustomB>0</CustomB>
+                <Color>Orange</Color>
+              </Color2>
+              <StrobeSynchronous>false</StrobeSynchronous>
+            </BaseEffectNode>
+          </Children>
+          <Auto>false</Auto>
+          <Energy>45</Energy>
+          <Color>
+            <CustomR>0</CustomR>
+            <CustomG>0</CustomG>
+            <CustomB>0</CustomB>
+            <Color>Spark</Color>
+          </Color>
+          <ChangeColor>false</ChangeColor>
+          <Sound>true</Sound>
+          <Render>true</Render>
+          <ExplosionSparks>Auto</ExplosionSparks>
+          <Delay>1.9</Delay>
+          <TestSound>false</TestSound>
+        </BaseEffectNode>
+      </Children>
+      <ID>0</ID>
+      <AllowRenaming>false</AllowRenaming>
+      <SizeSelection>Advanced</SizeSelection>
+      <Diameter>0.142</Diameter>
+      <LiftingCharge>300</LiftingCharge>
+      <Rotation>
+        <Mode>Auto</Mode>
+        <RotationsPerSecond>4</RotationsPerSecond>
+        <RotationDiameterMM>100</RotationDiameterMM>
+      </Rotation>
+      <Stabilizer>false</Stabilizer>
+    </BaseEffectNode>
+  </Children>
+  <SimulationVersion>0</SimulationVersion>
+  <RackType xsi:nil="true" />
+  <AutotagOverrideQuantity>0</AutotagOverrideQuantity>
+  <AutotagOverrideCaliber>150</AutotagOverrideCaliber>
+  <HideInLib>true</HideInLib>
+  <AutotagOverrideCaliber_Simple xsi:nil="true" />
+  <AutotagOverrideFurther />
+  <Identifier>
+    <Name>spako blao, small</Name>
+    <Author>lui</Author>
+  </Identifier>
+  <Metadata>
+    <Pieces />
+  </Metadata>
+  <FirstCreated>0001-01-01T00:00:00</FirstCreated>
+  <AuthorSoftwareVersion>
+    <Major>4</Major>
+    <Minor>1</Minor>
+    <Build>3</Build>
+    <Revision>0</Revision>
+  </AuthorSoftwareVersion>
+</FireworkEffect>

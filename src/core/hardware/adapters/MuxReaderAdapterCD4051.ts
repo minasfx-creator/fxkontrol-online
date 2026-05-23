@@ -6,7 +6,14 @@
  */
 
 import type { HardwareAdapter, HardwareCapabilities, HardwareStatusSnapshot, DeviceConnectionState, MultiplexerState, MuxChannelReading } from '../types';
-import { createSimulatedProvenance, type ProvenanceInfo } from '../provenance';
+import {
+  createSimulatedProvenance,
+  markHandshakeOk as provenanceMarkHandshakeOk,
+  markHandshakeLost as provenanceMarkHandshakeLost,
+  type ProvenanceInfo,
+  type TransportType,
+} from '../provenance';
+import { isHardwareSimulatorEnabled } from '@/lib/featureFlags';
 
 export class MuxReaderAdapterCD4051 implements HardwareAdapter<MultiplexerState[]> {
   readonly deviceId = 'mux-cd4051-dual';
@@ -72,10 +79,11 @@ export class MuxReaderAdapterCD4051 implements HardwareAdapter<MultiplexerState[
 
   pollTelemetry(): void {
     if (this._connected !== 'connected') return;
+    if (!isHardwareSimulatorEnabled()) return;
     for (const mux of this._muxStates) {
       mux.sample_count++;
       for (const ch of mux.channels) {
-        // Simulate ADC noise
+        // Synthetic ADC noise (only when simulator gate is ON)
         if (ch.state === 'ok') {
           ch.raw_value = 450 + Math.floor(Math.random() * 100);
           ch.resistance_ohms = 1.2 + Math.random() * 0.8;
@@ -106,6 +114,23 @@ export class MuxReaderAdapterCD4051 implements HardwareAdapter<MultiplexerState[
       { mux_id: 'mux-a', selected_channel: 0, sample_count: 0, fault_state: false, channels: this._initChannels(0) },
       { mux_id: 'mux-b', selected_channel: 0, sample_count: 0, fault_state: false, channels: this._initChannels(8) },
     ];
+    provenanceMarkHandshakeLost(this._provenance);
+  }
+
+  /**
+   * Promote to LIVE READ-ONLY. CD4051 reading is piggy-back on the host
+   * controller (FXK16/Arduino) — promoted by the bridge on host handshake.
+   * Read-only by construction (canWrite=false).
+   */
+  markHandshakeOk(transport: TransportType = 'serial_usb'): void {
+    this._connected = 'connected';
+    provenanceMarkHandshakeOk(this._provenance, transport);
+  }
+
+  /** Demote when the host link drops. */
+  markHandshakeLost(): void {
+    this._connected = 'disconnected';
+    provenanceMarkHandshakeLost(this._provenance);
   }
 }
 

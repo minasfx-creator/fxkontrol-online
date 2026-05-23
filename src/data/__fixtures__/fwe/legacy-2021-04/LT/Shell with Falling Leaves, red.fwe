@@ -1,0 +1,54 @@
+<?xml version="1.0"?>
+<FireworkEffect xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+  <Children>
+    <BaseEffectNode xsi:type="Shell">
+      <Children>
+        <BaseEffectNode xsi:type="BurstingCharge">
+          <Children>
+            <BaseEffectNode xsi:type="Stars">
+              <Children />
+              <Type>FallingLeaves</Type>
+              <Distribution xsi:type="SphericalDistribution">
+                <Speed>1</Speed>
+                <Sigma>0.04</Sigma>
+              </Distribution>
+              <Color>
+                <CustomR>0</CustomR>
+                <CustomG>0</CustomG>
+                <CustomB>0</CustomB>
+                <Color>Red</Color>
+              </Color>
+              <Color2>
+                <CustomR>0</CustomR>
+                <CustomG>0</CustomG>
+                <CustomB>0</CustomB>
+                <Color>Orange</Color>
+              </Color2>
+              <ColorChanging>false</ColorChanging>
+              <Count>200</Count>
+              <MinimumLifetime>3.6</MinimumLifetime>
+              <MaximumLifetime>4.9</MaximumLifetime>
+              <Strobe>false</Strobe>
+              <StrobeFreqMean>14</StrobeFreqMean>
+            </BaseEffectNode>
+          </Children>
+          <Energy>33</Energy>
+          <Delay>2.2</Delay>
+        </BaseEffectNode>
+      </Children>
+      <ID>0</ID>
+      <AllowRenaming>false</AllowRenaming>
+      <Diameter>0.142</Diameter>
+      <LiftingCharge>130</LiftingCharge>
+    </BaseEffectNode>
+  </Children>
+  <Identifier>
+    <Name>Shell with Falling Leaves, red</Name>
+    <Author>LT</Author>
+  </Identifier>
+  <AuthorSoftwareVersion>
+    <Major>1</Major>
+    <Minor>1</Minor>
+  </AuthorSoftwareVersion>
+  <MD5Hash />
+</FireworkEffect>

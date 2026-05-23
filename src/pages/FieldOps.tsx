@@ -9,28 +9,55 @@
  *
  * Old routes /pairing and /field-test redirect here for back-compat.
  */
-import { lazy, Suspense, useState } from 'react';
-import { Nfc, Activity, Smartphone } from 'lucide-react';
+import { lazy, Suspense, useState, useEffect } from 'react';
+import { Nfc, Activity, Smartphone, Cable, Flame } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { isFireOneXL43RealOpsEnabled, isFxk32qFieldOpsEnabled } from '@/lib/featureFlags';
+import { useActiveControllers } from '@/hooks/useActiveControllers';
+import { useFXK32QPresence } from '@/hooks/useFXK32QPresence';
 
-const DevicePairing = lazy(() => import('./DevicePairing'));
-const FieldTest = lazy(() => import('./FieldTest'));
+const DevicePairing = lazy(() => import('@/components/field/DevicePairingPanel'));
+const FieldTest = lazy(() => import('@/components/command/FieldTestPanel'));
 const MobileLinkPanel = lazy(() => import('@/components/editor/MobileLinkPanel'));
+const FXK16FieldPanel = lazy(() => import('@/components/field/FXK16FieldPanel'));
+const FXK32QFieldPanel = lazy(() => import('@/components/field/FXK32QFieldPanel'));
+const FireOnePanel = lazy(() => import('@/features/fieldbus/FireOnePanel'));
 
-type TabKey = 'pairing' | 'field-test' | 'mobile-link';
+type TabKey = 'pairing' | 'fxk16' | 'fxk32q' | 'fireone' | 'field-test' | 'mobile-link';
 
-const TABS: { key: TabKey; label: string; sub: string; icon: typeof Nfc }[] = [
+const ALL_TABS: { key: TabKey; label: string; sub: string; icon: typeof Nfc }[] = [
   { key: 'pairing',     label: 'PAIRING',     sub: 'NFC · BLE',      icon: Nfc },
+  { key: 'fxk16',       label: 'FXK16',       sub: 'PYRO RELAY',     icon: Cable },
+  { key: 'fxk32q',      label: 'FXK32Q',      sub: 'PYRO 32CH',      icon: Cable },
+  { key: 'fireone',     label: 'FIREONE',     sub: 'XL4-3 · USB',    icon: Flame },
   { key: 'field-test',  label: 'FIELD TEST',  sub: 'TRANSPORTS',     icon: Activity },
   { key: 'mobile-link', label: 'MOBILE LINK', sub: 'PHONE · BRIDGE', icon: Smartphone },
 ];
 
 export default function FieldOpsPage() {
+  const controllers = useActiveControllers();
+  const fireoneOnline = controllers.controllers.some(c => c.profile.kind === 'fireone');
+  const fireoneVisible = isFireOneXL43RealOpsEnabled() || fireoneOnline;
+  // FXK32Q presence: aggregator + adapter handshake + verified provenance.
+  // Bench/preflight override stays via the localStorage flag.
+  const fxk32qPresence = useFXK32QPresence();
+  const fxk32qVisible = isFxk32qFieldOpsEnabled() || fxk32qPresence.deviceOnline;
+  const TABS = ALL_TABS.filter(t =>
+       (t.key !== 'fireone' || fireoneVisible)
+    && (t.key !== 'fxk32q'  || fxk32qVisible)
+  );
+
   const [tab, setTab] = useState<TabKey>(() => {
     if (typeof window === 'undefined') return 'pairing';
     const hash = window.location.hash.replace('#', '') as TabKey;
-    return TABS.some(t => t.key === hash) ? hash : 'pairing';
+    return ALL_TABS.some(t => t.key === hash) ? hash : 'pairing';
   });
+
+  // If the device disappears, snap away from the now-hidden tab.
+  useEffect(() => {
+    if (tab === 'fireone' && !fireoneVisible) setTab('pairing');
+    if (tab === 'fxk32q'  && !fxk32qVisible)  setTab('pairing');
+  }, [tab, fireoneVisible, fxk32qVisible]);
 
   const setTabAndHash = (k: TabKey) => {
     setTab(k);
@@ -44,7 +71,10 @@ export default function FieldOpsPage() {
       {/* Tab Header */}
       <div
         className="shrink-0 flex border-b sticky top-0 z-20 backdrop-blur-md"
-        style={{ background: 'hsl(220 12% 5% / 0.92)', borderColor: 'hsl(32 100% 50% / 0.12)' }}
+        style={{
+          background: 'hsl(var(--field-bg, 220 30% 4%) / 0.92)',
+          borderColor: 'hsl(var(--field-cyan, 190 70% 58%) / 0.18)',
+        }}
       >
         {TABS.map(t => {
           const isActive = tab === t.key;
@@ -56,18 +86,31 @@ export default function FieldOpsPage() {
               className={cn(
                 'flex-1 flex flex-col items-center justify-center gap-0.5 py-2.5 transition-all relative',
                 'text-[10px] font-mono font-bold tracking-[0.18em] uppercase',
-                isActive ? 'text-[hsl(32_100%_65%)]' : 'text-muted-foreground/45 hover:text-muted-foreground/70'
+                'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--field-cyan,190_70%_58%)/0.6)]',
+                isActive
+                  ? 'text-[hsl(var(--field-cyan,190_70%_58%))]'
+                  : 'text-muted-foreground/55 hover:text-muted-foreground/85'
               )}
+              aria-pressed={isActive}
+              aria-label={`${t.label} — ${t.sub}`}
             >
               <div className="flex items-center gap-1.5">
-                <Icon className={cn('w-3.5 h-3.5', isActive && 'drop-shadow-[0_0_4px_hsl(32_100%_50%/0.5)]')} />
+                <Icon
+                  className={cn(
+                    'w-3.5 h-3.5',
+                    isActive && 'drop-shadow-[0_0_4px_hsl(var(--field-cyan,190_70%_58%)/0.55)]'
+                  )}
+                />
                 <span>{t.label}</span>
               </div>
               <span className="text-[7px] tracking-[0.25em] opacity-60">{t.sub}</span>
               {isActive && (
                 <div
                   className="absolute bottom-0 left-[15%] right-[15%] h-[2px]"
-                  style={{ background: 'linear-gradient(90deg, transparent, hsl(32 100% 50% / 0.6), transparent)' }}
+                  style={{
+                    background:
+                      'linear-gradient(90deg, transparent, hsl(var(--field-cyan, 190 70% 58%) / 0.7), transparent)',
+                  }}
                 />
               )}
             </button>
@@ -85,6 +128,9 @@ export default function FieldOpsPage() {
           }
         >
           {tab === 'pairing'     && <DevicePairing />}
+          {tab === 'fxk16'       && <FXK16FieldPanel />}
+          {tab === 'fxk32q'      && fxk32qVisible && <FXK32QFieldPanel />}
+          {tab === 'fireone'     && fireoneVisible && <FireOnePanel />}
           {tab === 'field-test'  && <FieldTest />}
           {tab === 'mobile-link' && <MobileLinkPanel onClose={() => setTabAndHash('pairing')} />}
         </Suspense>

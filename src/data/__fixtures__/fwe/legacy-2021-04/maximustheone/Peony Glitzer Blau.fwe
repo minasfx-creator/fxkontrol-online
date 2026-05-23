@@ -1,0 +1,44 @@
+<?xml version="1.0"?>
+<FireworkEffect xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+  <Children>
+    <BaseEffectNode xsi:type="Shell">
+      <Children>
+        <BaseEffectNode xsi:type="BurstingCharge">
+          <Children>
+            <BaseEffectNode xsi:type="Stars">
+              <Children />
+              <Type>Normal</Type>
+              <Distribution xsi:type="SphericalDistribution">
+                <Speed>1</Speed>
+                <Sigma>0.04</Sigma>
+              </Distribution>
+              <Color>
+                <CustomR>0</CustomR>
+                <CustomG>0</CustomG>
+                <CustomB>0</CustomB>
+                <Color>Blue</Color>
+              </Color>
+              <Count>469</Count>
+              <MinimumLifetime>3.6</MinimumLifetime>
+              <MaximumLifetime>4.9</MaximumLifetime>
+              <Strobe>true</Strobe>
+              <StrobeFreqMean>12.7</StrobeFreqMean>
+            </BaseEffectNode>
+          </Children>
+          <Energy>236</Energy>
+          <Delay>2.2992</Delay>
+        </BaseEffectNode>
+      </Children>
+      <Diameter>0.295</Diameter>
+      <LiftingCharge>215</LiftingCharge>
+    </BaseEffectNode>
+  </Children>
+  <Identifier>
+    <Name>Peony Glitzer blue</Name>
+    <Author>maximus</Author>
+  </Identifier>
+  <AuthorSoftwareVersion>
+    <Major>1</Major>
+    <Minor>0</Minor>
+  </AuthorSoftwareVersion>
+</FireworkEffect>

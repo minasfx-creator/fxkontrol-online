@@ -5,7 +5,14 @@
  */
 
 import type { HardwareAdapter, HardwareCapabilities, HardwareStatusSnapshot, DeviceConnectionState, BatteryState } from '../types';
-import { createSimulatedProvenance, type ProvenanceInfo } from '../provenance';
+import {
+  createSimulatedProvenance,
+  markHandshakeOk as provenanceMarkHandshakeOk,
+  markHandshakeLost as provenanceMarkHandshakeLost,
+  type ProvenanceInfo,
+  type TransportType,
+} from '../provenance';
+import { isHardwareSimulatorEnabled } from '@/lib/featureFlags';
 
 export class BatteryMonitorAdapter implements HardwareAdapter<BatteryState> {
   readonly deviceId = 'battery-12v';
@@ -51,7 +58,8 @@ export class BatteryMonitorAdapter implements HardwareAdapter<BatteryState> {
 
   pollTelemetry(): void {
     if (this._connected !== 'connected') return;
-    // Simulate slow discharge
+    if (!isHardwareSimulatorEnabled()) return;
+    // Simulate slow discharge (only when simulator gate is ON)
     if (!this._state.charging && this._state.voltage > 10.5) {
       this._state.voltage -= 0.001 + Math.random() * 0.002;
     }
@@ -71,6 +79,23 @@ export class BatteryMonitorAdapter implements HardwareAdapter<BatteryState> {
   reset(): void {
     this._connected = 'disconnected';
     this._state = { voltage: 0, source: 'battery', percentage: 0, low_battery_alarm: false, charging: false };
+    provenanceMarkHandshakeLost(this._provenance);
+  }
+
+  /**
+   * Promote to LIVE READ-ONLY. Battery telemetry is piggy-back on the
+   * host controller (FXK16/Arduino) — the bridge calls this once the
+   * host completes its handshake. Read-only by construction (canWrite=false).
+   */
+  markHandshakeOk(transport: TransportType = 'serial_usb'): void {
+    this._connected = 'connected';
+    provenanceMarkHandshakeOk(this._provenance, transport);
+  }
+
+  /** Demote back to NOT_INTEGRATED when the host link drops. */
+  markHandshakeLost(): void {
+    this._connected = 'disconnected';
+    provenanceMarkHandshakeLost(this._provenance);
   }
 }
 

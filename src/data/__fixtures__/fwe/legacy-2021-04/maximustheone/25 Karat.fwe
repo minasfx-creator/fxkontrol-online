@@ -1,0 +1,57 @@
+<?xml version="1.0"?>
+<FireworkEffect xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+  <Children>
+    <BaseEffectNode xsi:type="Shell">
+      <Children>
+        <BaseEffectNode xsi:type="BurstingCharge">
+          <Children>
+            <BaseEffectNode xsi:type="Stars">
+              <Children>
+                <BaseEffectNode xsi:type="StarTails">
+                  <Children />
+                  <Color>
+                    <Color>Orange</Color>
+                  </Color>
+                  <Width>1.5</Width>
+                  <EmitStart>0.1136</EmitStart>
+                  <EmitEnd>0.86</EmitEnd>
+                  <Density>50</Density>
+                </BaseEffectNode>
+              </Children>
+              <Type>Sparks</Type>
+              <Distribution xsi:type="SphericalDistribution">
+                <Speed>1</Speed>
+                <Sigma>0.1</Sigma>
+              </Distribution>
+              <Color>
+                <Color>Orange</Color>
+              </Color>
+              <Count>31</Count>
+              <MinimumLifetime>1.5</MinimumLifetime>
+              <MaximumLifetime>2.1</MaximumLifetime>
+              <Strobe>false</Strobe>
+            </BaseEffectNode>
+          </Children>
+          <Energy>80</Energy>
+          <Delay>1.9</Delay>
+        </BaseEffectNode>
+        <BaseEffectNode xsi:type="AscentEffect">
+          <Children />
+          <Color>
+            <Color>Orange</Color>
+          </Color>
+          <Width>1.6155</Width>
+          <EmitStart>0.0152</EmitStart>
+          <EmitEnd>0.9773</EmitEnd>
+          <Density>73</Density>
+        </BaseEffectNode>
+      </Children>
+      <Diameter>0.0569060035</Diameter>
+      <LiftingCharge>197.97</LiftingCharge>
+    </BaseEffectNode>
+  </Children>
+  <Identifier>
+    <Name>25 Karat</Name>
+    <Author>maximus</Author>
+  </Identifier>
+</FireworkEffect>

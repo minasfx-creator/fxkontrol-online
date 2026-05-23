@@ -8,11 +8,12 @@ import { useFrame, useThree } from '@react-three/fiber';
 import { Stars } from '@react-three/drei';
 import * as THREE from 'three';
 import { useSceneStore } from '@/store/useSceneStore';
+import { useProjectStore } from '@/store/useProjectStore';
 import { createSkyAtmosphereV2 } from '@/render_ultra/environment/skyAtmosphereV2';
 import { createVolumetricCloudLayer } from '@/render_ultra/environment/volumetricClouds';
 import { createWaterSystem, WATER_PRESETS } from '@/render_ultra/environment/waterRendering';
 import { evaluateTimeOfDay } from '@/render_ultra/environment/timeOfDay';
-import { createDecalSystem, updateDecals, clearDecals } from '@/render_ultra/environment/groundDecals';
+import { createDecalSystem, updateDecals, disposeDecalSystem } from '@/render_ultra/environment/groundDecals';
 
 // ── Sky Atmosphere V2 ──
 export function SkyAtmosphereV2Layer() {
@@ -85,8 +86,8 @@ export function VolumetricCloudLayer() {
     c.setWindSpeed(cloudWindSpeed);
   }, [cloudCoverage, cloudDensity, cloudWindSpeed]);
 
-  useFrame(({ clock }) => {
-    cloudRef.current?.update(clock.getElapsedTime());
+  useFrame(() => {
+    cloudRef.current?.update(useProjectStore.getState().currentTime);
   });
 
   return null;
@@ -105,12 +106,13 @@ export function WaterLayer() {
     const water = createWaterSystem(presetCfg);
     waterRef.current = water;
     water.mesh.position.y = waterLevel + tideOffset;
-    // Stencil write for water masking (prevents sea inside islands)
+    // ── BUG-FIX: removed stencilWrite. The composer no longer allocates a
+    // packed depth-stencil attachment (see PostProcessing.tsx), so writing
+    // stencilRef=1 here used to force the renderer onto the packed path and
+    // triggered glBlitFramebuffer "Read and write depth stencil attachments
+    // cannot be the same image". Sea-inside-island masking will return via a
+    // shader-side clip mask in a follow-up; visually identical for now.
     const mat = water.mesh.material as THREE.ShaderMaterial;
-    mat.stencilWrite = true;
-    mat.stencilRef = 1;
-    mat.stencilFunc = THREE.AlwaysStencilFunc;
-    mat.stencilZPass = THREE.ReplaceStencilOp;
     scene.add(water.mesh);
     return () => {
       scene.remove(water.mesh);
@@ -123,8 +125,8 @@ export function WaterLayer() {
     if (waterRef.current) waterRef.current.mesh.position.y = waterLevel + tideOffset;
   }, [waterLevel, tideOffset]);
 
-  useFrame(({ clock }) => {
-    waterRef.current?.update(clock.getElapsedTime());
+  useFrame(() => {
+    waterRef.current?.update(useProjectStore.getState().currentTime);
   });
 
   return null;
@@ -139,7 +141,9 @@ export function GroundDecalManager() {
     scene.add(group);
     return () => {
       scene.remove(group);
-      clearDecals();
+      // Full singleton teardown — disposes geometries, shader materials,
+      // and clears the active decal pool (M5).
+      disposeDecalSystem();
     };
   }, [scene]);
 

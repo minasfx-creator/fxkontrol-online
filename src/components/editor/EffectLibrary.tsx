@@ -1,12 +1,24 @@
 import { useState, useCallback, useMemo, useRef, useEffect } from 'react';
 import CakeBuilder from './CakeBuilder';
-import { Search, ChevronDown, ChevronRight, Flame, Sparkles, Radio, Shapes, Wand2, Zap, Lightbulb, Droplets, Bomb, CandlestickChart as Candle, Waves, Box, GripVertical, Clock, MapPin, Ruler, List, LayoutGrid, Hash, Plus, RotateCw } from 'lucide-react';
+import { Search, ChevronDown, ChevronRight, Flame, Sparkles, Radio, Shapes, Wand2, Zap, Lightbulb, Droplets, Bomb, CandlestickChart as Candle, Waves, Box, GripVertical, Clock, MapPin, Ruler, List, LayoutGrid, Hash, Plus, RotateCw, Upload } from 'lucide-react';
 import { toast } from 'sonner';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { useProjectStore } from '@/store/useProjectStore';
 import { EFFECT_LIBRARY, type Effect } from '@/data/effectLibrary';
+import { FINALE_SHELL_PRESET_EFFECTS } from '@/data/finaleShellPresetEffects';
+import { FWE_UPLOADED_EFFECTS } from '@/data/fweUploadedEffects';
+import { FWSIM_BUILTIN_EFFECTS } from '@/data/fwsimBuiltinPresets';
+import { FWE_MINE_EFFECTS } from '@/data/fweMineCatalog';
+import { getStandardEffects, STANDARD_EFFECTS_META } from '@/data/standardEffectsCatalog';
+import { TAIL_COMPONENTS_META } from '@/data/tailComponentCatalog';
+import { getFinaleEffects, FINALE_LIBRARIES_META } from '@/data/effectsLibraries';
+import { parseFweXml } from '@/data/fweImporter';
+import { useImportedFweStore } from '@/store/useImportedFweStore';
 import { cn } from '@/lib/utils';
+import { resolveEffectThumb } from '@/data/effectThumbnails';
+import { familyIconsForPart } from '@/data/effectFamilyIcons';
+import EffectPreview3D from './EffectPreview3D';
 import { parseVDL, vdlToEffect } from '@/lib/vdlParser';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
@@ -39,6 +51,30 @@ const FILTER_CHIPS: { key: FilterType; label: string; icon: typeof Flame }[] = [
 ];
 
 const CALIBER_OPTIONS = [2, 3, 4, 5, 6, 8, 10, 12];
+
+/** Display label for a partType (Finale/FWsim canonical names). */
+const FAMILY_LABEL: Record<string, string> = {
+  shell: 'Shell',
+  mine: 'Mine',
+  cake: 'Cake',
+  comet: 'Comet',
+  candle: 'Roman Candle',
+  fan: 'Fan',
+  gerb: 'Gerb',
+  flame: 'Flame',
+  rocket: 'Rocket',
+  waterfall: 'Waterfall',
+  strobe: 'Strobe',
+  ground: 'GroundShellFlash',
+  set_piece: 'Set Piece',
+  girandola: 'Girandola',
+  single_shot: 'Single Shot',
+  formation: 'Formation',
+  drone: 'Drone',
+  laser: 'Laser',
+  light: 'Light',
+  sfx: 'SFX',
+};
 
 /* ─── Finale 3D-style Table Row ─── */
 function EffectTableRow({ effect, index, usageCount }: { effect: Effect; index: number; usageCount: number }) {
@@ -134,9 +170,21 @@ function EffectTableRow({ effect, index, usageCount }: { effect: Effect; index: 
       <td className="px-1.5 py-[5px] text-muted-foreground/30 font-mono-code text-right w-8 tabular-nums">
         {index + 1}
       </td>
-      {/* Icon */}
-      <td className="px-1 py-[5px] w-5">
-        <div className="w-3 h-3 rounded-sm" style={{ backgroundColor: effect.color, boxShadow: `0 0 6px ${effect.color}44` }} />
+      {/* Thumbnail */}
+      <td className="px-1 py-[5px] w-6">
+        {(() => {
+          const thumb = resolveEffectThumb(effect);
+          return thumb ? (
+            <div
+              className="w-4 h-4 rounded-sm overflow-hidden ring-1 ring-border/30 bg-black/60"
+              style={{ boxShadow: `0 0 6px ${effect.color}55` }}
+            >
+              <img src={thumb} alt="" className="w-full h-full object-cover" loading="lazy" decoding="async" />
+            </div>
+          ) : (
+            <div className="w-3 h-3 rounded-sm" style={{ backgroundColor: effect.color, boxShadow: `0 0 6px ${effect.color}44` }} />
+          );
+        })()}
       </td>
       {/* Part type badge */}
       <td className="px-1 py-[5px] w-10">
@@ -304,7 +352,19 @@ function EffectCard({ effect }: { effect: Effect }) {
       >
         <div className="absolute left-0 top-1 bottom-1 w-[3px] rounded-full transition-opacity" style={{ backgroundColor: accentColor, opacity: isSelected ? 1 : 0.3 }} />
         <GripVertical className="w-3 h-3 text-muted-foreground/15 flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity ml-1" />
-        <div className="w-3.5 h-3.5 rounded-md flex-shrink-0" style={{ backgroundColor: effect.color, boxShadow: `0 0 8px ${effect.color}33` }} />
+        {(() => {
+          const thumb = resolveEffectThumb(effect);
+          return thumb ? (
+            <div
+              className="w-5 h-5 rounded-md flex-shrink-0 overflow-hidden ring-1 ring-border/30 bg-black/60"
+              style={{ boxShadow: `0 0 8px ${effect.color}55` }}
+            >
+              <img src={thumb} alt="" className="w-full h-full object-cover" loading="lazy" decoding="async" />
+            </div>
+          ) : (
+            <div className="w-3.5 h-3.5 rounded-md flex-shrink-0" style={{ backgroundColor: effect.color, boxShadow: `0 0 8px ${effect.color}33` }} />
+          );
+        })()}
           <div className="flex-1 min-w-0">
           <p className="truncate text-[11px] font-medium leading-tight text-foreground">{effect.name}</p>
           <div className="flex items-center gap-1.5 mt-0.5">
@@ -323,6 +383,15 @@ function EffectCard({ effect }: { effect: Effect }) {
       {/* Expanded VDL Controls */}
       {expanded && isSelected && (
         <div className="mx-2 mb-1 mt-0.5 p-2.5 rounded-xl bg-surface-0/80 border border-border/15 space-y-2 animate-fxk-slide-down">
+          {(effect.finalePresetUrl || effect.type === 'firework' || effect.type === 'sfx') && (
+            <div className="space-y-1">
+              <div className="flex items-center gap-1 text-[9px] text-muted-foreground font-semibold uppercase tracking-wider">
+                <Sparkles className="w-3 h-3" />
+                Pré-visualização 3D · sync c/ tempo
+              </div>
+              <EffectPreview3D effect={effect} height={132} />
+            </div>
+          )}
           {isPyro && (
             <div className="space-y-1">
               <div className="flex items-center gap-1 text-[9px] text-muted-foreground font-semibold uppercase tracking-wider">
@@ -430,11 +499,12 @@ function EffectTableView({ effects }: { effects: Effect[] }) {
   );
 }
 
-export default function EffectLibrary({ className }: { className?: string } = {}) {
+export default function EffectLibrary() {
   const [search, setSearch] = useState('');
   const [vdlInput, setVdlInput] = useState('');
   const [openCategories, setOpenCategories] = useState<Set<string>>(new Set(['morteiros', 'drones']));
   const [typeFilter, setTypeFilter] = useState<FilterType>('all');
+  const [familyFilter, setFamilyFilter] = useState<Set<string>>(new Set());
   const [viewMode, setViewMode] = useState<ViewMode>('list');
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [createVdl, setCreateVdl] = useState('');
@@ -443,6 +513,38 @@ export default function EffectLibrary({ className }: { className?: string } = {}
   const currentTime = useProjectStore(s => s.currentTime);
   const positions = useProjectStore(s => s.positions);
   const searchInputRef = useRef<HTMLInputElement>(null);
+  const fweInputRef = useRef<HTMLInputElement>(null);
+  const importedFweEffects = useImportedFweStore(s => s.effects);
+  const addImportedFwe = useImportedFweStore(s => s.addOrReplace);
+
+  const handleFweUpload = useCallback(async (files: FileList | null) => {
+    if (!files || files.length === 0) return;
+    let okCount = 0;
+    let failCount = 0;
+    for (const file of Array.from(files)) {
+      if (!/\.fwe$/i.test(file.name)) {
+        failCount++;
+        continue;
+      }
+      try {
+        const xml = await file.text();
+        const result = parseFweXml(xml, file.name);
+        if (result.ok && result.effect) {
+          addImportedFwe(result.effect);
+          okCount++;
+        } else {
+          failCount++;
+          if (result.errors[0]) toast.error(`${file.name}: ${result.errors[0]}`);
+        }
+      } catch (e) {
+        failCount++;
+        toast.error(`${file.name}: ${(e as Error).message}`);
+      }
+    }
+    if (okCount > 0) toast.success(`Imported ${okCount} .fwe effect${okCount > 1 ? 's' : ''}`);
+    if (failCount > 0 && okCount === 0) toast.error(`Failed to import ${failCount} file(s)`);
+    if (fweInputRef.current) fweInputRef.current.value = '';
+  }, [addImportedFwe]);
 
   // C-key quick search (Finale 3D behavior)
   useEffect(() => {
@@ -469,17 +571,62 @@ export default function EffectLibrary({ className }: { className?: string } = {}
   const toggleCategory = (key: string) => {
     setOpenCategories((prev) => {
       const next = new Set(prev);
-      next.has(key) ? next.delete(key) : next.add(key);
+      if (next.has(key)) next.delete(key); else next.add(key);
       return next;
     });
   };
 
-  const filteredEffects = useMemo(() => 
-    EFFECT_LIBRARY.filter((e) => {
+  // Merge core effects + canonical Finale shell presets (rev1..rev6).
+  // De-duped by id so re-runs stay stable; ids are namespaced
+  // ("finale-shell-<id>") so collisions with EFFECT_LIBRARY can't occur.
+  const fullLibrary = useMemo<Effect[]>(() => {
+    const seen = new Set<string>();
+    const merged: Effect[] = [];
+    // Imported (runtime) entries last so they override the curated
+    // catalog when ids collide (re-import = update in place).
+    // Order: curated catalog → finale shell presets → FWsim built-ins (44 .fwe) →
+    // user-uploaded curated → runtime-imported. EFFECT_LIBRARY wins on id collision
+    // because it iterates first; dedup-by-id below preserves that.
+    // Order: curated → shell presets → FWsim built-ins → 5 Finale libs (527 parts) →
+    // user-uploaded → runtime-imported. First seen wins (curated retains authority).
+    for (const e of [
+      ...EFFECT_LIBRARY,
+      ...FINALE_SHELL_PRESET_EFFECTS,
+      ...FWSIM_BUILTIN_EFFECTS,
+      ...FWE_MINE_EFFECTS,
+      ...getStandardEffects(),
+      ...getFinaleEffects(),
+      ...FWE_UPLOADED_EFFECTS,
+      ...importedFweEffects,
+    ]) {
+      if (seen.has(e.id)) continue;
+      seen.add(e.id);
+      merged.push(e);
+    }
+    return merged;
+  }, [importedFweEffects]);
+
+  const filteredEffects = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    return fullLibrary.filter((e) => {
       if (typeFilter !== 'all' && e.type !== typeFilter) return false;
-      if (search && !e.name.toLowerCase().includes(search.toLowerCase())) return false;
+      if (familyFilter.size > 0) {
+        const fam = e.partType ?? e.type;
+        if (!familyFilter.has(fam)) return false;
+      }
+      if (q) {
+        const hay = [
+          e.name,
+          e.category,
+          e.partType ?? '',
+          e.pattern ?? '',
+          FAMILY_LABEL[e.partType ?? ''] ?? '',
+        ].join(' ').toLowerCase();
+        if (!hay.includes(q)) return false;
+      }
       return true;
-    }), [typeFilter, search]);
+    });
+  }, [fullLibrary, typeFilter, familyFilter, search]);
 
   const categoryCounts = useMemo(() => {
     const counts: Record<string, number> = {};
@@ -488,6 +635,32 @@ export default function EffectLibrary({ className }: { className?: string } = {}
     });
     return counts;
   }, [filteredEffects]);
+
+  /**
+   * Family chip catalog: distinct partTypes present in the library after
+   * type-filter (so chips reflect what's actually selectable). Sorted by
+   * count desc, then label asc. Counts are computed BEFORE familyFilter
+   * so the user can see how many entries each family adds.
+   */
+  const familyChips = useMemo(() => {
+    const counts = new Map<string, number>();
+    fullLibrary.forEach((e) => {
+      if (typeFilter !== 'all' && e.type !== typeFilter) return;
+      const fam = e.partType ?? e.type;
+      counts.set(fam, (counts.get(fam) ?? 0) + 1);
+    });
+    return Array.from(counts.entries())
+      .map(([id, count]) => ({ id, count, label: FAMILY_LABEL[id] ?? id }))
+      .sort((a, b) => b.count - a.count || a.label.localeCompare(b.label));
+  }, [fullLibrary, typeFilter]);
+
+  const toggleFamily = useCallback((id: string) => {
+    setFamilyFilter((prev) => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+  }, []);
 
   const handleVDLSubmit = (e: React.KeyboardEvent) => {
     if (e.key !== 'Enter' || !vdlInput.trim()) return;
@@ -512,7 +685,7 @@ export default function EffectLibrary({ className }: { className?: string } = {}
   };
 
   return (
-    <div className={cn("h-full flex flex-col border-r border-border/10 bg-card", className)}>
+    <div className="h-full flex flex-col border-r border-border/10" style={{ background: 'hsl(var(--card))' }}>
       {/* Header */}
       <div className="px-3 pt-3 pb-2 border-b border-border/10">
         <div className="flex items-center justify-between mb-2">
@@ -521,8 +694,8 @@ export default function EffectLibrary({ className }: { className?: string } = {}
               <Sparkles className="w-3 h-3 text-primary" />
             </div>
             <div>
-              <h2 className="text-[11px] font-bold text-foreground uppercase tracking-[0.12em] font-display leading-none">Effect Library</h2>
-              <p className="text-[8px] text-muted-foreground/40 mt-0.5 font-mono-code">{filteredEffects.length} ready assets</p>
+              <h2 className="text-[11px] font-bold text-foreground uppercase tracking-[0.12em] font-display leading-none">Effects</h2>
+              <p className="text-[8px] text-muted-foreground/40 mt-0.5 font-mono-code">{filteredEffects.length} items</p>
             </div>
           </div>
           <div className="flex items-center gap-1">
@@ -533,6 +706,21 @@ export default function EffectLibrary({ className }: { className?: string } = {}
             >
               <Plus className="w-3 h-3" />
             </button>
+            <button
+              onClick={() => fweInputRef.current?.click()}
+              className="p-1 rounded-md bg-primary/10 text-primary hover:bg-primary/20 transition-colors"
+              title="Import .fwe (FWsim FireworkEffect)"
+            >
+              <Upload className="w-3 h-3" />
+            </button>
+            <input
+              ref={fweInputRef}
+              type="file"
+              accept=".fwe,application/xml,text/xml"
+              multiple
+              className="hidden"
+              onChange={(e) => handleFweUpload(e.target.files)}
+            />
           </div>
           {/* View toggle — Finale 3D has list/table */}
           <div className="flex gap-0.5 p-0.5 rounded-lg bg-surface-0/50">
@@ -564,11 +752,17 @@ export default function EffectLibrary({ className }: { className?: string } = {}
           <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground/30" />
           <Input
             ref={searchInputRef}
-            placeholder="Search effects... (C)"
+            placeholder={`Search ${fullLibrary.length} effects... (C)`}
             value={search}
             onChange={(e) => { setSearch(e.target.value); setSelectedIndex(0); }}
             className="h-7 pl-7 text-[11px] bg-surface-0/50 border-border/15 focus:border-primary/30 rounded-lg"
           />
+          <span
+            className="absolute right-2 top-1/2 -translate-y-1/2 text-[9px] uppercase tracking-wider text-muted-foreground/40"
+            title={`Finale libs: Showven ${FINALE_LIBRARIES_META.summary.showven} · Lidu ${FINALE_LIBRARIES_META.summary.lidu} · Magic ${FINALE_LIBRARIES_META.summary.magic} · Winda ${FINALE_LIBRARIES_META.summary.winda} · Amazon ${FINALE_LIBRARIES_META.summary.amazon} · Standard Effects ${STANDARD_EFFECTS_META.total} · Tail Components ${TAIL_COMPONENTS_META.total}`}
+          >
+            +{FINALE_LIBRARIES_META.total + STANDARD_EFFECTS_META.total} · {TAIL_COMPONENTS_META.total} tails
+          </span>
         </div>
 
         {/* Type filter chips */}
@@ -593,6 +787,59 @@ export default function EffectLibrary({ className }: { className?: string } = {}
             );
           })}
         </div>
+
+        {/* Family filter chips (partType) — multi-select, derived from data */}
+        {familyChips.length > 0 && (
+          <div className="mt-1.5 flex items-center gap-1">
+            <span className="text-[8px] font-semibold uppercase tracking-wider text-muted-foreground/40 shrink-0">
+              Family
+            </span>
+            <div className="flex-1 overflow-x-auto scrollbar-thin">
+              <div className="flex gap-1 pb-0.5">
+                {familyFilter.size > 0 && (
+                  <button
+                    onClick={() => setFamilyFilter(new Set())}
+                    className="px-1.5 py-0.5 rounded text-[8px] font-bold uppercase tracking-wider bg-destructive/15 text-destructive hover:bg-destructive/25 transition-colors shrink-0"
+                    title="Clear family filter"
+                  >
+                    × {familyFilter.size}
+                  </button>
+                )}
+                {familyChips.map((f) => {
+                  const isActive = familyFilter.has(f.id);
+                  const famIcons = familyIconsForPart(f.id);
+                  return (
+                    <button
+                      key={f.id}
+                      onClick={() => toggleFamily(f.id)}
+                      className={cn(
+                        "px-1.5 py-0.5 rounded text-[8px] font-semibold uppercase tracking-wider transition-all whitespace-nowrap shrink-0 flex items-center gap-1",
+                        isActive
+                          ? "bg-primary/20 text-primary ring-1 ring-primary/30"
+                          : "bg-surface-0/50 text-muted-foreground/60 hover:text-foreground hover:bg-surface-2/60"
+                      )}
+                      title={`${f.label} (${f.count})`}
+                    >
+                      {famIcons && (
+                        <img
+                          src={famIcons.solid}
+                          alt=""
+                          aria-hidden
+                          className={cn(
+                            "w-3 h-3 shrink-0 transition-opacity",
+                            isActive ? "opacity-100" : "opacity-60"
+                          )}
+                        />
+                      )}
+                      <span>{f.label}</span>
+                      <span className="font-mono-code text-[7px] opacity-60 tabular-nums">{f.count}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Content */}

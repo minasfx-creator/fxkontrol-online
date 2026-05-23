@@ -1,0 +1,92 @@
+<?xml version="1.0"?>
+<FireworkEffect xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+  <Children>
+    <BaseEffectNode xsi:type="Shell">
+      <Children>
+        <BaseEffectNode xsi:type="BurstingCharge">
+          <Children>
+            <BaseEffectNode xsi:type="SubShells">
+              <Children>
+                <BaseEffectNode xsi:type="BurstingCharge">
+                  <Children>
+                    <BaseEffectNode xsi:type="SubShells">
+                      <Children>
+                        <BaseEffectNode xsi:type="BurstingCharge">
+                          <Children>
+                            <BaseEffectNode xsi:type="Stars">
+                              <Children />
+                              <Type>Normal</Type>
+                              <Distribution xsi:type="RingDistribution">
+                                <Speed>1</Speed>
+                                <Sigma>0.04</Sigma>
+                              </Distribution>
+                              <Color>
+                                <CustomR>0</CustomR>
+                                <CustomG>0</CustomG>
+                                <CustomB>0</CustomB>
+                                <Color>Green</Color>
+                              </Color>
+                              <Count>200</Count>
+                              <MinimumLifetime>1.5</MinimumLifetime>
+                              <MaximumLifetime>2.1</MaximumLifetime>
+                              <Strobe>false</Strobe>
+                              <StrobeFreqMean>14</StrobeFreqMean>
+                            </BaseEffectNode>
+                          </Children>
+                          <Energy>20</Energy>
+                          <Delay>0.7</Delay>
+                        </BaseEffectNode>
+                      </Children>
+                      <Count>4</Count>
+                    </BaseEffectNode>
+                  </Children>
+                  <Energy>80</Energy>
+                  <Delay>1.9</Delay>
+                </BaseEffectNode>
+                <BaseEffectNode xsi:type="AscentEffect">
+                  <Children />
+                  <Color>
+                    <CustomR>0</CustomR>
+                    <CustomG>0</CustomG>
+                    <CustomB>0</CustomB>
+                    <Color>Spark</Color>
+                  </Color>
+                  <Width>0.864</Width>
+                  <EmitStart>0.03</EmitStart>
+                  <EmitEnd>0.7</EmitEnd>
+                  <Density>40</Density>
+                </BaseEffectNode>
+              </Children>
+              <Count>7</Count>
+            </BaseEffectNode>
+          </Children>
+          <Energy>93.065</Energy>
+          <Delay>2.2768</Delay>
+        </BaseEffectNode>
+        <BaseEffectNode xsi:type="AscentEffect">
+          <Children />
+          <Color>
+            <CustomR>0</CustomR>
+            <CustomG>0</CustomG>
+            <CustomB>0</CustomB>
+            <Color>Yellow</Color>
+          </Color>
+          <Width>4</Width>
+          <EmitStart>0.03</EmitStart>
+          <EmitEnd>0.7</EmitEnd>
+          <Density>50</Density>
+        </BaseEffectNode>
+      </Children>
+      <Diameter>0.142</Diameter>
+      <LiftingCharge>226</LiftingCharge>
+    </BaseEffectNode>
+  </Children>
+  <Identifier>
+    <Name>Shell of Shells of Shells ;-)</Name>
+    <Author>LT</Author>
+  </Identifier>
+  <AuthorSoftwareVersion>
+    <Major>0</Major>
+    <Minor>5</Minor>
+  </AuthorSoftwareVersion>
+</FireworkEffect>

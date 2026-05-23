@@ -6,8 +6,8 @@
 import { useState, useEffect, useCallback, lazy, Suspense } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useIsMobile } from '@/hooks/use-mobile';
-import { Zap, Save, FolderOpen, Undo, Redo, Upload, FileJson, FilePlus, Download, ChevronDown, Wand2, PlusCircle, Cog, Paintbrush, Map, Globe, FileBarChart, Cloud, Eye, Volume2, Film, MapPinned, Atom, Share2, Users, History, MessageSquare, BoxSelect, Gauge, Sparkles, FileCode, Store, Lightbulb, MonitorSpeaker, FileArchive, Mountain, Building2, Command, Copy, Trash2, SkipBack, Navigation, LogOut, MapPin, Target, MousePointer, Shapes, LayoutGrid, Shield, AlertTriangle, Moon, Sun, Maximize2, Minimize2, Settings2 } from 'lucide-react';
-import fxkLogo from '@/assets/fxk-logo.png';
+import { Zap, Save, FolderOpen, Undo, Redo, Upload, FileJson, FilePlus, Download, ChevronDown, Wand2, PlusCircle, Cog, Paintbrush, Map, Globe, FileBarChart, Cloud, Eye, Volume2, Film, MapPinned, Atom, Share2, Users, History, MessageSquare, BoxSelect, Gauge, Sparkles, FileCode, FileText, Store, Lightbulb, MonitorSpeaker, FileArchive, Mountain, Building2, Command, Copy, Trash2, SkipBack, Navigation, LogOut, MapPin, Target, MousePointer, Shapes, LayoutGrid, Shield, AlertTriangle, Moon, Sun, Maximize2, Minimize2, Settings2 } from 'lucide-react';
+import { FxkLogo } from '@/components/brand/FxkLogo';
 import { Button } from '@/components/ui/button';
 import { useProjectStore } from '@/store/useProjectStore';
 import { usePlaybackState } from '@/hooks/useEditorUI';
@@ -25,11 +25,13 @@ import { artnetModuleService } from '@/services/artnetModuleService';
 import { timelineClock } from '@/core/timeline/TimelineClock';
 import { timelineTransport } from '@/core/transport/timelineTransport';
 import TimelineClockPanel from './TimelineClockPanel';
+import UserAvatarFloat from './UserAvatarFloat';
 
 // ── Lazy-loaded modals (only fetched when user opens them) ──
 const lz = (loader: () => Promise<{ default: React.ComponentType<any> }>) => lazy(loader);
 const FormationBuilder = lz(() => import('./FormationBuilder'));
 const CSVImporter = lz(() => import('./CSVImporter'));
+const VDLImportPanel = lz(() => import('./VDLImportPanel'));
 const VVIZImporter = lz(() => import('./VVIZImporter'));
 const UAssetImporter = lz(() => import('./UAssetImporter'));
 const GMA2PatchImporter = lz(() => import('./GMA2PatchImporter'));
@@ -54,7 +56,7 @@ function HardwareStatusDots({ onOpenPanel }: { onOpenPanel?: (id: string) => voi
   const pbus = usePBusHardware();
   const [artnetCount, setArtnetCount] = useState(0);
   const [artnetConnected, setArtnetConnected] = useState(0);
-  
+
   const isMobile = useIsMobile();
 
   useEffect(() => {
@@ -377,6 +379,7 @@ export default function Toolbar({ onOpenPanel, isMaximized, onToggleMaximize }: 
   const { saveProject } = useProjectPersistence();
   const [formationOpen, setFormationOpen] = useState(false);
   const [csvOpen, setCsvOpen] = useState(false);
+  const [vdlOpen, setVdlOpen] = useState(false);
   const [vvizOpen, setVvizOpen] = useState(false);
   const [browserOpen, setBrowserOpen] = useState(false);
   const [catalogOpen, setCatalogOpen] = useState(false);
@@ -496,13 +499,8 @@ export default function Toolbar({ onOpenPanel, isMaximized, onToggleMaximize }: 
     }}>
       {/* ─── LEFT: Logo ─────────────────────────── */}
       <div className="flex items-center gap-2.5">
-        <div className="w-8 h-8 rounded-lg flex items-center justify-center p-0.5 bg-muted/20 border border-border/20">
-          <img src={fxkLogo} alt="FX Kontrol" className="w-full h-full object-contain opacity-90" />
-        </div>
-        <div className="flex flex-col leading-none">
-          <span className="text-[11px] font-bold text-foreground tracking-[0.18em] uppercase">FX KONTROL</span>
-          <span className="text-[7px] text-muted-foreground/60 tracking-[0.12em] uppercase">by Minas FX</span>
-        </div>
+        <FxkLogo size={26} variant="full" tone="sync" />
+        <span className="text-[7px] text-muted-foreground/60 tracking-[0.12em] uppercase">by Minas FX</span>
       </div>
 
       {/* Separator */}
@@ -535,6 +533,7 @@ export default function Toolbar({ onOpenPanel, isMaximized, onToggleMaximize }: 
       {!isMobile && (
         <div className="flex items-center gap-0.5">
           <DropdownMenu label="Import" icon={Upload} items={[
+            { label: 'VDL Script (Pyro/DMX)', icon: FileText, onClick: () => setVdlOpen(true) },
             { label: 'CSV Positions', icon: Upload, onClick: () => setCsvOpen(true) },
             { label: 'VVIZ (Finale 3D)', icon: FileJson, onClick: () => setVvizOpen(true) },
             { label: 'UE .uasset', icon: FileCode, onClick: () => setUassetOpen(true) },
@@ -682,9 +681,7 @@ export default function Toolbar({ onOpenPanel, isMaximized, onToggleMaximize }: 
         )}
 
         {!isMobile && (
-          <button onClick={signOut} className="w-7 h-7 flex items-center justify-center rounded-md text-muted-foreground/60 hover:text-red-400 hover:bg-red-500/5 transition-all" title="Logout">
-            <LogOut className="h-3.5 w-3.5" />
-          </button>
+          <UserAvatarFloat inline />
         )}
       </div>
 
@@ -692,6 +689,7 @@ export default function Toolbar({ onOpenPanel, isMaximized, onToggleMaximize }: 
       <Suspense fallback={null}>
         {formationOpen && <FormationBuilder open={formationOpen} onOpenChange={setFormationOpen} />}
         {csvOpen && <CSVImporter open={csvOpen} onOpenChange={(v) => { setCsvOpen(v); if (!v) setDroppedFile(null); }} initialFile={droppedFile?.type === 'csv' ? droppedFile.file : null} />}
+        {vdlOpen && <VDLImportPanel open={vdlOpen} onOpenChange={setVdlOpen} />}
         {vvizOpen && <VVIZImporter open={vvizOpen} onOpenChange={(v) => { setVvizOpen(v); if (!v) setDroppedFile(null); }} initialFile={droppedFile?.type === 'vviz' ? droppedFile.file : null} />}
         {browserOpen && <ProjectBrowser open={browserOpen} onOpenChange={setBrowserOpen} />}
         {catalogOpen && <CatalogImportDialog open={catalogOpen} onOpenChange={setCatalogOpen} />}

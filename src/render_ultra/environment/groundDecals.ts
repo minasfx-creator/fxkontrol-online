@@ -134,8 +134,16 @@ function createDecalMesh(type: DecalType): THREE.Mesh {
 
 /**
  * Initialize the decal system. Call once, returns the group to add to scene.
+ *
+ * NB: this module owns singleton mesh / decal pools. If the system is
+ * recreated (React StrictMode double-mount or scene restart) we tear the
+ * previous pool down first so we don't accumulate orphaned meshes that
+ * are still pinned by the old `_group` reference.
  */
 export function createDecalSystem(): THREE.Group {
+  // Tear down any previous singleton state before allocating fresh meshes.
+  disposeDecalSystem();
+
   _group = new THREE.Group();
   _group.name = 'DecalSystem';
 
@@ -147,6 +155,26 @@ export function createDecalSystem(): THREE.Group {
   }
 
   return _group;
+}
+
+/**
+ * Fully release the singleton decal system: dispose every mesh's geometry
+ * and shader material, drop the group, and reset the active decal pool.
+ * Safe to call multiple times.
+ */
+export function disposeDecalSystem(): void {
+  for (const mesh of _meshPool) {
+    mesh.parent?.remove(mesh);
+    mesh.geometry.dispose();
+    const mat = mesh.material as THREE.Material | THREE.Material[];
+    if (Array.isArray(mat)) mat.forEach(m => m.dispose()); else mat.dispose();
+  }
+  _meshPool.length = 0;
+  _pool.length = 0;
+  if (_group) {
+    _group.parent?.remove(_group);
+    _group = null;
+  }
 }
 
 /**

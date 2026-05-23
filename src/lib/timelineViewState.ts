@@ -48,6 +48,8 @@ export interface TimelineViewState {
   pixelsPerSecond?: number;
   /** Horizontal scroll position of the timeline scroll container. */
   scrollLeft?: number;
+  /** Vertical height of the timeline panel, in vh units. Clamped 18..70. */
+  heightVh?: number;
 }
 
 /**
@@ -125,6 +127,9 @@ function sanitize(raw: unknown): TimelineViewState {
   }
   if (isFiniteNumber(r.scrollLeft) && r.scrollLeft >= 0) {
     out.scrollLeft = r.scrollLeft;
+  }
+  if (isFiniteNumber(r.heightVh) && r.heightVh >= 18 && r.heightVh <= 70) {
+    out.heightVh = r.heightVh;
   }
   return out;
 }

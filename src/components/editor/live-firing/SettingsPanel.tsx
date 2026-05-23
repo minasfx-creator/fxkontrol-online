@@ -7,13 +7,11 @@ import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
 import { Slider } from '@/components/ui/slider';
 import { Button } from '@/components/ui/button';
-import BridgeSecurityAlert from '@/components/editor/network/BridgeSecurityAlert';
 import { Save, RotateCcw } from 'lucide-react';
 import { toast } from 'sonner';
 import type { FXCSettings } from './types';
 import { DEFAULT_SETTINGS } from './constants';
 import { useDisplayStore } from '@/store/useDisplayStore';
-import { buildBridgeWebSocketUrl, type BridgeSecurityDiagnostic } from '@/lib/bridgeGateway';
 
 interface SettingsPanelProps {
   fs: boolean;
@@ -21,17 +19,15 @@ interface SettingsPanelProps {
   onSettingsChange: (s: FXCSettings) => void;
   relayConnected?: boolean;
   relayUrl?: string;
-  relayDiagnostic?: BridgeSecurityDiagnostic;
   onRelayUrlChange?: (url: string) => void;
   onConnectRelay?: () => void;
   onDisconnectRelay?: () => void;
 }
 
-export default function SettingsPanel({ fs, settings, onSettingsChange, relayConnected, relayUrl, relayDiagnostic, onRelayUrlChange, onConnectRelay, onDisconnectRelay }: SettingsPanelProps) {
+export default function SettingsPanel({ fs, settings, onSettingsChange, relayConnected, relayUrl, onRelayUrlChange, onConnectRelay, onDisconnectRelay }: SettingsPanelProps) {
   const [local, setLocal] = useState<FXCSettings>({ ...settings });
   const displayBacklight = useDisplayStore(s => s.backlight);
   const setDisplayBacklight = useDisplayStore(s => s.setBacklight);
-  const defaultRelayUrl = buildBridgeWebSocketUrl({ path: '' });
 
   const update = (patch: Partial<FXCSettings>) => setLocal(prev => ({ ...prev, ...patch }));
 
@@ -133,15 +129,14 @@ export default function SettingsPanel({ fs, settings, onSettingsChange, relayCon
           </div>
         </div>
         <div className="flex items-center gap-1.5 mt-1">
-          <Input value={relayUrl || defaultRelayUrl} onChange={e => onRelayUrlChange?.(e.target.value)}
-            className={cn(valueCn, "flex-1")} placeholder={defaultRelayUrl} />
+          <Input value={relayUrl || 'ws://localhost:9001'} onChange={e => onRelayUrlChange?.(e.target.value)}
+            className={cn(valueCn, "flex-1")} placeholder="ws://localhost:9001" />
           <Button size="sm" variant={relayConnected ? "destructive" : "default"}
             onClick={() => relayConnected ? onDisconnectRelay?.() : onConnectRelay?.()}
             className={cn(fs ? "h-8 text-[10px] px-3" : "h-5 text-[8px] px-2")}>
             {relayConnected ? 'Desconectar' : 'Conectar'}
           </Button>
         </div>
-        {relayDiagnostic ? <BridgeSecurityAlert diagnostic={relayDiagnostic} className="mt-2" compact /> : null}
         <p className={cn("text-muted-foreground/30 mt-1", fs ? "text-[8px]" : "text-[8px]")}>
           Rode <code className="text-cyan-400/50">node artnet-relay.js --target {local.artNetIp}</code> no PC local
         </p>
@@ -158,49 +153,6 @@ export default function SettingsPanel({ fs, settings, onSettingsChange, relayCon
           <div className="flex items-center justify-between">
             <span className={cn("text-muted-foreground/40", fs ? "text-[9px]" : "text-[8px]")}>Delete DEV and CUE need confirm</span>
             <Switch checked={local.deleteConfirm} onCheckedChange={v => update({ deleteConfirm: v })} />
-          </div>
-          <div className="flex items-center justify-between">
-            <span className={cn("text-muted-foreground/40", fs ? "text-[9px]" : "text-[8px]")}>Dual confirm before FIRE</span>
-            <Switch checked={local.dualConfirmRequired} onCheckedChange={v => update({ dualConfirmRequired: v })} />
-          </div>
-          <div className="space-y-1">
-            <div className="flex items-center justify-between">
-              <span className={cn("text-muted-foreground/40", fs ? "text-[9px]" : "text-[8px]")}>Fire window</span>
-              <span className={cn("font-mono text-muted-foreground/60", fs ? "text-[9px]" : "text-[8px]")}>{(local.fireWindowMs / 1000).toFixed(1)}s</span>
-            </div>
-            <Slider value={[local.fireWindowMs]} min={500} max={5000} step={100} onValueChange={([v]) => update({ fireWindowMs: v })} />
-          </div>
-          <div className="flex items-center justify-between">
-            <span className={cn("text-muted-foreground/40", fs ? "text-[9px]" : "text-[8px]")}>HIL harness enabled</span>
-            <Switch checked={local.hilModeEnabled} onCheckedChange={v => update({ hilModeEnabled: v })} />
-          </div>
-          <div className="space-y-1">
-            <div className="flex items-center justify-between">
-              <span className={cn("text-muted-foreground/40", fs ? "text-[9px]" : "text-[8px]")}>HIL base delay</span>
-              <span className={cn("font-mono text-muted-foreground/60", fs ? "text-[9px]" : "text-[8px]")}>{local.hilBaseDelayMs}ms</span>
-            </div>
-            <Slider value={[local.hilBaseDelayMs]} min={0} max={250} step={5} onValueChange={([v]) => update({ hilBaseDelayMs: v })} />
-          </div>
-          <div className="space-y-1">
-            <div className="flex items-center justify-between">
-              <span className={cn("text-muted-foreground/40", fs ? "text-[9px]" : "text-[8px]")}>HIL jitter</span>
-              <span className={cn("font-mono text-muted-foreground/60", fs ? "text-[9px]" : "text-[8px]")}>{local.hilJitterMs}ms</span>
-            </div>
-            <Slider value={[local.hilJitterMs]} min={0} max={120} step={5} onValueChange={([v]) => update({ hilJitterMs: v })} />
-          </div>
-          <div className="space-y-1">
-            <div className="flex items-center justify-between">
-              <span className={cn("text-muted-foreground/40", fs ? "text-[9px]" : "text-[8px]")}>Packet loss</span>
-              <span className={cn("font-mono text-muted-foreground/60", fs ? "text-[9px]" : "text-[8px]")}>{Math.round(local.hilPacketLossRate * 100)}%</span>
-            </div>
-            <Slider value={[local.hilPacketLossRate * 100]} min={0} max={100} step={1} onValueChange={([v]) => update({ hilPacketLossRate: v / 100 })} />
-          </div>
-          <div className="space-y-1">
-            <div className="flex items-center justify-between">
-              <span className={cn("text-muted-foreground/40", fs ? "text-[9px]" : "text-[8px]")}>Reorder rate</span>
-              <span className={cn("font-mono text-muted-foreground/60", fs ? "text-[9px]" : "text-[8px]")}>{Math.round(local.hilReorderRate * 100)}%</span>
-            </div>
-            <Slider value={[local.hilReorderRate * 100]} min={0} max={100} step={1} onValueChange={([v]) => update({ hilReorderRate: v / 100 })} />
           </div>
         </div>
       </div>

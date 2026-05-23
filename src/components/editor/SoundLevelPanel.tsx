@@ -5,6 +5,7 @@ import { Slider } from '@/components/ui/slider';
 import { Switch } from '@/components/ui/switch';
 import { useProjectStore } from '@/store/useProjectStore';
 import { EFFECT_LIBRARY } from '@/data/effectLibrary';
+import { findEffectById } from '@/data/effectsLibraries/resolveEffect';
 import {
   analyzeSoundLevels,
   DEFAULT_ANALYSIS_CONFIG,
@@ -178,7 +179,7 @@ export default function SoundLevelPanel({ onClose }: { onClose: () => void }) {
 
   const result = useMemo<SoundLevelResult>(() => {
     const effects = timelineItems.map(item => {
-      const eff = EFFECT_LIBRARY.find(e => e.id === item.effectId);
+      const eff = findEffectById(item.effectId);
       return {
         startTime: item.startTime,
         effectName: eff?.name ?? 'Unknown',

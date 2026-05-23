@@ -160,7 +160,7 @@ export default function UE5MapImporter({ open, onOpenChange, initialFile }: Prop
   const toggleId = (id: string) => {
     setSelectedIds(prev => {
       const next = new Set(prev);
-      next.has(id) ? next.delete(id) : next.add(id);
+      if (next.has(id)) next.delete(id); else next.add(id);
       return next;
     });
   };
