@@ -84,6 +84,11 @@ export default function ICETDirectSendPanel({ onClose }: Props) {
     setBusy(true);
     setProgress({ sent: 0, total: build.cues.length });
     setLastResult(null);
+    const t0 = Date.now();
+    setStartedAt(t0);
+    setNow(t0);
+    if (tickRef.current) clearInterval(tickRef.current);
+    tickRef.current = setInterval(() => setNow(Date.now()), 250);
     const ac = new AbortController();
     abortRef.current = ac;
 
@@ -92,6 +97,7 @@ export default function ICETDirectSendPanel({ onClose }: Props) {
       onProgress: (sent, total) => setProgress({ sent, total }),
     });
 
+    if (tickRef.current) { clearInterval(tickRef.current); tickRef.current = null; }
     setLastResult(result);
     setBusy(false);
     abortRef.current = null;
