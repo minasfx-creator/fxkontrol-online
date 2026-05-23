@@ -125,7 +125,11 @@ const isPreviewHost =
   window.location.hostname.includes("id-preview--") ||
   window.location.hostname.includes("lovableproject.com");
 
-if (isPreviewHost || isInIframe) {
+// Service workers are not supported on file:// (Electron). Skip registration
+// and unregister any stale ones to avoid unexpected caching behavior.
+const isElectron = !!(window as any).electronBridge;
+
+if (isPreviewHost || isInIframe || isElectron) {
   // Unregister any stale service workers in preview/iframe contexts
   navigator.serviceWorker?.getRegistrations().then((registrations) => {
     registrations.forEach((r) => r.unregister());
