@@ -115,7 +115,7 @@ describe('rjIcetSerialBridge — error paths', () => {
       ackTimeoutMs: 50,
     });
     expect(result.ok).toBe(false);
-    
+    if (!result.ok) {
       expect(result.code).toBe('response-timeout');
       expect(result.cuesSent).toBe(0);
     }
