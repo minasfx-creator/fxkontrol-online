@@ -3,18 +3,23 @@ import { Download, FileDown, Search, X, ChevronDown, ChevronUp, Globe, MapPin, F
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
+import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { useProjectStore } from '@/store/useProjectStore';
 import { useFireOneHardware } from '@/hooks/useFireOneHardware';
 import { FIRING_SYSTEMS, type FiringSystem } from '@/lib/firingSystemExports';
 import { downloadFile, exportFormationsToKML } from '@/lib/exportEngine';
 import { downloadKMZ, downloadAnimatedKML } from '@/lib/kmzExporter';
 import { exportSkyc, downloadSkycFile, exportShowCSV, exportVideoChoreoSkyc } from '@/lib/skycExporter';
+import ICETDirectSendPanel from '@/components/editor/firing/ICETDirectSendPanel';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
+
 
 export default function FiringExportPanel({ onClose }: { onClose: () => void }) {
   const [search, setSearch] = useState('');
   const [expandedSystem, setExpandedSystem] = useState<string | null>(null);
+  const [directSendOpen, setDirectSendOpen] = useState(false);
+
   const items = useProjectStore(s => s.timelineItems);
   const positions = useProjectStore(s => s.positions);
   const projectName = useProjectStore(s => s.projectName);
@@ -177,8 +182,21 @@ export default function FiringExportPanel({ onClose }: { onClose: () => void }) 
                         <Download className="w-3 h-3 mr-1" />
                         Export .{sys.fileExt}
                       </Button>
+                      {sys.directSend && sys.directSender === 'icet' && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="w-full h-7 text-[10px] mt-1 border-status-sync/40 text-status-sync hover:bg-status-sync/10"
+                          onClick={() => setDirectSendOpen(true)}
+                          disabled={items.length === 0}
+                        >
+                          <Usb className="w-3 h-3 mr-1" />
+                          Direct Send (USB ICET)
+                        </Button>
+                      )}
                     </div>
                   )}
+
                 </div>
               ))}
             </div>
@@ -358,6 +376,15 @@ export default function FiringExportPanel({ onClose }: { onClose: () => void }) 
           Export All ({FIRING_SYSTEMS.length} systems)
         </Button>
       </div>
+
+      <Dialog open={directSendOpen} onOpenChange={setDirectSendOpen}>
+        <DialogContent className="max-w-xl p-0 bg-transparent border-0 shadow-none">
+          <DialogTitle className="sr-only">RJ Equipamentos — ICET Direct Send</DialogTitle>
+          <div className="h-[80vh]">
+            <ICETDirectSendPanel onClose={() => setDirectSendOpen(false)} />
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
