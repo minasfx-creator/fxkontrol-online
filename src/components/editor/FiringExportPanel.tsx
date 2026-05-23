@@ -376,6 +376,15 @@ export default function FiringExportPanel({ onClose }: { onClose: () => void }) 
           Export All ({FIRING_SYSTEMS.length} systems)
         </Button>
       </div>
+
+      <Dialog open={directSendOpen} onOpenChange={setDirectSendOpen}>
+        <DialogContent className="max-w-xl p-0 bg-transparent border-0 shadow-none">
+          <DialogTitle className="sr-only">RJ Equipamentos — ICET Direct Send</DialogTitle>
+          <div className="h-[80vh]">
+            <ICETDirectSendPanel onClose={() => setDirectSendOpen(false)} />
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
