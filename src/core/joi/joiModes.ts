@@ -38,7 +38,24 @@ export const JOI_MODES: JoiModeConfig[] = [
     icon: Sparkles,
     accentHsl: '38 100% 55%',
     description: 'Criação de shows: posições, efeitos, coreografias',
-    systemInstruction: 'Você está no modo SHOW DESIGN. Foque em criar e editar shows pirotécnicos, posições, efeitos e coreografias. Use os comandos [JOI_CMD] para executar ações na plataforma.',
+    systemInstruction: `Você está no modo SHOW DESIGN. Crie shows pirotécnicos e de drones com qualidade de show real.
+
+PADRÕES DE SHOWS REAIS (extraídos de Sydney, Azteca, Eiffel, Taj Mahal, Busan):
+- PONTES (ex: Sydney): 29 posições em arco, espaçamento ~25m. Abre com StrobePots simultâneos em todas as posições (t=0.4s, 55s de duração), depois cometas em cascata, fogos 3" a 8".
+- ESTÁDIOS (ex: Azteca): Layout radial periférico, 16–32 posições em anel. Alternância vermelho/branco/nacional, finais com 5" peônias simultâneas em grupo.
+- MONUMENTOS (ex: Eiffel, Taj Mahal): Posições frontais simétricas em camadas (base, meio, topo). Cascata de baixo para cima, finale com obus de 8" em volley.
+- SHOWS GENÉRICOS: Mínimo 5 posições, máximo 30. Duração real: introdução (0-15%), desenvolvimento (15-70%), finale (70-90%), apoteose (90-100%).
+
+REGRAS DE COREOGRAFIA PROFISSIONAL:
+1. Nunca use menos de 5 posições para shows acima de 2 minutos
+2. Efeitos simultâneos em todas as posições = "volley" — use para transições marcantes
+3. Cascata (posições disparadas sequencialmente com 0.2–0.5s de offset) = movimento/ondulação
+4. Duração de efeitos: mines/gerbs 3–10s, peônias/crisântemos 4–8s, waterfall 10–60s, strobe pots 30–120s
+5. Intensidade dramática: densidade de efeitos aumenta ao longo do show (1 efeito/5s no início → 5 efeitos/s no finale)
+6. Calibres reais: 3" (75mm) para efeitos de recheio, 5" (125mm) padrão, 8" (200mm) para momentos-chave, 12" (300mm) apenas no grand finale
+7. Drones: formações em círculo, linha, grade, forma livre. Alturas 30–120m. Cores LED sincronizadas com paleta do show.
+
+Use create_choreography para gerar shows completos. Sempre inclua: posições + cues + sections (marcadores de seção).`,
   },
   {
     id: 'architect',
@@ -118,6 +135,32 @@ export const JOI_MODE_PRESETS: JoiModePreset[] = [
   { mode: 'show', label: 'APRENDER ESTILO', icon: Palette, prompt: 'Analise o show atual e extraia um perfil de estilo reutilizável. Use learn_style para salvar.\n[JOI_CMD]{"action":"learn_style","params":{"name":"Estilo do Show Atual"}}[/JOI_CMD]' },
   { mode: 'show', label: 'MEUS ESTILOS', icon: FolderHeart, prompt: 'Liste todos os meus estilos de show salvos.\n[JOI_CMD]{"action":"list_styles","params":{}}[/JOI_CMD]' },
   { mode: 'show', label: 'APLICAR ESTILO', icon: Wand2, prompt: 'Mostre meus estilos salvos para eu escolher qual aplicar no próximo show.\n[JOI_CMD]{"action":"list_styles","params":{}}[/JOI_CMD]' },
+
+  // ── Templates de shows reais ────────────────────────────────────────
+  {
+    mode: 'show', label: 'PONTE/ARCO', icon: Activity,
+    prompt: `Crie um show estilo Sydney Harbour Bridge: 29 posições em arco (espaçamento 25m), abre com StrobePots simultâneos em todas as posições por 55s, depois cascata de cometas fire-gold, finale com crisântemos 5" em volley.\n[JOI_CMD]{"action":"create_bridge_show","params":{"positionCount":29,"spanMeters":700,"style":"sydney_countdown"}}[/JOI_CMD]`,
+  },
+  {
+    mode: 'show', label: 'ESTÁDIO', icon: Building2,
+    prompt: `Crie um show estilo Estádio Azteca: 24 posições em anel periférico (raio 80m), paleta nacional verde/branco/vermelho, volleys sincronizados a cada 30s, grande finale com 8 posições disparando 5" peônias simultâneas.\n[JOI_CMD]{"action":"create_stadium_show","params":{"positionCount":24,"ringRadius":80,"style":"azteca"}}[/JOI_CMD]`,
+  },
+  {
+    mode: 'show', label: 'MONUMENTO', icon: MapPin,
+    prompt: `Crie um show estilo Eiffel/Taj Mahal: posições em camadas simétricas (base, meio, topo). Cascata de baixo para cima, efeitos dourados e brancos, finale com obus de 8" em todas as camadas simultaneamente. Use create_choreography com layout simétrico frontal.`,
+  },
+  {
+    mode: 'show', label: 'CASCATA LINEAR', icon: Zap,
+    prompt: `Crie uma coreografia de cascata linear em 16 posições (linha reta, 10m de espaçamento). Efeito cascata: posições disparam sequencialmente com 0.3s de offset — da esquerda para direita e de volta. Repita 4 vezes com efeitos diferentes (comet, waterfall, chrysanthemum, finale). Use create_choreography.`,
+  },
+  {
+    mode: 'show', label: 'RÉVEILLON REAL', icon: Sparkles,
+    prompt: `Crie um show de Réveillon completo baseado em padrões de shows reais: 5 minutos, 20 posições, estrutura: [0-30s] abertura waterfall simultânea, [30s-2min] desenvolvimento com cascatas e peônias coloridas, [2-4min] clímax com crisântemos e cometas em volley, [4min-4:30] silêncio/strobe lento, [4:30-5min] apoteose total. Use create_choreography.`,
+  },
+  {
+    mode: 'show', label: 'DRONES + FOGOS', icon: Plane,
+    prompt: `Crie uma coreografia híbrida drones + fogos: 100 drones em formação circular (raio 40m, altura 60m) com cores sincronizadas, intercalados com 12 posições de fogos no solo. Drones formam figuras (círculo → estrela → coração) enquanto fogos fazem cascata nos momentos de transição. Use add_formation e create_choreography.`,
+  },
 
   // Architect presets
   { mode: 'architect', label: 'ARQUITETURA', icon: Cpu, prompt: 'Gere um diagrama Mermaid completo da arquitetura atual do FX KONTROL com todos os módulos, adapters e pipelines.\n[JOI_CMD]{"action":"generate_mermaid","params":{"type":"architecture"}}[/JOI_CMD]' },

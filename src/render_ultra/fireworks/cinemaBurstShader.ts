@@ -53,15 +53,20 @@ const BURST_FRAGMENT = /* glsl */ `
   varying float vSeed;
 
   // ── Full Mitchell-Charity blackbody (1000–40000K) ──
+  // NOTE: uses if-else (not ternary) to prevent GPU evaluating both branches
+  // and hitting pow(negative, non-integer) → NaN → black pixels.
   vec3 blackbody(float tempK) {
     float t = clamp(tempK, 1000.0, 40000.0) / 100.0;
-    float r = (t <= 66.0) ? 1.0 : clamp(1.292936 * pow(t - 60.0, -0.133205), 0.0, 1.0);
-    float g = (t <= 66.0)
-      ? clamp(0.390082 * log(t) - 0.631841, 0.0, 1.0)
-      : clamp(1.129891 * pow(t - 60.0, -0.075515), 0.0, 1.0);
-    float b = (t >= 66.0) ? 1.0
-            : (t <= 19.0) ? 0.0
-            : clamp(0.543207 * log(t - 10.0) - 1.196254, 0.0, 1.0);
+    float r, g, b;
+    if (t <= 66.0) {
+      r = 1.0;
+      g = clamp(0.390082 * log(t) - 0.631841, 0.0, 1.0);
+      b = (t <= 19.0) ? 0.0 : clamp(0.543207 * log(max(t - 10.0, 0.001)) - 1.196254, 0.0, 1.0);
+    } else {
+      r = clamp(1.292936 * pow(t - 60.0, -0.133205), 0.0, 1.0);
+      g = clamp(1.129891 * pow(t - 60.0, -0.075515), 0.0, 1.0);
+      b = 1.0;
+    }
     return vec3(r, g, b);
   }
 
@@ -165,8 +170,9 @@ const BURST_FRAGMENT = /* glsl */ `
     vec3 sparkColor = blackbody(6500.0 + hash21(vUv + vSeed) * 1500.0);
     color += sparkColor * sparkMask * envelope;
 
-    // ── Radial absorption: dense hot core attenuates peripheral light ──
-    float absorption = exp(-4.0 * radialFalloff(dist, 12.0) * (1.0 - vLifeRatio));
+    // ── Radial absorption: dense core absorbs more as it cools and condenses ──
+    // vLifeRatio=0 → fresh explosion, bright (absorption=1); as it ages, core dims.
+    float absorption = exp(-4.0 * radialFalloff(dist, 12.0) * vLifeRatio);
     color *= absorption;
 
     // ── Alpha ──
