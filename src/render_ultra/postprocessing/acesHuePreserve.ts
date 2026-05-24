@@ -33,6 +33,8 @@ uniform float exposure;
 uniform float huePreserveStrength;
 uniform float highlightThreshold;
 uniform float luminanceGain;
+uniform float fwsimContrast;
+uniform float fwsimHdrMax;
 
 // ACES Filmic Tone Mapping (Narkowicz 2015)
 vec3 acesFilmic(vec3 x) {
@@ -55,6 +57,18 @@ void mainImage(const in vec4 inputColor, const in vec2 uv, out vec4 outputColor)
   // luminanceGain pre-scales the linear HDR buffer before ACES
   // Use values < 1.0 when scene HDR peaks exceed ×14 (burst shaders)
   vec3 color = inputColor.rgb * exposure * luminanceGain;
+
+  // FWsim HDR clamp before curve (0 disables)
+  if (fwsimHdrMax > 0.0) {
+    color = min(color, vec3(fwsimHdrMax));
+  }
+
+  // FWsim contrast around mid-gray 0.18 (1.0 = neutral)
+  if (abs(fwsimContrast - 1.0) > 0.001) {
+    float mid = 0.18;
+    color = mid * pow(max(color / mid, vec3(0.0001)), vec3(fwsimContrast));
+  }
+
 
   float lum = dot(color, vec3(0.2126, 0.7152, 0.0722));
 
