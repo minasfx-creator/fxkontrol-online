@@ -14,6 +14,7 @@ import {
   RefreshCw, Trash2, Palette, FolderHeart, Wand2,
   Gavel, Plane, MapPin, AlertTriangle, ShieldCheck, BookOpen, ListChecks,
   Briefcase, Receipt, ScrollText, Calendar, BarChart3,
+  Cpu, Radio, PenTool, Activity, Network, Target,
 } from 'lucide-react';
 
 export type JoiMode =
