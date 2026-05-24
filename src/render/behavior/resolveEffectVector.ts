@@ -11,13 +11,31 @@
  * Pure: data-in/data-out. Nenhum import de Three.js — devolvemos {x,y,z}.
  */
 
-import {
-  normalizePan,
-  normalizeTilt,
-  normalizeSpin,
-  type PTS,
-} from '@/lib/finalePanTiltSpin';
 import type { EffectBehavior } from './effectBehaviorMap';
+
+/** Finale 3D PTS canonical ranges: pan/spin (-180, 180], tilt [0, 180]. */
+export interface PTS {
+  pan: number;
+  tilt: number;
+  spin: number;
+}
+
+function normalizePan(deg: number): number {
+  let v = ((deg + 180) % 360 + 360) % 360 - 180;
+  if (v === -180) v = 180;
+  return v;
+}
+function normalizeSpin(deg: number): number {
+  return normalizePan(deg);
+}
+function normalizeTilt(deg: number): number {
+  // Clamp to [0, 180] — Finale 3D convention.
+  if (!Number.isFinite(deg)) return 0;
+  if (deg < 0) return 0;
+  if (deg > 180) return 180;
+  return deg;
+}
+
 
 const DEG = Math.PI / 180;
 
