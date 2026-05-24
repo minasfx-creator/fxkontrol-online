@@ -347,6 +347,191 @@ function executeCommand(cmd: JoiCommand): JoiCommandResult {
         return { action, success: true, label: `Cue "${params.label}" adicionado`, detail: `t=${(params.time ?? store.currentTime).toFixed(1)}s` };
       }
 
+      // ── Real-show template commands ────────────────────────────────
+
+      /**
+       * create_bridge_show — Generates a bridge/arc show template
+       * inspired by Sydney Harbour Bridge Countdown structure.
+       *
+       * params:
+       *   positionCount  (default 29)   — number of positions along the arc
+       *   spanMeters     (default 700)  — total arc span in meters
+       *   style          — 'sydney_countdown' | 'busan_bridge' | 'generic'
+       */
+      case 'create_bridge_show': {
+        const n = Math.max(3, Math.min(40, params.positionCount ?? 29));
+        const span = params.spanMeters ?? 700;
+        const style = params.style ?? 'sydney_countdown';
+        const step = span / (n - 1);
+        const startX = -(span / 2);
+
+        // Build positions in arc — slight Y rise toward center (bridge arch)
+        const positions: any[] = [];
+        for (let i = 0; i < n; i++) {
+          const t = i / (n - 1);             // 0→1 across bridge
+          const xPos = startX + i * step;
+          // Parabolic arch: peak at center
+          const archRise = 4 * 40 * t * (1 - t);   // max +40m at midspan
+          positions.push({
+            id: `bridge-pos-P${i + 1}`,
+            name: `P${i + 1}`,
+            type: 'pyro',
+            x: Math.round(xPos * 100) / 100,
+            y: Math.round(archRise * 100) / 100,
+            z: 0,
+            heading: 0,
+            pitch: 75,    // steep launch angle for bridge shows
+            color: '#ff4400',
+          });
+        }
+
+        // Build cues per style
+        const cues: any[] = [];
+
+        if (style === 'sydney_countdown') {
+          // t=0.5s: StrobePots simultaneous on all positions (60s long waterfall of red)
+          for (let i = 0; i < n; i++) {
+            cues.push({ positionIndex: i, effectName: 'silver waterfall', startTime: 0.5, duration: 55 });
+          }
+          // t=15s: Comet cascade left→right (0.3s offset per position)
+          for (let i = 0; i < n; i++) {
+            cues.push({ positionIndex: i, effectName: 'rising comet', startTime: 15 + i * 0.3, duration: 4 });
+          }
+          // t=28s: Reverse cascade right→left
+          for (let i = n - 1; i >= 0; i--) {
+            cues.push({ positionIndex: i, effectName: 'rising comet', startTime: 28 + (n - 1 - i) * 0.3, duration: 4 });
+          }
+          // t=42s: Volley — chrysanthemum on all
+          for (let i = 0; i < n; i++) {
+            cues.push({ positionIndex: i, effectName: 'chrysanthemum gold', startTime: 42, duration: 5 });
+          }
+          // t=50s: Grand finale volley
+          for (let i = 0; i < n; i++) {
+            cues.push({ positionIndex: i, effectName: 'brocade crown', startTime: 50 + i * 0.15, duration: 6 });
+          }
+        } else {
+          // Generic bridge: cascade + finale
+          for (let i = 0; i < n; i++) {
+            cues.push({ positionIndex: i, effectName: 'silver waterfall', startTime: i * 0.2, duration: 8 });
+          }
+          for (let i = 0; i < n; i++) {
+            cues.push({ positionIndex: i, effectName: 'chrysanthemum gold', startTime: 10 + i * 0.3, duration: 5 });
+          }
+          for (let i = 0; i < n; i++) {
+            cues.push({ positionIndex: i, effectName: 'brocade crown', startTime: 25, duration: 6 });
+          }
+        }
+
+        const sections = [
+          { time: 0, label: 'Abertura', color: '#ff4400' },
+          { time: 15, label: 'Cascata I', color: '#ffaa00' },
+          { time: 28, label: 'Cascata II', color: '#ffdd00' },
+          { time: 42, label: 'Volley', color: '#ffffff' },
+          { time: 50, label: 'Grand Finale', color: '#ff88ff' },
+        ];
+
+        return executeCommand({
+          action: 'create_choreography',
+          params: { positions, cues, sections, projectName: `Ponte — ${n} posições (${style})` },
+        });
+      }
+
+      /**
+       * create_stadium_show — Ring layout show (Azteca/stadium style)
+       *
+       * params:
+       *   positionCount  (default 24)
+       *   ringRadius     (default 80)
+       *   style          — 'azteca' | 'generic'
+       */
+      case 'create_stadium_show': {
+        const n = Math.max(8, Math.min(40, params.positionCount ?? 24));
+        const radius = params.ringRadius ?? 80;
+        const style = params.style ?? 'azteca';
+
+        const positions: any[] = [];
+        for (let i = 0; i < n; i++) {
+          const angle = (i / n) * Math.PI * 2;
+          positions.push({
+            id: `stadium-pos-S${i + 1}`,
+            name: `S${i + 1}`,
+            type: 'pyro',
+            x: Math.round(Math.cos(angle) * radius * 100) / 100,
+            y: 0,
+            z: Math.round(Math.sin(angle) * radius * 100) / 100,
+            // Heading points toward center
+            heading: Math.round(((angle * 180 / Math.PI) + 180) % 360),
+            pitch: 80,
+            color: '#00cc44',
+          });
+        }
+
+        const cues: any[] = [];
+        if (style === 'azteca') {
+          // Opening: waterfall rotating around ring
+          for (let i = 0; i < n; i++) {
+            cues.push({ positionIndex: i, effectName: 'gold waterfall', startTime: i * 0.4, duration: 10 });
+          }
+          // 20s: Red peony volley (all)
+          for (let i = 0; i < n; i++) {
+            cues.push({ positionIndex: i, effectName: 'red peony', startTime: 20, duration: 5 });
+          }
+          // 30s: Green peony (even positions)
+          for (let i = 0; i < n; i += 2) {
+            cues.push({ positionIndex: i, effectName: 'green peony', startTime: 30, duration: 5 });
+          }
+          // 30s: Blue peony (odd positions)
+          for (let i = 1; i < n; i += 2) {
+            cues.push({ positionIndex: i, effectName: 'blue peony', startTime: 30, duration: 5 });
+          }
+          // 40s: Cascade rings inward
+          for (let i = 0; i < n; i++) {
+            cues.push({ positionIndex: i, effectName: 'chrysanthemum gold', startTime: 40 + i * 0.25, duration: 6 });
+          }
+          // 55s: Grand finale — all simultaneous
+          for (let i = 0; i < n; i++) {
+            cues.push({ positionIndex: i, effectName: 'brocade crown', startTime: 55, duration: 7 });
+          }
+        } else {
+          for (let i = 0; i < n; i++) {
+            cues.push({ positionIndex: i, effectName: 'chrysanthemum gold', startTime: i * 0.3, duration: 5 });
+          }
+          for (let i = 0; i < n; i++) {
+            cues.push({ positionIndex: i, effectName: 'brocade crown', startTime: 20, duration: 6 });
+          }
+        }
+
+        const sections = [
+          { time: 0,  label: 'Abertura',   color: '#00cc44' },
+          { time: 20, label: 'Nacional',    color: '#ff3333' },
+          { time: 40, label: 'Cascata',     color: '#ffdd00' },
+          { time: 55, label: 'Grand Finale',color: '#ff88ff' },
+        ];
+
+        return executeCommand({
+          action: 'create_choreography',
+          params: { positions, cues, sections, projectName: `Estádio — ${n} posições r=${radius}m` },
+        });
+      }
+
+      /**
+       * list_real_templates — lists the available real-show templates with summary
+       */
+      case 'list_real_templates': {
+        const templates = [
+          { id: 'create_bridge_show', name: 'Ponte / Arco (Sydney style)', description: '29 posições em arco, abertura StrobePot simultânea, cascata de cometas, finale volley' },
+          { id: 'create_stadium_show', name: 'Estádio / Anel (Azteca style)', description: '24 posições em anel periférico, paleta nacional, volleys sincronizados' },
+          { id: 'create_choreography (monumento)', name: 'Monumento / Frontal (Eiffel/Taj style)', description: 'Posições simétricas em camadas, cascata vertical, obus de 8"' },
+          { id: 'create_choreography (reveillon)', name: 'Réveillon Profissional', description: '5 minutos, 20 posições, arco dramático completo' },
+          { id: 'create_choreography (drone+fogos)', name: 'Híbrido Drones + Fogos', description: 'Formações de drones sincronizadas com coreografia pirotécnica' },
+        ];
+        return {
+          action, success: true,
+          label: `${templates.length} templates reais disponíveis`,
+          detail: templates.map(t => `▪ ${t.name}: ${t.description}`).join('\n'),
+        };
+      }
+
       case 'create_choreography': {
         const results: JoiCommandResult[] = [];
         const posMap = new Map<number, string>();
