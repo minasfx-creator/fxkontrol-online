@@ -13,9 +13,9 @@
  *
  * Ancorado em:
  *  - finalePanTiltSpin.ts (PTS canônico Finale 3D)
- *  - mineSilhouettes.ts (Mine_01/02/03 fan FWsim)
+ *  - mineSilhouettes.ts (Mine_01, 02, 03 fan FWsim)
  *  - fwsimGraphicsConfig.json (perTypeStars + flashes)
- *  - vdlFiringPatterns.ts (STR/STL/FN*/etc)
+ *  - vdlFiringPatterns.ts (STR, STL, FN-prefixed patterns)
  *  - Piroex/Skyking ballistics (industrial dataset)
  */
 
