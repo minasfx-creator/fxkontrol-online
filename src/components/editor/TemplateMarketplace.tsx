@@ -50,6 +50,31 @@ const SAMPLE_CLOUD_TEMPLATES: CloudTemplate[] = [
     formationCount: 6, formations: [], tags: ['flag', 'patriotic', 'wave'], author: 'SkyPatriot',
     downloads: 1560, rating: 4.5, isCloud: true,
   },
+  // ── Venue-based pyrotechnic show templates (from ZIP archives, 2026-05-24) ─
+  {
+    id: 'venue-azteca', name: 'Estadio Azteca — Championship', description: 'Stadium ring pyrotechnic show: 10 roof positions + center field, 8-minute celebration at 2,240m altitude (Mexico City). Designed for Copa & Libertadores finals.',
+    category: 'sports', createdAt: new Date().toISOString(), duration: 480, droneCount: 0,
+    formationCount: 0, formations: [], tags: ['azteca', 'mexico', 'stadium', 'sports', 'championship'], author: 'FX Kontrol Library',
+    downloads: 412, rating: 4.7, isCloud: true,
+  },
+  {
+    id: 'venue-tajmahal', name: 'Taj Mahal — Diwali', description: 'UNESCO World Heritage Diwali show: 8 Charbagh garden positions + 4 minaret heights, cascades reflecting in the central canal. 10-minute golden palette.',
+    category: 'holiday', createdAt: new Date().toISOString(), duration: 600, droneCount: 0,
+    formationCount: 0, formations: [], tags: ['taj-mahal', 'india', 'diwali', 'heritage', 'mughal'], author: 'FX Kontrol Library',
+    downloads: 638, rating: 4.8, isCloud: true,
+  },
+  {
+    id: 'venue-busan', name: 'Busan Gwangan Bridge — Korean NYE', description: '20 positions on the 7.4km Diamond Bridge + 8 barges at Gwangalli Beach. K-pop precision timing for 1M+ crowd. Asia\'s top fireworks festival.',
+    category: 'countdown', createdAt: new Date().toISOString(), duration: 600, droneCount: 0,
+    formationCount: 0, formations: [], tags: ['busan', 'korea', 'bridge', 'nye', 'gwangan', 'kpop'], author: 'FX Kontrol Library',
+    downloads: 891, rating: 4.9, isCloud: true,
+  },
+  {
+    id: 'venue-sydney2018', name: 'Sydney 2018 Countdown (Authentic VSC)', description: 'Exact show data from a VSDCreator .vsc project: 29 real positions on Sydney Harbour Bridge arc, StrobePot red sweep, and pyrotechnic "2018" digit display.',
+    category: 'countdown', createdAt: new Date().toISOString(), duration: 130, droneCount: 0,
+    formationCount: 0, formations: [], tags: ['sydney', 'bridge', 'countdown', 'authentic', 'vsdcreator', '2018'], author: 'InfinityVisions A (via FX Kontrol)',
+    downloads: 1074, rating: 4.9, isCloud: true,
+  },
 ];
 
 export default function TemplateMarketplace({ onClose }: TemplateMarketplaceProps) {
