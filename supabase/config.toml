@@ -1,5 +1,15 @@
 project_id = "kyywqpyhsgdthcqqohyv"
 
+# ── Edge Runtime — keeps background workers alive locally during supabase start ──
+[edge_runtime]
+# per_worker: each function gets its own V8 isolate; waitUntil tasks survive
+# until the isolate finishes — prevents the CLI from killing background work.
+policy = "per_worker"
+inspector_port = 8083
+
+[functions.process-vviz]
+verify_jwt = true   # Auth required — heavy CPU work must be gated
+
 [functions.generate-formation]
 verify_jwt = false
 

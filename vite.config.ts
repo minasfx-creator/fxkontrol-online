@@ -36,8 +36,8 @@ export default defineConfig(({ mode }) => ({
         ],
       },
       workbox: {
-        globPatterns: ["**/*.{js,css,html,ico,png,svg,woff2}"],
-        maximumFileSizeToCacheInBytes: 3 * 1024 * 1024,
+        globPatterns: ["**/*.{js,css,html,ico,png,svg,woff2,wasm}"],
+        maximumFileSizeToCacheInBytes: 3_900_000, // 3.9 MB — strict precache ceiling
         globIgnores: [
           "**/lovable-uploads/**",
           "**/vendor-export-*.js",
@@ -86,9 +86,18 @@ export default defineConfig(({ mode }) => ({
             handler: "NetworkFirst",
             options: {
               cacheName: "lazy-chunks",
-              expiration: { maxEntries: 30, maxAgeSeconds: 7 * 24 * 60 * 60 },
+              expiration: { maxEntries: 40, maxAgeSeconds: 7 * 24 * 60 * 60 },
               cacheableResponse: { statuses: [0, 200] },
               networkTimeoutSeconds: 6,
+            },
+          },
+          {
+            urlPattern: /\/assets\/(vendor-cytoscape|vendor-wardley|vendor-react)/i,
+            handler: "CacheFirst",
+            options: {
+              cacheName: "lazy-diagrams",
+              expiration: { maxEntries: 10, maxAgeSeconds: 30 * 24 * 60 * 60 },
+              cacheableResponse: { statuses: [0, 200] },
             },
           },
         ],
@@ -123,6 +132,14 @@ export default defineConfig(({ mode }) => ({
         chunkFileNames: 'assets/[name]-[hash:8].js',
         assetFileNames: 'assets/[name]-[hash:8][extname]',
         manualChunks(id) {
+          // ── React core isolation — prevents Main Thread blocking during LCP ──
+          if (id.includes('node_modules/react/') || id.includes('node_modules/react-dom/')) {
+            return 'vendor-react';
+          }
+          // ── Heavy diagram libs — lazy-loaded only, never in the main bundle ──
+          if (id.includes('node_modules/cytoscape')) return 'vendor-cytoscape';
+          if (id.includes('node_modules/wardley'))   return 'vendor-wardley';
+
           // ── render_ultra subsystem splitting ──
           if (id.includes('render_ultra/fireworks/')) return 'ru-fireworks';
           if (id.includes('render_ultra/environment/')) return 'ru-environment';
