@@ -2,7 +2,7 @@
  * FireworkRenderer — FireworkBurst particle system, TimelineEffects orchestrator,
  * LiveSFXEffects, and supporting helpers extracted from SkyCanvas.
  */
-import React, { useRef, useMemo, useEffect } from 'react';
+import React, { useRef, useMemo, useEffect, useCallback } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
 import { useProjectStore } from '@/store/useProjectStore';
@@ -20,6 +20,7 @@ import { clampNiagaraHDR, getNiagaraBudgets } from '@/lib/niagaraBlenderRules';
 import { thermalColor, autoMatchFormulation } from '@/render_ultra/fireworks/particleChemistry';
 import { getBurstConfig, type BurstPattern } from '@/render_ultra/fireworks/burstSimulation';
 import { getAtlasTempKAtTNorm } from '@/render_ultra/fireworks/effectFrameAtlas';
+import { useSfxEngine, resumeSfxContext } from '@/hooks/useSfxEngine';
 import {
   hexToCompound,
   getEffectById,
@@ -245,6 +246,18 @@ export const FireworkBurst = React.forwardRef<THREE.Group, {
   const baseColor = useMemo(() => new THREE.Color(color), [color]);
   const secondaryBaseColor = useMemo(() => secondaryColor ? new THREE.Color(secondaryColor) : null, [secondaryColor]);
   const compound = useMemo(() => hexToCompound(color), [color]);
+
+  // Atlas-derived burst flash colour: sample blackbody temperature at tNorm=0
+  // (the instant of detonation) to get the correct chemical flash colour for
+  // each pattern.  Dahlia (7000K) → near blue-white; brocade (5800K) → warm
+  // white; dragon_egg (4500K) → saturated golden.
+  const flashColor = useMemo(() => {
+    const tempK = getAtlasTempKAtTNorm(pattern || 'peony', 0.0);
+    if (tempK >= 6500) return '#FFF9F6';   // blue-shifted white — Mg/Al combustion
+    if (tempK >= 5000) return '#FFFDF0';   // warm white  — standard star flash
+    if (tempK >= 3800) return '#FFE8C8';   // gold-white  — barium/copper flash
+    return '#FFCC90';                       // orange-gold — dragon_egg / iron flash
+  }, [pattern]);
   
   const { velocities, lifetimes, twinklePhases, sparkleSeeds } = useMemo(() => {
     const v = new Float32Array(STAR_COUNT * 3);
@@ -689,6 +702,22 @@ export const FireworkBurst = React.forwardRef<THREE.Group, {
         px = dragPos(vx, t, dragCoeff * 0.7) + w[0] * t * t * 0.4;
         py = dragPos(vy, t, dragCoeff) + 0.5 * GRAVITY * kamGravMult * t * t;
         pz = dragPos(vz, t, dragCoeff * 0.7) + w[2] * t * t * 0.4;
+      } else if (pattern === 'saturn') {
+        // Saturn: 60 % of stars form the equatorial ring (i / STAR_COUNT < 0.6).
+        // Ring stars have near-zero vertical gravity — they coast tangentially in
+        // the equatorial plane, producing the characteristic flat-ring silhouette.
+        // Polar stars (remaining 40 %) burst normally with gravityMult = 0.8.
+        const isRingStar = (i / STAR_COUNT) < 0.6;
+        const satGravMult = isRingStar
+          ? gravityMult * 0.28                      // ring: almost weightless radially
+          : gravityMult;                             // polar: normal descent
+        const satDragH = isRingStar
+          ? dragCoeff * 0.60                         // ring: less horizontal drag
+          : dragCoeff;
+        const satWindBias = isRingStar ? 0.08 : 0.3;
+        px = dragPos(vx, t, satDragH)   + w[0] * t * t * satWindBias;
+        py = dragPos(vy, t, dragCoeff) + 0.5 * GRAVITY * satGravMult * t * t;
+        pz = dragPos(vz, t, satDragH)   + w[2] * t * t * satWindBias;
       } else if (pattern === 'dragon_egg') {
         // Dragon egg: Bi₂O₃/Mg pellets — heavy stars with strong initial buoyancy
         // (tight initial burst, then sharp gravity-driven droop at ~55% life as fuel exhausts)
@@ -757,6 +786,17 @@ export const FireworkBurst = React.forwardRef<THREE.Group, {
         const smolder = isDragonEgg ? 0.04 : 0.06;
         const burn = isDragonEgg ? 0.025 : 0.04;
         twinkle = strobeFlicker(sparkleSeeds[i], time, smolder, burn) * (isDragonEgg ? 1.3 : 1.0);
+      } else if (pattern === 'strobe') {
+        // Strobe: KClO₄/Al — hard on/off at ~10 Hz.
+        // burn phase ≈ 25 ms (bright), smolder ≈ 75 ms (near-dark).
+        // strobeFlicker(seed, t, smolderSec, burnSec) — smolderSec is the dark phase.
+        twinkle = strobeFlicker(sparkleSeeds[i], time, 0.075, 0.025) * 1.55;
+      } else if (pattern === 'falling_leaves') {
+        // Tumbling leaf: brightness oscillates with the tumble rotation axis.
+        // As the flat leaf face turns toward/away from viewer the apparent area changes.
+        const tumbleFreq = 1.8 + (sparkleSeeds[i] % 5) * 0.6;
+        const faceFactor = 0.35 + 0.65 * Math.abs(Math.sin(time * tumbleFreq + twinklePhases[i]));
+        twinkle = faceFactor * (0.75 + (sparkleSeeds[i] % 30) / 120);
       } else if (isTrailingPattern) {
         // Nishiki detection: kamuro + gold-like base color → high-freq aluminum shimmer
         const isNishiki = pattern === 'kamuro' && baseColor.r > 0.85 && baseColor.g > 0.7 && baseColor.b < 0.4;
@@ -764,6 +804,17 @@ export const FireworkBurst = React.forwardRef<THREE.Group, {
           // 25Hz shimmer overlay modeling aluminum/charcoal combustion oscillation
           const shimmer = Math.sin(time * 50 + sparkleSeeds[i] * 3.7) * 0.15;
           twinkle = temporalFlicker(sparkleSeeds[i], time, 0.70, 0.30, 0.12) + shimmer;
+        } else if (pattern === 'brocade' || pattern === 'brocade_crown') {
+          // Brocade: Bi/Ti crackle trails cause irregular high-frequency pops.
+          // Baseline slow shimmer + stochastic crackle pop overlay.
+          const baseShimmer = temporalFlicker(sparkleSeeds[i], time, 0.80, 0.16, 0.08);
+          // Crackle overlay: random 2-8 Hz pops modeled as narrow exponential pulses
+          const cracklePeriod = 0.12 + (sparkleSeeds[i] % 40) / 400;   // 120–220ms
+          const cracklePhase  = (time + sparkleSeeds[i] * 0.019) % cracklePeriod;
+          const cracklePop    = cracklePhase < 0.018
+            ? Math.exp(-cracklePhase / 0.006) * 0.55
+            : 0;
+          twinkle = baseShimmer + cracklePop;
         } else {
           twinkle = temporalFlicker(sparkleSeeds[i], time, 0.82, 0.15, 0.10);
         }
@@ -771,7 +822,7 @@ export const FireworkBurst = React.forwardRef<THREE.Group, {
         // Chemical-compound-specific flicker params
         const fp = getFlickerParams(compoundStr);
         twinkle = temporalFlicker(sparkleSeeds[i], time, fp.base, fp.amplitude, fp.popStrength);
-        
+
         // ── Discrete blink pattern for non-trailing patterns ──
         const blinkVal = Math.sin(time * 18.0 + twinklePhases[i] * 6.28);
         if (pattern === 'crossette') {
@@ -780,6 +831,9 @@ export const FireworkBurst = React.forwardRef<THREE.Group, {
           twinkle *= blinkVal > -0.4 ? 1.0 : 0.35; // 70% duty, subtle
         } else if (pattern === 'heart') {
           twinkle *= blinkVal > -0.6 ? 1.0 : 0.5; // 80% duty, gentle
+        } else if (pattern === 'saturn') {
+          // Ring stars: gentle slow pulse (visible gas-dynamic oscillation of the ring)
+          twinkle *= 0.85 + Math.sin(time * 4.5 + twinklePhases[i] * 3.14) * 0.15;
         }
       }
       
@@ -1026,31 +1080,57 @@ export const FireworkBurst = React.forwardRef<THREE.Group, {
       }
     }
 
-    // ── Multi-break: secondary burst at 50% star life ──
+    // ── Multi-break: 2nd break at 35–50% + 3rd break at 60–75% ───────────
+    // Atlas:  second_break tTrigger=0.35, parentFraction=0.35, 8 sub-stars
+    //         third_break  tTrigger=0.60, parentFraction=0.20, 6 sub-stars
+    // Implementation: every star participates in both sub-bursts but only
+    // 35% / 20% of stars (selected by seed) show the extra sub-burst visual.
     if (pattern === 'multi_break') {
       for (let i = 0; i < STAR_COUNT; i++) {
         const lt = lifetimes[i];
         const starAge = Math.min(1, t / lt);
-        if (starAge > 0.5 && starAge < 0.95) {
-          const subAge = (starAge - 0.5) / 0.45;
-          const subFade = Math.max(0, 1 - subAge * subAge);
-          const reigniteFlash = subAge < 0.05 ? (1 - subAge / 0.05) * 2.0 : 0;
-          const subTheta = sparkleSeeds[i] * 6.28;
-          const subPhi = Math.acos(2 * ((sparkleSeeds[i] * 3.7) % 1) - 1);
-          const subSpeed = breakSpeed * 0.35 * (0.5 + ((sparkleSeeds[i] * 7.3) % 1) * 0.5);
-          const subT = (starAge - 0.5) * lt / (starLife * 0.88) * 0.8;
-          const parentPx = pos[i * 3], parentPy = pos[i * 3 + 1], parentPz = pos[i * 3 + 2];
-          const svx = Math.sin(subPhi) * Math.cos(subTheta) * subSpeed;
-          const svy = Math.cos(subPhi) * subSpeed;
-          const svz = Math.sin(subPhi) * Math.sin(subTheta) * subSpeed;
-          pos[i * 3] = parentPx + dragPos(svx, subT, dragCoeff * 1.2);
-          pos[i * 3 + 1] = parentPy + dragPos(svy, subT, dragCoeff * 1.2) + 0.5 * GRAVITY * subT * subT;
-          pos[i * 3 + 2] = parentPz + dragPos(svz, subT, dragCoeff * 1.2);
-          const secBright = (subFade + reigniteFlash) * 0.8;
-          cols[i * 3] = baseColor.r * secBright;
-          cols[i * 3 + 1] = baseColor.g * secBright;
-          cols[i * 3 + 2] = baseColor.b * secBright;
-          sizes[i] = baseSize * 0.7 * Math.max(0.2, subFade);
+
+        // ── 2nd break (tTrigger 0.35) ─────────────────────────────────────
+        if (starAge > 0.35 && starAge < 0.90 && (sparkleSeeds[i] % 100) < 35) {
+          // Only the 35%-selected stars show the 2nd sub-burst
+          const subAge2  = (starAge - 0.35) / 0.55;
+          const subFade2 = Math.max(0, 1 - subAge2 * subAge2);
+          const reIgn2   = subAge2 < 0.05 ? (1 - subAge2 / 0.05) * 1.8 : 0;
+          const sub2Theta = sparkleSeeds[i] * 6.28;
+          const sub2Phi   = Math.acos(2 * ((sparkleSeeds[i] * 3.7) % 1) - 1);
+          const sub2Speed = breakSpeed * 0.30 * (0.5 + ((sparkleSeeds[i] * 7.3) % 1) * 0.5);
+          const sub2T     = (starAge - 0.35) * lt / (starLife * 0.88) * 0.75;
+          const parentPx2 = pos[i * 3], parentPy2 = pos[i * 3 + 1], parentPz2 = pos[i * 3 + 2];
+          const sv2x = Math.sin(sub2Phi) * Math.cos(sub2Theta) * sub2Speed;
+          const sv2y = Math.cos(sub2Phi) * sub2Speed;
+          const sv2z = Math.sin(sub2Phi) * Math.sin(sub2Theta) * sub2Speed;
+          pos[i * 3]     = parentPx2 + dragPos(sv2x, sub2T, dragCoeff * 1.2);
+          pos[i * 3 + 1] = parentPy2 + dragPos(sv2y, sub2T, dragCoeff * 1.2) + 0.5 * GRAVITY * sub2T * sub2T;
+          pos[i * 3 + 2] = parentPz2 + dragPos(sv2z, sub2T, dragCoeff * 1.2);
+          const bright2 = (subFade2 + reIgn2) * 0.85;
+          cols[i * 3] = baseColor.r * bright2; cols[i * 3 + 1] = baseColor.g * bright2; cols[i * 3 + 2] = baseColor.b * bright2;
+          sizes[i] = baseSize * 0.75 * Math.max(0.18, subFade2);
+        }
+
+        // ── 3rd break (tTrigger 0.60) — 20% of stars, smaller/dimmer ─────
+        if (starAge > 0.60 && starAge < 0.95 && (sparkleSeeds[i] % 100) < 20) {
+          const subAge3  = (starAge - 0.60) / 0.35;
+          const subFade3 = Math.max(0, 1 - subAge3 * subAge3);
+          const reIgn3   = subAge3 < 0.04 ? (1 - subAge3 / 0.04) * 1.5 : 0;
+          const sub3Theta = (sparkleSeeds[i] * 2.71) % (Math.PI * 2);
+          const sub3Phi   = Math.acos(2 * ((sparkleSeeds[i] * 5.13) % 1) - 1);
+          const sub3Speed = breakSpeed * 0.22 * (0.4 + ((sparkleSeeds[i] * 11.7) % 1) * 0.6);
+          const sub3T     = (starAge - 0.60) * lt / (starLife * 0.88) * 0.65;
+          const parentPx3 = pos[i * 3], parentPy3 = pos[i * 3 + 1], parentPz3 = pos[i * 3 + 2];
+          const sv3x = Math.sin(sub3Phi) * Math.cos(sub3Theta) * sub3Speed;
+          const sv3y = Math.cos(sub3Phi) * sub3Speed;
+          const sv3z = Math.sin(sub3Phi) * Math.sin(sub3Theta) * sub3Speed;
+          pos[i * 3]     = parentPx3 + dragPos(sv3x, sub3T, dragCoeff * 1.3);
+          pos[i * 3 + 1] = parentPy3 + dragPos(sv3y, sub3T, dragCoeff * 1.3) + 0.5 * GRAVITY * sub3T * sub3T;
+          pos[i * 3 + 2] = parentPz3 + dragPos(sv3z, sub3T, dragCoeff * 1.3);
+          const bright3 = (subFade3 + reIgn3) * 0.70;
+          cols[i * 3] = baseColor.r * bright3; cols[i * 3 + 1] = baseColor.g * bright3; cols[i * 3 + 2] = baseColor.b * bright3;
+          sizes[i] = baseSize * 0.55 * Math.max(0.15, subFade3);
         }
       }
     }
@@ -1154,11 +1234,11 @@ export const FireworkBurst = React.forwardRef<THREE.Group, {
         </points>
       )}
       
-      {/* Core flash — bright white, 80ms */}
+      {/* Core flash — chemical-colour temperature-accurate, 80ms */}
       {progress < 0.08 && (
         <mesh renderOrder={100}>
           <sphereGeometry args={[flashSize * 0.3 * (1 + progress * 15), 8, 8]} />
-          <meshBasicMaterial color="#FFFDF0" transparent opacity={0.7 * (1 - progress / 0.08)} blending={THREE.AdditiveBlending} depthWrite={false} depthTest={true} />
+          <meshBasicMaterial color={flashColor} transparent opacity={0.72 * (1 - progress / 0.08)} blending={THREE.AdditiveBlending} depthWrite={false} depthTest={true} />
         </mesh>
       )}
       {/* Halo — color-synced, 150ms */}
@@ -1283,6 +1363,16 @@ export function TimelineEffects() {
     [projectId, user?.id],
   );
   const { getHeight } = useTerrainHeightCache(positions, sceneSettings.google3DTilesEnabled, persistence);
+
+  // ── SFX Engine ─────────────────────────────────────────────────────────
+  // Manages acoustic firework SFX timing (boom, crackle, hiss) per burst.
+  // Plays from /sfx/*.mp3 — silent if files are absent.
+  const { sfxManager } = useSfxEngine();
+  // Track which timeline-item IDs have had their SFX burst registered so we
+  // don't re-register on every re-render.
+  const sfxRegisteredRef = useRef<Set<string>>(new Set());
+  // Track which IDs are currently active to clean up on removal
+  const sfxActiveRef = useRef<Set<string>>(new Set());
   const activeEffects = useMemo(() => {
     const effectScale = sceneSettings.effectScale;
     const weatherDampening = sceneSettings.weather === 'heavy-rain' ? 0.6 :
@@ -1438,6 +1528,44 @@ export function TimelineEffects() {
 
   // Update frustum once per render (not per-burst)
   updateFrustum(camera);
+
+  // ── SFX: register new bursts + tick the scheduler ────────────────────
+  // All SFX side-effects run inside useFrame (not in render body) so React
+  // reconciliation stays pure and the scheduler advances every animation frame.
+  const cappedEffectsRef = useRef(cappedEffects);
+  cappedEffectsRef.current = cappedEffects;
+
+  useFrame(() => {
+    const sfxTime = useProjectStore.getState().currentTime;
+    const effects = cappedEffectsRef.current;
+
+    const nowActiveIds = new Set<string>();
+    for (const ef of effects) {
+      if (ef.effect.type !== 'firework') continue;
+      const id = ef.item.id;
+      nowActiveIds.add(id);
+
+      if (!sfxRegisteredRef.current.has(id) && ef.progress >= 0 && !ef.inPrefire) {
+        // New burst: register with SFX manager (fires SFX at the right show time)
+        const pattern = (ef.effect.pattern || 'peony') as BurstPattern;
+        const caliberMm = (ef.effect.caliber || 4) * 25.4;
+        const burstHeightM = (ef.resolvedPos.y + getHeight(ef.resolvedPos.x, ef.resolvedPos.z))
+          + ((ef.effect.heightMeters || 4) * ef.effectScale);
+        const burstShowTime = ef.item.startTime + (ef.prefireDuration ?? 0);
+        sfxManager.registerBurst(pattern, caliberMm, burstHeightM, burstShowTime);
+        sfxRegisteredRef.current.add(id);
+        resumeSfxContext();   // unblock autoplay on first burst
+      }
+    }
+
+    // Evict IDs no longer visible — allows re-registration on timeline scrub
+    for (const id of sfxActiveRef.current) {
+      if (!nowActiveIds.has(id)) sfxRegisteredRef.current.delete(id);
+    }
+    sfxActiveRef.current = nowActiveIds;
+
+    sfxManager.tick(sfxTime);
+  });
 
   return (
     <>
