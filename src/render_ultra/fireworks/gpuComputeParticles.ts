@@ -170,24 +170,42 @@ fn update_particle(p: ptr<function, Particle>) {
   let type_id = part.misc.w;
 
   // ── Mass-differential aerodynamics per particle type ──
-  // type 0 = shell star (dense metal salt pellet)
-  // type 1 = ember      (lighter oxidised fragment)
-  // type 2 = smoke      (tenuous aerosol / dust cloud)
+  // Synced with effectFrameAtlas.ts PTYPE constants:
+  //   0 = STAR     (dense metal-salt pellet)
+  //   1 = EMBER    (lighter oxidised fragment)
+  //   2 = SMOKE    (tenuous aerosol / dust cloud)
+  //   3 = TRAIL    (comet spark — mid weight)
+  //   4 = CRACKLE  (Bi/Ti micro-burst — fast, hot)
+  //   5 = GLITTER  (Sb/Bi delayed sparkle — slow)
+  //   6 = PISTIL   (tight pistil star — very dense)
+  //   7 = SMOKE_RING (concussion vortex — ultra light)
   var drag = params.drag;
   var gravity = params.gravity;
   var mass_factor = 1.0;  // relative inertia modifier
   if (type_id < 0.5) {
-    drag *= 1.0;
-    gravity *= 1.0;
-    mass_factor = 1.0;
+    // STAR — baseline
+    drag *= 1.0; gravity *= 1.0; mass_factor = 1.0;
   } else if (type_id < 1.5) {
-    drag *= 0.45;
-    gravity *= 1.1;
-    mass_factor = 0.55;   // lighter — more responsive to wind
+    // EMBER — lighter
+    drag *= 0.45; gravity *= 1.1; mass_factor = 0.55;
+  } else if (type_id < 2.5) {
+    // SMOKE — aerosol
+    drag *= 0.12; gravity *= 0.25; mass_factor = 0.08;
+  } else if (type_id < 3.5) {
+    // TRAIL — comet spark (medium weight)
+    drag *= 0.7; gravity *= 1.2; mass_factor = 0.75;
+  } else if (type_id < 4.5) {
+    // CRACKLE — small, fast, high drag (Bi/Ti)
+    drag *= 1.4; gravity *= 1.3; mass_factor = 0.45;
+  } else if (type_id < 5.5) {
+    // GLITTER — delayed sparkle, floaty
+    drag *= 0.6; gravity *= 0.9; mass_factor = 0.35;
+  } else if (type_id < 6.5) {
+    // PISTIL — very dense, like star but slower fall
+    drag *= 0.9; gravity *= 0.8; mass_factor = 1.1;
   } else {
-    drag *= 0.12;
-    gravity *= 0.25;
-    mass_factor = 0.08;   // aerosol — almost fully wind-driven
+    // SMOKE_RING — near-weightless vortex
+    drag *= 0.05; gravity *= 0.05; mass_factor = 0.03;
   }
 
   // ── Curl noise turbulence (divergence-free, no clumping) ──
@@ -807,16 +825,26 @@ export class GPUComputeParticleSystem {
       const tNorm = Math.max(0, Math.min(1, age / life));
       const typeId = d.particleType[i];
 
-      // Mass-differential aerodynamics
+      // Mass-differential aerodynamics — synced with WGSL + PTYPE atlas
       let drag = baseDrag;
       let grav = gravity;
       let massFactor = 1.0;
       if (typeId < 0.5) {
-        // shell star
+        // STAR — baseline
       } else if (typeId < 1.5) {
-        drag *= 0.45; grav *= 1.1; massFactor = 0.55;
+        drag *= 0.45; grav *= 1.1; massFactor = 0.55;        // EMBER
+      } else if (typeId < 2.5) {
+        drag *= 0.12; grav *= 0.25; massFactor = 0.08;       // SMOKE
+      } else if (typeId < 3.5) {
+        drag *= 0.7; grav *= 1.2; massFactor = 0.75;         // TRAIL
+      } else if (typeId < 4.5) {
+        drag *= 1.4; grav *= 1.3; massFactor = 0.45;         // CRACKLE
+      } else if (typeId < 5.5) {
+        drag *= 0.6; grav *= 0.9; massFactor = 0.35;         // GLITTER
+      } else if (typeId < 6.5) {
+        drag *= 0.9; grav *= 0.8; massFactor = 1.1;          // PISTIL
       } else {
-        drag *= 0.12; grav *= 0.25; massFactor = 0.08;
+        drag *= 0.05; grav *= 0.05; massFactor = 0.03;       // SMOKE_RING
       }
 
       // Curl noise turbulence (divergence-free)
