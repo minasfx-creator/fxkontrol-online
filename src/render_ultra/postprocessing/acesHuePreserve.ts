@@ -33,6 +33,8 @@ uniform float exposure;
 uniform float huePreserveStrength;
 uniform float highlightThreshold;
 uniform float luminanceGain;
+uniform float fwsimContrast;
+uniform float fwsimHdrMax;
 
 // ACES Filmic Tone Mapping (Narkowicz 2015)
 vec3 acesFilmic(vec3 x) {
@@ -55,6 +57,18 @@ void mainImage(const in vec4 inputColor, const in vec2 uv, out vec4 outputColor)
   // luminanceGain pre-scales the linear HDR buffer before ACES
   // Use values < 1.0 when scene HDR peaks exceed ×14 (burst shaders)
   vec3 color = inputColor.rgb * exposure * luminanceGain;
+
+  // FWsim HDR clamp before curve (0 disables)
+  if (fwsimHdrMax > 0.0) {
+    color = min(color, vec3(fwsimHdrMax));
+  }
+
+  // FWsim contrast around mid-gray 0.18 (1.0 = neutral)
+  if (abs(fwsimContrast - 1.0) > 0.001) {
+    float mid = 0.18;
+    color = mid * pow(max(color / mid, vec3(0.0001)), vec3(fwsimContrast));
+  }
+
 
   float lum = dot(color, vec3(0.2126, 0.7152, 0.0722));
 
@@ -93,12 +107,18 @@ export class ACESHuePreserveEffect extends Effect {
     huePreserveStrength = 0.6,   // v2: reduced from 0.7 — plasma goes white faster
     highlightThreshold = 1.5,
     luminanceGain = 1.0,
+    fwsimContrast = 1.0,
+    fwsimHdrMax = 0.0,
   }: {
     exposure?: number;
     huePreserveStrength?: number;
     highlightThreshold?: number;
     /** Pre-scale applied to the linear HDR buffer. Set to ~0.07 when burst peaks reach ×14-16. */
     luminanceGain?: number;
+    /** FWsim tonemapping contrast around mid-gray 0.18 (1.0 = neutral). */
+    fwsimContrast?: number;
+    /** FWsim HDR clamp before curve; 0 disables. */
+    fwsimHdrMax?: number;
   } = {}) {
     super('ACESHuePreserveEffect', ACES_HUE_PRESERVE_FRAGMENT, {
       uniforms: new Map([
@@ -106,13 +126,23 @@ export class ACESHuePreserveEffect extends Effect {
         ['huePreserveStrength', new Uniform(huePreserveStrength)],
         ['highlightThreshold',  new Uniform(highlightThreshold)],
         ['luminanceGain',       new Uniform(luminanceGain)],
+        ['fwsimContrast',       new Uniform(fwsimContrast)],
+        ['fwsimHdrMax',         new Uniform(fwsimHdrMax)],
       ]),
     });
   }
 
-  set exposure(v: number)            { (this.effectUniforms.get('exposure') as Uniform).value = v; }
-  set huePreserveStrength(v: number) { (this.effectUniforms.get('huePreserveStrength') as Uniform).value = v; }
-  set highlightThreshold(v: number)  { (this.effectUniforms.get('highlightThreshold') as Uniform).value = v; }
-  set luminanceGain(v: number)       { (this.effectUniforms.get('luminanceGain') as Uniform).value = v; }
+  private _u(name: string): Uniform {
+    return (this as unknown as { uniforms: Map<string, Uniform> }).uniforms?.get(name)
+      ?? (this.getUniforms?.() as unknown as Map<string, Uniform>)?.get(name)
+      ?? new Uniform(0);
+  }
+
+  set exposure(v: number)            { this._u('exposure').value = v; }
+  set huePreserveStrength(v: number) { this._u('huePreserveStrength').value = v; }
+  set highlightThreshold(v: number)  { this._u('highlightThreshold').value = v; }
+  set luminanceGain(v: number)       { this._u('luminanceGain').value = v; }
+  set fwsimContrast(v: number)       { this._u('fwsimContrast').value = v; }
+  set fwsimHdrMax(v: number)         { this._u('fwsimHdrMax').value = v; }
 }
 
