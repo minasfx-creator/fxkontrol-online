@@ -76,7 +76,18 @@ export async function initSkyCanvasRenderer(
   renderer.toneMappingExposure = 1.0;
 
   // Asynchronous context negotiation — must complete before first render call.
-  await renderer.init();
+  // Failure here means the GPU context was rejected (e.g. too many WebGPU
+  // contexts open, driver crash) — we surface a descriptive error rather than
+  // leaving the caller with a half-initialised renderer.
+  try {
+    await renderer.init();
+  } catch (initErr) {
+    renderer.dispose();
+    throw new Error(
+      `[SkyCanvas] Renderer.init() failed — GPU context rejected. ` +
+      `Original: ${initErr instanceof Error ? initErr.message : String(initErr)}`,
+    );
+  }
 
   // Probe which backend was actually selected post-init.
   let backend: SkyCanvasBackend = 'unknown';
