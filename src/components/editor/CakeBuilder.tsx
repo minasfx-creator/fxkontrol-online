@@ -7,6 +7,7 @@ import { useState, useMemo, useCallback } from 'react';
 import { useProjectStore } from '@/store/useProjectStore';
 import { type TimelineItem } from '@/types/projectTypes';
 import { EFFECT_LIBRARY } from '@/data/effectLibrary';
+import { findEffectById } from '@/data/effectsLibraries/resolveEffect';
 import * as THREE from 'three';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
@@ -190,7 +191,7 @@ export default function CakeBuilder() {
   );
 
   const selectedEffect = useMemo(() =>
-    EFFECT_LIBRARY.find(e => e.id === config.effectId),
+    findEffectById(config.effectId),
     [config.effectId]
   );
 

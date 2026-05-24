@@ -1,0 +1,206 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<CustomComponent xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+  <AuthorSoftwareVersion>
+    <Major>3</Major>
+    <Minor>4</Minor>
+    <Build>1</Build>
+    <Revision>19</Revision>
+  </AuthorSoftwareVersion>
+  <Inserts>
+    <BaseEffectNode xsi:type="StarTails">
+      <Children />
+      <Color>
+        <CustomR>255</CustomR>
+        <CustomG>226</CustomG>
+        <CustomB>174</CustomB>
+        <Color>Custom</Color>
+      </Color>
+      <Crackle>false</Crackle>
+      <Width>0.3</Width>
+      <Density>17</Density>
+      <EmitStart>0.15</EmitStart>
+      <EmitEnd>1</EmitEnd>
+      <Life>1.59</Life>
+      <Strobe>true</Strobe>
+      <StrobeFreqMean>15</StrobeFreqMean>
+      <StarSizeFactor>0.6</StarSizeFactor>
+      <LifeSigma>0.65</LifeSigma>
+    </BaseEffectNode>
+    <BaseEffectNode xsi:type="StarTails">
+      <Children />
+      <Color>
+        <CustomR>255</CustomR>
+        <CustomG>226</CustomG>
+        <CustomB>174</CustomB>
+        <Color>Custom</Color>
+      </Color>
+      <Crackle>false</Crackle>
+      <Width>1</Width>
+      <Density>5</Density>
+      <EmitStart>0.35</EmitStart>
+      <EmitEnd>1</EmitEnd>
+      <Life>1</Life>
+      <Strobe>true</Strobe>
+      <StrobeFreqMean>15</StrobeFreqMean>
+      <StarSizeFactor>0.8</StarSizeFactor>
+      <LifeSigma>0.65</LifeSigma>
+    </BaseEffectNode>
+    <BaseEffectNode xsi:type="StarTails">
+      <Children />
+      <Color>
+        <CustomR>255</CustomR>
+        <CustomG>226</CustomG>
+        <CustomB>174</CustomB>
+        <Color>Custom</Color>
+      </Color>
+      <Crackle>false</Crackle>
+      <Width>4</Width>
+      <Density>6</Density>
+      <EmitStart>0.6</EmitStart>
+      <EmitEnd>1</EmitEnd>
+      <Life>1</Life>
+      <Strobe>true</Strobe>
+      <StrobeFreqMean>20</StrobeFreqMean>
+      <StarSizeFactor>2</StarSizeFactor>
+      <LifeSigma>2</LifeSigma>
+    </BaseEffectNode>
+    <BaseEffectNode xsi:type="StarTails">
+      <Children />
+      <Color>
+        <CustomR>255</CustomR>
+        <CustomG>226</CustomG>
+        <CustomB>174</CustomB>
+        <Color>Custom</Color>
+      </Color>
+      <Crackle>false</Crackle>
+      <Width>4</Width>
+      <Density>1</Density>
+      <EmitStart>0.42</EmitStart>
+      <EmitEnd>1</EmitEnd>
+      <Life>1</Life>
+      <Strobe>true</Strobe>
+      <StrobeFreqMean>20</StrobeFreqMean>
+      <StarSizeFactor>2</StarSizeFactor>
+      <LifeSigma>1.2</LifeSigma>
+    </BaseEffectNode>
+    <BaseEffectNode xsi:type="StarTails">
+      <Children />
+      <Color>
+        <CustomR>55</CustomR>
+        <CustomG>28</CustomG>
+        <CustomB>0</CustomB>
+        <Color>Custom</Color>
+      </Color>
+      <Crackle>false</Crackle>
+      <Width>0.2</Width>
+      <Density>120</Density>
+      <EmitStart>0.05</EmitStart>
+      <EmitEnd>1</EmitEnd>
+      <Life>0.7</Life>
+      <Strobe>false</Strobe>
+      <StrobeFreqMean>2.7</StrobeFreqMean>
+      <StarSizeFactor>0.7</StarSizeFactor>
+      <LifeSigma>0.11</LifeSigma>
+    </BaseEffectNode>
+    <BaseEffectNode xsi:type="StarTails">
+      <Children />
+      <Color>
+        <CustomR>120</CustomR>
+        <CustomG>70</CustomG>
+        <CustomB>29</CustomB>
+        <Color>Custom</Color>
+      </Color>
+      <Crackle>false</Crackle>
+      <Width>0.5</Width>
+      <Density>250</Density>
+      <EmitStart>0.05</EmitStart>
+      <EmitEnd>1</EmitEnd>
+      <Life>0.3</Life>
+      <Strobe>false</Strobe>
+      <StrobeFreqMean>2.7</StrobeFreqMean>
+      <StarSizeFactor>0.7</StarSizeFactor>
+      <LifeSigma>0.14</LifeSigma>
+    </BaseEffectNode>
+    <BaseEffectNode xsi:type="StarTails">
+      <Children />
+      <Color>
+        <CustomR>51</CustomR>
+        <CustomG>26</CustomG>
+        <CustomB>0</CustomB>
+        <Color>Custom</Color>
+      </Color>
+      <Crackle>false</Crackle>
+      <Width>0.3</Width>
+      <Density>150</Density>
+      <EmitStart>0.05</EmitStart>
+      <EmitEnd>1</EmitEnd>
+      <Life>1.7</Life>
+      <Strobe>false</Strobe>
+      <StrobeFreqMean>14</StrobeFreqMean>
+      <StarSizeFactor>0.55</StarSizeFactor>
+      <LifeSigma>0.2</LifeSigma>
+    </BaseEffectNode>
+    <BaseEffectNode xsi:type="StarTails">
+      <Children />
+      <Color>
+        <CustomR>79</CustomR>
+        <CustomG>39</CustomG>
+        <CustomB>0</CustomB>
+        <Color>Custom</Color>
+      </Color>
+      <Crackle>false</Crackle>
+      <Width>0.3</Width>
+      <Density>20</Density>
+      <EmitStart>0.05</EmitStart>
+      <EmitEnd>1</EmitEnd>
+      <Life>1</Life>
+      <Strobe>false</Strobe>
+      <StrobeFreqMean>2.7</StrobeFreqMean>
+      <StarSizeFactor>0.6</StarSizeFactor>
+      <LifeSigma>0.4</LifeSigma>
+    </BaseEffectNode>
+    <BaseEffectNode xsi:type="StarTails">
+      <Children />
+      <Color>
+        <CustomR>90</CustomR>
+        <CustomG>53</CustomG>
+        <CustomB>22</CustomB>
+        <Color>Custom</Color>
+      </Color>
+      <Crackle>false</Crackle>
+      <Width>0.1</Width>
+      <Density>100</Density>
+      <EmitStart>0.05</EmitStart>
+      <EmitEnd>1</EmitEnd>
+      <Life>0.5</Life>
+      <Strobe>false</Strobe>
+      <StrobeFreqMean>2.7</StrobeFreqMean>
+      <StarSizeFactor>0.7</StarSizeFactor>
+      <LifeSigma>0.14</LifeSigma>
+    </BaseEffectNode>
+    <BaseEffectNode xsi:type="StarTails">
+      <Children />
+      <Color>
+        <CustomR>51</CustomR>
+        <CustomG>26</CustomG>
+        <CustomB>0</CustomB>
+        <Color>Custom</Color>
+      </Color>
+      <Crackle>false</Crackle>
+      <Width>0.3</Width>
+      <Density>5</Density>
+      <EmitStart>0.1</EmitStart>
+      <EmitEnd>1</EmitEnd>
+      <Life>1.7</Life>
+      <Strobe>false</Strobe>
+      <StrobeFreqMean>14</StrobeFreqMean>
+      <StarSizeFactor>0.55</StarSizeFactor>
+      <LifeSigma>2</LifeSigma>
+    </BaseEffectNode>
+  </Inserts>
+  <BaseID>
+    <Name>Lance Gold Strobe</Name>
+    <Author>FWsim</Author>
+  </BaseID>
+  <ReadOnly>false</ReadOnly>
+<Hide>true</Hide></CustomComponent>

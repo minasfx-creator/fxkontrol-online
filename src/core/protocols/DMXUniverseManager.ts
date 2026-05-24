@@ -22,8 +22,6 @@ class DMXUniverseManager {
   private _universes = new Map<number, UniverseConfig>();
   private _buffers = new Map<number, Uint8Array>();
   private _dirty = new Set<number>();
-  /** Universes whose next flush carries safety semantics (blackout, e-stop). */
-  private _critical = new Set<number>();
 
   /** Register a universe. */
   addUniverse(config: UniverseConfig): void {
@@ -37,7 +35,6 @@ class DMXUniverseManager {
     this._universes.delete(id);
     this._buffers.delete(id);
     this._dirty.delete(id);
-    this._critical.delete(id);
   }
 
   /** Set a single channel value (1-indexed, DMX convention). */
@@ -77,11 +74,9 @@ class DMXUniverseManager {
       const config = this._universes.get(uniId);
       const buf = this._buffers.get(uniId);
       if (!config || !buf || !config.outputEnabled) continue;
-      const isCritical = this._critical.has(uniId);
-      artNetBridge.sendDmx(uniId, buf, isCritical ? { critical: true } : undefined);
+      artNetBridge.sendDmx(uniId, buf);
     }
     this._dirty.clear();
-    this._critical.clear();
   }
 
   /** Blackout a universe (all channels to 0). */
@@ -90,7 +85,6 @@ class DMXUniverseManager {
     if (buf) {
       buf.fill(0);
       this._dirty.add(universe);
-      this._critical.add(universe); // #6 blackout bypasses 33 PPS cap
       blackbox.record('cmd', `DMXUniverse: blackout universe ${universe}`);
     }
   }

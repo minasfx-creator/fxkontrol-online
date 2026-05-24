@@ -1,0 +1,72 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<CustomComponent xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+  <AuthorSoftwareVersion>
+    <Major>3</Major>
+    <Minor>5</Minor>
+    <Build>1</Build>
+    <Revision>122</Revision>
+  </AuthorSoftwareVersion>
+  <Inserts>
+    <BaseEffectNode xsi:type="AscentEffect">
+      <Children />
+      <EmitStart>0.05</EmitStart>
+      <EmitEnd>1</EmitEnd>
+      <Density>300</Density>
+      <Width>1</Width>
+      <Type>Sparks</Type>
+      <Color>
+        <CustomR>60</CustomR>
+        <CustomG>30</CustomG>
+        <CustomB>0</CustomB>
+        <Color>Custom</Color>
+      </Color>
+      <Life>0.2</Life>
+      <LifeSigma>0.1</LifeSigma>
+      <Strobe>false</Strobe>
+      <StrobeFreqMean>14.011504</StrobeFreqMean>
+      <CustomDimmcurve>true</CustomDimmcurve>
+      <FadeRatios>
+        <A>0</A>
+        <B>0.76965266</B>
+        <C>0.84460694</C>
+        <D>1</D>
+      </FadeRatios>
+      <StarSizeFactor>0.4</StarSizeFactor>
+      <Crackle>false</Crackle>
+    </BaseEffectNode>
+    <BaseEffectNode xsi:type="AscentEffect">
+      <Children />
+      <EmitStart>0.05</EmitStart>
+      <EmitEnd>1</EmitEnd>
+      <Density>100</Density>
+      <Width>0.4</Width>
+      <Type>Sparks</Type>
+      <Color>
+        <CustomR>83</CustomR>
+        <CustomG>41</CustomG>
+        <CustomB>0</CustomB>
+        <Color>Custom</Color>
+      </Color>
+      <Life>0.32</Life>
+      <LifeSigma>0.2</LifeSigma>
+      <Strobe>false</Strobe>
+      <StrobeFreqMean>14.011504</StrobeFreqMean>
+      <CustomDimmcurve>true</CustomDimmcurve>
+      <FadeRatios>
+        <A>0.32723948</A>
+        <B>0.7631682</B>
+        <C>0.7641682</C>
+        <D>1</D>
+      </FadeRatios>
+      <StarSizeFactor>0.5</StarSizeFactor>
+      <Crackle>false</Crackle>
+    </BaseEffectNode>
+  </Inserts>
+  <BaseID>
+    <Name>Ascent Effect: [none] Gold Sparks</Name>
+    <Author>FWsim</Author>
+  </BaseID>
+  <ReadOnly>false</ReadOnly>
+  <InternalUseOnly>false</InternalUseOnly>
+  <Hide>false</Hide>
+</CustomComponent>

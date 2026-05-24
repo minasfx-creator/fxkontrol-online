@@ -21,10 +21,9 @@ Allow: /
 
 User-agent: *
 Allow: /
-Allow: /editor-ds
 Disallow: /editor
 Disallow: /command
 Disallow: /admin
 Disallow: /field-test
 
-Sitemap: https://fxkontrol.online/sitemap.xml
+Sitemap: https://fxkontrol.com/sitemap.xml

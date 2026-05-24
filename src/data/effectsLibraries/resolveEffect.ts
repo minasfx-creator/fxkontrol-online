@@ -1,80 +1,88 @@
 /**
- * ─── resolveEffect — Unified effect lookup + VDL render-accurate color ──
+ * resolveEffect — canonical unified Effect lookup across all 5 sources.
  *
- * Single source of truth for the 3D viewport (SkyCanvas, useShowSelectors,
- * ExplosionsLayer, LightPointsLayer) when it needs to translate a
- * `timelineItem.effectId` into a runtime `Effect` ready to be rendered.
+ * Precedence (first-wins): curated EFFECT_LIBRARY > FWsim builtin > FWE Mine
+ * catalog > Standard Effects > Finale parts. Memoised singleton Map.
  *
- * Two things are unified here:
- *
- *  1) Lookup ─ checks the legacy EFFECT_LIBRARY first, then falls back to
- *     the 527 Finale 3D parts imported via `buildImportedEffects()`. This
- *     means timeline items that reference imported library parts
- *     (`{librarySlug}:{partNumber}`) finally render in the viewport.
- *
- *  2) Color ─ pipes every `effect.color` (legacy + imported) through
- *     `hexToRenderHex` so the on-screen color matches what the LED/pyro
- *     fixture would actually emit (see `vdlColorPipeline`).
- *
- * Memoized: the indexed Map and the per-id LED-accurate effect cache are
- * built once on first call. Color quantization itself is LRU-cached
- * inside `vdlColorPipeline` (cap 256), so re-quantizing the same effect
- * across frames is free.
- *
- * Pure read-only — never touches stores, CommandBus, or Safety.
+ * Also exposes `resolveEffectLedAccurate(id)` which quantizes color/secondaryColor
+ * to the VDL palette so renderer matches LED behavior.
  */
 
-import { EFFECT_LIBRARY, type Effect } from '@/data/effectLibrary';
-import { buildImportedEffects } from '@/data/effectsLibraries/registry';
-import { hexToRenderHex } from '@/lib/vdlColorPipeline';
+import type { Effect } from '@/data/effectLibrary';
+import { EFFECT_LIBRARY } from '@/data/effectLibrary';
+import { FWSIM_BUILTIN_EFFECTS } from '@/data/fwsimBuiltinPresets';
+import { FWE_MINE_EFFECTS } from '@/data/fweMineCatalog';
+import { getStandardEffects } from '@/data/standardEffectsCatalog';
+import { getFinaleEffects } from './registry';
+import { rgbToNearestVdl } from '@/lib/vdlQuantizer';
 
-let _index: Map<string, Effect> | null = null;
-const _renderCache = new Map<string, Effect>();
+let _byId: Map<string, Effect> | null = null;
+let _ledCache: Map<string, Effect> | null = null;
 
 function buildIndex(): Map<string, Effect> {
-  if (_index) return _index;
-  const m = new Map<string, Effect>();
-  // Legacy first (lower id collision risk; 527 imports use slug:part keys).
-  for (const e of EFFECT_LIBRARY) m.set(e.id, e);
-  for (const e of buildImportedEffects()) {
-    if (!m.has(e.id)) m.set(e.id, e);
+  const map = new Map<string, Effect>();
+  const sources: Effect[][] = [
+    EFFECT_LIBRARY,
+    FWSIM_BUILTIN_EFFECTS,
+    FWE_MINE_EFFECTS,
+    getStandardEffects(),
+    getFinaleEffects(),
+  ];
+  for (const list of sources) {
+    for (const e of list) {
+      if (!e || !e.id) continue;
+      if (!map.has(e.id)) map.set(e.id, e);
+    }
   }
-  _index = m;
-  return m;
+  return map;
 }
 
-/** O(1) lookup across legacy + imported libraries. */
-export function resolveEffectRaw(id: string): Effect | undefined {
-  return buildIndex().get(id);
+function index(): Map<string, Effect> {
+  if (!_byId) _byId = buildIndex();
+  return _byId;
 }
 
-/**
- * Same as `resolveEffectRaw` but with `color` quantized through the VDL
- * pipeline (LED-accurate). Returns an immutable, memoized clone.
- */
-export function resolveEffectLedAccurate(id: string): Effect | undefined {
-  const cached = _renderCache.get(id);
-  if (cached) return cached;
-  const base = resolveEffectRaw(id);
+export function findEffectById(id: string | undefined | null): Effect | undefined {
+  if (!id) return undefined;
+  return index().get(id);
+}
+
+export function getAllEffects(): Effect[] {
+  return Array.from(index().values());
+}
+
+function hexToRgb(hex: string): { r: number; g: number; b: number } | null {
+  if (!hex) return null;
+  const h = hex.trim().replace(/^#/, '');
+  if (h.length !== 6) return null;
+  const n = parseInt(h, 16);
+  if (Number.isNaN(n)) return null;
+  return { r: (n >> 16) & 0xff, g: (n >> 8) & 0xff, b: n & 0xff };
+}
+
+export function ledAccurateColor(hex: string): string {
+  const rgb = hexToRgb(hex);
+  if (!rgb) return hex;
+  const m = rgbToNearestVdl(rgb.r, rgb.g, rgb.b);
+  return m?.hex ?? hex;
+}
+
+export function resolveEffectLedAccurate(id: string | undefined | null): Effect | undefined {
+  const base = findEffectById(id);
   if (!base) return undefined;
-  // Already-VDL-quantized imported effects pass through `hexToRenderHex`
-  // idempotently; legacy palette values get normalized to LED output.
-  const led: Effect = { ...base, color: hexToRenderHex(base.color) };
-  _renderCache.set(id, led);
-  return led;
+  if (!_ledCache) _ledCache = new Map();
+  const cached = _ledCache.get(base.id);
+  if (cached) return cached;
+  const next: Effect = { ...base };
+  if (base.color) next.color = ledAccurateColor(base.color);
+  const sec = (base as any).secondaryColor as string | undefined;
+  if (sec) (next as any).secondaryColor = ledAccurateColor(sec);
+  _ledCache.set(base.id, next);
+  return next;
 }
 
-/**
- * Quantize a free-form hex (e.g. `timelineItem.colorOverride`) to its
- * LED-accurate render hex. Safe to call every frame.
- */
-export function ledAccurateColor(hex: string | undefined, fallback = '#FFD700'): string {
-  if (!hex) return hexToRenderHex(fallback);
-  return hexToRenderHex(hex);
-}
-
-/** Test hook — clears index + render cache. */
-export function _resetResolveEffectCache(): void {
-  _index = null;
-  _renderCache.clear();
+/** Test-only: drops memoised caches. */
+export function __resetResolveEffectCache(): void {
+  _byId = null;
+  _ledCache = null;
 }

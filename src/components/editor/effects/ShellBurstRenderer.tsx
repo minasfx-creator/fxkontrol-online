@@ -569,20 +569,37 @@ export default function ShellBurstRenderer({
         }
       }
 
-      // Crossette: sub-burst when star reaches ~40% life
+      // Crossette: sub-burst when star reaches ~40% life.
+      // Real crossettes split into 4 ORTHOGONAL arms (Weingart §VII / Grizzly chart) —
+      // not random spherical scatter.
       if (pattern === 'crossette' && p.life > p.maxLife * 0.4 && !crossetteTriggered.current.has(i)) {
         crossetteTriggered.current.add(i);
-        const subCount = 4 + Math.floor(Math.random() * 4);
+        const subCount = 4;
         const subParticles: ParticleState[] = [];
+        const sp = breakSpeed * 0.32;
+        // Build orthonormal basis around current velocity for a "+" cross perpendicular to flight
+        const vMag = Math.hypot(p.vx, p.vy, p.vz) || 1;
+        const fx = p.vx / vMag, fy = p.vy / vMag, fz = p.vz / vMag;
+        // Right vector ⟂ forward (handles fy≈±1)
+        const rxRaw = -fz, ryRaw = 0, rzRaw = fx;
+        const rMag = Math.hypot(rxRaw, ryRaw, rzRaw) || 1;
+        const rx = rxRaw / rMag, ry = ryRaw / rMag, rz = rzRaw / rMag;
+        // Up = forward × right
+        const ux = fy * rz - fz * ry;
+        const uy = fz * rx - fx * rz;
+        const uz = fx * ry - fy * rx;
+        // 4 arms: ±right, ±up — true cross
+        const dirs = [
+          [rx, ry, rz], [-rx, -ry, -rz],
+          [ux, uy, uz], [-ux, -uy, -uz],
+        ];
         for (let j = 0; j < subCount; j++) {
-          const theta = Math.random() * Math.PI * 2;
-          const phi = Math.acos(2 * Math.random() - 1);
-          const sp = breakSpeed * 0.3;
+          const [dx, dy, dz] = dirs[j];
           subParticles.push({
             x: p.x, y: p.y, z: p.z,
-            vx: Math.sin(phi) * Math.cos(theta) * sp,
-            vy: Math.cos(phi) * sp,
-            vz: Math.sin(phi) * Math.sin(theta) * sp,
+            vx: dx * sp + p.vx * 0.15,
+            vy: dy * sp + p.vy * 0.15,
+            vz: dz * sp + p.vz * 0.15,
             life: 0, maxLife: starLifetime * 0.4, brightness: 1,
           });
         }
@@ -602,12 +619,11 @@ export default function ShellBurstRenderer({
     }
 
     // Step pistil particles
-    // Brocade crown: 250ms pistil ignition delay
+    // Pistil ignites simultaneously with main break (Weingart §VI: pistil is concurrent, not delayed).
     if (pistilParticlesRef.current && pistilPointsRef.current) {
-      const pistilDelay = pattern === 'brocade_crown' ? 0.25 : 0;
       const pp = pistilParticlesRef.current;
       for (let i = 0; i < pp.length; i++) {
-        if (pp[i].life < pp[i].maxLife && time > pistilDelay) stepParticle(pp[i], dt, windVec, starDrag * 0.8, stepModsRef.current);
+        if (pp[i].life < pp[i].maxLife) stepParticle(pp[i], dt, windVec, starDrag * 0.8, stepModsRef.current);
         pistilBuffers.pos[i * 3] = pp[i].x;
         pistilBuffers.pos[i * 3 + 1] = pp[i].y;
         pistilBuffers.pos[i * 3 + 2] = pp[i].z;

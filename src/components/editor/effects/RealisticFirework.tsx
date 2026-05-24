@@ -345,10 +345,12 @@ export default function RealisticFirework({
       pos[i * 3 + 1] = 0;
       pos[i * 3 + 2] = 0;
 
-      // Per-particle lifetime variance (organic look)
+      // Per-particle lifetime variance (organic look — Weingart §III)
       life[i] = lifetime * (0.5 + Math.random() * 0.5);
       rand[i] = Math.random();
-      size[i] = 0.4 + (caliber / 100) * 0.8 + Math.random() * 0.3;
+      // Star size: base −20% + ±25% variance (FWsim look: discrete bright points, not big puffs)
+      const sizeBase = 0.32 + (caliber / 100) * 0.64;
+      size[i] = sizeBase * (0.75 + Math.random() * 0.50);
     }
 
     velAttr.needsUpdate = true;

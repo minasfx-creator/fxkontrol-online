@@ -26,7 +26,7 @@ export class FireOneProfileAdapter implements HardwareAdapter<ExportProfile> {
     return {
       canRead: true, canWrite: false, canDiagnose: true, canSimulate: true,
       canExport: true, supportsTelemetry: false, supportsContinuity: false,
-      maxChannels: 0, protocols: ['fireone-csv', 'fireone-audit'],
+      maxChannels: 0, protocols: ['fireone-fir'],
     };
   }
 

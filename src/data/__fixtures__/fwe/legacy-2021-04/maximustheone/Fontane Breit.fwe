@@ -1,0 +1,44 @@
+<?xml version="1.0"?>
+<FireworkEffect xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+  <Children>
+    <BaseEffectNode xsi:type="Shell">
+      <Children>
+        <BaseEffectNode xsi:type="Eruption">
+          <Children>
+            <BaseEffectNode xsi:type="Stars">
+              <Children />
+              <Type>Sparks</Type>
+              <Distribution xsi:type="EruptionDistribution">
+                <Speed>1</Speed>
+                <Sigma>0.14</Sigma>
+              </Distribution>
+              <Color>
+                <CustomR>0</CustomR>
+                <CustomG>0</CustomG>
+                <CustomB>0</CustomB>
+                <Color>Red</Color>
+              </Color>
+              <Count>2000</Count>
+              <MinimumLifetime>0.2765</MinimumLifetime>
+              <MaximumLifetime>3.8227</MaximumLifetime>
+              <Strobe>true</Strobe>
+              <StrobeFreqMean>21.8065</StrobeFreqMean>
+            </BaseEffectNode>
+          </Children>
+          <Duration>3</Duration>
+          <Speed>50</Speed>
+        </BaseEffectNode>
+      </Children>
+      <Diameter>0.034308</Diameter>
+      <LiftingCharge>0</LiftingCharge>
+    </BaseEffectNode>
+  </Children>
+  <Identifier>
+    <Name>Fountain Breit</Name>
+    <Author>maximus</Author>
+  </Identifier>
+  <AuthorSoftwareVersion>
+    <Major>0</Major>
+    <Minor>5</Minor>
+  </AuthorSoftwareVersion>
+</FireworkEffect>

@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback } from 'react';
-import { Upload, FileSpreadsheet, X, Check, ArrowRight, RefreshCw, Database, AlertCircle, Clock } from 'lucide-react';
+import { Upload, FileSpreadsheet, X, Check, ArrowRight, RefreshCw, Database, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -13,12 +13,11 @@ import {
 } from '@/components/ui/dialog';
 import { useProjectStore } from '@/store/useProjectStore';
 import { type Effect, EFFECT_LIBRARY } from '@/data/effectLibrary';
+import { findEffectById } from '@/data/effectsLibraries/resolveEffect';
 import { parseCatalogFile, catalogToEffects, parseAnyFormat, parseCatalogFileWithMappings, type CatalogColumnMapping, type ParsedCatalogEffect } from '@/lib/catalogImporter';
 import { useMyLibrary } from '@/hooks/useMyLibrary';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
-
-type CueSpreadMode = 'none' | 'evenly' | 'fixed-1s' | 'fixed-2s' | 'fixed-5s' | 'at-playhead';
 
 const FIELD_OPTIONS = [
   { value: 'none', label: '— Skip —' },
@@ -56,7 +55,6 @@ export default function CatalogImportDialog({ open, onOpenChange }: { open: bool
   const [delimiter, setDelimiter] = useState(',');
   const [selectedEffects, setSelectedEffects] = useState<Set<number>>(new Set());
   const [currentFile, setCurrentFile] = useState<File | null>(null);
-  const [cueSpread, setCueSpread] = useState<CueSpreadMode>('none');
   const fileRef = useRef<HTMLInputElement>(null);
   const { saveToLibrary } = useMyLibrary();
 
@@ -115,54 +113,23 @@ export default function CatalogImportDialog({ open, onOpenChange }: { open: bool
     }
 
     const effects = catalogToEffects(selected);
-
-    // 1) Push to runtime EFFECT_LIBRARY (drag-source for the editor & SkyCanvas)
+    
+    // Add to the store's custom effects (we'll add them to EFFECT_LIBRARY dynamically)
+    const store = useProjectStore.getState();
+    // For now, add as timeline-compatible effects by extending the library
+    // We store them in a way they can be used
+    
+    // Also push to EFFECT_LIBRARY (mutable operation for runtime)
     effects.forEach(eff => {
-      if (!EFFECT_LIBRARY.find(e => e.id === eff.id)) {
+      if (!findEffectById(eff.id)) {
         EFFECT_LIBRARY.push(eff);
       }
     });
 
-    // 2) Optionally drop selected effects as cue markers on the timeline
-    let cuesAdded = 0;
-    if (cueSpread !== 'none') {
-      const store = useProjectStore.getState();
-      const duration = store.duration || 60;
-      const playhead = store.currentTime || 0;
-      const n = effects.length;
-
-      const timeFor = (i: number): number => {
-        switch (cueSpread) {
-          case 'evenly': {
-            // Evenly distribute with margin (5% padding both sides), clamped to duration
-            if (n === 1) return duration / 2;
-            const start = duration * 0.05;
-            const end = duration * 0.95;
-            return start + ((end - start) * i) / (n - 1);
-          }
-          case 'fixed-1s': return Math.min(duration, playhead + i * 1);
-          case 'fixed-2s': return Math.min(duration, playhead + i * 2);
-          case 'fixed-5s': return Math.min(duration, playhead + i * 5);
-          case 'at-playhead': return Math.min(duration, playhead + i * 0.05);
-          default: return playhead;
-        }
-      };
-
-      effects.forEach((fx, i) => {
-        store.addCueMarker({
-          id: `cue-${Date.now().toString(36)}-${i}-${Math.random().toString(36).slice(2, 6)}`,
-          time: Math.max(0, timeFor(i)),
-          label: `${fx.icon} ${fx.name}`,
-          color: fx.color,
-        });
-        cuesAdded++;
-      });
-    }
-
-    toast.success(
-      `${effects.length} efeitos importados${cuesAdded ? ` · ${cuesAdded} cues no timeline` : ''}`,
-      { icon: '📦', description: fileName ? `Catálogo "${fileName}"` : undefined },
-    );
+    toast.success(`${effects.length} efeitos importados do catálogo "${fileName}"`, {
+      icon: '📦',
+      description: `Disponíveis na Asset Palette`,
+    });
 
     // Auto-save to library
     if (currentFile) {
@@ -176,8 +143,7 @@ export default function CatalogImportDialog({ open, onOpenChange }: { open: bool
     setColumns([]);
     setFileName(null);
     setCurrentFile(null);
-    setCueSpread('none');
-  }, [parsedEffects, selectedEffects, fileName, onOpenChange, currentFile, saveToLibrary, cueSpread]);
+  }, [parsedEffects, selectedEffects, fileName, onOpenChange, currentFile, saveToLibrary]);
 
   const toggleSelectAll = () => {
     if (selectedEffects.size === parsedEffects.length) {
@@ -341,9 +307,9 @@ export default function CatalogImportDialog({ open, onOpenChange }: { open: bool
                   <button
                     key={i}
                     onClick={() => {
-                       setSelectedEffects(prev => {
+                      setSelectedEffects(prev => {
                         const next = new Set(prev);
-                        if (next.has(i)) next.delete(i); else next.add(i);
+                        next.has(i) ? next.delete(i) : next.add(i);
                         return next;
                       });
                     }}
@@ -381,25 +347,6 @@ export default function CatalogImportDialog({ open, onOpenChange }: { open: bool
               </div>
             )}
 
-            {/* Cue spread selector — drops the imported effects as cue markers on the timeline */}
-            <div className="flex items-center gap-2 bg-muted/30 border border-border/60 rounded-md px-2 py-1.5">
-              <Clock className="w-3 h-3 text-primary flex-shrink-0" />
-              <span className="text-[10px] text-muted-foreground flex-shrink-0">Drop como cues:</span>
-              <Select value={cueSpread} onValueChange={(v) => setCueSpread(v as CueSpreadMode)}>
-                <SelectTrigger className="h-7 text-[10px] flex-1">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none" className="text-[10px]">— Não criar cues —</SelectItem>
-                  <SelectItem value="evenly" className="text-[10px]">Distribuir uniformemente (5–95%)</SelectItem>
-                  <SelectItem value="at-playhead" className="text-[10px]">No playhead atual</SelectItem>
-                  <SelectItem value="fixed-1s" className="text-[10px]">A cada 1s a partir do playhead</SelectItem>
-                  <SelectItem value="fixed-2s" className="text-[10px]">A cada 2s a partir do playhead</SelectItem>
-                  <SelectItem value="fixed-5s" className="text-[10px]">A cada 5s a partir do playhead</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
             <div className="flex gap-2">
               <Button variant="ghost" size="sm" className="h-7 text-[10px]" onClick={() => setStep('mapping')}>
                 ← Mapping
@@ -414,8 +361,7 @@ export default function CatalogImportDialog({ open, onOpenChange }: { open: bool
                 onClick={handleImport}
                 disabled={selectedEffects.size === 0}
               >
-                <Check className="w-3 h-3 mr-1" />
-                Import {selectedEffects.size}{cueSpread !== 'none' ? ' + Cues' : ''}
+                <Check className="w-3 h-3 mr-1" /> Import {selectedEffects.size} Effects
               </Button>
             </div>
           </div>

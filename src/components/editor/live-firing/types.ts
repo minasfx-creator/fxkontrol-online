@@ -170,11 +170,4 @@ export interface FXCSettings {
   networkIp: string;
   networkMask: string;
   networkGateway: string;
-  dualConfirmRequired: boolean;
-  fireWindowMs: number;
-  hilModeEnabled: boolean;
-  hilBaseDelayMs: number;
-  hilJitterMs: number;
-  hilPacketLossRate: number;
-  hilReorderRate: number;
 }

@@ -1,0 +1,47 @@
+<?xml version="1.0"?>
+<FireworkEffect xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+  <Children>
+    <BaseEffectNode xsi:type="Shell">
+      <Children>
+        <BaseEffectNode xsi:type="Eruption">
+          <Children>
+            <BaseEffectNode xsi:type="Stars">
+              <Children>
+                <BaseEffectNode xsi:type="StarTails">
+                  <Children />
+                  <Color>
+                    <Color>Gold</Color>
+                  </Color>
+                  <Width>1.5225</Width>
+                  <EmitStart>0</EmitStart>
+                  <EmitEnd>0.4328</EmitEnd>
+                  <Density>10</Density>
+                </BaseEffectNode>
+              </Children>
+              <Type>Normal</Type>
+              <Distribution xsi:type="EruptionDistribution">
+                <Speed>0.95</Speed>
+                <Sigma>0.019000005</Sigma>
+              </Distribution>
+              <Color>
+                <Color>Red</Color>
+              </Color>
+              <Count>83</Count>
+              <MinimumLifetime>1.5</MinimumLifetime>
+              <MaximumLifetime>2.1</MaximumLifetime>
+              <Strobe>false</Strobe>
+            </BaseEffectNode>
+          </Children>
+          <Duration>4.221</Duration>
+          <Speed>101.5</Speed>
+        </BaseEffectNode>
+      </Children>
+      <Diameter>0.142</Diameter>
+      <LiftingCharge>0</LiftingCharge>
+    </BaseEffectNode>
+  </Children>
+  <Identifier>
+    <Name>Roman Candle with Tails</Name>
+    <Author>LT</Author>
+  </Identifier>
+</FireworkEffect>

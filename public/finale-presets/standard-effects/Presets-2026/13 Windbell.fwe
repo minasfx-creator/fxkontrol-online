@@ -1,0 +1,216 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<FireworkEffect xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+  <Children>
+    <BaseEffectNode xsi:type="Shell">
+      <Children>
+        <BaseEffectNode xsi:type="BurstingCharge">
+          <Children>
+            <BaseEffectNode xsi:type="Stars">
+              <Children />
+              <Count>1</Count>
+              <Distribution xsi:type="SphericalDistribution">
+                <Speed>0.14</Speed>
+                <Sigma>0</Sigma>
+                <PositionSigma>0</PositionSigma>
+                <Rotation>
+                  <XAxis>0</XAxis>
+                  <YAxis>0</YAxis>
+                  <ZAxis>0</ZAxis>
+                </Rotation>
+              </Distribution>
+              <Phases>
+                <StarPhase>
+                  <Color>
+                    <CustomR>0</CustomR>
+                    <CustomG>0</CustomG>
+                    <CustomB>0</CustomB>
+                    <Color>White</Color>
+                  </Color>
+                  <Strobe>false</Strobe>
+                </StarPhase>
+              </Phases>
+              <Color>
+                <CustomR>0</CustomR>
+                <CustomG>0</CustomG>
+                <CustomB>0</CustomB>
+                <Color>Red</Color>
+              </Color>
+              <Type>Large</Type>
+              <Mass>0.2</Mass>
+              <Birthtime>0</Birthtime>
+              <BirthtimeSigmaRatio>0.1</BirthtimeSigmaRatio>
+              <MinimumLifetime>12</MinimumLifetime>
+              <MaximumLifetime>13</MaximumLifetime>
+              <FadeCustomization>Custom_Fade</FadeCustomization>
+              <CustomDimmcurve>false</CustomDimmcurve>
+              <FadeRatios>
+                <A>0.07736944</A>
+                <B>0.311245</B>
+                <C>0.6626506</C>
+                <D>0.999</D>
+              </FadeRatios>
+              <Strobe>false</Strobe>
+              <StrobeType>Regular</StrobeType>
+              <StrobeOnTime>0.1</StrobeOnTime>
+              <StrobeFreqMean>14.011504</StrobeFreqMean>
+              <CanOverrideColor>true</CanOverrideColor>
+              <Motorized>false</Motorized>
+              <Motor>
+                <StartPropulsionAt>0.5</StartPropulsionAt>
+                <PropulsionStrength>0</PropulsionStrength>
+                <Curvature>0</Curvature>
+              </Motor>
+              <ColorChanging>false</ColorChanging>
+              <Color2>
+                <CustomR>0</CustomR>
+                <CustomG>0</CustomG>
+                <CustomB>0</CustomB>
+                <Color>Red</Color>
+              </Color2>
+              <StrobeSynchronous>false</StrobeSynchronous>
+            </BaseEffectNode>
+          </Children>
+          <Auto>false</Auto>
+          <Energy>0</Energy>
+          <Color>
+            <CustomR>0</CustomR>
+            <CustomG>0</CustomG>
+            <CustomB>0</CustomB>
+            <Color>Invisible</Color>
+          </Color>
+          <ChangeColor>true</ChangeColor>
+          <Sound>false</Sound>
+          <Render>true</Render>
+          <ExplosionSparks>Off</ExplosionSparks>
+          <Delay>2.5</Delay>
+          <TestSound>false</TestSound>
+        </BaseEffectNode>
+        <BaseEffectNode xsi:type="CustomAscentEffectLink">
+          <Children />
+          <ComponentID>
+            <Name>Ascent Effect: Additional Component • Gold Sparks (Partial)</Name>
+            <Author>FWsim</Author>
+          </ComponentID>
+          <Component>
+            <AuthorSoftwareVersion>
+              <Major>4</Major>
+              <Minor>2</Minor>
+              <Build>9</Build>
+              <Revision>1</Revision>
+            </AuthorSoftwareVersion>
+            <Inserts>
+              <BaseEffectNode xsi:type="AscentEffect">
+                <Children />
+                <EmitStart>0.05</EmitStart>
+                <EmitEnd>0.286</EmitEnd>
+                <Density>69</Density>
+                <Width>1</Width>
+                <Type>Sparks</Type>
+                <Color>
+                  <CustomR>60</CustomR>
+                  <CustomG>30</CustomG>
+                  <CustomB>0</CustomB>
+                  <Color>Custom</Color>
+                </Color>
+                <Life>0.05</Life>
+                <LifeSigma>0.12</LifeSigma>
+                <Strobe>false</Strobe>
+                <StrobeFreqMean>14.011504</StrobeFreqMean>
+                <CustomDimmcurve>true</CustomDimmcurve>
+                <FadeRatios>
+                  <A>0</A>
+                  <B>0.76965266</B>
+                  <C>0.84460694</C>
+                  <D>1</D>
+                </FadeRatios>
+                <StarSizeFactor>0.3</StarSizeFactor>
+                <Crackle>false</Crackle>
+              </BaseEffectNode>
+              <BaseEffectNode xsi:type="AscentEffect">
+                <Children />
+                <EmitStart>0.05</EmitStart>
+                <EmitEnd>1</EmitEnd>
+                <Density>94</Density>
+                <Width>1</Width>
+                <Type>Sparks</Type>
+                <Color>
+                  <CustomR>60</CustomR>
+                  <CustomG>30</CustomG>
+                  <CustomB>0</CustomB>
+                  <Color>Custom</Color>
+                </Color>
+                <Life>0.05</Life>
+                <LifeSigma>0.03</LifeSigma>
+                <Strobe>false</Strobe>
+                <StrobeFreqMean>14.011504</StrobeFreqMean>
+                <CustomDimmcurve>true</CustomDimmcurve>
+                <FadeRatios>
+                  <A>0</A>
+                  <B>0.76965266</B>
+                  <C>0.84460694</C>
+                  <D>1</D>
+                </FadeRatios>
+                <StarSizeFactor>0.3</StarSizeFactor>
+                <Crackle>false</Crackle>
+              </BaseEffectNode>
+            </Inserts>
+            <BaseID>
+              <Name>Ascent Effect: Additional Component • Gold Sparks (Partial)</Name>
+              <Author>FWsim</Author>
+            </BaseID>
+            <ReadOnly>false</ReadOnly>
+            <InternalUseOnly>false</InternalUseOnly>
+            <Hide>false</Hide>
+          </Component>
+          <Items />
+          <EmitStartOffset>0</EmitStartOffset>
+          <EmitEndOffset>0</EmitEndOffset>
+          <DurationPercent>100</DurationPercent>
+          <ThicknessPercent>100</ThicknessPercent>
+          <DensityPercent>100</DensityPercent>
+          <DurationVariancePercent>100</DurationVariancePercent>
+        </BaseEffectNode>
+      </Children>
+      <ID>0</ID>
+      <AllowRenaming>false</AllowRenaming>
+      <SizeSelection>Simple</SizeSelection>
+      <SimpleSize>
+        <DiameterPreset>d75</DiameterPreset>
+      </SimpleSize>
+      <Diameter>0.075</Diameter>
+      <LiftingCharge>95</LiftingCharge>
+      <Rotation>
+        <Mode>Manual</Mode>
+        <RotationsPerSecond>6.5</RotationsPerSecond>
+        <RotationDiameterMM>50</RotationDiameterMM>
+      </Rotation>
+      <Stabilizer>false</Stabilizer>
+    </BaseEffectNode>
+  </Children>
+  <SimulationVersion>2</SimulationVersion>
+  <Subtype>Windbell</Subtype>
+  <RackType>Shell</RackType>
+  <RackTypeCustom>Shell</RackTypeCustom>
+  <AutotagOverrideQuantity>0</AutotagOverrideQuantity>
+  <AutotagOverrideCaliber>0</AutotagOverrideCaliber>
+  <HideInLib>true</HideInLib>
+  <AutotagOverrideCaliber_Simple xsi:nil="true" />
+  <AutotagOverrideFurther />
+  <Identifier>
+    <Name>13 Windbell</Name>
+    <Author>FWsim_Presets_2026</Author>
+  </Identifier>
+  <VisualizationSource>Unknown</VisualizationSource>
+  <Metadata>
+    <Pieces />
+  </Metadata>
+  <FirstCreated>0001-01-01T00:00:00</FirstCreated>
+  <AuthorSoftwareVersion>
+    <Major>4</Major>
+    <Minor>2</Minor>
+    <Build>9</Build>
+    <Revision>27</Revision>
+  </AuthorSoftwareVersion>
+  <AutotagOverride></AutotagOverride>
+  <Hints />
+</FireworkEffect>

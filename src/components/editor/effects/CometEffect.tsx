@@ -17,7 +17,7 @@ import { RibbonTrail } from '@/render_ultra/fireworks/ribbonTrailRenderer';
 import { useProjectStore } from '@/store/useProjectStore';
 import { getChemistryForRendering, autoMatchFormulation } from '@/render_ultra/fireworks/particleChemistry';
 
-const SPARK_COUNT = 120;
+const SPARK_COUNT = 192;        // ×1.6 — more visible rising trail (FWsim ref)
 const SMOKE_WAKE_COUNT = 50;
 
 // Pre-allocated objects for zero-GC per-frame
@@ -60,7 +60,7 @@ export default function CometEffect({
     const ribbon = new RibbonTrail({
       maxPoints: 96,
       lifetime: 2.2,
-      baseWidth: (0.3 + caliber * 0.15) * 1.5,
+      baseWidth: (0.3 + caliber * 0.15) * 1.6 * 1.4,  // wider trunk + brighter head (FWsim rising comet)
       blendMode: 'additive',
       widthCurve: [
         { t: 0, value: 1.0 },

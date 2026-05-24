@@ -1,37 +1,30 @@
 /**
- * Health Persistence Service
- * Persists cluster health snapshots and incidents to the database every 30s.
+ * ─── Health Persistence Service ─────────────────────────────────────
+ * Persists cluster health snapshots and incidents to the database
+ * every 30s for trend analysis and sparkline visualization.
  */
 
 import { supabase } from '@/integrations/supabase/client';
 import { clusterHealthService } from './ClusterHealthService';
 
 const PERSIST_INTERVAL_MS = 30_000;
-const MAX_PERSISTED_IDS = 500;
-const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-export function normalizeTelemetryProjectId(projectId: string | null | undefined): string | null {
-  const value = projectId?.trim();
-  return value && UUID_RE.test(value) ? value : null;
-}
+const MAX_PERSISTED_IDS = 500;
 
 class HealthPersistenceService {
   private timer: ReturnType<typeof setInterval> | null = null;
-  private projectId: string | null = null;
+  private projectId: string = '';
   private lastPersistedIds = new Set<string>();
 
-  start(projectId: string | null | undefined) {
+  start(projectId: string) {
+    this.projectId = projectId;
     this.stop();
-    this.setProjectId(projectId);
-
-    // Seed known incident IDs to avoid re-persisting old ones.
+    // Seed known incident IDs to avoid re-persisting old ones
     for (const inc of clusterHealthService.getIncidents()) {
       this.lastPersistedIds.add(inc.id);
     }
-
     this.timer = setInterval(() => this.flush(), PERSIST_INTERVAL_MS);
-    console.log(`[HealthPersistence] Started - interval 30s${this.projectId ? '' : ' (waiting for app project id)'}`);
-    if (this.projectId) void this.flush();
+    console.log('[HealthPersistence] Started — interval 30s');
   }
 
   stop() {
@@ -41,33 +34,17 @@ class HealthPersistenceService {
     }
   }
 
-  setProjectId(projectId: string | null | undefined) {
-    const nextProjectId = normalizeTelemetryProjectId(projectId);
-    if (this.projectId === nextProjectId) return;
-
-    this.projectId = nextProjectId;
-    if (!nextProjectId) {
-      console.warn('[HealthPersistence] No valid app project id; health telemetry persistence is paused');
-      return;
-    }
-
-    console.log(`[HealthPersistence] Using app project id ${nextProjectId}`);
-    if (this.timer) void this.flush();
-  }
-
   private async flush() {
     try {
-      const projectId = this.projectId;
-      if (!projectId) return;
-
       const { data: { session } } = await supabase.auth.getSession();
       if (!session?.user) return;
 
       const userId = session.user.id;
       const snap = clusterHealthService.getSnapshot();
 
-      const { error: snapshotError } = await supabase.from('health_snapshots').insert({
-        project_id: projectId,
+      // Persist snapshot
+      await supabase.from('health_snapshots' as any).insert({
+        project_id: this.projectId,
         user_id: userId,
         global_score: snap.globalScore,
         global_level: snap.globalLevel,
@@ -77,14 +54,14 @@ class HealthPersistenceService {
         active_incidents: snap.activeIncidents,
         uptime_ms: snap.uptime,
       });
-      if (snapshotError) throw snapshotError;
 
+      // Persist new incidents only
       const allIncidents = clusterHealthService.getIncidents();
       const newIncidents = allIncidents.filter(i => !this.lastPersistedIds.has(i.id));
 
       if (newIncidents.length > 0) {
         const rows = newIncidents.map(i => ({
-          project_id: projectId,
+          project_id: this.projectId,
           user_id: userId,
           incident_id: i.id,
           severity: i.severity,
@@ -95,13 +72,13 @@ class HealthPersistenceService {
           resolved_at: i.resolvedAt ? new Date(i.resolvedAt).toISOString() : null,
         }));
 
-        const { error: incidentsError } = await supabase.from('health_incidents').insert(rows);
-        if (incidentsError) throw incidentsError;
+        await supabase.from('health_incidents' as any).insert(rows);
 
         for (const i of newIncidents) {
           this.lastPersistedIds.add(i.id);
         }
 
+        // Cap Set size to prevent memory leak
         if (this.lastPersistedIds.size > MAX_PERSISTED_IDS) {
           const arr = Array.from(this.lastPersistedIds);
           this.lastPersistedIds = new Set(arr.slice(-MAX_PERSISTED_IDS));
