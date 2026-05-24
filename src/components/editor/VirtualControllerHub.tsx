@@ -13,6 +13,7 @@ import { useFireOneHardware } from '@/hooks/useFireOneHardware';
 import { usePBusHardware } from '@/hooks/usePBusHardware';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
+import FireOneModulesInline from '@/components/editor/FireOneModulesInline';
 
 type ConnectionType = 'usb' | 'artnet' | 'wireless' | 'pbus' | 'serial' | 'radio' | 'sim' | 'ble' | 'wifi_direct';
 
@@ -158,9 +159,10 @@ export default function VirtualControllerHub({ fs = false, onSelectMode, onClose
   const renderCard = (card: ControllerCard) => {
     const status = getConnectionStatus(card);
     const telemetry = getLiveTelemetry(card);
+    const showFireOneRoster = card.group === 'fireone' && fireone.isConnected;
     return (
+      <div key={card.id} className="space-y-1">
       <button
-        key={card.id}
         onClick={() => card.panelMode && onSelectMode?.(card.panelMode)}
         className={cn(
           "w-full text-left rounded-lg border transition-all group",
@@ -243,9 +245,21 @@ export default function VirtualControllerHub({ fs = false, onSelectMode, onClose
           <ChevronRight className="w-3.5 h-3.5 text-muted-foreground/20 group-hover:text-muted-foreground/50 transition-colors shrink-0 mt-1" />
         </div>
       </button>
+      {showFireOneRoster && (
+        <div className={cn("rounded-lg border bg-card/30", GROUP_META[card.group]?.borderColor)}>
+          <div className="px-2 pb-1.5">
+            <FireOneModulesInline
+              modules={fireone.modules}
+              isConnected={fireone.isConnected}
+              onRescan={() => fireone.discoverModules()}
+              maxRows={fs ? 24 : 12}
+            />
+          </div>
+        </div>
+      )}
+      </div>
     );
   };
-
   return (
     <div className={cn("space-y-3", fs ? "p-4" : "p-2")}>
       <div className="flex items-center justify-between">

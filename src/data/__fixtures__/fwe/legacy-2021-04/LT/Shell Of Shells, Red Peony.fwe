@@ -1,0 +1,57 @@
+<?xml version="1.0"?>
+<FireworkEffect xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+  <Children>
+    <BaseEffectNode xsi:type="Shell">
+      <Children>
+        <BaseEffectNode xsi:type="BurstingCharge">
+          <Children>
+            <BaseEffectNode xsi:type="SubShells">
+              <Children>
+                <BaseEffectNode xsi:type="BurstingCharge">
+                  <Children>
+                    <BaseEffectNode xsi:type="Stars">
+                      <Children />
+                      <Type>Normal</Type>
+                      <Distribution xsi:type="SphericalDistribution">
+                        <Speed>0.95</Speed>
+                        <Sigma>0.019000005</Sigma>
+                      </Distribution>
+                      <Color>
+                        <Color>Red</Color>
+                      </Color>
+                      <Count>52</Count>
+                      <MinimumLifetime>1.5</MinimumLifetime>
+                      <MaximumLifetime>2.1</MaximumLifetime>
+                      <Strobe>false</Strobe>
+                    </BaseEffectNode>
+                  </Children>
+                  <Energy>44.08</Energy>
+                  <Delay>1.204</Delay>
+                </BaseEffectNode>
+                <BaseEffectNode xsi:type="AscentEffect">
+                  <Children />
+                  <Color>
+                    <Color>Spark</Color>
+                  </Color>
+                  <Width>4</Width>
+                  <EmitStart>0.1029</EmitStart>
+                  <EmitEnd>0.7</EmitEnd>
+                  <Density>50</Density>
+                </BaseEffectNode>
+              </Children>
+              <Count>12</Count>
+            </BaseEffectNode>
+          </Children>
+          <Energy>96.78</Energy>
+          <Delay>3.484</Delay>
+        </BaseEffectNode>
+      </Children>
+      <Diameter>0.22482</Diameter>
+      <LiftingCharge>169.05</LiftingCharge>
+    </BaseEffectNode>
+  </Children>
+  <Identifier>
+    <Name>Shell Of Shells, Red Peony</Name>
+    <Author>LT</Author>
+  </Identifier>
+</FireworkEffect>

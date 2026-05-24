@@ -1,0 +1,119 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<FireworkEffect xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+  <Children>
+    <BaseEffectNode xsi:type="Shell">
+      <Children>
+        <BaseEffectNode xsi:type="BurstingCharge">
+          <Children>
+            <BaseEffectNode xsi:type="Stars">
+              <Children />
+              <Count>450</Count>
+              <Distribution xsi:type="SphericalDistribution">
+                <Speed>1</Speed>
+                <Sigma>0</Sigma>
+                <PositionSigma>0</PositionSigma>
+                <Rotation>
+                  <XAxis>0</XAxis>
+                  <YAxis>0</YAxis>
+                  <ZAxis>0</ZAxis>
+                </Rotation>
+              </Distribution>
+              <Phases>
+                <StarPhase>
+                  <Color>
+                    <CustomR>0</CustomR>
+                    <CustomG>0</CustomG>
+                    <CustomB>0</CustomB>
+                    <Color>Yellow</Color>
+                  </Color>
+                  <Strobe>false</Strobe>
+                  <StrobeFreqMean>14</StrobeFreqMean>
+                </StarPhase>
+                <StarPhase>
+                  <Color>
+                    <CustomR>0</CustomR>
+                    <CustomG>0</CustomG>
+                    <CustomB>0</CustomB>
+                    <Color>Purple</Color>
+                  </Color>
+                  <Strobe>false</Strobe>
+                  <StrobeFreqMean>14</StrobeFreqMean>
+                </StarPhase>
+              </Phases>
+              <Color>
+                <CustomR>0</CustomR>
+                <CustomG>0</CustomG>
+                <CustomB>0</CustomB>
+                <Color>Yellow</Color>
+              </Color>
+              <Type>Small</Type>
+              <Birthtime>0</Birthtime>
+              <BirthtimeSigmaRatio>0.1</BirthtimeSigmaRatio>
+              <MinimumLifetime>2.4</MinimumLifetime>
+              <MaximumLifetime>3.4</MaximumLifetime>
+              <CustomDimmcurve>true</CustomDimmcurve>
+              <FadeRatios>
+                <A>0.1</A>
+                <B>0.3018868</B>
+                <C>0.90019196</C>
+                <D>1</D>
+              </FadeRatios>
+              <Strobe>false</Strobe>
+              <StrobeFreqMean>14</StrobeFreqMean>
+              <CanOverrideColor>true</CanOverrideColor>
+              <ColorChanging>false</ColorChanging>
+              <Color2>
+                <CustomR>0</CustomR>
+                <CustomG>0</CustomG>
+                <CustomB>0</CustomB>
+                <Color>Purple</Color>
+              </Color2>
+              <StrobeSynchronous>false</StrobeSynchronous>
+            </BaseEffectNode>
+          </Children>
+          <Auto>false</Auto>
+          <Energy>120</Energy>
+          <Color>
+            <CustomR>0</CustomR>
+            <CustomG>0</CustomG>
+            <CustomB>0</CustomB>
+            <Color>Spark</Color>
+          </Color>
+          <ChangeColor>false</ChangeColor>
+          <Sound>true</Sound>
+          <Render>true</Render>
+          <Delay>3.8079994</Delay>
+          <TestSound>false</TestSound>
+        </BaseEffectNode>
+      </Children>
+      <ID>1</ID>
+      <AllowRenaming>true</AllowRenaming>
+      <UserDefinedName>Shell (200mm) 1</UserDefinedName>
+      <SimpleSize>
+        <DiameterPreset>d150</DiameterPreset>
+      </SimpleSize>
+      <SizeSelection>Advanced</SizeSelection>
+      <Diameter>0.15</Diameter>
+      <LiftingCharge>180</LiftingCharge>
+      <Stabilizer>false</Stabilizer>
+    </BaseEffectNode>
+  </Children>
+  <SimulationVersion>0</SimulationVersion>
+  <Protected>false</Protected>
+  <AutotagOverrideQuantity>0</AutotagOverrideQuantity>
+  <AutotagOverrideCaliber>0</AutotagOverrideCaliber>
+  <AutotagOverrideFurther />
+  <Identifier>
+    <Name>30 Warimono</Name>
+    <Author>Marcus Athmer (Effekt-Vorschau)</Author>
+  </Identifier>
+  <Metadata>
+    <Pieces />
+  </Metadata>
+  <AuthorSoftwareVersion>
+    <Major>3</Major>
+    <Minor>4</Minor>
+    <Build>1</Build>
+    <Revision>112</Revision>
+  </AuthorSoftwareVersion>
+</FireworkEffect>

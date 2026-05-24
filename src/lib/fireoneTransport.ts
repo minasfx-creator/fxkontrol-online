@@ -8,14 +8,6 @@
  * TransportManager handles priority routing, E-STOP broadcast, and auto-fallback.
  */
 
-import {
-  assertBridgeWebSocketAllowed,
-  buildBridgeWebSocketProtocols,
-  buildBridgeWebSocketUrl,
-  openBridgeWebSocket,
-  requiresSecureBridgeTransport,
-} from '@/lib/bridgeGateway';
-
 export type TransportType = 'serial' | 'radio' | 'wifi' | 'wifi_direct' | 'artnet' | 'cellular';
 export type TransportState = 'disconnected' | 'connecting' | 'connected' | 'error' | 'reconnecting';
 
@@ -62,6 +54,18 @@ export interface FireOneTransport {
 // SERIAL TRANSPORT (RS-485 via WebSerial)
 // ═══════════════════════════════════════════════════════════
 
+/**
+ * A minimal interface satisfied by `TwoWireTransport` (and any future
+ * pyro-priority sub-link). We keep it structural to avoid a hard import
+ * cycle with `twoWireTransport.ts`.
+ */
+export interface PyroSubLink {
+  readonly id: string;
+  readonly type: string;
+  send(frame: Uint8Array): Promise<void>;
+  close?: () => Promise<void>;
+}
+
 export class SerialTransport implements FireOneTransport {
   readonly id: string;
   readonly type: TransportType = 'serial';
@@ -79,6 +83,7 @@ export class SerialTransport implements FireOneTransport {
   private receiveCallbacks: TransportReceiveCallback[] = [];
   private stateCallbacks: TransportStateCallback[] = [];
   private baudRate: number;
+  private subLinks = new Map<string, PyroSubLink>();
 
   constructor(id?: string, baudRate = 9600) {
     this.id = id || `serial-${Date.now()}`;
@@ -120,6 +125,11 @@ export class SerialTransport implements FireOneTransport {
 
   async disconnect(): Promise<void> {
     this.readLoop = false;
+    // Detach all sub-links first (idempotent).
+    for (const link of this.subLinks.values()) {
+      try { await link.close?.(); } catch { /* ignore */ }
+    }
+    this.subLinks.clear();
     try {
       if (this.reader) { await this.reader.cancel().catch(() => {}); this.reader.releaseLock(); }
       if (this.writer) { await this.writer.close().catch(() => {}); this.writer.releaseLock(); }
@@ -149,6 +159,57 @@ export class SerialTransport implements FireOneTransport {
         }
       } catch { break; }
     }
+  }
+
+  /**
+   * Attach a 2-Wire (or other priority sub-link) under this serial transport.
+   *
+   * The sub-link is *additive* — the legacy serial downlink (CSV bridge,
+   * heartbeat, telemetry) keeps working. Use `sendPyro()` to route a frame
+   * through the highest-priority sub-link when available, falling back to
+   * the primary serial port. This never mutates `pyroTransportPolicy`; it
+   * only consumes its priority order.
+   *
+   * Returns a detach callback (idempotent — safe to call twice).
+   */
+  attachTwoWireSubLink(link: PyroSubLink): () => void {
+    this.subLinks.set(link.id, link);
+    let detached = false;
+    return () => {
+      if (detached) return;
+      detached = true;
+      this.subLinks.delete(link.id);
+    };
+  }
+
+  /** Read-only accessor for tests + UI. */
+  getSubLinks(): ReadonlyArray<PyroSubLink> {
+    return Array.from(this.subLinks.values());
+  }
+
+  /**
+   * Route a pyro frame through the best available sub-link, falling back
+   * to the primary serial transport.
+   *
+   * @param frame raw bytes already encoded for the chosen transport
+   * @param preferredType e.g. `'two_wire'`. When omitted, picks the first
+   *                      sub-link by insertion order.
+   */
+  async sendPyro(frame: Uint8Array, preferredType?: string): Promise<{ via: string }> {
+    const links = Array.from(this.subLinks.values());
+    const preferred = preferredType
+      ? links.find(l => l.type === preferredType)
+      : links[0];
+    if (preferred) {
+      try {
+        await preferred.send(frame);
+        return { via: preferred.type };
+      } catch {
+        // Fall through to primary serial.
+      }
+    }
+    await this.send(frame);
+    return { via: this.type };
   }
 }
 
@@ -282,32 +343,14 @@ export class WiFiTransport implements FireOneTransport {
   }
 
   async connect(config?: Record<string, any>): Promise<void> {
-    const secureRequired = config?.secure ?? requiresSecureBridgeTransport();
-    const explicitHost = config?.relayHost || config?.relayIp;
-    const ip = explicitHost || (secureRequired ? undefined : '192.168.1.100');
+    const ip = config?.relayIp || '192.168.1.100';
     const port = config?.relayPort || 9485;
-    this.relayUrl = config?.relayUrl || buildBridgeWebSocketUrl({
-      host: ip,
-      port: explicitHost || !secureRequired ? port : undefined,
-      secure: secureRequired,
-      path: config?.relayPath ?? '',
-      defaultInsecurePort: port,
-      defaultSecurePort: config?.secureRelayPort || 9443,
-    });
+    this.relayUrl = `ws://${ip}:${port}`;
     this.autoReconnect = config?.autoReconnect !== false;
 
     return new Promise((resolve, reject) => {
       this.setState('connecting');
-      const protocols = buildBridgeWebSocketProtocols(config?.bridgeKey);
-      try {
-        assertBridgeWebSocketAllowed(this.relayUrl);
-        this.ws = openBridgeWebSocket(this.relayUrl, protocols);
-      } catch (error) {
-        const message = error instanceof Error ? error.message : 'Bridge local indisponível para este contexto';
-        this.setState('error', message);
-        reject(new Error(message));
-        return;
-      }
+      this.ws = new WebSocket(this.relayUrl);
       this.ws.binaryType = 'arraybuffer';
 
       this.ws.onopen = () => {
@@ -620,6 +663,21 @@ export class FireOneTransportManager {
 
   getTransportsByType(type: TransportType): FireOneTransport[] {
     return Array.from(this.transports.values()).filter(t => t.type === type);
+  }
+
+  /** Connected transports only — used by per-controller discovery. */
+  getConnectedTransports(): FireOneTransport[] {
+    return Array.from(this.transports.values())
+      .filter(t => t.state === 'connected')
+      .sort((a, b) => a.priority - b.priority);
+  }
+
+  /** Send via a specific transport id (used by per-controller IDENTIFY scan). */
+  async sendVia(transportId: string, frame: Uint8Array): Promise<void> {
+    const t = this.transports.get(transportId);
+    if (!t) throw new Error(`Transport ${transportId} não registrado`);
+    if (t.state !== 'connected') throw new Error(`Transport ${transportId} não conectado`);
+    await t.send(frame);
   }
 }
 

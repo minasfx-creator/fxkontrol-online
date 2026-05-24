@@ -12,12 +12,9 @@ import {
   parseTimecode,
 } from '@/lib/smpteEngine';
 import { useProjectStore } from '@/store/useProjectStore';
-import { timelineClock } from '@/core/timeline/TimelineClock';
-import { resolveSMPTEChase } from '@/core/timeline/smpteChase';
-import { ltcRuntime, updateTimelineClockFromLTCFps } from '@/hardware/transports/ltcRuntime';
 
 export type ExternalSyncStatus = 'disconnected' | 'connecting' | 'connected' | 'error';
-export type ChaseMode = 'tight' | 'smooth' | 'freewheel' | 'external-master';
+export type ChaseMode = 'hard' | 'soft' | 'jam';
 
 interface ExternalSyncState {
   externalEnabled: boolean;
@@ -78,7 +75,7 @@ export const useSMPTEStore = create<SMPTEStoreState>((set, get) => ({
   externalEnabled: false,
   wsUrl: DEFAULT_WS_URL,
   status: 'disconnected',
-  chaseMode: 'smooth',
+  chaseMode: 'soft',
   externalTimecode: null,
   externalTimeSeconds: 0,
   latency: 0,
@@ -154,7 +151,7 @@ export const useSMPTEStore = create<SMPTEStoreState>((set, get) => ({
     if (state.externalEnabled && state.status === 'connected' && state.mode === 'slave' && state.externalTimecode) {
       return state.externalTimecode;
     }
-    const t = timelineClock.getTime() + state.startTimecodeSeconds;
+    const t = useProjectStore.getState().currentTime + state.startTimecodeSeconds;
     return secondsToTimecode(t, state.frameRate, state.frameRate === 29.97);
   },
 
@@ -192,7 +189,7 @@ export const useSMPTEStore = create<SMPTEStoreState>((set, get) => ({
     const state = get();
     if (state._ltcInterval) clearInterval(state._ltcInterval);
     if (state._audioCtx) {
-      try { state._audioCtx.close(); } catch { /* best-effort: AudioContext may already be closed */ }
+      try { state._audioCtx.close(); } catch {}
     }
     set({ _audioCtx: null, _ltcInterval: null });
   },
@@ -216,7 +213,7 @@ export const useSMPTEStore = create<SMPTEStoreState>((set, get) => ({
     const state = get();
     // Clean up existing connection
     if (state._ws) {
-      try { state._ws.close(); } catch { /* best-effort: WebSocket may already be closed */ }
+      try { state._ws.close(); } catch {}
     }
     if (state._pingInterval) clearInterval(state._pingInterval);
     if (state._reconnectTimeout) clearTimeout(state._reconnectTimeout);
@@ -248,7 +245,7 @@ export const useSMPTEStore = create<SMPTEStoreState>((set, get) => ({
         try {
           const data = JSON.parse(event.data);
           get()._handleExternalMessage(data);
-        } catch { /* best-effort: malformed external message ignored */ }
+        } catch {}
       };
 
       ws.onerror = () => {
@@ -277,7 +274,7 @@ export const useSMPTEStore = create<SMPTEStoreState>((set, get) => ({
   disconnectExternal: () => {
     const state = get();
     if (state._ws) {
-      try { state._ws.close(); } catch { /* best-effort: WebSocket may already be closed */ }
+      try { state._ws.close(); } catch {}
     }
     if (state._pingInterval) clearInterval(state._pingInterval);
     if (state._reconnectTimeout) clearTimeout(state._reconnectTimeout);
@@ -305,64 +302,46 @@ export const useSMPTEStore = create<SMPTEStoreState>((set, get) => ({
         };
         const extSeconds = timecodeToSeconds(extTc);
         const projectTime = extSeconds - state.startTimecodeSeconds;
-        const nextPacketCount = state.packetCount + 1;
 
         set({
           externalTimecode: extTc,
           externalTimeSeconds: extSeconds,
-          packetCount: nextPacketCount,
+          packetCount: state.packetCount + 1,
           lastPacketAt: Date.now(),
         });
-
-        ltcRuntime.ingestTime(extSeconds, Date.now(), data.source ?? 'ws', data.priority ?? 0);
-        updateTimelineClockFromLTCFps();
 
         // Chase: drive project playback from external TC
         if (state.mode === 'slave') {
           const projectStore = useProjectStore.getState();
-          const currentProjectTime = timelineClock.getTime();
-          const boundedProjectTime = Math.max(0, Math.min(projectTime, projectStore.duration));
-          const chase = resolveSMPTEChase(currentProjectTime, boundedProjectTime);
-
-          if (!timelineClock.isPlaying()) {
-            timelineClock.seek(chase.mode === 'ignore' ? currentProjectTime : chase.nextTime);
-            break;
-          }
-
-          ltcRuntime.setChaseMode(state.chaseMode);
+          const currentProjectTime = projectStore.currentTime;
+          const diff = Math.abs(projectTime - currentProjectTime);
 
           switch (state.chaseMode) {
-            case 'tight':
-              if (chase.mode !== 'ignore') {
-                timelineClock.syncExternalTime(chase.nextTime);
+            case 'hard':
+              // Immediately jump to external TC position
+              if (diff > 0.02) {
+                projectStore.setCurrentTime(Math.max(0, Math.min(projectTime, projectStore.duration)));
               }
               if (!projectStore.isPlaying && projectTime > 0) {
-                timelineClock.play();
+                projectStore.setPlaying(true);
               }
               break;
 
-            case 'smooth':
-              if (chase.mode === 'snap' || chase.mode === 'soft') {
-                timelineClock.syncExternalTime(chase.nextTime);
+            case 'soft':
+              // Gradually chase — jump if drift > 0.5s, otherwise let playback catch up
+              if (diff > 0.5) {
+                projectStore.setCurrentTime(Math.max(0, Math.min(projectTime, projectStore.duration)));
               }
               if (!projectStore.isPlaying && projectTime > 0.1) {
-                timelineClock.play();
+                projectStore.setPlaying(true);
               }
               break;
 
-            case 'freewheel':
-              if (nextPacketCount === 1 || chase.mode === 'snap') {
-                timelineClock.syncExternalTime(chase.mode === 'ignore' ? currentProjectTime : chase.nextTime);
-              }
-              if (!projectStore.isPlaying && projectTime > 0.1) {
-                timelineClock.play();
-              }
-              break;
-
-            case 'external-master':
-              timelineClock.syncExternalTime(boundedProjectTime);
-              if (!projectStore.isPlaying) {
-                timelineClock.play();
+            case 'jam':
+              // Jam sync: only sync once then freewheel
+              if (state.packetCount <= 3 || diff > 2.0) {
+                projectStore.setCurrentTime(Math.max(0, Math.min(projectTime, projectStore.duration)));
+                if (!projectStore.isPlaying) projectStore.setPlaying(true);
               }
               break;
           }
@@ -375,14 +354,14 @@ export const useSMPTEStore = create<SMPTEStoreState>((set, get) => ({
           const projectStore = useProjectStore.getState();
           switch (data.command) {
             case 'play':
-              if (!projectStore.isPlaying) timelineClock.play();
+              if (!projectStore.isPlaying) projectStore.setPlaying(true);
               break;
             case 'stop':
-              if (projectStore.isPlaying) timelineClock.pause();
+              if (projectStore.isPlaying) projectStore.setPlaying(false);
               break;
             case 'locate':
               if (typeof data.position === 'number') {
-                timelineClock.syncExternalTime(Math.max(0, Math.min(data.position, projectStore.duration)));
+                projectStore.setCurrentTime(Math.max(0, Math.min(data.position, projectStore.duration)));
               }
               break;
           }
@@ -418,43 +397,13 @@ useProjectStore.subscribe((state, prev) => {
   }
 });
 
-// ── SMPTE tick loop (~30Hz) ───────────────────────────────────────────
-// WHY: this used to be a top-level setInterval, which meant every Vite HMR
-// reload of this module spawned a new ticker without clearing the old one.
-// After a few hot reloads the store was being ticked 5–10× per frame,
-// burning CPU and producing observable jitter in the timeline. We now
-// expose an explicit start/stop pair, guarded by a window-level singleton
-// so even multiple module instances (HMR, Capacitor isolates) cannot
-// overlap.
-const SMPTE_TICKER_KEY = "__fxk_smpte_ticker__" as const;
-
-type GlobalWithTicker = typeof globalThis & {
-  [SMPTE_TICKER_KEY]?: ReturnType<typeof setInterval> | null;
-};
-
-export function startSmpteTicker(): void {
-  const g = globalThis as GlobalWithTicker;
-  if (g[SMPTE_TICKER_KEY]) return; // already running
-  g[SMPTE_TICKER_KEY] = setInterval(() => {
-    const smpte = useSMPTEStore.getState();
-    if (!smpte.running) return;
-    const t = timelineClock.getTime();
-    const external = smpte.mode === 'slave' && smpte.externalEnabled && smpte.status === 'connected'
-      ? smpte.externalTimeSeconds
-      : smpte.mode === 'slave' ? t + (Math.random() - 0.5) * 0.002 : undefined;
-    smpte.tick(t, external);
-  }, 33);
-}
-
-export function stopSmpteTicker(): void {
-  const g = globalThis as GlobalWithTicker;
-  if (g[SMPTE_TICKER_KEY]) {
-    clearInterval(g[SMPTE_TICKER_KEY]!);
-    g[SMPTE_TICKER_KEY] = null;
-  }
-}
-
-// Vite HMR: dispose old ticker before the next module instance installs one.
-if (import.meta.hot) {
-  import.meta.hot.dispose(() => stopSmpteTicker());
-}
+// Continuous tick at ~30Hz when running
+setInterval(() => {
+  const smpte = useSMPTEStore.getState();
+  if (!smpte.running) return;
+  const t = useProjectStore.getState().currentTime;
+  const external = smpte.mode === 'slave' && smpte.externalEnabled && smpte.status === 'connected'
+    ? smpte.externalTimeSeconds
+    : smpte.mode === 'slave' ? t + (Math.random() - 0.5) * 0.002 : undefined;
+  smpte.tick(t, external);
+}, 33);

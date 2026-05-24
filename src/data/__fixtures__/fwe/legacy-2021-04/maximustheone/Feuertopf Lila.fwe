@@ -1,0 +1,36 @@
+<?xml version="1.0"?>
+<FireworkEffect xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+  <Children>
+    <BaseEffectNode xsi:type="Shell">
+      <Children>
+        <BaseEffectNode xsi:type="BurstingCharge">
+          <Children>
+            <BaseEffectNode xsi:type="Stars">
+              <Children />
+              <Type>Sparks</Type>
+              <Distribution xsi:type="MineDistribution">
+                <Speed>1</Speed>
+                <Sigma>0.0814240053</Sigma>
+              </Distribution>
+              <Color>
+                <Color>Blue</Color>
+              </Color>
+              <Count>408</Count>
+              <MinimumLifetime>2.4542</MinimumLifetime>
+              <MaximumLifetime>3.591</MaximumLifetime>
+              <Strobe>true</Strobe>
+            </BaseEffectNode>
+          </Children>
+          <Energy>135.065</Energy>
+          <Delay>0</Delay>
+        </BaseEffectNode>
+      </Children>
+      <Diameter>0.142</Diameter>
+      <LiftingCharge>0</LiftingCharge>
+    </BaseEffectNode>
+  </Children>
+  <Identifier>
+    <Name>Mine-pink</Name>
+    <Author>maximus</Author>
+  </Identifier>
+</FireworkEffect>

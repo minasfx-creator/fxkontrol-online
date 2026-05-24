@@ -1,0 +1,33 @@
+<?xml version="1.0"?>
+<FireworkEffect xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+  <Children>
+    <BaseEffectNode xsi:type="Shell">
+      <Children>
+        <BaseEffectNode xsi:type="BurstingCharge">
+          <Children>
+            <BaseEffectNode xsi:type="Stars">
+              <Children />
+              <Distribution xsi:type="RingDistribution">
+                <MinimumSpeed>0.7517</MinimumSpeed>
+                <MaximumSpeed>1</MaximumSpeed>
+              </Distribution>
+              <Color>
+                <Color>Green</Color>
+              </Color>
+              <Count>200</Count>
+              <MinimumLifetime>1.5</MinimumLifetime>
+              <MaximumLifetime>2.8966</MaximumLifetime>
+            </BaseEffectNode>
+          </Children>
+          <Energy>132.26</Energy>
+          <Delay>3.2256</Delay>
+        </BaseEffectNode>
+      </Children>
+      <LiftingCharge>248.22</LiftingCharge>
+    </BaseEffectNode>
+  </Children>
+  <Identifier>
+    <Name>Ring Shell</Name>
+    <Author>LT</Author>
+  </Identifier>
+</FireworkEffect>

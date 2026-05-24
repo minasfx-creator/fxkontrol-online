@@ -1,12 +1,11 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { lovable } from '@/integrations/lovable';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
 import { ambientSound } from '@/lib/ambientSound';
-import minasfxLogo from '@/assets/minasfx-logo-tactical.webp';
-import { FxkLogo } from '@/components/brand/FxkLogo';
+import minasfxLogo from '@/assets/minasfx-logo-tactical.png';
+import fxkLogo from '@/assets/fxk-logo-tactical.png';
 
 const BOOT_LINES = [
   'NEXUS AUTH v4.2 · SECURE CHANNEL',
@@ -65,42 +64,6 @@ export default function Auth() {
     }
   };
 
-  const handleGoogleSignIn = async () => {
-    setLoading(true);
-    try {
-      const result = await lovable.auth.signInWithOAuth('google', {
-        redirect_uri: window.location.origin,
-      });
-      if (result.error) throw result.error;
-      if (result.redirected) return;
-      ambientSound.play('boot');
-      toast.success('Login efetuado!');
-    } catch (err: any) {
-      ambientSound.play('error');
-      toast.error(err?.message ?? 'Falha no login com Google');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleAppleSignIn = async () => {
-    setLoading(true);
-    try {
-      const result = await lovable.auth.signInWithOAuth('apple', {
-        redirect_uri: window.location.origin,
-      });
-      if (result.error) throw result.error;
-      if (result.redirected) return;
-      ambientSound.play('boot');
-      toast.success('Login efetuado!');
-    } catch (err: any) {
-      ambientSound.play('error');
-      toast.error(err?.message ?? 'Falha no login com Apple');
-    } finally {
-      setLoading(false);
-    }
-  };
-
   return (
     <div className="min-h-[100dvh] w-full flex items-center justify-center bg-background relative overflow-hidden br2049-rain">
       {/* Scanline sweep */}
@@ -153,27 +116,21 @@ export default function Auth() {
           <div className="absolute inset-0 animate-holographic-scan pointer-events-none opacity-30" />
 
           <div className="text-center relative z-10">
-            {/* Brand block — canonical FxkLogo full variant */}
+            {/* FXK Logo */}
             <div className="flex justify-center mb-3">
-              <FxkLogo size={56} variant="full" tone="sync" className="drop-shadow-[0_0_14px_hsl(var(--status-sync)/0.35)]" />
+              <img
+                src={fxkLogo}
+                alt="FX Kontrol"
+                className="h-16 w-16 object-contain"
+                style={{ filter: 'drop-shadow(0 0 12px hsl(32 100% 50% / 0.3))' }}
+              />
             </div>
-            <p className="ds-mono text-[9px] mt-0.5 tracking-[0.15em] uppercase text-status-sync/60">
+
+            <h1 className="text-lg font-bold text-foreground tracking-[0.15em] uppercase">FX KONTROL</h1>
+            <p className="text-[9px] mt-0.5 font-mono tracking-[0.15em] uppercase" style={{ color: 'hsl(32 100% 50% / 0.5)' }}>
               NEXUS AUTHENTICATION
             </p>
-
-            {/* Capability badges — quick value-prop strip */}
-            <div className="mt-3 flex items-center justify-center gap-1.5 flex-wrap">
-              {['Pyro · DMX · Drones', 'Live Read-Only', 'NFPA 1123'].map((b) => (
-                <span
-                  key={b}
-                  className="ds-mono text-[8px] tracking-[0.12em] uppercase px-1.5 py-0.5 rounded border border-status-sync/20 text-status-sync/70 bg-status-sync/5"
-                >
-                  {b}
-                </span>
-              ))}
-            </div>
-
-            <p className="text-ds-caption text-muted-foreground mt-3">
+            <p className="text-xs text-muted-foreground mt-3">
               {isLogin ? 'Entre para acessar seus projetos' : 'Crie sua conta'}
             </p>
           </div>
@@ -185,7 +142,7 @@ export default function Auth() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
-              className="bg-[hsl(var(--surface-0)/0.6)] border-[hsl(32_100%_50%/0.12)] rounded-xl h-10 text-ds-label focus:border-[hsl(32_100%_50%/0.35)] focus:ring-1 focus:ring-[hsl(32_100%_50%/0.15)]"
+              className="bg-[hsl(var(--surface-0)/0.6)] border-[hsl(32_100%_50%/0.12)] rounded-xl h-10 text-sm focus:border-[hsl(32_100%_50%/0.35)] focus:ring-1 focus:ring-[hsl(32_100%_50%/0.15)]"
             />
             <Input
               type="password"
@@ -194,9 +151,9 @@ export default function Auth() {
               onChange={(e) => setPassword(e.target.value)}
               required
               minLength={6}
-              className="bg-[hsl(var(--surface-0)/0.6)] border-[hsl(32_100%_50%/0.12)] rounded-xl h-10 text-ds-label focus:border-[hsl(32_100%_50%/0.35)] focus:ring-1 focus:ring-[hsl(32_100%_50%/0.15)]"
+              className="bg-[hsl(var(--surface-0)/0.6)] border-[hsl(32_100%_50%/0.12)] rounded-xl h-10 text-sm focus:border-[hsl(32_100%_50%/0.35)] focus:ring-1 focus:ring-[hsl(32_100%_50%/0.15)]"
             />
-            <Button type="submit" className="w-full h-10 rounded-xl font-semibold text-ds-label" style={{
+            <Button type="submit" className="w-full h-10 rounded-xl font-semibold text-sm" style={{
               background: 'linear-gradient(135deg, hsl(32 100% 50%), hsl(38 100% 55%))',
               color: 'hsl(220 20% 3%)',
             }} disabled={loading}>
@@ -204,39 +161,7 @@ export default function Auth() {
             </Button>
           </form>
 
-          <div className="relative z-10 flex items-center gap-2">
-            <div className="flex-1 h-px bg-[hsl(32_100%_50%/0.12)]" />
-            <span className="text-[9px] font-mono tracking-[0.2em] uppercase text-muted-foreground">OR</span>
-            <div className="flex-1 h-px bg-[hsl(32_100%_50%/0.12)]" />
-          </div>
-
-          <Button
-            type="button"
-            onClick={handleGoogleSignIn}
-            disabled={loading}
-            variant="outline"
-            className="relative z-10 w-full h-10 rounded-xl font-medium text-ds-label bg-[hsl(var(--surface-0)/0.6)] border-[hsl(32_100%_50%/0.15)] hover:bg-[hsl(var(--surface-0)/0.9)] hover:border-[hsl(32_100%_50%/0.3)] gap-2"
-          >
-            <svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true">
-              <path fill="#EA4335" d="M12 10.2v3.9h5.5c-.2 1.4-1.7 4.1-5.5 4.1-3.3 0-6-2.7-6-6.1s2.7-6.1 6-6.1c1.9 0 3.1.8 3.8 1.5l2.6-2.5C16.7 3.4 14.6 2.5 12 2.5 6.8 2.5 2.6 6.7 2.6 12s4.2 9.5 9.4 9.5c5.4 0 9-3.8 9-9.2 0-.6-.1-1.1-.2-1.6H12z"/>
-            </svg>
-            Continuar com Google
-          </Button>
-
-          <Button
-            type="button"
-            onClick={handleAppleSignIn}
-            disabled={loading}
-            variant="outline"
-            className="relative z-10 w-full h-10 rounded-xl font-medium text-ds-label bg-[hsl(var(--surface-0)/0.6)] border-[hsl(32_100%_50%/0.15)] hover:bg-[hsl(var(--surface-0)/0.9)] hover:border-[hsl(32_100%_50%/0.3)] gap-2"
-          >
-            <svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true" fill="currentColor">
-              <path d="M17.05 20.28c-.98.95-2.05.8-3.08.35-1.09-.46-2.09-.48-3.24 0-1.44.62-2.2.44-3.06-.35C2.79 15.25 3.51 7.59 9.05 7.31c1.35.07 2.29.74 3.08.8 1.18-.24 2.31-.93 3.57-.84 1.51.12 2.65.72 3.4 1.8-3.12 1.87-2.38 5.98.48 7.13-.57 1.5-1.31 2.99-2.54 4.09zM12.03 7.25c-.15-2.23 1.66-4.07 3.74-4.25.29 2.58-2.34 4.5-3.74 4.25z"/>
-            </svg>
-            Continuar com Apple
-          </Button>
-
-          <p className="text-center text-ds-caption text-muted-foreground relative z-10">
+          <p className="text-center text-xs text-muted-foreground relative z-10">
             {isLogin ? 'Não tem conta? ' : 'Já tem conta? '}
             <button
               type="button"
@@ -246,11 +171,6 @@ export default function Auth() {
               {isLogin ? 'Cadastre-se' : 'Faça login'}
             </button>
           </p>
-          <p className="text-center text-[10px] text-muted-foreground/70 relative z-10">
-            <a href="/landing" className="hover:text-status-sync hover:underline transition-colors">
-              Conhecer a plataforma →
-            </a>
-          </p>
         </div>
 
         {/* MinasFX branding */}
@@ -258,11 +178,7 @@ export default function Auth() {
           <img
             src={minasfxLogo}
             alt="Minas FX"
-            width={24}
-            height={24}
-            loading="lazy"
-            decoding="async"
-            className="h-6 w-6 object-contain opacity-25"
+            className="h-6 object-contain opacity-25"
           />
         </div>
       </div>

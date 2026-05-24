@@ -37,21 +37,21 @@ interface BurstConfig {
 // Star counts calibrated to Finale 3D reference at 3" (75mm) baseline
 // gravityMult and tailFactor now SYNC with effectFrameAtlas for consistency.
 const BURST_CONFIGS: Record<BurstPattern, BurstConfig> = {
-  peony:         { starCount: 280, velocity: 26, spread: 1.0, tailFactor: 0.3, gravityMult: 1.0, symmetry: 0 },
-  chrysanthemum: { starCount: 200, velocity: 30, spread: 1.0, tailFactor: 1.4, gravityMult: 1.0, symmetry: 0 },
-  willow:        { starCount: 180, velocity: 22, spread: 0.8, tailFactor: 2.0, gravityMult: 1.8, symmetry: 0 },
+  peony:         { starCount: 280, velocity: 26, spread: 1.0, tailFactor: 0.05, gravityMult: 1.0, symmetry: 0 },  // Grizzly: clean expanding sphere, no tail
+  chrysanthemum: { starCount: 200, velocity: 30, spread: 1.0, tailFactor: 1.6, gravityMult: 1.0, symmetry: 0 },   // Grizzly: tailed sphere
+  willow:        { starCount: 180, velocity: 18, spread: 0.8, tailFactor: 2.8, gravityMult: 2.2, symmetry: 0 },   // Heavy charcoal, drift down
   palm:          { starCount: 60,  velocity: 24, spread: 0.6, tailFactor: 1.2, gravityMult: 1.6, symmetry: 6 },
   ring:          { starCount: 80,  velocity: 28, spread: 0.1, tailFactor: 0.5, gravityMult: 0.6, symmetry: 0 },
   heart:         { starCount: 100, velocity: 26, spread: 0.0, tailFactor: 0.4, gravityMult: 0.7, symmetry: 0 },
-  crossette:     { starCount: 36,  velocity: 32, spread: 0.9, tailFactor: 0.6, gravityMult: 1.0, symmetry: 4 },
-  kamuro:        { starCount: 300, velocity: 18, spread: 1.0, tailFactor: 2.0, gravityMult: 1.5, symmetry: 0 },
-  brocade:       { starCount: 250, velocity: 25, spread: 1.0, tailFactor: 1.8, gravityMult: 1.3, symmetry: 0 },
+  crossette:     { starCount: 40,  velocity: 32, spread: 0.9, tailFactor: 0.6, gravityMult: 1.0, symmetry: 4 },   // Grizzly: 4-5 stars split
+  kamuro:        { starCount: 300, velocity: 18, spread: 1.0, tailFactor: 2.6, gravityMult: 1.5, symmetry: 0 },   // Gold persistent to ground
+  brocade:       { starCount: 250, velocity: 23, spread: 1.0, tailFactor: 2.2, gravityMult: 1.3, symmetry: 0 },   // Grizzly: woven gold
   dragon_egg:    { starCount: 40,  velocity: 15, spread: 0.6, tailFactor: 0.3, gravityMult: 1.8, symmetry: 0 },
   multi_break:   { starCount: 120, velocity: 26, spread: 1.0, tailFactor: 0.5, gravityMult: 1.0, symmetry: 0 },
   time_rain:     { starCount: 100, velocity: 22, spread: 0.9, tailFactor: 0.2, gravityMult: 0.3, symmetry: 0 },
   falling_leaves:{ starCount: 80,  velocity: 24, spread: 1.0, tailFactor: 0.8, gravityMult: 1.6, symmetry: 0 },
-  glitter:       { starCount: 200, velocity: 26, spread: 1.0, tailFactor: 0.4, gravityMult: 1.0, symmetry: 0 },
-  horsetail:     { starCount: 160, velocity: 16, spread: 0.7, tailFactor: 2.5, gravityMult: 2.0, symmetry: 0 },
+  glitter:       { starCount: 200, velocity: 26, spread: 1.0, tailFactor: 0.8, gravityMult: 1.0, symmetry: 0 },   // Grizzly: strobing glitter
+  horsetail:     { starCount: 160, velocity: 14, spread: 0.7, tailFactor: 2.5, gravityMult: 2.4, symmetry: 0 },   // Heavy cascade
   brocade_crown: { starCount: 220, velocity: 24, spread: 1.0, tailFactor: 1.6, gravityMult: 1.2, symmetry: 0 },
   saturn:        { starCount: 140, velocity: 28, spread: 1.0, tailFactor: 0.5, gravityMult: 0.8, symmetry: 0 },
   dahlia:        { starCount: 60,  velocity: 42, spread: 0.9, tailFactor: 0.2, gravityMult: 1.1, symmetry: 0 },
@@ -65,6 +65,15 @@ const BURST_CONFIGS: Record<BurstPattern, BurstConfig> = {
   candle:        { starCount: 1,   velocity: 16, spread: 0.1, tailFactor: 1.0, gravityMult: 0.6, symmetry: 0 },
   strobe:        { starCount: 140, velocity: 18, spread: 1.0, tailFactor: 0.1, gravityMult: 0.1, symmetry: 0 },
 };
+
+// Aerodynamic-drag-like attenuation factor — breaks perfect CGI sphere.
+// Higher initial velocity loses slightly more, mimicking quadratic-ish drag at spawn.
+function applyAeroJitter(v: number): number {
+  // ±2.5% random per-component + small attenuation prop. to |v|/30
+  const jitter = 1 + (Math.random() - 0.5) * 0.05;
+  const atten = 1 - 0.018 * Math.min(1, Math.abs(v) / 30);
+  return v * jitter * atten;
+}
 
 /**
  * Generate burst star velocities for a given pattern.
@@ -290,6 +299,14 @@ export function generateBurst(
       vx = Math.sin(phi) * Math.cos(theta) * speed;
       vy = Math.sin(phi) * Math.sin(theta) * speed + cfg.velocity * 0.15;
       vz = Math.cos(phi) * speed;
+    }
+
+    // Aerodynamic asymmetry — Weingart §III: stars are not perfect spheres.
+    // Skip for tightly-symmetric patterns (ring/heart) to preserve geometric intent.
+    if (pattern !== 'ring' && pattern !== 'heart' && pattern !== 'spider_web') {
+      vx = applyAeroJitter(vx);
+      vy = applyAeroJitter(vy);
+      vz = applyAeroJitter(vz);
     }
 
     velocities[i3] = vx;

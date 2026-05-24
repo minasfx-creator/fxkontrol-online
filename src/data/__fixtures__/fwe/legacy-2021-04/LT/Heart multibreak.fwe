@@ -1,0 +1,112 @@
+<?xml version="1.0"?>
+<FireworkEffect xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+  <Children>
+    <BaseEffectNode xsi:type="Shell">
+      <Children>
+        <BaseEffectNode xsi:type="BurstingCharge">
+          <Children>
+            <BaseEffectNode xsi:type="Stars">
+              <Children />
+              <Type>Normal</Type>
+              <Distribution xsi:type="HeartDistribution">
+                <Speed>1</Speed>
+                <Sigma>0.04</Sigma>
+              </Distribution>
+              <Color>
+                <CustomR>0</CustomR>
+                <CustomG>0</CustomG>
+                <CustomB>0</CustomB>
+                <Color>Yellow</Color>
+              </Color>
+              <Count>414</Count>
+              <MinimumLifetime>1.9</MinimumLifetime>
+              <MaximumLifetime>2.8</MaximumLifetime>
+              <Strobe>false</Strobe>
+              <StrobeFreqMean>14</StrobeFreqMean>
+            </BaseEffectNode>
+          </Children>
+          <Energy>69</Energy>
+          <Delay>2.6</Delay>
+        </BaseEffectNode>
+        <BaseEffectNode xsi:type="AscentEffect">
+          <Children />
+          <Color>
+            <CustomR>0</CustomR>
+            <CustomG>0</CustomG>
+            <CustomB>0</CustomB>
+            <Color>Spark</Color>
+          </Color>
+          <Width>4</Width>
+          <Density>50</Density>
+          <EmitStart>0.03</EmitStart>
+          <EmitEnd>0.6326</EmitEnd>
+          <Life>3.1</Life>
+        </BaseEffectNode>
+        <BaseEffectNode xsi:type="BurstingCharge">
+          <Children>
+            <BaseEffectNode xsi:type="Stars">
+              <Children>
+                <BaseEffectNode xsi:type="Crackling">
+                  <Children />
+                </BaseEffectNode>
+              </Children>
+              <Type>Normal</Type>
+              <Distribution xsi:type="HeartDistribution">
+                <Speed>1</Speed>
+                <Sigma>0.04</Sigma>
+              </Distribution>
+              <Color>
+                <CustomR>0</CustomR>
+                <CustomG>0</CustomG>
+                <CustomB>0</CustomB>
+                <Color>Red</Color>
+              </Color>
+              <Count>200</Count>
+              <MinimumLifetime>1.5</MinimumLifetime>
+              <MaximumLifetime>2.1</MaximumLifetime>
+              <Strobe>false</Strobe>
+              <StrobeFreqMean>14</StrobeFreqMean>
+            </BaseEffectNode>
+          </Children>
+          <Energy>153</Energy>
+          <Delay>5.3</Delay>
+        </BaseEffectNode>
+        <BaseEffectNode xsi:type="BurstingCharge">
+          <Children>
+            <BaseEffectNode xsi:type="Stars">
+              <Children />
+              <Type>Normal</Type>
+              <Distribution xsi:type="RingDistribution">
+                <Speed>1</Speed>
+                <Sigma>0.04</Sigma>
+              </Distribution>
+              <Color>
+                <CustomR>0</CustomR>
+                <CustomG>0</CustomG>
+                <CustomB>0</CustomB>
+                <Color>Spark</Color>
+              </Color>
+              <Count>100</Count>
+              <MinimumLifetime>1.5</MinimumLifetime>
+              <MaximumLifetime>2.1</MaximumLifetime>
+              <Strobe>true</Strobe>
+              <StrobeFreqMean>14</StrobeFreqMean>
+            </BaseEffectNode>
+          </Children>
+          <Energy>47</Energy>
+          <Delay>0.9</Delay>
+        </BaseEffectNode>
+      </Children>
+      <Diameter>0.232</Diameter>
+      <LiftingCharge>119</LiftingCharge>
+    </BaseEffectNode>
+  </Children>
+  <Identifier>
+    <Name>Heart multibreak</Name>
+    <Author>LT</Author>
+  </Identifier>
+  <AuthorSoftwareVersion>
+    <Major>0</Major>
+    <Minor>6</Minor>
+  </AuthorSoftwareVersion>
+</FireworkEffect>

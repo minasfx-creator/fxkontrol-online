@@ -1,0 +1,148 @@
+<?xml version="1.0"?>
+<FireworkEffect xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <Children>
+    <BaseEffectNode xsi:type="Shell">
+      <Children>
+        <BaseEffectNode xsi:type="BurstingCharge">
+          <Children>
+            <BaseEffectNode xsi:type="Stars">
+              <Children>
+                <BaseEffectNode xsi:type="StarTails">
+                  <Children />
+                  <Color>
+                    <CustomR>0</CustomR>
+                    <CustomG>0</CustomG>
+                    <CustomB>0</CustomB>
+                    <Color>Orange</Color>
+                  </Color>
+                  <Crackle>false</Crackle>
+                  <Width>1.3</Width>
+                  <Density>4</Density>
+                  <EmitStart>0.02</EmitStart>
+                  <EmitEnd>0.07</EmitEnd>
+                  <Life>2.07</Life>
+                  <Strobe>false</Strobe>
+                  <StrobeFreqMean>14</StrobeFreqMean>
+                  <StarSizeFactor>0.43</StarSizeFactor>
+                  <LifeSigma>1.01</LifeSigma>
+                </BaseEffectNode>
+                <BaseEffectNode xsi:type="StarTails">
+                  <Children />
+                  <Color>
+                    <CustomR>0</CustomR>
+                    <CustomG>0</CustomG>
+                    <CustomB>0</CustomB>
+                    <Color>Spark</Color>
+                  </Color>
+                  <Crackle>false</Crackle>
+                  <Width>1.5</Width>
+                  <Density>4</Density>
+                  <EmitStart>0.02</EmitStart>
+                  <EmitEnd>0.07</EmitEnd>
+                  <Life>1.85</Life>
+                  <Strobe>true</Strobe>
+                  <StrobeFreqMean>7.2</StrobeFreqMean>
+                  <StarSizeFactor>0.43</StarSizeFactor>
+                  <LifeSigma>0.36</LifeSigma>
+                </BaseEffectNode>
+              </Children>
+              <Count>40</Count>
+              <Distribution xsi:type="SphericalDistribution">
+                <Speed>1</Speed>
+                <Sigma>0.14</Sigma>
+                <PositionSigma>1</PositionSigma>
+                <Rotation>
+                  <XAxis>0</XAxis>
+                  <YAxis>0</YAxis>
+                  <ZAxis>0</ZAxis>
+                </Rotation>
+              </Distribution>
+              <Color>
+                <CustomR>0</CustomR>
+                <CustomG>0</CustomG>
+                <CustomB>0</CustomB>
+                <Color>Red</Color>
+              </Color>
+              <Type>Small</Type>
+              <Birthtime>0</Birthtime>
+              <BirthtimeSigmaRatio>0.04</BirthtimeSigmaRatio>
+              <MinimumLifetime>0.74</MinimumLifetime>
+              <MaximumLifetime>2.01</MaximumLifetime>
+              <CustomDimmcurve>true</CustomDimmcurve>
+              <FadeRatios>
+                <A>0.126415089</A>
+                <B>0.3735849</B>
+                <C>0.692452848</C>
+                <D>1</D>
+              </FadeRatios>
+              <Strobe>false</Strobe>
+              <StrobeFreqMean>14</StrobeFreqMean>
+              <ColorChanging>false</ColorChanging>
+              <Color2>
+                <CustomR>0</CustomR>
+                <CustomG>0</CustomG>
+                <CustomB>0</CustomB>
+                <Color>Orange</Color>
+              </Color2>
+              <StrobeSynchronous>false</StrobeSynchronous>
+            </BaseEffectNode>
+          </Children>
+          <Auto>false</Auto>
+          <Energy>58</Energy>
+          <Color>
+            <CustomR>0</CustomR>
+            <CustomG>0</CustomG>
+            <CustomB>0</CustomB>
+            <Color>Spark</Color>
+          </Color>
+          <ChangeColor>false</ChangeColor>
+          <Sound>true</Sound>
+          <Delay>2.6</Delay>
+          <TestSound>false</TestSound>
+        </BaseEffectNode>
+        <BaseEffectNode xsi:type="AscentStar">
+          <Children />
+          <Color>
+            <CustomR>0</CustomR>
+            <CustomG>0</CustomG>
+            <CustomB>0</CustomB>
+            <Color>Gold</Color>
+          </Color>
+          <FI xsi:type="FadeInfo">
+            <A>0.2723949</A>
+            <B>0.5776965</B>
+            <C>0.8738574</C>
+            <D>0.999</D>
+          </FI>
+          <SizeInPercent>30</SizeInPercent>
+        </BaseEffectNode>
+      </Children>
+      <ID>1</ID>
+      <AllowRenaming>true</AllowRenaming>
+      <UserDefinedName>Shell (200mm) 1</UserDefinedName>
+      <SimpleSize>
+        <DiameterPreset>d100</DiameterPreset>
+      </SimpleSize>
+      <SizeSelection>Advanced</SizeSelection>
+      <Diameter>0.065</Diameter>
+      <LiftingCharge>96</LiftingCharge>
+    </BaseEffectNode>
+  </Children>
+  <Protected>false</Protected>
+  <AutotagOverrideQuantity>0</AutotagOverrideQuantity>
+  <AutotagOverrideCaliber>0</AutotagOverrideCaliber>
+  <AutotagOverrideFurther />
+  <Identifier>
+    <Name>Single Shot: Peony Red</Name>
+    <Author>FWsim 3.3</Author>
+  </Identifier>
+  <Metadata>
+    <Pieces />
+  </Metadata>
+  <AuthorSoftwareVersion>
+    <Major>3</Major>
+    <Minor>2</Minor>
+    <Build>0</Build>
+    <Revision>101</Revision>
+  </AuthorSoftwareVersion>
+</FireworkEffect>

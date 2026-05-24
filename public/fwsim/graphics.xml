@@ -1,0 +1,599 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<GraphicsSetup xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+	<!-- note: when you add new colors below, they do not show up in FWsim. Ask Lukas to integrate them. -->
+	<PresetColors_>
+		Red = 255,0,15
+		PastelRed = 240,128,128
+		Orange = 255,140,10
+		Gold = 255,200,120
+		Yellow = 255,215,0
+		PastelGreen = 200,255,185
+		Green = 35,205,10
+		DarkGreen = 34,139,34
+		Mint = 78,238,148
+		Aqua = 135,206,255
+		PastelBlue = 150,160,255
+		Blue = 50,50,200
+		PastelPurple = 171,130,255
+		Purple = 160,0,255
+		Pink = 255,20,147
+		Spark = 255,247,230
+		White = 255,251,245
+		PastelPink = 255,187,255
+		Lime = 200,255,47
+		DarkYellow = 254,179,22
+		DeepPurple=49,1,192
+		LightGreen=188,255,128
+		LightPink=255,47,104
+		LightRed=254,52,1
+		LightYellow=254,238,129
+		Lilac=219,112,254
+		PastelOrange=255,169,83
+		SeaGreen=0,164,66
+		SkyBlue=44,90,252
+		IceBlue=210,231,255
+	</PresetColors_>
+	<TonemappingConfig> <!-- Changes inthis section require a graphics reload to become active. To reload graphics, simply change the size of the timeline.-->
+		<Contrast>1.7</Contrast>
+		<HdrMax>16</HdrMax>
+	</TonemappingConfig>
+	<MotionBlur> 
+		<Enabled>true</Enabled>
+		<!-- keep in mind that different graphics settings might have motion blur disabled. This is on top of your individual graphics settings. -->
+		<OneDividedByExposureTime>35</OneDividedByExposureTime>
+		<!-- As you know, digital video cameras have a framerate. They also have a shutter speed. For example, you might have framerate of 30fps and a shutter speed of 1/60 seconds. That means the electronic shutter of the camera is open for 1/60 seconds, then closed for 1/60 seconds, and so on. The motion blur depends on the framerate. FWsim renders with a variable framerate. Nevertheless, if we have variable motion blur it will look jittery, so we need to have a fixed exposure time. "50" means 1/50 seconds. -->
+		<ExposureCorrection>0.8</ExposureCorrection>
+		<!-- due to motion blur, the brightness of the particle is smeared across more pixels of the camera than usual. Therefore, every individual pixel gets dimmer. For example, imagine if a particle moved at super high speeds - then we would see a very long streak of light but it would not be very bright. This parameter defines if we want to simulate this effect realistically, or only a little bit, or not at all. Set it to ZERO in order to have the brightness be always the same (unrealistic). Set it to one in order to simulate reality (which is realistic but might not look right). Set it to values in-between to fade between the two extremes. -->
+	</MotionBlur>
+	<MainStarsShape>
+		<!-- When you change these parameters, it is important to take into account that bloom will make the particles somewhat bigger. So try it with and without bloom, to get better understanding of the parameters. -->
+		<WhiteRadius>0.15</WhiteRadius>
+		<!-- This is the "center" area of the particle. Center means, it has maximum output (for example, with a color of 255/0/0, this defines how much of the particle is completely red. This does not mean it is red on the screen, because we simulate the camera characteristics and it might fade into white. -->
+		<FalloffFactor>0.2</FalloffFactor>
+		<!-- this determines, after the center, how we fade from white into black. If it is 1, then we do it linearly. If you set it to >1, then we go to black very quickly. If you set it to <1, then it's more smooth -->
+	</MainStarsShape>
+	<MainStars_SettingsForEachType>
+		<item>
+			<key>
+				<TypeEnum>XLarge</TypeEnum>
+			</key>
+			<value> 
+				<StarsSizeSetting>
+					<Brightness>0.6</Brightness>
+					<ShapeOverride>
+						<!-- If you set this, then this will override the texture for this particle type. If you just omit it, then the default value MainStarsShape is used instead, which is defined above under "MainStarsShape". By "omit", I mean you simply delete the entire "ShapeOverride" block.-->
+						<WhiteRadius>0.12</WhiteRadius>
+								<FalloffFactor>0.25</FalloffFactor>
+					</ShapeOverride>
+				</StarsSizeSetting>
+			</value>
+		</item>
+		<item>
+			<key>
+				<TypeEnum>Large</TypeEnum>
+			</key>
+			<value>
+				<StarsSizeSetting>
+					<Brightness>0.8</Brightness>
+					<ShapeOverride>
+						<!-- If you set this, then this will override the texture for this particle type. If you just omit it, then the default value MainStarsShape is used instead, which is defined above under "MainStarsShape". By "omit", I mean you simply delete the entire "ShapeOverride" block.-->
+						<WhiteRadius>0.1</WhiteRadius>
+						<FalloffFactor>0.175</FalloffFactor>
+					</ShapeOverride>
+				</StarsSizeSetting>
+			</value>
+		</item>
+		<item>
+			<key>
+				<TypeEnum>Normal</TypeEnum>
+			</key>
+			<value>
+				<StarsSizeSetting>
+					<Brightness>1</Brightness>
+					<!-- Please leave this value on 1. Keep in mind all these brightness values are multiplied by MainStarsBrightness. -->
+					<ShapeOverride>
+						<!-- If you set this, then this will override the texture for this particle type. If you just omit it, then the default value MainStarsShape is used instead, which is defined above under "MainStarsShape". By "omit", I mean you simply delete the entire "ShapeOverride" block.-->
+						<WhiteRadius>0.07</WhiteRadius>
+						<FalloffFactor>0.14</FalloffFactor>
+					</ShapeOverride>
+				</StarsSizeSetting>
+			</value>
+		</item>
+		<item>
+			<key>
+				<TypeEnum>Small</TypeEnum>
+			</key>
+			<value>
+				<StarsSizeSetting>
+					<Brightness>1.75</Brightness>
+					<ShapeOverride>
+						<!-- If you set this, then this will override the texture for this particle type. If you just omit it, then the default value MainStarsShape is used instead, which is defined above under "MainStarsShape". By "omit", I mean you simply delete the entire "ShapeOverride" block.-->
+						<WhiteRadius>0.08</WhiteRadius>
+						<FalloffFactor>0.12</FalloffFactor>
+					</ShapeOverride>
+				</StarsSizeSetting>
+			</value>
+		</item>
+		<item>
+			<key>
+				<TypeEnum>XSmall</TypeEnum>
+			</key>
+			<value>
+				<StarsSizeSetting>
+					<Brightness>4</Brightness>
+					<ShapeOverride>
+						<!-- If you set this, then this will override the texture for this particle type. If you just omit it, then the default value MainStarsShape is used instead, which is defined above under "MainStarsShape". By "omit", I mean you simply delete the entire "ShapeOverride" block.-->
+						<WhiteRadius>0.12</WhiteRadius>
+						<FalloffFactor>0.08</FalloffFactor>
+					</ShapeOverride>
+				</StarsSizeSetting>
+			</value>
+		</item>
+		<item>
+			<key>
+				<TypeEnum>XXSmall</TypeEnum>
+			</key>
+			<value>
+				<StarsSizeSetting>
+					<Brightness>8</Brightness>
+					<ShapeOverride>
+						<WhiteRadius>0.06</WhiteRadius>
+						<FalloffFactor>0.02</FalloffFactor>
+					</ShapeOverride>
+				</StarsSizeSetting>
+			</value>
+		</item>
+		<item>
+			<key>
+				<TypeEnum>Sparks</TypeEnum>
+			</key>
+			<value>
+				<StarsSizeSetting>
+					<Brightness>0.01</Brightness>
+					<!-- kommentar Lukas: Das gilt nur für main stars die auf sparks gessetzt werden. Es beeinflusst nicht die Helligkeit von Tails, die haben einen separaten Faktor. -->
+					<!-- for sparks, ShapeOverride is not possible. --> 
+				</StarsSizeSetting>
+			</value>
+		</item>
+		<item>
+			<key>
+				<TypeEnum>FallingLeaves</TypeEnum>
+			</key>
+			<value>
+				<StarsSizeSetting>
+					<Brightness>1</Brightness>
+					<ShapeOverride>
+						<!-- If you set this, then this will override the texture for this particle type. If you just omit it, then the default value MainStarsShape is used instead, which is defined above under "MainStarsShape". By "omit", I mean you simply delete the entire "ShapeOverride" block.-->
+						<WhiteRadius>0.09</WhiteRadius>
+						<FalloffFactor>0.08</FalloffFactor>
+					</ShapeOverride>
+				</StarsSizeSetting>
+			</value>
+		</item>
+	</MainStars_SettingsForEachType>
+	<FlashesConfiguration>
+		<ShellLaunchFlame>
+			<SizeAtBeginning>0.3</SizeAtBeginning>
+			<SizeAtEnding>4</SizeAtEnding>
+			<Brightness>5</Brightness>
+			<Duration>0.2</Duration>
+			<SizeDependingOnEnergy>
+
+				<DataPoint>
+					<X>16</X> <!-- the X is the launchEnergy. launchEnergy = mass * launch velocity. typical values for launchEnergy: 16 for 75mm, 1300 for 300mm, 13000 (!) for 600mm>-->
+					<Y>0.2</Y>
+				</DataPoint>
+
+				<DataPoint>
+					<X>1300</X>
+					<Y>1</Y>
+				</DataPoint>
+
+				<DataPoint>
+					<X>13000</X>
+					<Y>1.5</Y>
+				</DataPoint>
+
+			</SizeDependingOnEnergy>
+		</ShellLaunchFlame>
+		<MineFlame>
+			<SizeAtBeginning>0.3</SizeAtBeginning>
+			<SizeAtEnding>4</SizeAtEnding>
+			<Brightness>2</Brightness>
+			<Duration>0.15</Duration>
+			<SizeDependingOnEnergy>
+ <!-- for mines, the X is just the energy defined in the burst-->
+				<DataPoint>
+					<X>16</X>
+					<Y>0.2</Y>
+				</DataPoint>
+
+				<DataPoint>
+					<X>50</X>
+					<Y>1</Y>
+				</DataPoint>
+
+				<DataPoint>
+					<X>100</X>
+					<Y>1.5</Y>
+				</DataPoint>
+
+			</SizeDependingOnEnergy>
+		</MineFlame>
+		<ShellExplosion>
+			<SizeAtBeginning>15</SizeAtBeginning>
+			<SizeAtEnding>10</SizeAtEnding>
+			<Brightness>5</Brightness>
+			<Duration>0.08</Duration>
+			<SizeDependingOnEnergy>
+
+				<DataPoint>
+					<X>10</X>
+					<Y>0.2</Y>
+				</DataPoint>
+
+				<DataPoint>
+					<X>100</X>
+					<Y>1</Y>
+				</DataPoint>
+
+				<DataPoint>
+					<X>500</X>
+					<Y>1.5</Y>
+				</DataPoint>
+
+			</SizeDependingOnEnergy>
+		</ShellExplosion>
+	</FlashesConfiguration>
+
+	<StrobeConfig>
+		<!-- the following two values are for configuring the strobe type "fade". both values are multiplied by the user-supplied frequency-->
+		<StrobeFadeBegin>1.3</StrobeFadeBegin>
+		<StrobeFadeEnd>0.7</StrobeFadeEnd>
+	</StrobeConfig>
+	
+	<RandomFlickeringSpeed>2.5</RandomFlickeringSpeed> <!-- this parameter updates immediately when you change it-->
+
+	<RandomFlickeringAmountForCrossette>0</RandomFlickeringAmountForCrossette>
+	<RandomFlickeringSpeedForCrossette>7.5</RandomFlickeringSpeedForCrossette>
+	<RandomFlickeringForStars>
+		<!-- in the show editor, changes to this become active only when you shift the effect on the timeline (or do anything else that causes it to reload)
+		in the effect editor, these changes become effective immediately. -->
+		<item>
+			<key>
+				<TypeEnum>XLarge</TypeEnum>
+			</key>
+			<value>
+				<float>0.12</float>
+			</value>
+		</item>
+		<item>
+			<key>
+				<TypeEnum>Large</TypeEnum>
+			</key>
+			<value>
+				<float>0.1</float>
+			</value>
+		</item>
+		<item>
+			<key>
+				<TypeEnum>Normal</TypeEnum>
+			</key>
+			<value>
+				<float>0.08</float>
+			</value>
+		</item>
+		<item>
+			<key>
+				<TypeEnum>Small</TypeEnum>
+			</key>
+			<value>
+				<float>0.05</float>
+			</value>
+		</item>
+		<item>
+			<key>
+				<TypeEnum>XSmall</TypeEnum>
+			</key>
+			<value>
+				<float>0.03</float>
+			</value>
+		</item>
+		<item>
+			<key>
+				<TypeEnum>XXSmall</TypeEnum>
+			</key>
+			<value>
+				<float>0.02</float>
+			</value>
+		</item>
+		<item>
+			<key>
+				<TypeEnum>Sparks</TypeEnum>
+			</key>
+			<value>
+				<float>0</float>
+			</value>
+		</item>
+		<item>
+			<key>
+				<TypeEnum>FallingLeaves</TypeEnum>
+			</key>
+			<value>
+				<float>0.1</float>
+			</value>
+		</item>
+	</RandomFlickeringForStars>
+	<RandomFlickeringForTails>
+		<!-- in the show editor, changes to this become active only when you shift the effect on the timeline (or do anything else that causes it to reload)
+		in the effect editor, these changes become effective immediately. -->
+		<item>
+			<key>
+				<TailTypeEnum>Sparks</TailTypeEnum>
+			</key>
+			<value>
+				<float>0.25</float>
+			</value>
+		</item>
+		<item>
+			<key>
+				<TailTypeEnum>Microstars_Small</TailTypeEnum>
+			</key>
+			<value>
+				<float>0</float>
+			</value>
+		</item>
+		<item>
+			<key>
+				<TailTypeEnum>Microstars_Medium</TailTypeEnum>
+			</key>
+			<value>
+				<float>0</float>
+			</value>
+		</item>
+		<item>
+			<key>
+				<TailTypeEnum>Microstars_Large</TailTypeEnum>
+			</key>
+			<value>
+				<float>0</float>
+			</value>
+		</item>
+	</RandomFlickeringForTails>
+	<DefaultStarBrightnessCurve>
+		<DurationOfFadeIn_in_percent>0.09</DurationOfFadeIn_in_percent>
+		<DurationOfFadeOut_in_percent>0.15</DurationOfFadeOut_in_percent>
+	</DefaultStarBrightnessCurve>
+	<BrightnessNormalization_ForMainStars>0.3</BrightnessNormalization_ForMainStars>
+	<!-- with the main stars we have the problem that some colors just look brighter than others because they have more energy. for example, white has 3x as much energy (255 red + 255 blue + 255 green) as red (255 red plus a little bit of other stuff). When you set that factor to 1, the full correction is being applied and white stars get 1/3 as much brightess as red strs. When you set the factor to 0, no corretion is being applied. Beware, this parameter behaves in a very non-linear way (in some parts of the range, small changes have huge effects) -->
+	<BrightnessNormalization_ForSparksAndMicrostars>0.4</BrightnessNormalization_ForSparksAndMicrostars>
+	<MainStarsSizeFactor>0.55</MainStarsSizeFactor> <!-- new value: 0.55 for fwsim 3.5.0.10 -->
+	<MicrostarsSizeFactor>0.7</MicrostarsSizeFactor>
+	<MainStarsColorVariation>0.03</MainStarsColorVariation> <!-- 1 means, vary by a total range of 255 RGB values (meaning, +/- 128 - in this calculation, it is possible to exceed 255, no problem). If you want to vary by only one RGB point, put 1/255 = 0,0039 in there. This probably should be a small value  so that the color diferences are almost imperceptible. Keep in mind, when you test this, that the color is also influenced by the brightness. And the brightness is influenced by the random flickering. Lukas: Maybe we won't even need that? I just figured, the more sources of randomness we add, the more organic and natural the result will look. It's like in music, where you sometimes add elements to an orchestration that you can't hear but that influence the overall sound.-->
+	<MainStarsBrightness>25</MainStarsBrightness>
+	<AscentStarBrightness>25</AscentStarBrightness>
+	<AscentStarFlickering>
+
+		<MinimumBrightness>0.3</MinimumBrightness>
+		
+	</AscentStarFlickering>
+	<MicrostarsBrightness>25</MicrostarsBrightness>
+	<SparksBrightness>10.75</SparksBrightness>
+	<CracklingBrightnessModifier>0.25</CracklingBrightnessModifier> <!-- 1 = same brightness as sparks. 0.5 = half as bright. etc. -->
+	<SparksMass>0.18</SparksMass> <!-- this affects how fast sparks fall. before september 2023, this was 0.3 -->
+	<CracklingMassModifier>1</CracklingMassModifier> <!-- 1 = same mass as sparks. 0.5 = half as much mass. etc. before september 2023, this was 0. -->
+	<CracklingSizeVariation>0.05</CracklingSizeVariation>
+	<SparksNrMultiplier>2.75</SparksNrMultiplier>
+	<SparksSizeFactor>0.35</SparksSizeFactor>
+	<SparksAsMainParticles_AdditionalSizeFactor>0.6</SparksAsMainParticles_AdditionalSizeFactor> <!-- Sparks as main particles should have the same size as tail sparks, but they are still bigger. I am not sure why, and I don't have time to fix this. So as a workaround, I have added this additional factor, which makes "main stars as sparks" even smaller, so that they hopefully will look roughly like we would want t hem to look. IMPORTANT: this parameter sometimes becomes active immediately, and sometimes not. so in order to be sure, please restart fwsim whenever you change it.. -->
+	<SparksAsMainParticles_AdditionalBrightnessFactor>1</SparksAsMainParticles_AdditionalBrightnessFactor>
+	<SparksColorVariation>0.01</SparksColorVariation> <!-- Lukas: Maybe we don't need that?-->
+	<SparksSizeVariation>0.05</SparksSizeVariation> <!-- Marcus: public float SparksMinimumSize => 1 - SparksSizeVariation * 0.5f;
+		public float SparksMaximumSize => 1 + SparksSizeVariation * 0.5f; -->
+	<ExplosionSparksConfig>
+		<Enabled>true</Enabled>
+		<NrStars>100</NrStars>
+		<StarsSpeedRelative>1</StarsSpeedRelative>
+
+		<StarsSpeedVriance>0.1</StarsSpeedVriance>
+		<BurnDuration>
+			<gnp xsi:type="FloatNumberProvider" />
+			<Begin>1.5</Begin>
+			<End>1.5</End>
+		</BurnDuration>
+		<ShellSizeBelowWhichWeUseGoldDense>76</ShellSizeBelowWhichWeUseGoldDense>
+	</ExplosionSparksConfig>
+	<LaunchSparksConfig>
+		<Enabled>true</Enabled>
+		<shell_expStrength>
+			<DataPoint>
+				<X>40</X>
+				<Y>60</Y>
+			</DataPoint>
+			<DataPoint>
+				<X>70</X>
+				<Y>75</Y>
+			</DataPoint>
+			<DataPoint>
+				<X>200</X>
+				<Y>75</Y>
+			</DataPoint>
+		</shell_expStrength>
+		<shell_relativeSpeed>
+			<DataPoint>
+				<X>40</X>
+				<Y>0.5</Y>
+			</DataPoint>
+			<DataPoint>
+				<X>80</X>
+				<Y>0.8</Y>
+			</DataPoint>
+			<DataPoint>
+				<X>1000</X>
+				<Y>1</Y>
+			</DataPoint>
+		</shell_relativeSpeed>
+		<shell_mineWidth>
+			<DataPoint>
+				<X>40</X>
+				<Y>0.065</Y>
+			</DataPoint>
+			<DataPoint>
+				<X>70</X>
+				<Y>0.07</Y>
+			</DataPoint>
+		</shell_mineWidth>
+		<shell_NrStars>
+			<DataPoint>
+				<X>40</X>
+				<Y>100</Y>
+			</DataPoint>
+			<DataPoint>
+				<X>70</X>
+				<Y>200</Y>
+			</DataPoint>
+			<DataPoint>
+				<X>200</X>
+				<Y>250</Y>
+			</DataPoint>
+		</shell_NrStars>
+		<Comet_NrStars>75</Comet_NrStars>
+		<Comet_ExplosionRelativeSpeed>0.6</Comet_ExplosionRelativeSpeed>
+		<Comet_SpeedVariance>0.14</Comet_SpeedVariance>
+		<Comet_MineWidth>0.05</Comet_MineWidth>
+		<BurnDuration>
+			<gnp xsi:type="FloatNumberProvider" />
+			<Begin>1.5</Begin>
+			<End>2.1</End>
+		</BurnDuration>
+
+		<Mine_NrStars>75</Mine_NrStars>
+		<Mine_ExplosionRelativeSpeed>1</Mine_ExplosionRelativeSpeed>
+		<Mine_SpeedVariance>0.14</Mine_SpeedVariance>
+		<Mine_MineWidth>0.05</Mine_MineWidth>
+	</LaunchSparksConfig>
+	<Bloom>
+		<Enabled>true</Enabled>
+
+		<AmountOfBloom>0.1</AmountOfBloom>
+		<!-- Total amount of bloom -->
+		<Upsampling_Weights_Serialized>1.3,0.9,0.4,0.5,0.7,0.8,1.2,1.6</Upsampling_Weights_Serialized>
+		<!-- the first number is the biggest level (bloom that spans almost the entire screen), the second number is one level up (half as wide), and so on. If you have 8 levels, then you need 9 numbers here. If you specify less numbers, then FWsim just repeats the las tnumber. For example: 5,1 means the biggest level gets 5x the weight, and all other levels get their normal weight. 
+		Furthermore, please note that the nr of levels depends on the resolution. If you set NrLevels to 10, then you may get only 8 or 9 levels depending on resolution.
+		-->
+
+		<RadiusForUpsampling>1.5</RadiusForUpsampling>
+		<!-- Note Lukas: This parameter is NOT for making the bloom bigger. It will make the bloom bigger, but only on very large values. Instead, it is an internal parameter that needs to be optimized for best picture quality. Do not change this. -->
+		<NrLevels>10</NrLevels>
+		<!-- do not modify -->
+		<Algorithm>Raw</Algorithm> <!-- Always leave this on "Raw"-->
+	</Bloom>
+	<TailDynamics>
+		<TailParticleCountOverTime>
+			<!-- modify tail nr of particles over time, where 0 = start and 1 = end.
+			Be aware, the results of this are hard to see and I am not sure I even implemented this correctly in the engine.
+			Let me know if you get anywhere with this.
+			--> 
+			<DataPoint>
+				<X>0</X>
+				<Y>0</Y>
+			</DataPoint>
+			<DataPoint> <!-- very slight fade-on-->
+				<X>0.01</X>
+				<Y>1.2</Y>
+			</DataPoint>
+			<DataPoint>
+				<X>0.8</X>
+				<Y>1</Y>
+			</DataPoint>
+			<DataPoint> <!-- slight fade out-->
+				<X>1</X>
+				<Y>0.01</Y>
+			</DataPoint>
+		</TailParticleCountOverTime>
+		<TailParticleWidthOverTime> <!--  modifies the outwards speed of particles depending on how long the tail has lived so far. X values: 0 = start, 1 = end of tail. Y values: 1 = normal outwards speed. 0 = a very narrow tail. -->
+			<DataPoint>
+				<X>0</X> <!-- anfang dünn-->
+				<Y>1</Y>
+			</DataPoint>
+			<DataPoint>
+				<X>1</X>
+				<!-- in der mitte eher breit-->
+				<Y>1</Y>
+			</DataPoint>
+			<DataPoint> <!-- am ende wieder dünn-->
+				<X>1</X>
+				<Y>0</Y>
+			</DataPoint>
+		</TailParticleWidthOverTime>
+		<give_tail_particles_velocity_of_their_main_stars>0</give_tail_particles_velocity_of_their_main_stars>
+		<!-- leaving this at zero. If it's non-zero, then there is a bug with tails attached to crossettes getting way too much velocity. update oct23, 2023: this parameter was removed entirely and has no effect anymore. --> 
+	</TailDynamics>
+	<MainStarSortingEnabled>true</MainStarSortingEnabled>
+
+	
+	
+	<Effect_Editor_Ground_Brightness>0.07</Effect_Editor_Ground_Brightness>
+	<!-- DurationOfColorChange indicates how long the change from one color to the next should take, in percent of the overall burn duration (from fade-in to fade-out). For example, 0.1 would mean that the color change takes 10% of that time. -->
+	<DurationOfColorChange>0.1</DurationOfColorChange>
+
+	<MainStars_Distance_Scaling> <!-- changing this requires resizing the fwsim window so the graphics engine reloads.-->
+		<ReferenceDistance>120</ReferenceDistance> <!-- If the camera is at this distance, then the particle size that you define through the other parameters is interpreted as meters. At other distances, the behaviour dpeends on AmountOfScaling. -->
+		<AmountOfScaling>0.5</AmountOfScaling>
+		<!-- if this is zero, then the particles always have the same size on screen as they have on the reference distance. If you set it to one, then the particles behave as if they were physical objects with the size specified, and they scale accordingly. -->
+	</MainStars_Distance_Scaling>
+	<!-- changing this requires resizing the fwsim window so the graphics engine reloads.-->
+	<Sparks_Distance_Scaling>
+		<ReferenceDistance>120</ReferenceDistance>
+		<AmountOfScaling>0.5</AmountOfScaling>
+	</Sparks_Distance_Scaling>
+	<BengalFlareLightStreakIntensity>0.25</BengalFlareLightStreakIntensity>
+	<Whistle>
+		<AverageSize>2.4</AverageSize>
+		<SizeSigma>0.4</SizeSigma>
+		<Mass>0.27</Mass>
+		<SparkLifetime>0.3</SparkLifetime>
+		<DriverLifetime>2.5</DriverLifetime>
+		<Density>300</Density>
+		<RotSpeed>25</RotSpeed>
+		<RadiusFactor>100</RadiusFactor>
+		<NrNozzles>1</NrNozzles>
+		<RandomVelocity>0.40</RandomVelocity>
+	</Whistle>
+	<Farfalle>
+		<AverageSize>2.4</AverageSize>
+		<SizeSigma>0.4</SizeSigma>
+		<Mass>0.27</Mass>
+		<SparkLifetime>0.6</SparkLifetime>
+		<DriverLifetime>3</DriverLifetime>
+		<Density>200</Density>
+		<RotSpeed>60</RotSpeed>
+		<RadiusFactor>1</RadiusFactor>
+		<NrNozzles>2</NrNozzles>
+		<RandomVelocity>0.5</RandomVelocity>
+	</Farfalle>
+	<Tourbillon> 
+		<AverageSize>2.4</AverageSize>
+		<SizeSigma>0.4</SizeSigma>
+		<Mass>0.27</Mass>
+		<SparkLifetime>0.2</SparkLifetime>
+		<DriverLifetime>3</DriverLifetime>
+		<Density>530</Density>
+		<RotSpeed>40</RotSpeed> 
+		<RadiusFactor>2</RadiusFactor>
+		<NrNozzles>1</NrNozzles>
+		<RandomVelocity>0.35</RandomVelocity>
+	</Tourbillon>
+	<LightOnEnvironmentFactor>50</LightOnEnvironmentFactor> <!-- recommended value: 50. set this to 0 in order to disable any environment lighting and increase performance. -->
+	<Water>
+		<WaterColor>10,90,255</WaterColor>
+		<WaterBrightness>0.01</WaterBrightness>
+		<WaveSpeed>0.01</WaveSpeed>
+		<WaveHeight>0.04</WaveHeight>
+		<WaveScaling>5</WaveScaling>
+	</Water>
+	<UserInterface>
+		<MortarsSize>7</MortarsSize>
+	</UserInterface>
+	<FlamejetGroundBrightnessFactor>0.005</FlamejetGroundBrightnessFactor>
+</GraphicsSetup>

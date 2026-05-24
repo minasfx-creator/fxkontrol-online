@@ -1,0 +1,100 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<CustomComponent xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+   <Hide>true</Hide><AuthorSoftwareVersion>
+    <Major>4</Major>
+    <Minor>3</Minor>
+    <Build>0</Build>
+    <Revision>13</Revision>
+  </AuthorSoftwareVersion>
+  <Inserts>
+    <BaseEffectNode xsi:type="StarTails">
+      <Children />
+      <EmitStart>0.03</EmitStart>
+      <EmitEnd>0.05</EmitEnd>
+      <Density>50</Density>
+      <Width>0.7</Width>
+      <Type>Sparks</Type>
+      <Color>
+        <CustomR>0</CustomR>
+        <CustomG>0</CustomG>
+        <CustomB>0</CustomB>
+        <Color>Spark</Color>
+      </Color>
+      <Life>0.5</Life>
+      <LifeSigma>0.75</LifeSigma>
+      <Strobe>false</Strobe>
+      <StrobeFreqMean>2.7017698</StrobeFreqMean>
+      <CustomDimmcurve>true</CustomDimmcurve>
+      <FadeRatios>
+        <A>0.001</A>
+        <B>0.002</B>
+        <C>0.86845464</C>
+        <D>1</D>
+      </FadeRatios>
+      <StarSizeFactor>0.3</StarSizeFactor>
+      <Crackle>false</Crackle>
+    </BaseEffectNode>
+    <BaseEffectNode xsi:type="StarTails">
+      <Children />
+      <EmitStart>0.03</EmitStart>
+      <EmitEnd>0.05</EmitEnd>
+      <Density>30</Density>
+      <Width>1.8</Width>
+      <Type>Sparks</Type>
+      <Color>
+        <CustomR>0</CustomR>
+        <CustomG>0</CustomG>
+        <CustomB>0</CustomB>
+        <Color>Spark</Color>
+      </Color>
+      <Life>0.5</Life>
+      <LifeSigma>1.45</LifeSigma>
+      <Strobe>false</Strobe>
+      <StrobeFreqMean>2.7017698</StrobeFreqMean>
+      <CustomDimmcurve>true</CustomDimmcurve>
+      <FadeRatios>
+        <A>0.001</A>
+        <B>0.002</B>
+        <C>0.999</C>
+        <D>1</D>
+      </FadeRatios>
+      <StarSizeFactor>0.5</StarSizeFactor>
+      <Crackle>false</Crackle>
+    </BaseEffectNode>
+    <BaseEffectNode xsi:type="StarTails">
+      <Children />
+      <EmitStart>0.03</EmitStart>
+      <EmitEnd>0.05</EmitEnd>
+      <Density>10</Density>
+      <Width>1.8</Width>
+      <Type>Sparks</Type>
+      <Color>
+        <CustomR>0</CustomR>
+        <CustomG>0</CustomG>
+        <CustomB>0</CustomB>
+        <Color>Spark</Color>
+      </Color>
+      <Life>0.5</Life>
+      <LifeSigma>1.84</LifeSigma>
+      <Strobe>false</Strobe>
+      <StrobeFreqMean>2.7017698</StrobeFreqMean>
+      <CustomDimmcurve>true</CustomDimmcurve>
+      <FadeRatios>
+        <A>0.001</A>
+        <B>0.002</B>
+        <C>0.999</C>
+        <D>1</D>
+      </FadeRatios>
+      <StarSizeFactor>0.7</StarSizeFactor>
+      <Crackle>false</Crackle>
+    </BaseEffectNode>
+  </Inserts>
+  <BaseID>
+    <Name>#ES06 - Titanium</Name>
+    <Author>FWsim</Author>
+  </BaseID>
+  <ReadOnly>false</ReadOnly>
+  <InternalUseOnly>false</InternalUseOnly>
+  <Hide>false</Hide>
+  <LastSavedAt>2026-04-21T16:25:53.3907279Z</LastSavedAt>
+</CustomComponent>

@@ -3,6 +3,7 @@ import { MapPin, Plus, Trash2, Copy, ChevronDown, ChevronRight, GripVertical, Se
 import { useProjectStore } from '@/store/useProjectStore';
 import { type Position, type PositionType } from '@/types/projectTypes';
 import { EFFECT_LIBRARY } from '@/data/effectLibrary';
+import { findEffectById } from '@/data/effectsLibraries/resolveEffect';
 import { cn } from '@/lib/utils';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
@@ -506,7 +507,7 @@ export default function PositionWindow({ onClose }: PositionWindowProps) {
                       {isExpanded && linkedItems.length > 0 && (
                         <div className="bg-surface-0/30 border-l-2 border-primary/20 ml-5">
                           {linkedItems.map(item => {
-                            const effect = EFFECT_LIBRARY.find(e => e.id === item.effectId);
+                            const effect = findEffectById(item.effectId);
                             if (!effect) return null;
                             return (
                               <div key={item.id} className="flex items-center gap-2 px-3 py-1 text-[9px] text-muted-foreground/60 hover:bg-muted/10">
@@ -523,7 +524,7 @@ export default function PositionWindow({ onClose }: PositionWindowProps) {
                           <div className="flex items-center gap-2 px-3 py-1.5 text-[8px] border-t border-border/10 text-muted-foreground/40">
                             <span className="font-bold">{linkedItems.length} effects</span>
                             <span className="text-success/60 font-mono-code font-bold">
-                              ${linkedItems.reduce((s, i) => { const e = EFFECT_LIBRARY.find(ef => ef.id === i.effectId); return s + (e?.cost || 0); }, 0).toFixed(0)}
+                              ${linkedItems.reduce((s, i) => { const e = findEffectById(i.effectId); return s + (e?.cost || 0); }, 0).toFixed(0)}
                             </span>
                             <button
                               className="ml-auto flex items-center gap-1 text-primary/60 hover:text-primary transition-colors"

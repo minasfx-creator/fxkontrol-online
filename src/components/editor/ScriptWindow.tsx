@@ -10,13 +10,14 @@ import { Input } from '@/components/ui/input';
 import { useProjectStore } from '@/store/useProjectStore';
 import { type TimelineItem } from '@/types/projectTypes';
 import { EFFECT_LIBRARY } from '@/data/effectLibrary';
+import { findEffectById } from '@/data/effectsLibraries/resolveEffect';
 import { getPreFireTime } from '@/lib/safetyEngine';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 
 // ─── Helper: compute Finale 3D script row data ────────────────────
 function computeScriptRow(item: TimelineItem, positions: ReturnType<typeof useProjectStore.getState>['positions']) {
-  const effect = EFFECT_LIBRARY.find((e) => e.id === item.effectId);
+  const effect = findEffectById(item.effectId);
   if (!effect) return null;
 
   const pft = effect.type === 'firework' ? getPreFireTime(effect.name) : 0;
@@ -150,7 +151,7 @@ export default function ScriptWindow() {
     try {
       const saved = localStorage.getItem('fxk-script-col-widths');
       if (saved) return JSON.parse(saved);
-    } catch { /* best-effort: localStorage parse may fail; fall through to default */ }
+    } catch {}
     return { ...DEFAULT_WIDTHS };
   });
 
@@ -158,7 +159,7 @@ export default function ScriptWindow() {
     try {
       const saved = localStorage.getItem('fxk-script-hidden-cols');
       if (saved) return new Set(JSON.parse(saved));
-    } catch { /* best-effort: localStorage parse may fail; fall through to default */ }
+    } catch {}
     return new Set<ColumnKey>();
   });
 

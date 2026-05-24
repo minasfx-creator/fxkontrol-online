@@ -3,7 +3,7 @@
  * One-tap "SCAN ALL" discovers BLE, USB, Art-Net, PBUS, Wi-Fi Direct devices
  * Glass-br2049 styling, shows signal/battery/status per device
  */
-import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   Zap, Search, Loader2, RefreshCw, Signal, Battery,
   CheckCircle2, Wifi, Radio, Cpu, Cable, Globe,
@@ -19,9 +19,6 @@ import { useFireOneHardware } from '@/hooks/useFireOneHardware';
 import { usePBusHardware } from '@/hooks/usePBusHardware';
 import { useUSBDeviceStore } from '@/store/useUSBDeviceStore';
 import { artnetModuleService } from '@/services/artnetModuleService';
-import { HardwareDiagnosticsBanner } from './hardware/HardwareDiagnosticsBanner';
-import { hasAnyHardwareTransport } from '@/lib/transportAvailability';
-import { detectPlatformCapabilities } from '@/lib/platformCapabilities';
 
 export type EasyConnectContext = 'all' | 'pyro' | 'dmx' | 'light';
 
@@ -94,34 +91,6 @@ export default function EasyConnectPanel({ context = 'all', compact = false, onC
   const [simMode, setSimMode] = useState(true);
   const [devices, setDevices] = useState<DiscoveredDevice[]>([]);
   const [testingAll, setTestingAll] = useState(false);
-
-  // iOS Safari/desktop Safari = nenhum transporte físico disponível.
-  // SimMode continua livre (operador pode demonstrar UI sem hardware), mas
-  // Real scan precisa de pelo menos uma API — senão SCAN é falso-positivo.
-  const platformCaps = useMemo(() => detectPlatformCapabilities(), []);
-  const platformHasHardware = useMemo(() => hasAnyHardwareTransport(platformCaps), [platformCaps]);
-  const realScanBlocked = !simMode && !platformHasHardware;
-
-  // Track mount state + pending timers so we never setState after unmount.
-  const mountedRef = useRef(true);
-  const pendingTimersRef = useRef<Set<ReturnType<typeof setTimeout>>>(new Set());
-  useEffect(() => {
-    mountedRef.current = true;
-    const pendingTimers = pendingTimersRef.current;
-    return () => {
-      mountedRef.current = false;
-      pendingTimers.forEach((t) => clearTimeout(t));
-      pendingTimers.clear();
-    };
-  }, []);
-  const safeTimeout = useCallback((cb: () => void, ms: number) => {
-    const id = setTimeout(() => {
-      pendingTimersRef.current.delete(id);
-      if (mountedRef.current) cb();
-    }, ms);
-    pendingTimersRef.current.add(id);
-    return id;
-  }, []);
 
   const fireone = useFireOneHardware();
   const pbus = usePBusHardware();
@@ -208,22 +177,12 @@ export default function EasyConnectPanel({ context = 'all', compact = false, onC
   const activeDevices = simMode ? devices : realDevices;
 
   const handleScanAll = useCallback(async () => {
-    // Bloqueio defensivo: em iOS Safari (sem SIM), não há nada para scanear.
-    // Mostra mensagem orientativa em vez de "Scanning..." que nunca acharia nada.
-    if (realScanBlocked) {
-      toast.warning('Hardware indisponível neste navegador', {
-        description: platformCaps.hint,
-        duration: 8000,
-      });
-      return;
-    }
     setScanning(true);
     toast.info('⚡ Scanning all transports...');
 
     if (simMode) {
       // Simulate discovery delay
       await new Promise(r => setTimeout(r, 1500));
-      if (!mountedRef.current) return;
       setDevices(generateSimDevices(context));
       toast.success(`${generateSimDevices(context).length} devices found (SIM)`);
     } else {
@@ -233,28 +192,26 @@ export default function EasyConnectPanel({ context = 'all', compact = false, onC
           artnetModuleService.discoverModules?.(),
           // BLE and USB require user gesture, handled separately
         ]);
-        if (!mountedRef.current) return;
         toast.success(`Scan complete — ${realDevices.length} devices`);
       } catch (e) {
-        if (mountedRef.current) toast.error('Scan failed');
+        toast.error('Scan failed');
       }
     }
-    if (mountedRef.current) setScanning(false);
-  }, [simMode, context, realDevices.length, realScanBlocked, platformCaps.hint]);
+    setScanning(false);
+  }, [simMode, context, realDevices.length]);
 
   const handleTestAll = useCallback(async () => {
     setTestingAll(true);
     toast.info('🔍 Running CDS tests on all connected devices...');
     await new Promise(r => setTimeout(r, 2000));
-    if (!mountedRef.current) return;
     toast.success('All CDS tests passed ✓');
     setTestingAll(false);
   }, []);
 
   const handleTestDevice = useCallback((device: DiscoveredDevice) => {
     toast.info(`Testing ${device.name}...`);
-    safeTimeout(() => toast.success(`${device.name}: CDS OK ✓`), 800);
-  }, [safeTimeout]);
+    setTimeout(() => toast.success(`${device.name}: CDS OK ✓`), 800);
+  }, []);
 
   const onlineCount = activeDevices.filter(d => d.status === 'online').length;
   const totalCount = activeDevices.length;
@@ -295,11 +252,8 @@ export default function EasyConnectPanel({ context = 'all', compact = false, onC
           <Button
             size="sm"
             onClick={handleScanAll}
-            disabled={scanning || realScanBlocked}
-            title={realScanBlocked
-              ? 'Hardware indisponível neste navegador — ative SIM ou use Chrome/Edge desktop / Android Chrome.'
-              : 'Descobrir dispositivos em todos os transportes'}
-            className="h-7 px-3 text-[10px] font-bold uppercase tracking-wider bg-primary/15 text-primary hover:bg-primary/25 border border-primary/20 disabled:opacity-50"
+            disabled={scanning}
+            className="h-7 px-3 text-[10px] font-bold uppercase tracking-wider bg-primary/15 text-primary hover:bg-primary/25 border border-primary/20"
           >
             {scanning ? <Loader2 className="w-3 h-3 animate-spin mr-1" /> : <Search className="w-3 h-3 mr-1" />}
             SCAN ALL
@@ -310,11 +264,6 @@ export default function EasyConnectPanel({ context = 'all', compact = false, onC
             </button>
           )}
         </div>
-      </div>
-
-      {/* Diagnóstico de hardware (iPhone Safari, plugin Capacitor faltando, etc.) */}
-      <div className="px-3 pt-2">
-        <HardwareDiagnosticsBanner compact />
       </div>
 
       {/* Device list */}

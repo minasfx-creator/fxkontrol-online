@@ -3,13 +3,12 @@
  * Uses centralized VerificationEngine.
  */
 import { useEffect } from 'react';
-import { useVerificationStore } from '@/core/verification/useVerificationStore';
+import { useVerificationEngine } from '@/core/verification/useVerificationEngine';
 import { showPlanManager } from '@/core/showplan/ShowPlanManager';
 import { safetyStateMachine } from '@/core/safety/SafetyStateMachine';
 import { powerMonitor } from '@/core/hardware/PowerMonitor';
 import { cn } from '@/lib/utils';
 import { Shield, Cpu, Zap, Activity, CheckCircle2, XOctagon, AlertTriangle } from 'lucide-react';
-import { useShallow } from 'zustand/react/shallow';
 
 function StatusBlock({ label, icon: Icon, status, detail }: {
   label: string; icon: React.ElementType; status: 'ok' | 'warn' | 'error' | 'idle'; detail: string;
@@ -36,7 +35,7 @@ function StatusBlock({ label, icon: Icon, status, detail }: {
 }
 
 export default function SystemOverviewConsole() {
-  const { level, result, runVerification } = useVerificationStore(useShallow((s) => ({ level: s.level, result: s.result, runVerification: s.runVerification })));
+  const { level, result, runVerification } = useVerificationEngine();
   const sp = showPlanManager.current;
   const safetyState = safetyStateMachine.state;
   const power = powerMonitor.getStatus();

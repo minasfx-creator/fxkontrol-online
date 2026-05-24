@@ -12,6 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Switch } from '@/components/ui/switch';
 import { useProjectStore } from '@/store/useProjectStore';
 import { EFFECT_LIBRARY } from '@/data/effectLibrary';
+import { findEffectById } from '@/data/effectsLibraries/resolveEffect';
 import { parseILDA, generateShape, type ILDAFrame } from '@/lib/ildaParser';
 import { LASER_HARDWARE_PRESETS } from '@/lib/laserEngine';
 import { SHOWVEN_LASERS, type ShowvenLaserPreset } from '@/lib/showvenPresets';
@@ -104,7 +105,7 @@ export default function LaserControlPanel({ onClose }: LaserControlPanelProps) {
 
   // Find if selected timeline item is a laser
   const selectedItem = timelineItems.find(i => i.id === selectedTimelineItemId);
-  const selectedEffect = selectedItem ? EFFECT_LIBRARY.find(e => e.id === selectedItem.effectId) : null;
+  const selectedEffect = selectedItem ? findEffectById(selectedItem.effectId) : null;
   const isLaser = selectedEffect?.type === 'laser';
 
   const handleIldaImport = useCallback(() => {

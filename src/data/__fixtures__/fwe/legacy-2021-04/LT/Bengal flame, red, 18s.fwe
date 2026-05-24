@@ -1,0 +1,27 @@
+<?xml version="1.0"?>
+<FireworkEffect xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+  <Children>
+    <BaseEffectNode xsi:type="Bengal">
+      <Children />
+      <Duration>12</Duration>
+      <Color>
+        <CustomR>0</CustomR>
+        <CustomG>0</CustomG>
+        <CustomB>0</CustomB>
+        <Color>Red</Color>
+      </Color>
+      <ID>0</ID>
+    </BaseEffectNode>
+  </Children>
+  <Identifier>
+    <Name>Bengal flame, red, 18s</Name>
+    <Author>LT</Author>
+  </Identifier>
+  <AuthorSoftwareVersion>
+    <Major>1</Major>
+    <Minor>1</Minor>
+  </AuthorSoftwareVersion>
+  <MD5Hash>
+    <Value>cifFevZ1iCx529EKYbkc6w==</Value>
+  </MD5Hash>
+</FireworkEffect>

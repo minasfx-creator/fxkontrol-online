@@ -6,14 +6,7 @@
  */
 
 import type { HardwareAdapter, HardwareCapabilities, HardwareStatusSnapshot, DeviceConnectionState, MultiplexerState, MuxChannelReading } from '../types';
-import {
-  createSimulatedProvenance,
-  markHandshakeOk as provenanceMarkHandshakeOk,
-  markHandshakeLost as provenanceMarkHandshakeLost,
-  type ProvenanceInfo,
-  type TransportType,
-} from '../provenance';
-import { isHardwareSimulatorEnabled } from '@/lib/featureFlags';
+import { createSimulatedProvenance, type ProvenanceInfo } from '../provenance';
 
 export class MuxReaderAdapterCD4051 implements HardwareAdapter<MultiplexerState[]> {
   readonly deviceId = 'mux-cd4051-dual';
@@ -79,11 +72,10 @@ export class MuxReaderAdapterCD4051 implements HardwareAdapter<MultiplexerState[
 
   pollTelemetry(): void {
     if (this._connected !== 'connected') return;
-    if (!isHardwareSimulatorEnabled()) return;
     for (const mux of this._muxStates) {
       mux.sample_count++;
       for (const ch of mux.channels) {
-        // Synthetic ADC noise (only when simulator gate is ON)
+        // Simulate ADC noise
         if (ch.state === 'ok') {
           ch.raw_value = 450 + Math.floor(Math.random() * 100);
           ch.resistance_ohms = 1.2 + Math.random() * 0.8;
@@ -114,23 +106,23 @@ export class MuxReaderAdapterCD4051 implements HardwareAdapter<MultiplexerState[
       { mux_id: 'mux-a', selected_channel: 0, sample_count: 0, fault_state: false, channels: this._initChannels(0) },
       { mux_id: 'mux-b', selected_channel: 0, sample_count: 0, fault_state: false, channels: this._initChannels(8) },
     ];
-    provenanceMarkHandshakeLost(this._provenance);
   }
 
-  /**
-   * Promote to LIVE READ-ONLY. CD4051 reading is piggy-back on the host
-   * controller (FXK16/Arduino) — promoted by the bridge on host handshake.
-   * Read-only by construction (canWrite=false).
-   */
-  markHandshakeOk(transport: TransportType = 'serial_usb'): void {
-    this._connected = 'connected';
-    provenanceMarkHandshakeOk(this._provenance, transport);
+  simulateConnect(): void { this._connected = 'connected'; }
+  simulateDisconnect(): void { this._connected = 'disconnected'; }
+
+  /** Set individual channel state for test scenarios */
+  simulateChannelState(channel: number, state: MuxChannelReading['state']): void {
+    const muxIdx = channel < 8 ? 0 : 1;
+    const chIdx = channel < 8 ? channel : channel - 8;
+    if (this._muxStates[muxIdx]?.channels[chIdx]) {
+      this._muxStates[muxIdx].channels[chIdx].state = state;
+    }
   }
 
-  /** Demote when the host link drops. */
-  markHandshakeLost(): void {
-    this._connected = 'disconnected';
-    provenanceMarkHandshakeLost(this._provenance);
+  simulateMuxFault(muxId: string): void {
+    const mux = this._muxStates.find(m => m.mux_id === muxId);
+    if (mux) { mux.fault_state = true; this._connected = 'degraded'; }
   }
 }
 

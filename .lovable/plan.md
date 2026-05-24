@@ -1,79 +1,90 @@
-# Showven M1 — Integração com Dispatch (128 cues + handshake)
+# Effect Behavior Map — vetor + cinemática canônica por família
 
-Espelho fiel do que já fizemos para o FireOne XL4+ e FXK32Q, agora para o **Showven M1** (master controller dual‑band, 128 cues × 4 cenas, V1.5). Tudo READ‑ONLY no boundary do registry; FIRE/ARM continuam passando por `uiCommandGateway → CommandBus → SafetyStateMachine`. Zero dado sintético, zero auto‑arm.
+## Diagnóstico
 
-## Escopo
+Hoje cada renderer em `src/components/editor/effects/` (Comet, Mine, Shell/Salute, FallingLeaves dentro de Shell, RomanCandle, Cake, Gerb, etc.) **inventa seus próprios vetores**: alguns usam Pan/Tilt da effect lib, outros ignoram, outros usam ângulo do parent. Resultado: comet sai pra direção errada, mine não respeita fan, salute estoura redondo demais, falling leaves cai reto sem swirl.
 
-1. **Adapter** `ShowvenM1Adapter` (128 ch, protocolFamily `showven-pbus-dualband`).
-2. **Singleton bridge** `useShowvenM1Bridge` (notifyHandshakeOk/Lost + watcher webSerial).
-3. **Presence hook** `useShowvenM1Presence` (DeviceAggregator ∩ adapter ∩ provenance verified).
-4. **Discovery → Registry bridge** subscreve o singleton e promove/demote o adapter.
-5. **Registro** em `UnifiedHardwareRegistry` + `adapterTriage` (`showven-m1` → `/pairing/m1`).
-6. **Wizard** `/pairing/m1` (4 passos: Welcome → PBus Link → Handshake/Version → Success), validando baud (19200), handshake PBus `STATUS` na address 1, e firmware ≥ V1.5.
-7. **Mapping de 128 cues**: módulo puro `showvenM1CueMap.ts` que traduz `cueIndex 1..128` em `{ slaveAddress 1..16, channel 1..16 }` (mapa canônico FXcommander = 8 racks × 16 cues + cenas). Suporta override por show e exporta validador (zero colisão / faixas válidas).
-8. **Dispatch**: estender `ShowvenCueRunner.load()` para aceitar `cueIndex` (1..128) opcional além de rack/tube. Quando presente, resolve via `showvenM1CueMap.resolve()`. PBus `FIRE_SEQ` continua coalescendo por device.
-9. **AutoControllerLauncher**: card pyro p/ família `showven` consome `useShowvenM1Presence` (mesmo padrão do XL4/FXK32Q) — só "Pronto p/ ARM" quando present.
-10. **Logs** no padrão da plataforma (`[discoveryBridge] Showven M1 promoted/demoted ...` e `[showvenM1Bridge] ...`), entrada no `safetyBlackBox` no momento da promoção (caller=`system`).
+Já existem fontes canônicas **subutilizadas**:
+- `src/lib/finalePanTiltSpin.ts` — PTS canônico Finale 3D
+- `src/render/silhouettes/{mineSilhouettes,bengalSilhouettes}.ts` — só Mine+Bengal cobertos
+- `src/data/fwsimGraphicsConfig.json` — curvas FWsim (já wired em flashes/bloom/tonemap, **não** em cinemática)
+- `src/lib/vdlFiringPatterns.ts` — fan/angle resolver (não consumido pelos renderers)
 
-## Arquivos
+## Solução: 1 mapa canônico + adapter por renderer
 
-Novos:
-- `src/core/hardware/adapters/ShowvenM1Adapter.ts`
-- `src/hooks/useShowvenM1Bridge.ts`
-- `src/hooks/useShowvenM1Presence.ts`
-- `src/lib/showvenM1Handshake.ts` (parse STATUS/VERSION PBus, fw guard)
-- `src/lib/showvenM1CueMap.ts` (128 cues → slave/channel, override, validador)
-- `src/pages/ShowvenM1PairingWizard.tsx`
-- `src/components/pairing/m1/{M1WelcomeStep,M1LinkStep,M1HandshakeStep,M1SuccessStep}.tsx`
-- Tests:
-  - `src/__tests__/showvenM1Adapter.spec.ts`
-  - `src/__tests__/showvenM1Handshake.spec.ts`
-  - `src/__tests__/showvenM1CueMap.spec.ts`
-  - `src/__tests__/useShowvenM1Presence.spec.ts`
-  - `src/__tests__/showvenM1DiscoveryBridge.integration.test.ts`
-  - `src/__tests__/showvenCueRunner.m1Mapping.spec.ts`
+### 1. Criar `src/render/behavior/effectBehaviorMap.ts`
 
-Editados:
-- `src/core/hardware/UnifiedHardwareRegistry.ts` (registra `showvenM1Adapter`)
-- `src/core/hardware/discoveryRegistryBridge.ts` (subscribe + promote/demote)
-- `src/core/hardware/adapterTriage.ts` (entry `showven-m1` → `/pairing/m1`, status `AWAITING_HANDSHAKE`)
-- `src/pages/PairingWizard.tsx` (`'m1'` no SUPPORTED + lazy)
-- `src/App.tsx` (pre‑warm import se necessário)
-- `src/features/viewport-tools/hardware/showvenCueRunner.ts` (aceita `cueIndex` via map)
-- `src/components/AutoControllerLauncher` (gate por `useShowvenM1Presence` quando kind=`showven`)
-- `public/sitemap.xml` (entry `/pairing/m1` consistente com XL4)
+Tabela pura, data-in/data-out (zero Three.js), por `RendererKind` do `effectRouter`:
 
-## Detalhes técnicos
-
-```text
-Handshake (PBus, 19200 8N1):
-  TX: STATUS frame addr=1
-  RX: STATUS reply (model token, fw, slaves on bus)
-  Pass: model ∈ {FXCOMMANDER, M1}, fw ≥ "1.5.0"
-  Fail → wizard mantém em AWAITING_HANDSHAKE, bridge nunca promove
-
-Cue map (default FXcommander 8×16):
-  cue   1..16  → slave 1, ch 1..16
-  cue  17..32  → slave 2, ch 1..16
-  ...
-  cue 113..128 → slave 8, ch 1..16
-  Override por show: Record<cueIndex, {slave, channel}>
-  Validador: faixas (1..128, slave 1..16, ch 1..16), zero duplicado destino,
-             zero cue não mapeado se show declarar cueIndex.
+```ts
+type EffectBehavior = {
+  kind: RendererKind;
+  // Vetor de lançamento (local frame, +Y = up audience-facing)
+  launch: { mode: 'pts' | 'pattern-fan' | 'parent-vector' | 'omni'; jitterDeg: number };
+  // Cinemática de cada partícula/projétil pós-eject
+  motion: {
+    gravity: number;          // m/s² (9.81 padrão, 4.5 falling-leaves)
+    drag: number;             // exp(-k·dt)
+    initialSpeed: [min, max]; // m/s
+    spread: { coneDeg: number; bias: 'uniform'|'gaussian'|'silhouette' };
+    swirl?: { axis: 'y'|'tangent'; rpm: number };   // falling leaves, willow
+    bouquetSplit?: { atLifeRatio: number; childCount: number }; // crossette, peony-with-pistil
+  };
+  // Tail/trail
+  tail: { type: 'none'|'glitter'|'glitter-strobe'|'willow-drag'|'comet-thick'; lengthMul: number };
+  // Apagamento
+  decay: { lifeMul: number; colorPhase: 'newton'|'planckian'|'flat' };
+};
 ```
 
-Contratos de honestidade preservados:
-- `canWrite=false` no adapter (igual FXK32Q/XL4), gating real continua no CommandBus.
-- `pollTelemetry` só muta com `isHardwareSimulatorEnabled()` ON.
-- Promoção exige resposta PBus real; bridge auto‑demote em `lost`/`offline`.
-- `simulationGuard` continua respeitado em design/simulation (sem bloqueios novos).
+Cobrir: `comet`, `mine`, `shell-peony`, `shell-dahlia`, `shell-chrysanthemum`, `shell-willow`, `shell-palm`, `shell-crossette`, `shell-ring`, `shell-salute/salute`, `falling-leaves`, `bombette`, `roman-candle`, `cake-bombette`, `gerb`, `whistle`, `farfalle`, `tourbillon`, `bengal`, `lancework`, `setpiece`.
 
-Sem mudanças em workMode, SafetyStateMachine, ou políticas de transporte (BLE permanece banido para FIRE em real_operation pelo `pyroTransportPolicy`).
+Valores ancorados em: `fwsimGraphicsConfig` (sparks/flashes), `mineSilhouettes` (fan), Piroex/Skyking ballistics (já em memória) e Finale `finalePanTiltSpin` para resolução de vetor.
 
-## Critérios de aceite
+### 2. Helper `resolveEffectVector(effect, behavior, parent)`
 
-- `/pairing/m1` completa wizard em ≤4 passos e promove `ShowvenM1Adapter` para `live_read_only` apenas com handshake real.
-- AutoControllerLauncher mostra card "Showven M1 — pronto p/ ARM" só quando `useShowvenM1Presence` retorna `present`.
-- `ShowvenCueRunner` consome `cueIndex` 1..128 via `showvenM1CueMap` e dispara via `FIRE_SEQ` coalescido (sem duplicar PBus frames).
-- Suite verde: novos testes (≥30 casos) + suite atual sem regressão.
-- Logs `[discoveryBridge] Showven M1 promoted/demoted ...` aparecem no mesmo formato dos demais.
+`src/render/behavior/resolveEffectVector.ts`: combina `effect.pan/tilt/spin` (PTS canônico) + `parent.heading` + `behavior.launch.jitterDeg` → `THREE.Vector3` unit + speed. Um único helper, todos os renderers chamam.
+
+### 3. Wiring por renderer (rodada por família, não tudo de uma vez)
+
+Pass A (esta rodada): **Comet, Mine, Salute/Salute-shell, FallingLeaves** (os 4 que o usuário citou).
+- `CometEffect.tsx`: passa a usar `resolveEffectVector` (hoje usa apenas tilt fixo); thickness do tail vem de `behavior.tail.lengthMul`.
+- `MineEffect.tsx`: já usa silhuetas — adicionar `pattern-fan` do behavior pra escolher 5/7/9 jets via `vdlFiringPatterns` ao invés do hardcode.
+- `SaluteEffect.tsx` + branch salute do `ShellBurstRenderer`: corrigir spread (hoje cone 360°/uniform) pra `silhouette` bias com expansão hard-stop curta e flash branco-azul do `fwsimGraphicsConfig.flashes.explosion`.
+- Falling leaves (hoje dentro de `ShellBurstRenderer`/peony branch): isolar em behavior `shell-willow`/`falling-leaves` com `gravity: 4.5` + `swirl.tangent 22rpm` + `tail: willow-drag` + lifetime 2.6× peony.
+
+Pass B (rodadas seguintes, fora desta tarefa): demais 17 famílias, atrás de flag `r_behavior_map_v1`.
+
+### 4. Flag + testes
+
+- Flag `r_behavior_map_v1` (default ON) — fallback OFF preserva renderers atuais bit-equivalent.
+- 4 specs novos em `src/render/behavior/__tests__/`:
+  - `effectBehaviorMap.spec.ts` — toda família coberta, valores finitos, ranges sãos.
+  - `resolveEffectVector.spec.ts` — PTS Fig2/Fig3 do `finale-pan-tilt-spin.md` (pan=90/tilt=45 → vetor canônico).
+  - `cometVector.spec.ts` — comet a 30° de tilt sai a 30°, não vertical.
+  - `fallingLeavesSwirl.spec.ts` — swirl positivo e gravity reduzida vs peony.
+
+### 5. Out-of-scope nesta rodada
+
+- Sem mudar `vdlQuantizer` (Finale 3D spec).
+- Sem mexer em `PostProcessing` (FWsim steps 3/4 ficam intocados).
+- Sem renderizar drone — só pyro families.
+- Sem mover arquivos de renderer; só adicionar import do helper.
+
+## Arquivos novos
+- `src/render/behavior/effectBehaviorMap.ts`
+- `src/render/behavior/resolveEffectVector.ts`
+- `src/render/behavior/__tests__/effectBehaviorMap.spec.ts`
+- `src/render/behavior/__tests__/resolveEffectVector.spec.ts`
+- `src/render/behavior/__tests__/cometVector.spec.ts`
+- `src/render/behavior/__tests__/fallingLeavesSwirl.spec.ts`
+
+## Arquivos editados (Pass A)
+- `src/components/editor/effects/CometEffect.tsx`
+- `src/components/editor/effects/MineEffect.tsx`
+- `src/components/editor/effects/SaluteEffect.tsx`
+- `src/components/editor/effects/ShellBurstRenderer.tsx` (branch falling-leaves só)
+- `src/lib/featureFlags.ts` (+ `r_behavior_map_v1`)
+
+## Memory
+Salvar `mem://funcionalidades/effect-behavior-map-v1` ao concluir.

@@ -1,0 +1,92 @@
+<?xml version="1.0"?>
+<FireworkEffect xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+  <Children>
+    <BaseEffectNode xsi:type="Shell">
+      <Children>
+        <BaseEffectNode xsi:type="BurstingCharge">
+          <Children>
+            <BaseEffectNode xsi:type="Stars">
+              <Children>
+                <BaseEffectNode xsi:type="StarTails">
+                  <Children />
+                  <Color>
+                    <CustomR>0</CustomR>
+                    <CustomG>0</CustomG>
+                    <CustomB>0</CustomB>
+                    <Color>Spark</Color>
+                  </Color>
+                  <Width>1.5</Width>
+                  <Density>50</Density>
+                  <EmitStart>0.05</EmitStart>
+                  <EmitEnd>0.86</EmitEnd>
+                  <Life>3.1</Life>
+                </BaseEffectNode>
+              </Children>
+              <Type>Normal</Type>
+              <Distribution xsi:type="HemisphereDistribution">
+                <Speed>0.51</Speed>
+                <Sigma>0.044</Sigma>
+              </Distribution>
+              <Color>
+                <CustomR>0</CustomR>
+                <CustomG>0</CustomG>
+                <CustomB>0</CustomB>
+                <Color>Red</Color>
+              </Color>
+              <Count>391</Count>
+              <MinimumLifetime>4.8</MinimumLifetime>
+              <MaximumLifetime>6.8</MaximumLifetime>
+              <Strobe>false</Strobe>
+              <StrobeFreqMean>14</StrobeFreqMean>
+            </BaseEffectNode>
+            <BaseEffectNode xsi:type="Stars">
+              <Children />
+              <Type>Normal</Type>
+              <Distribution xsi:type="RingDistribution">
+                <Speed>1</Speed>
+                <Sigma>0.08</Sigma>
+              </Distribution>
+              <Color>
+                <CustomR>0</CustomR>
+                <CustomG>0</CustomG>
+                <CustomB>0</CustomB>
+                <Color>Yellow</Color>
+              </Color>
+              <Count>427</Count>
+              <MinimumLifetime>1.5</MinimumLifetime>
+              <MaximumLifetime>2.1</MaximumLifetime>
+              <Strobe>false</Strobe>
+              <StrobeFreqMean>14</StrobeFreqMean>
+            </BaseEffectNode>
+          </Children>
+          <Energy>297</Energy>
+          <Delay>7.2</Delay>
+        </BaseEffectNode>
+        <BaseEffectNode xsi:type="AscentEffect">
+          <Children />
+          <Color>
+            <CustomR>0</CustomR>
+            <CustomG>0</CustomG>
+            <CustomB>0</CustomB>
+            <Color>Spark</Color>
+          </Color>
+          <Width>5.9</Width>
+          <Density>80</Density>
+          <EmitStart>0.03</EmitStart>
+          <EmitEnd>0.7</EmitEnd>
+          <Life>3.1</Life>
+        </BaseEffectNode>
+      </Children>
+      <Diameter>0.6</Diameter>
+      <LiftingCharge>241.29</LiftingCharge>
+    </BaseEffectNode>
+  </Children>
+  <Identifier>
+    <Name>Bomba piena</Name>
+    <Author>lui</Author>
+  </Identifier>
+  <AuthorSoftwareVersion>
+    <Major>1</Major>
+    <Minor>0</Minor>
+  </AuthorSoftwareVersion>
+<HideInLib>true</HideInLib></FireworkEffect>

@@ -52,6 +52,16 @@ export interface Effect {
   };
   niagaraPresetId?: string;
   formulationId?: string;
+  /** Optional explicit thumbnail URL — overrides the auto resolver. */
+  thumbUrl?: string;
+  /** Optional path to the source Finale 3D `.fwe` preset (in /public). */
+  finalePresetUrl?: string;
+  /** Optional reference to a .fwc tail component (e.g. "Brocade Tail Medium"). */
+  tailRef?: string;
+  /** Optional ordered color phases extracted from XML (e.g. "Red to Green"). */
+  colorPhases?: Array<{ at: number; hex: string; modifier?: 'strobe' | 'crackle' | 'glitter' | 'charcoal' }>;
+  /** Where caliber came from: 'xml' explicit, 'inferred' from filename, or 'unknown'. */
+  caliberSource?: 'xml' | 'inferred' | 'unknown';
 }
 
 export const EFFECT_LIBRARY: Effect[] = [
@@ -248,4 +258,22 @@ export const EFFECT_LIBRARY: Effect[] = [
   { id: 'spw-01', name: 'Spider Web Green 4"', category: 'morteiros', type: 'firework', color: '#00FF7F', duration: 4, cost: 30, icon: '🕸️', partType: 'shell', caliber: 4, heightMeters: 80, prefire: 2.0, pattern: 'spider_web', safetyDistance: 100 },
   { id: 'spw-02', name: 'Spider Web Silver 6"', category: 'morteiros', type: 'firework', color: '#C0C0C0', duration: 5, cost: 50, icon: '🕸️', partType: 'shell', caliber: 6, heightMeters: 120, prefire: 3.0, pattern: 'spider_web', safetyDistance: 175 },
   { id: 'spw-03', name: 'Spider Web Gold 8"', category: 'morteiros', type: 'firework', color: '#FFD700', duration: 6, cost: 78, icon: '🕸️', partType: 'shell', caliber: 8, heightMeters: 160, prefire: 4.0, pattern: 'spider_web', safetyDistance: 210 },
+
+  // ── Finale 3D Presets (.fwe) ───────────────────────────────
+  // Renders provided by author; .fwe sources shipped under /finale-presets/.
+  { id: 'fin-40-roman-candle', name: 'Roman Candle 40s (R/G)', category: 'finale_presets', type: 'firework', color: '#FF3B30', duration: 40, cost: 45, icon: '🕯️', partType: 'candle', caliber: 1, heightMeters: 30, prefire: 0.1, pattern: 'comet', shotCount: 40, safetyDistance: 50, thumbUrl: '/finale-presets/thumbs/40_roman_candle.png', finalePresetUrl: '/finale-presets/40_Roman_Candle.fwe' },
+  { id: 'fin-41-cake-i', name: 'Cake — I-Shape (Gold Brocade)', category: 'finale_presets', type: 'firework', color: '#FFD27A', duration: 8, cost: 95, icon: '🎂', partType: 'cake', caliber: 1, heightMeters: 35, prefire: 0.1, pattern: 'kamuro', shotCount: 25, safetyDistance: 60, impliesTrail: true, trailType: 'comet', thumbUrl: '/finale-presets/thumbs/41_cake_i_shape.png', finalePresetUrl: '/finale-presets/41_Cake_I-Shape.fwe' },
+  { id: 'fin-42-cake-zv', name: 'Cake — Z/V-Shape (Gold + Magenta)', category: 'finale_presets', type: 'firework', color: '#FF00C8', duration: 12, cost: 140, icon: '🎂', partType: 'cake', caliber: 1, heightMeters: 40, prefire: 0.1, pattern: 'fan', shotCount: 36, safetyDistance: 70, firingPattern: 'z_v_shape', thumbUrl: '/finale-presets/thumbs/42_cake_zv_shape.png', finalePresetUrl: '/finale-presets/42_Cake_Z-Shape_V-Shape.fwe' },
+  { id: 'fin-43-single-row', name: 'Single Row — Gold Gerb Fan', category: 'finale_presets', type: 'firework', color: '#FFE2AE', duration: 6, cost: 80, icon: '⛲', partType: 'gerb', caliber: 1, heightMeters: 8, prefire: 0.05, pattern: 'fan', numDevices: 9, safetyDistance: 25, thumbUrl: '/finale-presets/thumbs/43_single_row.png', finalePresetUrl: '/finale-presets/43_Single_Row.fwe' },
+  { id: 'fin-44-lancework', name: 'Lancework — "FX SIM"', category: 'finale_presets', type: 'sfx', color: '#FFD700', duration: 20, cost: 60, icon: '🅵', partType: 'set_piece', heightMeters: 6, prefire: 0, pattern: 'lancework', safetyDistance: 15, thumbUrl: '/finale-presets/thumbs/44_lancework.png', finalePresetUrl: '/finale-presets/44_Lancework.fwe' },
+  { id: 'fin-11-horsetail', name: 'Horsetail — Gold (short, thin)', category: 'finale_presets', type: 'firework', color: '#FFE2AE', duration: 5, cost: 32, icon: '🐴', partType: 'shell', caliber: 4, heightMeters: 80, prefire: 2.0, pattern: 'willow', safetyDistance: 100, impliesTrail: true, trailType: 'comet', thumbUrl: '/finale-presets/thumbs/11_horsetail.png', finalePresetUrl: '/finale-presets/11_Horsetail.fwe' },
+  { id: 'fin-12-sky-mine', name: 'Sky Mine — Red Comets', category: 'finale_presets', type: 'firework', color: '#FF1A1A', duration: 4, cost: 28, icon: '⛏️', partType: 'mine', caliber: 3, heightMeters: 40, prefire: 0.2, pattern: 'comet', safetyDistance: 60, impliesTrail: true, trailType: 'comet', thumbUrl: '/finale-presets/thumbs/12_sky_mine.png', finalePresetUrl: '/finale-presets/12_Sky_Mine.fwe' },
+  { id: 'fin-13-falling-leaves', name: 'Falling Leaves — Blue', category: 'finale_presets', type: 'firework', color: '#3F7BFF', duration: 9, cost: 30, icon: '🍃', partType: 'shell', caliber: 4, heightMeters: 80, prefire: 2.0, pattern: 'falling_leaves', safetyDistance: 100, thumbUrl: '/finale-presets/thumbs/13_falling_leaves.png', finalePresetUrl: '/finale-presets/13_Falling_Leaves.fwe' },
+  { id: 'fin-14-titanium-salut', name: 'Titanium Salut', category: 'finale_presets', type: 'firework', color: '#F5F5F5', duration: 1.2, cost: 22, icon: '💥', partType: 'shell', caliber: 4, heightMeters: 80, prefire: 2.0, pattern: 'salute', safetyDistance: 110, thumbUrl: '/finale-presets/thumbs/14_titanium_salut.png', finalePresetUrl: '/finale-presets/14_Titanium_Salut.fwe' },
+  { id: 'fin-15-pattern-half-half', name: 'Pattern Shell — Half/Half (Green/Red)', category: 'finale_presets', type: 'firework', color: '#00E676', duration: 2.3, cost: 42, icon: '☯️', partType: 'shell', caliber: 5, heightMeters: 100, prefire: 2.5, pattern: 'peony', secondaryColor: '#FF5252', colorTransition: 'half_half', safetyDistance: 140, finalePresetUrl: '/finale-presets/15_Pattern_Shell_Half_Half.fwe' },
+  { id: 'fin-27-multibreak', name: 'Multibreak Shell — Brocade + Purple', category: 'finale_presets', type: 'firework', color: '#A24BFF', duration: 6, cost: 75, icon: '🎆', partType: 'shell', caliber: 6, heightMeters: 120, prefire: 3.0, pattern: 'multibreak', secondaryColor: '#FFE2AE', safetyDistance: 175, impliesTrail: true, trailType: 'brocade', thumbUrl: '/finale-presets/thumbs/27_multibreak.png', finalePresetUrl: '/finale-presets/27_Multibreak_Shell.fwe' },
+  { id: 'fin-28-dragon-egg', name: 'Dragon Egg — Crackling Cluster', category: 'finale_presets', type: 'firework', color: '#FFFFFF', duration: 4.5, cost: 58, icon: '🥚', partType: 'shell', caliber: 5, heightMeters: 100, prefire: 2.5, pattern: 'crossette', safetyDistance: 140, thumbUrl: '/finale-presets/thumbs/28_dragon_egg.png', finalePresetUrl: '/finale-presets/28_Dragon_Egg.fwe' },
+  { id: 'fin-29-shell-of-shells', name: 'Shell of Shells — RGB Sub-Bursts', category: 'finale_presets', type: 'firework', color: '#FF1744', duration: 5.5, cost: 110, icon: '🎇', partType: 'shell', caliber: 8, heightMeters: 160, prefire: 4.0, pattern: 'multibreak', secondaryColor: '#00E676', safetyDistance: 210, thumbUrl: '/finale-presets/thumbs/29_shell_of_shells.png', finalePresetUrl: '/finale-presets/29_Shell_of_Shells.fwe' },
+  { id: 'fin-30-warimono', name: 'Warimono — Yellow/Purple Sphere', category: 'finale_presets', type: 'firework', color: '#FFD600', duration: 3.4, cost: 88, icon: '🟣', partType: 'shell', caliber: 8, heightMeters: 160, prefire: 4.0, pattern: 'peony', secondaryColor: '#7B1FA2', colorTransition: 'shift', safetyDistance: 210, thumbUrl: '/finale-presets/thumbs/30_warimono.png', finalePresetUrl: '/finale-presets/30_Warimono.fwe' },
+  { id: 'fin-31-hanabi', name: 'Hanabi — Silver Brocade Crown', category: 'finale_presets', type: 'firework', color: '#FFE2AE', duration: 6, cost: 70, icon: '🎆', partType: 'shell', caliber: 6, heightMeters: 120, prefire: 3.0, pattern: 'kamuro', safetyDistance: 175, impliesTrail: true, trailType: 'brocade', thumbUrl: '/finale-presets/thumbs/31_hanabi.png', finalePresetUrl: '/finale-presets/31_Hanabi.fwe' },
 ];
