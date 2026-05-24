@@ -50,24 +50,6 @@ function App() {
         <TooltipProvider>
           <Toaster />
           <Sonner />
-          <BrowserRouter>
-            <PageTransitionOverlay />
-            <Suspense fallback={<div className="min-h-[100dvh] w-full flex items-center justify-center bg-background"><div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" /></div>}>
-              <Routes>
-                <Route path="/auth" element={<AuthRoute><Auth /></AuthRoute>} />
-                <Route element={<ProtectedRoute><MainLayout /></ProtectedRoute>}>
-                  <Route path="/" element={<Navigate to="/editor" replace />} />
-                  <Route path="/editor" element={<Index />} />
-                  <Route path="/pcb-viewer" element={<PCBViewer />} />
-                  <Route path="/command" element={<CommandCenter />} />
-                  <Route path="/show-test" element={<ShowTestSimulator />} />
-                  <Route path="/settings" element={<Settings />} />
-                  <Route path="/festival-stage-demo" element={<FestivalStageDemo />} />
-                  <Route path="/pairing/two-wire" element={<PairingTwoWire />} />
-                </Route>
-                <Route path="*" element={<NotFound />} />
-              </Routes>
-            </Suspense>
             <AppRouter>
               <RouteTracker />
               <PageTransitionOverlay />
