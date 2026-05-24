@@ -541,7 +541,7 @@ export const FireworkBurst = React.forwardRef<THREE.Group, {
     if (pattern === 'dragon_egg') return baseLife * 1.8;
     if (pattern === 'multi_break') return baseLife * 1.4;
     if (pattern === 'time_rain') return baseLife * 4.0;
-    if (pattern === 'falling_leaves') return baseLife * 3.5;
+    if (pattern === 'falling_leaves') return baseLife * 2.6; // behavior map lifeMul=2.6
     if (pattern === 'glitter') return baseLife * 2.5;
     if (pattern === 'horsetail') return baseLife * 3.5;
     if (pattern === 'brocade_crown') return baseLife * 1.8;
@@ -867,7 +867,7 @@ export const FireworkBurst = React.forwardRef<THREE.Group, {
     // Reduced drag for larger calibers — heavier stars travel further
     const baseDrag = caliber <= 3 ? 0.058 : caliber <= 4 ? 0.048 : caliber <= 5 ? 0.040
       : caliber <= 6 ? 0.034 : caliber <= 8 ? 0.026 : caliber <= 10 ? 0.020 : 0.016;
-    const isTrailingPattern = pattern === 'willow' || pattern === 'kamuro' || pattern === 'brocade' || pattern === 'palm' || pattern === 'horsetail' || pattern === 'brocade_crown';
+    const isTrailingPattern = pattern === 'willow' || pattern === 'kamuro' || pattern === 'brocade' || pattern === 'palm' || pattern === 'horsetail' || pattern === 'brocade_crown' || pattern === 'falling_leaves'; // behavior map tail='willow-drag'
     // Pre-cache wind for trailing patterns — avoids 1600 store reads/frame
     const wTrail = isTrailingPattern ? getWindAtPosition(position[0], position[1], position[2], 'ember') : w;
     // Pattern-specific drag multiplier — heavier stars = less air resistance
@@ -934,13 +934,14 @@ export const FireworkBurst = React.forwardRef<THREE.Group, {
           pz = hangPz + w[2] * 0.6 + columnScatter * 0.7 + w[2] * rainT * 0.08;
         }
       } else if (pattern === 'falling_leaves') {
-        // Falling leaves: aerodynamic tumble — multi-axis sinusoidal flutter + heavy gravity
-        // Each star tumbles at its own frequency/amplitude (from sparkleSeeds)
-        const tumbleFreq = 1.8 + (sparkleSeeds[i] % 5) * 0.6;
+        // Falling leaves — behavior map: gravity=4.5 m/s², drag=0.65, swirl rpm=22.
+        // rpm=22 → 22/60 ≈ 0.367 Hz tumble cycle; range 0.33–0.65 Hz (20–40 rpm).
+        const LEAF_DRAG = 0.65; // behavior map motion.drag
+        const tumbleFreq = 0.33 + (sparkleSeeds[i] % 5) * 0.065; // ~0.33–0.59 Hz
         const tumbleAmp = 0.6 + (sparkleSeeds[i] % 7) * 0.12;
-        const basePx = dragPos(vx, t, dragCoeff * 0.5); // reduced drag = wider drift
-        const basePy = dragPos(vy, t, dragCoeff * 0.35) + 0.5 * GRAVITY * 1.8 * t * t;
-        const basePz = dragPos(vz, t, dragCoeff * 0.5);
+        const basePx = dragPos(vx, t, LEAF_DRAG);
+        const basePy = dragPos(vy, t, LEAF_DRAG) + 0.5 * GRAVITY * (4.5 / 9.81) * t * t; // effective gravity=4.5 m/s²
+        const basePz = dragPos(vz, t, LEAF_DRAG);
         const tumblePhase = twinklePhases[i];
         // Multi-axis tumble: primary lateral + secondary vertical wobble + perpendicular sway
         const tumbleScale = starAge * (1 + starAge); // amplifies as leaf slows
@@ -1221,6 +1222,8 @@ export const FireworkBurst = React.forwardRef<THREE.Group, {
         let trailGrav1 = gravityMult;
         let trailDragH0 = dragCoeff;
         let trailDragH1 = dragCoeff;
+        let trailDragV0 = dragCoeff; // vertical drag — overrideable per pattern
+        let trailDragV1 = dragCoeff;
         
         if (pattern === 'horsetail') {
           trailGrav0 = segAge0 < 0.5 ? gravityMult * 1.2 : gravityMult * (1.2 + (segAge0 - 0.5) / 0.5 * 5.5);
@@ -1267,19 +1270,27 @@ export const FireworkBurst = React.forwardRef<THREE.Group, {
             trailGrav0 = gravityMult * 0.3;
             trailGrav1 = gravityMult * 0.3;
           }
+        } else if (pattern === 'falling_leaves') {
+          // Behavior map: gravity=4.5/9.81 × g, drag=0.65 on all axes (willow-drag tail)
+          trailGrav0 = 4.5 / 9.81;
+          trailGrav1 = 4.5 / 9.81;
+          trailDragH0 = 0.65;
+          trailDragH1 = 0.65;
+          trailDragV0 = 0.65;
+          trailDragV1 = 0.65;
         }
-        
+
         // Trail segment start
         const sx0 = dragPos(vx, t0, trailDragH0);
-        const sy0 = dragPos(vy, t0, dragCoeff) + 0.5 * GRAVITY * trailGrav0 * t0 * t0;
+        const sy0 = dragPos(vy, t0, trailDragV0) + 0.5 * GRAVITY * trailGrav0 * t0 * t0;
         const sz0 = dragPos(vz, t0, trailDragH0);
         tPos[base2] = sx0 + wTrail[0] * t0 * t0 * 0.3;
         tPos[base2 + 1] = sy0;
         tPos[base2 + 2] = sz0 + wTrail[2] * t0 * t0 * 0.3;
-        
+
         // Trail segment end
         const sx1 = dragPos(vx, t1, trailDragH1);
-        const sy1 = dragPos(vy, t1, dragCoeff) + 0.5 * GRAVITY * trailGrav1 * t1 * t1;
+        const sy1 = dragPos(vy, t1, trailDragV1) + 0.5 * GRAVITY * trailGrav1 * t1 * t1;
         const sz1 = dragPos(vz, t1, trailDragH1);
         tPos[base2 + 3] = sx1 + wTrail[0] * t1 * t1 * 0.3;
         tPos[base2 + 4] = sy1;

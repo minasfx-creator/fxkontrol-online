@@ -16,6 +16,8 @@ import { combustionFlicker, hash01, thermalColorRamp } from '@/lib/pyroNoise';
 import { RibbonTrail } from '@/render_ultra/fireworks/ribbonTrailRenderer';
 import { useProjectStore } from '@/store/useProjectStore';
 import { getChemistryForRendering, autoMatchFormulation } from '@/render_ultra/fireworks/particleChemistry';
+import { resolveEffectVector } from '@/render/behavior/resolveEffectVector';
+import { getBehavior } from '@/render/behavior/effectBehaviorMap';
 
 const SPARK_COUNT = 192;        // ×1.6 — more visible rising trail (FWsim ref)
 const SMOKE_WAKE_COUNT = 50;
@@ -298,9 +300,24 @@ export default function CometEffect({
   const headFade = Math.max(0, 1 - progress * 0.5);
   const { headX, headY, headZ } = getHeadPos(progress);
   const screenBlend = useMemo(() => getThreeBlending('screen'), []);
+  // Derive launch orientation from the canonical behavior map via resolveEffectVector.
+  // PTS convention: pan = Finale heading negated (CW→CCW), tilt = 90° − elevation.
   const launchRotation = useMemo(() => {
+    const beh = getBehavior('comet');
+    if (beh) {
+      const { unit } = resolveEffectVector({
+        behavior: beh,
+        pts: { pan: -(launchHeading || 0), tilt: 90 - (launchPitch || 85), spin: 0 },
+        jitterSeed: 0.5,
+      });
+      // Convert unit vector → THREE.Euler(tiltRad, headingRad, 0, 'YXZ')
+      const tiltRad   = Math.acos(Math.max(-1, Math.min(1, unit.y)));
+      const headingRad = Math.atan2(unit.x, unit.z);
+      return new THREE.Euler(tiltRad, headingRad, 0, 'YXZ');
+    }
+    // Fallback (getBehavior not found — should not happen)
     const headingRad = -(launchHeading || 0) * Math.PI / 180;
-    const pitchRad = (90 - (launchPitch || 85)) * Math.PI / 180;
+    const pitchRad   = (90 - (launchPitch || 85)) * Math.PI / 180;
     return new THREE.Euler(pitchRad, headingRad, 0, 'YXZ');
   }, [launchHeading, launchPitch]);
 
