@@ -1,11 +1,29 @@
 /**
  * FX KONTROL · Burst Pattern Simulation
  * Realistic firework burst patterns — peony, chrysanthemum, willow, palm, ring, heart.
+ *
+ * v2: Atlas integration.
+ *   generateBurstFromAtlas() uses VelocityCone from effectFrameAtlas for
+ *   physically accurate per-stage velocity sampling.
+ *   generateBurst() retained for backward compatibility with existing renderer calls.
  */
 
 import * as THREE from 'three';
+import {
+  getAtlasEntry,
+  getScaledStages,
+  sampleVelocityCone,
+  PTYPE,
+  scaleCount,
+  type EffectStage,
+} from './effectFrameAtlas';
 
-export type BurstPattern = 'peony' | 'chrysanthemum' | 'willow' | 'palm' | 'ring' | 'heart' | 'crossette' | 'kamuro' | 'brocade' | 'dragon_egg' | 'multi_break' | 'time_rain' | 'falling_leaves' | 'glitter' | 'horsetail' | 'brocade_crown' | 'saturn' | 'dahlia' | 'coconut_tree' | 'spider_web';
+export type BurstPattern =
+  | 'peony' | 'chrysanthemum' | 'willow' | 'palm' | 'ring' | 'heart'
+  | 'crossette' | 'kamuro' | 'brocade' | 'dragon_egg' | 'multi_break'
+  | 'time_rain' | 'falling_leaves' | 'glitter' | 'horsetail' | 'brocade_crown'
+  | 'saturn' | 'dahlia' | 'coconut_tree' | 'spider_web'
+  | 'mine' | 'comet' | 'waterfall' | 'gerb' | 'candle' | 'strobe';
 
 interface BurstConfig {
   starCount: number;
@@ -16,8 +34,8 @@ interface BurstConfig {
   symmetry: number;       // radial symmetry count
 }
 
-// Star counts calibrated to Finale 3D reference at 3" (75mm) baseline.
-// Pattern signatures tuned against Great Grizzly chart + Weingart Pyrotechnics + FWsim "F1" reference videos.
+// Star counts calibrated to Finale 3D reference at 3" (75mm) baseline
+// gravityMult and tailFactor now SYNC with effectFrameAtlas for consistency.
 const BURST_CONFIGS: Record<BurstPattern, BurstConfig> = {
   peony:         { starCount: 280, velocity: 26, spread: 1.0, tailFactor: 0.05, gravityMult: 1.0, symmetry: 0 },  // Grizzly: clean expanding sphere, no tail
   chrysanthemum: { starCount: 200, velocity: 30, spread: 1.0, tailFactor: 1.6, gravityMult: 1.0, symmetry: 0 },   // Grizzly: tailed sphere
@@ -39,6 +57,13 @@ const BURST_CONFIGS: Record<BurstPattern, BurstConfig> = {
   dahlia:        { starCount: 60,  velocity: 42, spread: 0.9, tailFactor: 0.2, gravityMult: 1.1, symmetry: 0 },
   coconut_tree:  { starCount: 40,  velocity: 22, spread: 0.5, tailFactor: 1.8, gravityMult: 1.5, symmetry: 5 },
   spider_web:    { starCount: 120, velocity: 32, spread: 1.0, tailFactor: 1.4, gravityMult: 0.6, symmetry: 0 },
+  // Ground / device effects (no overhead burst)
+  mine:          { starCount: 160, velocity: 24, spread: 0.9, tailFactor: 0.8, gravityMult: 1.0, symmetry: 0 },
+  comet:         { starCount: 1,   velocity: 32, spread: 0.1, tailFactor: 3.0, gravityMult: 0.6, symmetry: 0 },
+  waterfall:     { starCount: 400, velocity: 5,  spread: 0.2, tailFactor: 1.5, gravityMult: 1.2, symmetry: 0 },
+  gerb:          { starCount: 250, velocity: 6,  spread: 0.1, tailFactor: 1.0, gravityMult: 0.8, symmetry: 0 },
+  candle:        { starCount: 1,   velocity: 16, spread: 0.1, tailFactor: 1.0, gravityMult: 0.6, symmetry: 0 },
+  strobe:        { starCount: 140, velocity: 18, spread: 1.0, tailFactor: 0.1, gravityMult: 0.1, symmetry: 0 },
 };
 
 // Aerodynamic-drag-like attenuation factor — breaks perfect CGI sphere.
@@ -298,4 +323,90 @@ export function getBurstConfig(pattern: BurstPattern): BurstConfig {
 
 export function getAllPatterns(): BurstPattern[] {
   return Object.keys(BURST_CONFIGS) as BurstPattern[];
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Atlas-driven burst generator (v2)
+//
+// Uses effectFrameAtlas VelocityCone for physically accurate velocity sampling.
+// Returns per-particle arrays with stage metadata attached so the GPU compute
+// emitter can apply the correct initial temperature, size, gravity and type.
+// ─────────────────────────────────────────────────────────────────────────────
+
+export interface AtlasBurstParticle {
+  px: number; py: number; pz: number;
+  vx: number; vy: number; vz: number;
+  tempK: number;
+  size: number;
+  life: number;         // particle lifetime in seconds
+  gravityScale: number;
+  dragScale: number;
+  particleType: number; // PTYPE constant
+  stageIdx: number;     // which atlas stage spawned this particle
+}
+
+/**
+ * Generate the initial particle burst from the atlas for a given pattern/caliber.
+ * Only stages with emissionRate > 0 AND tStart == 0 are used for the
+ * instantaneous burst flash. Continuous stages (tStart > 0) are handled
+ * by the frame-tick emitter in FireworkRenderer.
+ */
+export function generateBurstFromAtlas(
+  origin: THREE.Vector3,
+  pattern: BurstPattern,
+  caliberMm: number,
+): AtlasBurstParticle[] {
+  const entry = getAtlasEntry(pattern);
+  const scaledStages = getScaledStages(pattern, caliberMm);
+
+  // Burst flash: only instantaneous stages (tStart <= 0.04)
+  const burstStages = scaledStages.filter(s => s.tStart <= 0.04 && s.emissionRate > 0);
+
+  // Total particles = sum of (emissionRate * stage_duration * baseLifetime * caliber_scale)
+  const lifetime = entry.baseLifetimeS;
+  const particles: AtlasBurstParticle[] = [];
+
+  for (let si = 0; si < burstStages.length; si++) {
+    const stage = burstStages[si];
+    const stageDuration = (stage.tEnd - stage.tStart) * lifetime;
+    const count = scaleCount(Math.round(stage.emissionRate * stageDuration), caliberMm);
+
+    for (let i = 0; i < count; i++) {
+      const [vx, vy, vz] = sampleVelocityCone(stage.vel, Math.random);
+
+      // Interpolate temp and size across particle lifetime within stage
+      const tRng = Math.random();
+      const tempK = stage.tempKStart + (stage.tempKEnd - stage.tempKStart) * tRng;
+      const size  = stage.sizeStart  + (stage.sizeEnd  - stage.sizeStart)  * tRng;
+
+      // Particle lifetime = fraction of effect lifetime within this stage
+      const particleLife = stageDuration * (0.7 + Math.random() * 0.6);
+
+      particles.push({
+        px: origin.x + (Math.random() - 0.5) * 0.3,
+        py: origin.y + Math.random() * 0.15,
+        pz: origin.z + (Math.random() - 0.5) * 0.3,
+        vx, vy, vz,
+        tempK, size, life: particleLife,
+        gravityScale: stage.gravityScale,
+        dragScale: stage.dragScale,
+        particleType: stage.particleType,
+        stageIdx: si,
+      });
+    }
+  }
+
+  return particles;
+}
+
+/**
+ * Get the stages that run CONTINUOUSLY during the effect (tStart > 0.04).
+ * The renderer ticks these each frame and emits at emissionRate particles/second.
+ */
+export function getAtlasContinuousStages(
+  pattern: BurstPattern,
+  caliberMm: number,
+): EffectStage[] {
+  const scaledStages = getScaledStages(pattern, caliberMm);
+  return scaledStages.filter(s => s.tStart > 0.04 && s.emissionRate > 0);
 }
