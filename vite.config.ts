@@ -4,6 +4,12 @@ import path from "path";
 import { componentTagger } from "lovable-tagger";
 import { VitePWA } from "vite-plugin-pwa";
 import { visualizer } from "rollup-plugin-visualizer";
+import { bundleBudget } from "./scripts/vite-plugin-bundle-budget";
+import { precacheGuard } from "./scripts/vite-plugin-precache-guard";
+import { sitemapFromRegistry } from "./scripts/vite-plugin-sitemap";
+
+// Scan public/ synchronously so globIgnores populates before defineConfig evaluates.
+const guard = precacheGuard({ maxBytes: 2 * 1024 * 1024 }); // 2 MiB per-file ceiling
 
 export default defineConfig(({ mode }) => ({
   server: {
@@ -58,6 +64,8 @@ export default defineConfig(({ mode }) => ({
           "**/*Diagram-*.js",
           "**/layout-*.js",
           "**/vdlParser-*.js",
+          // precacheGuard: auto-detected oversized public/ assets (>2 MiB)
+          ...guard.globIgnores,
         ],
         navigateFallback: "/index.html",
         navigateFallbackDenylist: [/^\/~oauth/],
@@ -109,6 +117,12 @@ export default defineConfig(({ mode }) => ({
       brotliSize: true,
       template: "treemap",
     }),
+    // Sitemap generator — writes public/sitemap.xml before Vite copies public/
+    sitemapFromRegistry(),
+    // Precache guard — warns on oversized public/ assets + plugs globIgnores above
+    guard.plugin,
+    // Bundle budget — fails build if initial JS payload > 180 KB gzip
+    mode === "production" && bundleBudget({ maxKBGzip: 180 }),
   ].filter(Boolean),
   resolve: {
     alias: {
