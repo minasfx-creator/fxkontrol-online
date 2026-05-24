@@ -1,7 +1,7 @@
-﻿#Requires -Version 5.1
+#Requires -Version 5.1
 <#
 .SYNOPSIS
-  FX KONTROL — Instalador para Windows
+  FX KONTROL - Instalador para Windows
   Copia os arquivos para Arquivos de Programas e cria atalhos.
 #>
 
@@ -9,7 +9,7 @@ param(
   [string]$InstallDir = "$env:ProgramFiles\FX KONTROL"
 )
 
-# ── Verifica se rodou como Administrador ──────────────────────────────
+# --- Verifica se rodou como Administrador ---
 $isAdmin = ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole(
   [Security.Principal.WindowsBuiltInRole]::Administrator
 )
@@ -38,16 +38,16 @@ if (-not (Test-Path $source)) {
 Write-Host "Destino da instalacao: $InstallDir" -ForegroundColor White
 Write-Host ""
 
-# ── Criar diretório de instalação ─────────────────────────────────────
+# --- Criar diretorio de instalacao ---
 if (-not (Test-Path $InstallDir)) {
   New-Item -ItemType Directory -Force -Path $InstallDir | Out-Null
 }
 
-# ── Copiar arquivos ───────────────────────────────────────────────────
+# --- Copiar arquivos ---
 Write-Host "[1/4] Copiando arquivos..." -ForegroundColor Green
 try {
   Copy-Item -Path "$source\*" -Destination $InstallDir -Recurse -Force
-  Write-Host "      OK — $(((Get-ChildItem $InstallDir -Recurse -File).Count)) arquivos copiados" -ForegroundColor Gray
+  Write-Host "      OK - $(((Get-ChildItem $InstallDir -Recurse -File).Count)) arquivos copiados" -ForegroundColor Gray
 } catch {
   Write-Host "[ERRO] Falha ao copiar arquivos: $_" -ForegroundColor Red
   Read-Host "Pressione Enter para sair"
@@ -56,38 +56,40 @@ try {
 
 $exePath = Join-Path $InstallDir "FX KONTROL.exe"
 
-# ── Atalho na Área de Trabalho ────────────────────────────────────────
+# --- Atalho na Area de Trabalho ---
 Write-Host "[2/4] Criando atalho na Area de Trabalho..." -ForegroundColor Green
 try {
   $desktopPath = [Environment]::GetFolderPath("CommonDesktopDirectory")
   $shortcut = (New-Object -ComObject WScript.Shell).CreateShortcut("$desktopPath\FX KONTROL.lnk")
-  $shortcut.TargetPath   = $exePath
+  $shortcut.TargetPath       = $exePath
   $shortcut.WorkingDirectory = $InstallDir
-  $shortcut.Description  = "FX KONTROL - Plataforma de Shows Pirotecnicos e Drones"
-  $shortcut.IconLocation = $exePath
+  $shortcut.Description      = "FX KONTROL - Plataforma de Shows Pirotecnicos e Drones"
+  $shortcut.IconLocation     = $exePath
   $shortcut.Save()
-  Write-Host "      OK — $desktopPath\FX KONTROL.lnk" -ForegroundColor Gray
+  Write-Host "      OK - $desktopPath\FX KONTROL.lnk" -ForegroundColor Gray
 } catch {
   Write-Host "      AVISO: nao foi possivel criar atalho na area de trabalho" -ForegroundColor Yellow
 }
 
-# ── Atalho no Menu Iniciar ────────────────────────────────────────────
+# --- Atalho no Menu Iniciar ---
 Write-Host "[3/4] Criando atalho no Menu Iniciar..." -ForegroundColor Green
 try {
   $startMenuPath = Join-Path ([Environment]::GetFolderPath("CommonPrograms")) "FX KONTROL"
-  if (-not (Test-Path $startMenuPath)) { New-Item -ItemType Directory -Force -Path $startMenuPath | Out-Null }
+  if (-not (Test-Path $startMenuPath)) {
+    New-Item -ItemType Directory -Force -Path $startMenuPath | Out-Null
+  }
   $shortcut2 = (New-Object -ComObject WScript.Shell).CreateShortcut("$startMenuPath\FX KONTROL.lnk")
-  $shortcut2.TargetPath   = $exePath
+  $shortcut2.TargetPath       = $exePath
   $shortcut2.WorkingDirectory = $InstallDir
-  $shortcut2.Description  = "FX KONTROL - Plataforma de Shows Pirotecnicos e Drones"
-  $shortcut2.IconLocation = $exePath
+  $shortcut2.Description      = "FX KONTROL - Plataforma de Shows Pirotecnicos e Drones"
+  $shortcut2.IconLocation     = $exePath
   $shortcut2.Save()
-  Write-Host "      OK — $startMenuPath" -ForegroundColor Gray
+  Write-Host "      OK - $startMenuPath" -ForegroundColor Gray
 } catch {
   Write-Host "      AVISO: nao foi possivel criar atalho no Menu Iniciar" -ForegroundColor Yellow
 }
 
-# ── Registrar no Adicionar/Remover Programas ─────────────────────────
+# --- Registrar no Adicionar/Remover Programas ---
 Write-Host "[4/4] Registrando no Sistema (Adicionar/Remover Programas)..." -ForegroundColor Green
 try {
   $regKey      = "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\FXKontrol"
