@@ -1,0 +1,22 @@
+<?xml version="1.0"?>
+<FireworkEffect xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+  <Children>
+    <BaseEffectNode xsi:type="Rocket">
+      <Children>
+        <BaseEffectNode xsi:type="BurstingCharge">
+          <Children />
+          <Energy>22</Energy>
+          <Delay>3.3</Delay>
+        </BaseEffectNode>
+      </Children>
+    </BaseEffectNode>
+  </Children>
+  <Identifier>
+    <Name>Rocket Salut small</Name>
+    <Author>LT</Author>
+  </Identifier>
+  <AuthorSoftwareVersion>
+    <Major>0</Major>
+    <Minor>6</Minor>
+  </AuthorSoftwareVersion>
+</FireworkEffect>

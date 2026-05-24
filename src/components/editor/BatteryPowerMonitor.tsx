@@ -6,6 +6,7 @@
 
 import { useEffect, useState } from 'react';
 import { batteryMonitorAdapter } from '@/core/hardware/adapters/BatteryMonitorAdapter';
+import { shouldAdapterTick } from '@/core/hardware/adapterTickGate';
 import { cn } from '@/lib/utils';
 import { Battery, AlertTriangle, Zap } from 'lucide-react';
 import type { BatteryState } from '@/core/hardware/types';
@@ -15,6 +16,10 @@ export default function BatteryPowerMonitor() {
   const [history, setHistory] = useState<number[]>([]);
 
   useEffect(() => {
+    // Honest-hardware: don't even schedule a tick if there's no device
+    // OR the synthetic simulator is OFF. Prevents stray Math.random() and
+    // wasted timers when the panel is opened on an empty fleet.
+    if (!shouldAdapterTick(batteryMonitorAdapter)) return;
     const iv = setInterval(() => {
       batteryMonitorAdapter.pollTelemetry();
       const s = batteryMonitorAdapter.getState();

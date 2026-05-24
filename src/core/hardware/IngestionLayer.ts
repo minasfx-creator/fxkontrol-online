@@ -7,6 +7,7 @@
 import type { HardwareStatusSnapshot } from './types';
 import type { ProvenanceInfo, IntegrationMode, DataProvenance } from './provenance';
 import { deviceEventLog } from './DeviceEventLog';
+import { realOnlyGate } from './realOnlyGate';
 
 // ── Snapshot Store ─────────────────────────────────────────────────
 
@@ -69,6 +70,11 @@ class PassiveTelemetryIngestor {
       data_freshness_ms: Date.now() - snapshot.timestamp,
       writable: false,
     };
+    // ── Real-Only Gate ─────────────────────────────────────────
+    // Drop snapshots whose provenance is not verified (not_integrated /
+    // simulated) when real-only mode is on. No store push, no event.
+    if (!realOnlyGate.acceptSnapshot(provenance, snapshot.device_id)) return;
+
     hardwareSnapshotStore.push(snapshot.device_id, snapshot, provenance);
     deviceEventLog.log(snapshot.device_id, 'telemetry',
       `Ingested snapshot (${source}): ${snapshot.online ? 'online' : 'offline'}`);

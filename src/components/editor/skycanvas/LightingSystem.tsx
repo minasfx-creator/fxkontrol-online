@@ -25,7 +25,9 @@ import {
   getActiveBurstScan,
   getSkyScatterUniforms,
   setAdaptiveExposureValue,
+  runActiveBurstScan,
 } from './sharedState';
+import { useClockTimeRef } from '@/hooks/useClockTimeRef';
 
 import { setDebugExposure, setDebugBurstLoad, setDebugLOD, setDebugRendererInfo } from '../RenderDebugOverlay';
 
@@ -38,15 +40,19 @@ const _giProbeColor = new THREE.Color();
 // AdaptiveExposureController
 // Uses getEffectById() for O(1) lookups instead of EFFECT_LIBRARY.find()
 // ═══════════════════════════════════════════════════════════════════════
-export const AdaptiveExposureController = React.forwardRef<THREE.Group, {}>(function AdaptiveExposureController(_props, _ref) {
+export const AdaptiveExposureController = React.forwardRef<THREE.Group, Record<string, never>>(function AdaptiveExposureController(_props, _ref) {
   useRenderCounter('AdaptiveExposure');
   const exposureRef = useRef(createExposureController());
   const _scatterAccum = useMemo(() => new THREE.Color(), []);
   const _tmpColor = useMemo(() => new THREE.Color(), []);
+  const clockTimeRef = useClockTimeRef();
 
   useFrame(({ gl }, delta) => {
     const state = exposureRef.current;
-    const { timelineItems, currentTime } = useProjectStore.getState();
+    const { timelineItems } = useProjectStore.getState();
+    // Authoritative time read — bypasses React/Zustand scheduling so even
+    // if the store mirror is one frame behind, the renderer stays in sync.
+    const currentTime = clockTimeRef.current;
     let luminance = 0;
     let activeBursts = 0;
     _scatterAccum.setRGB(0, 0, 0);
@@ -116,7 +122,10 @@ export function ContactShadowsLayer() {
       scale={80}
       blur={s.contactShadowsBlur}
       far={50}
-      resolution={256}
+      // Reduced 256 → 128: depth FBO is 4× smaller, blur radius (~2px) hides
+      // the resolution drop at this scale. Saves ~256KB GPU memory + a render
+      // pass per frame, helping cold-start stay under context-loss thresholds.
+      resolution={128}
       color="#000000"
     />
   );
@@ -125,7 +134,7 @@ export function ContactShadowsLayer() {
 // ═══════════════════════════════════════════════════════════════════════
 // DebugFeed — FPS counter, draw calls, adaptive LOD (already zero-GC)
 // ═══════════════════════════════════════════════════════════════════════
-export const DebugFeed = React.forwardRef<THREE.Group, {}>(function DebugFeed(_props, _ref) {
+export const DebugFeed = React.forwardRef<THREE.Group, Record<string, never>>(function DebugFeed(_props, _ref) {
   const { gl, camera } = useThree();
   const frameCount = useRef(0);
   const lastTime = useRef(performance.now());
@@ -152,7 +161,7 @@ export const DebugFeed = React.forwardRef<THREE.Group, {}>(function DebugFeed(_p
 // GlobalIlluminationController — explosion-driven GI probes
 // Zero-GC: reuses _giProbeColor instead of compound.color.clone()
 // ═══════════════════════════════════════════════════════════════════════
-export const GlobalIlluminationController = React.forwardRef<THREE.Group, {}>(function GlobalIlluminationController(_props, _ref) {
+export const GlobalIlluminationController = React.forwardRef<THREE.Group, Record<string, never>>(function GlobalIlluminationController(_props, _ref) {
   const giRef = useRef<GlobalIlluminationSystem | null>(null);
   const { scene } = useThree();
   const _probePos = useMemo(() => new THREE.Vector3(), []);
@@ -162,6 +171,8 @@ export const GlobalIlluminationController = React.forwardRef<THREE.Group, {}>(fu
     (window as any).__giSystem = giRef.current;
     return () => {
       delete (window as any).__giSystem;
+      // Detach hemisphere light from scene + clear probes (M5).
+      giRef.current?.dispose();
       giRef.current = null;
     };
   }, [scene]);
@@ -192,10 +203,11 @@ export const GlobalIlluminationController = React.forwardRef<THREE.Group, {}>(fu
 // LensFlareController — cinematic optics on bright bursts
 // Zero-GC: reuses _flarePos/_flareColor singletons, uses getEffectById() O(1)
 // ═══════════════════════════════════════════════════════════════════════
-export const LensFlareController = React.forwardRef<THREE.Group, {}>(function LensFlareController(_props, _ref) {
+export const LensFlareController = React.forwardRef<THREE.Group, Record<string, never>>(function LensFlareController(_props, _ref) {
   const spritesRef = useRef<THREE.Sprite[]>([]);
   const poolIdx = useRef(0);
   const { scene } = useThree();
+  const clockTimeRef = useClockTimeRef();
 
   useEffect(() => {
     const pool: THREE.Sprite[] = [];
@@ -206,7 +218,15 @@ export const LensFlareController = React.forwardRef<THREE.Group, {}>(function Le
     }
     spritesRef.current = pool;
     return () => {
-      pool.forEach(s => scene.remove(s));
+      // Dispose CanvasTexture + SpriteMaterial for every pooled sprite (M5).
+      // createLensFlareSprite() builds one CanvasTexture per sprite — without
+      // this loop we leak ~10 256×256 textures on each remount.
+      pool.forEach(s => {
+        scene.remove(s);
+        const mat = s.material as THREE.SpriteMaterial;
+        mat.map?.dispose();
+        mat.dispose();
+      });
       spritesRef.current = [];
     };
   }, [scene]);
@@ -219,7 +239,8 @@ export const LensFlareController = React.forwardRef<THREE.Group, {}>(function Le
       decayLensFlare(sprite, delta, 3);
     }
 
-    const { timelineItems, currentTime } = useProjectStore.getState();
+    const { timelineItems } = useProjectStore.getState();
+    const currentTime = clockTimeRef.current;
     for (let i = 0; i < timelineItems.length; i++) {
       const item = timelineItems[i];
       const elapsed = currentTime - item.startTime;
@@ -246,7 +267,7 @@ export const LensFlareController = React.forwardRef<THREE.Group, {}>(function Le
 // GroundReflections — wet-floor reflections from explosions
 // Zero-GC: uses getEffectById() O(1), reuses uniform color in-place
 // ═══════════════════════════════════════════════════════════════════════
-export const GroundReflections = React.forwardRef<THREE.Mesh, {}>(function GroundReflections(_props, _ref) {
+export const GroundReflections = React.forwardRef<THREE.Mesh, Record<string, never>>(function GroundReflections(_props, _ref) {
   const groundStyle = useSceneStore(st => st.settings.groundStyle);
   const meshRef = useRef<THREE.Mesh>(null);
   const uniformsRef = useRef({
@@ -255,8 +276,9 @@ export const GroundReflections = React.forwardRef<THREE.Mesh, {}>(function Groun
     uReflectionColor: { value: new THREE.Color(0.1, 0.15, 0.2) },
     uReflectionIntensity: { value: 0.5 },
   });
+  const clockTimeRef = useClockTimeRef();
 
-  useFrame(({ clock }) => {
+  useFrame(() => {
     if (!meshRef.current) return;
     // sfx-stage mode: skip reflection updates entirely (performance optimization)
     if (groundStyle === 'sfx-stage') {
@@ -265,9 +287,11 @@ export const GroundReflections = React.forwardRef<THREE.Mesh, {}>(function Groun
     }
     meshRef.current.visible = true;
     const u = uniformsRef.current;
-    u.uTime.value = clock.getElapsedTime();
+    // Deterministic clock: freezes ripples on pause/scrub.
+    u.uTime.value = useProjectStore.getState().currentTime;
 
-    const { timelineItems, currentTime } = useProjectStore.getState();
+    const { timelineItems } = useProjectStore.getState();
+    const currentTime = clockTimeRef.current;
     let flashIntensity = 0;
     const _reusableColor = u.uReflectionColor.value;
 
@@ -342,4 +366,19 @@ export const GroundReflections = React.forwardRef<THREE.Mesh, {}>(function Groun
       />
     </mesh>
   );
+});
+
+// ═══════════════════════════════════════════════════════════════════════
+// ActiveBurstScanDriver — runs runActiveBurstScan() once per frame BEFORE
+// any consumer (GI / LensFlare / Reflections / Exposure) reads it.
+// Without this, getActiveBurstScan() returns null and no light effect
+// fires when the timeline reaches a cue. Mount as the FIRST child inside
+// the Canvas so its useFrame callback registers ahead of consumers.
+// Zero-GC: a single function call per frame, no allocations.
+// ═══════════════════════════════════════════════════════════════════════
+export const ActiveBurstScanDriver = React.forwardRef<null, Record<string, never>>(function ActiveBurstScanDriver(_props, _ref) {
+  useFrame(() => {
+    runActiveBurstScan();
+  });
+  return null;
 });

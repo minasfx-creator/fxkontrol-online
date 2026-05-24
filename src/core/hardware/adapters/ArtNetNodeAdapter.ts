@@ -5,7 +5,13 @@
  */
 
 import type { HardwareAdapter, HardwareCapabilities, HardwareStatusSnapshot, DeviceConnectionState, LinkHealthState } from '../types';
-import { createSimulatedProvenance, type ProvenanceInfo } from '../provenance';
+import {
+  createSimulatedProvenance,
+  markHandshakeOk,
+  markHandshakeLost,
+  type ProvenanceInfo,
+} from '../provenance';
+import { isHardwareSimulatorEnabled } from '@/lib/featureFlags';
 
 export interface ArtNetNodeState {
   node_ip: string;
@@ -68,13 +74,13 @@ export class ArtNetNodeAdapter implements HardwareAdapter<ArtNetNodeState> {
   getProvenance(): ProvenanceInfo { return { ...this._provenance, last_seen_at: Date.now(), data_freshness_ms: 0 }; }
 
   pollTelemetry(): void {
-    if (this._connected === 'connected' || this._connected === 'degraded') {
-      this._state.packets_per_second = 30 + Math.floor(Math.random() * 10);
-      this._state.link.latency_ms = this._state.link.degraded ? 35 + Math.random() * 30 : 2 + Math.random() * 5;
-      this._state.link.packet_loss = this._state.link.degraded ? 2 + Math.random() * 5 : Math.random() * 0.5;
-      this._state.link.last_packet = Date.now();
-      this._state.artpoll_responses++;
-    }
+    if (this._connected !== 'connected' && this._connected !== 'degraded') return;
+    if (!isHardwareSimulatorEnabled()) return;
+    this._state.packets_per_second = 30 + Math.floor(Math.random() * 10);
+    this._state.link.latency_ms = this._state.link.degraded ? 35 + Math.random() * 30 : 2 + Math.random() * 5;
+    this._state.link.packet_loss = this._state.link.degraded ? 2 + Math.random() * 5 : Math.random() * 0.5;
+    this._state.link.last_packet = Date.now();
+    this._state.artpoll_responses++;
   }
 
   runDiagnostics(): { healthy: boolean; issues: string[] } {
@@ -92,24 +98,26 @@ export class ArtNetNodeAdapter implements HardwareAdapter<ArtNetNodeState> {
       link: { protocol: 'Art-Net 4', connected: false, latency_ms: 0, packet_loss: 0, degraded: false, last_packet: 0 },
       artpoll_responses: 0,
     };
+    markHandshakeLost(this._provenance);
   }
 
-  simulateConnect(ip: string = '192.168.1.100', universes: number[] = [1, 2, 3]): void {
+  /**
+   * Promote to LIVE READ-ONLY after a verified ArtPollReply.
+   * Called by `discoveryRegistryBridge` — never by UI directly.
+   */
+  markHandshakeOk(host: string): void {
     this._connected = 'connected';
-    this._state.node_ip = ip;
-    this._state.universes = universes;
+    this._state.node_ip = host;
     this._state.link.connected = true;
-    this._state.link.degraded = false;
+    this._state.link.last_packet = Date.now();
+    markHandshakeOk(this._provenance, 'ethernet_udp');
   }
 
-  simulateDegraded(): void {
-    this._connected = 'degraded';
-    this._state.link.degraded = true;
-  }
-
-  simulateDisconnect(): void {
+  /** Demote to NOT_INTEGRATED on lost / no replies. */
+  markHandshakeLost(): void {
     this._connected = 'disconnected';
     this._state.link.connected = false;
+    markHandshakeLost(this._provenance);
   }
 }
 

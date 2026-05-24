@@ -157,8 +157,17 @@ export default function InventoryPanel({ onClose }: { onClose: () => void }) {
               return (
                 <div
                   key={effect.id}
+                  draggable
+                  onDragStart={(e) => {
+                    // Drag direto pra timeline: o effect.id já é canônico do
+                    // EFFECT_LIBRARY, então não precisa de mapping. Inclui o
+                    // contador de estoque em notes pra rastreabilidade.
+                    e.dataTransfer.effectAllowed = 'copy';
+                    e.dataTransfer.setData('application/effect-id', effect.id);
+                  }}
+                  title="Arraste para a timeline para criar um cue"
                   className={cn(
-                    "flex items-center gap-1.5 px-2 py-1 rounded text-[10px] border",
+                    "flex items-center gap-1.5 px-2 py-1 rounded text-[10px] border cursor-grab active:cursor-grabbing",
                     isLow ? "border-destructive/30 bg-destructive/5" : "border-transparent hover:bg-surface-3"
                   )}
                 >
@@ -173,6 +182,8 @@ export default function InventoryPanel({ onClose }: { onClose: () => void }) {
                       min={0}
                       value={onHand}
                       onChange={(e) => setItem(effect.id, { onHand: parseInt(e.target.value) || 0 })}
+                      onPointerDown={(e) => e.stopPropagation()}
+                      onDragStart={(e) => e.stopPropagation()}
                       className="w-12 h-5 text-[9px] text-center bg-surface-2 border-border font-mono-code px-1"
                       title="On Hand"
                     />

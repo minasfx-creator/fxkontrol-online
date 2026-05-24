@@ -24,4 +24,3 @@ export function realityScanMeshToPointCloud(
   }
   return result;
 }
-

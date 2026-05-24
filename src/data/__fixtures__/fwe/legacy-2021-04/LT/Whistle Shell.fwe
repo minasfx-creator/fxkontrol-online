@@ -1,0 +1,42 @@
+<?xml version="1.0"?>
+<FireworkEffect xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+  <Children>
+    <BaseEffectNode xsi:type="Shell">
+      <Children>
+        <BaseEffectNode xsi:type="BurstingCharge">
+          <Children>
+            <BaseEffectNode xsi:type="Whistle">
+              <Children />
+              <Count>26</Count>
+              <Distribution xsi:type="SphericalDistribution">
+                <Speed>1</Speed>
+                <Sigma>0.14</Sigma>
+              </Distribution>
+            </BaseEffectNode>
+          </Children>
+          <Auto>true</Auto>
+          <Energy>70</Energy>
+          <Delay>3.6</Delay>
+        </BaseEffectNode>
+      </Children>
+      <ID>0</ID>
+      <AllowRenaming>false</AllowRenaming>
+      <SimpleSize>
+        <DiameterPreset>d125</DiameterPreset>
+      </SimpleSize>
+      <SizeSelection>Simple</SizeSelection>
+      <Diameter>0.125</Diameter>
+      <LiftingCharge>128</LiftingCharge>
+    </BaseEffectNode>
+  </Children>
+  <Identifier>
+    <Name>Whistle Shell</Name>
+    <Author>LT</Author>
+  </Identifier>
+  <IsReadonly>false</IsReadonly>
+  <AuthorSoftwareVersion>
+    <Major>2</Major>
+    <Minor>0</Minor>
+  </AuthorSoftwareVersion>
+  <MD5Hash />
+</FireworkEffect>

@@ -403,7 +403,15 @@ export class InstancedParticleRenderer {
   }
 
   dispose() {
+    // Detach instanced mesh from any parent so it can be GC'd.
+    this.mesh.parent?.remove(this.mesh);
+    // Remove cinema per-instance attribute references — the buffers are
+    // owned by the geometry and freed by geometry.dispose() below, but
+    // the Map itself must be cleared so the renderer instance is collectable.
+    this._cinemaAttrs.clear();
+    // Geometry frees all attached BufferAttributes (including instanced ones).
     this.mesh.geometry.dispose();
+    // Active material (may be the latest one set via setShaderMode).
     this.material.dispose();
   }
 }

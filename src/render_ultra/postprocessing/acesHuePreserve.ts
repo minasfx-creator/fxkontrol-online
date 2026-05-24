@@ -11,7 +11,15 @@
  * 2. Before tone mapping, extracts hue from the linear input
  * 3. After tone mapping, re-injects the original hue ratio
  *    in highlights above a threshold, preventing chromatic drift
- * 4. Highlights converge gracefully to white (not false colors)
+ * 4. Highlights converge to white via a tighter 2-stop window
+ *    (v2: window was 4 stops — too wide, preserved colors at plasma temps)
+ *
+ * v2 changes:
+ *   - whiteConverge window tightened: +1.0/+4.0 → +0.5/+2.5
+ *     (white-out happens faster, matching real lens response to plasma)
+ *   - huePreserveStrength default reduced: 0.7 → 0.6
+ *     (plasma should go white, not keep tinted hue)
+ *   - Added luminanceGain pre-scale to account for HDR×14-16 input range
  *
  * This replaces the default ToneMapping effect when Studio Mode
  * cinematic post is active.
@@ -20,12 +28,11 @@
 import { Effect } from 'postprocessing';
 import { Uniform } from 'three';
 
-type EffectUniformMap = Map<string, Uniform>;
-
 const ACES_HUE_PRESERVE_FRAGMENT = `
 uniform float exposure;
 uniform float huePreserveStrength;
 uniform float highlightThreshold;
+uniform float luminanceGain;
 
 // ACES Filmic Tone Mapping (Narkowicz 2015)
 vec3 acesFilmic(vec3 x) {
@@ -45,64 +52,67 @@ vec3 extractHue(vec3 color) {
 }
 
 void mainImage(const in vec4 inputColor, const in vec2 uv, out vec4 outputColor) {
-  vec3 color = inputColor.rgb * exposure;
-  
+  // luminanceGain pre-scales the linear HDR buffer before ACES
+  // Use values < 1.0 when scene HDR peaks exceed ×14 (burst shaders)
+  vec3 color = inputColor.rgb * exposure * luminanceGain;
+
   float lum = dot(color, vec3(0.2126, 0.7152, 0.0722));
-  
+
   // Extract hue ratios BEFORE tone mapping
   vec3 hueRatio = extractHue(color);
-  
+
   // Apply ACES filmic
   vec3 mapped = acesFilmic(color);
-  
+
   // Hue preservation for highlights:
   // Above threshold, blend the tone-mapped result back toward
   // the original hue ratios to prevent chromatic drift
   float highlightMask = smoothstep(highlightThreshold, highlightThreshold + 1.5, lum);
-  
+
   if (highlightMask > 0.001 && huePreserveStrength > 0.0) {
-    // Re-derive the mapped luminance
     float mappedLum = dot(mapped, vec3(0.2126, 0.7152, 0.0722));
-    
+
     // Reconstruct color using original hue ratios + mapped luminance
     vec3 huePreserved = hueRatio * mappedLum;
-    
-    // Graceful convergence to white at extreme luminance
-    float whiteConverge = smoothstep(highlightThreshold + 1.0, highlightThreshold + 4.0, lum);
+
+    // v2: tighter 2-stop white convergence window matches real lens response to plasma.
+    // Old window (+1/+4) kept copper/strontium tint too long into plasma zone.
+    float whiteConverge = smoothstep(highlightThreshold + 0.5, highlightThreshold + 2.5, lum);
     huePreserved = mix(huePreserved, vec3(mappedLum), whiteConverge);
-    
-    // Blend based on highlight mask and strength
+
     mapped = mix(mapped, huePreserved, highlightMask * huePreserveStrength);
   }
-  
+
   outputColor = vec4(mapped, inputColor.a);
 }
 `;
 
 export class ACESHuePreserveEffect extends Effect {
-  private get effectUniforms(): EffectUniformMap {
-    return (this as unknown as { uniforms: EffectUniformMap }).uniforms;
-  }
-
   constructor({
     exposure = 1.0,
-    huePreserveStrength = 0.7,
+    huePreserveStrength = 0.6,   // v2: reduced from 0.7 — plasma goes white faster
     highlightThreshold = 1.5,
+    luminanceGain = 1.0,
   }: {
     exposure?: number;
     huePreserveStrength?: number;
     highlightThreshold?: number;
+    /** Pre-scale applied to the linear HDR buffer. Set to ~0.07 when burst peaks reach ×14-16. */
+    luminanceGain?: number;
   } = {}) {
     super('ACESHuePreserveEffect', ACES_HUE_PRESERVE_FRAGMENT, {
       uniforms: new Map([
-        ['exposure', new Uniform(exposure)],
+        ['exposure',            new Uniform(exposure)],
         ['huePreserveStrength', new Uniform(huePreserveStrength)],
-        ['highlightThreshold', new Uniform(highlightThreshold)],
+        ['highlightThreshold',  new Uniform(highlightThreshold)],
+        ['luminanceGain',       new Uniform(luminanceGain)],
       ]),
     });
   }
 
-  set exposure(v: number) { (this.effectUniforms.get('exposure') as Uniform).value = v; }
+  set exposure(v: number)            { (this.effectUniforms.get('exposure') as Uniform).value = v; }
   set huePreserveStrength(v: number) { (this.effectUniforms.get('huePreserveStrength') as Uniform).value = v; }
-  set highlightThreshold(v: number) { (this.effectUniforms.get('highlightThreshold') as Uniform).value = v; }
+  set highlightThreshold(v: number)  { (this.effectUniforms.get('highlightThreshold') as Uniform).value = v; }
+  set luminanceGain(v: number)       { (this.effectUniforms.get('luminanceGain') as Uniform).value = v; }
 }
+

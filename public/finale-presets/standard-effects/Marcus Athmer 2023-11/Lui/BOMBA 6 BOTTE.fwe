@@ -1,0 +1,95 @@
+<?xml version="1.0"?>
+<FireworkEffect xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+  <Children>
+    <BaseEffectNode xsi:type="Shell">
+      <Children>
+        <BaseEffectNode xsi:type="BurstingCharge">
+          <Children>
+            <BaseEffectNode xsi:type="SubShells">
+              <Children>
+                <BaseEffectNode xsi:type="BurstingCharge">
+                  <Children />
+                  <Auto>false</Auto>
+                  <Energy>80</Energy>
+                  <Delay>1</Delay>
+                </BaseEffectNode>
+              </Children>
+              <Count>1</Count>
+            </BaseEffectNode>
+            <BaseEffectNode xsi:type="SubShells">
+              <Children>
+                <BaseEffectNode xsi:type="BurstingCharge">
+                  <Children />
+                  <Auto>false</Auto>
+                  <Energy>81</Energy>
+                  <Delay>1.4</Delay>
+                </BaseEffectNode>
+              </Children>
+              <Count>1</Count>
+            </BaseEffectNode>
+            <BaseEffectNode xsi:type="SubShells">
+              <Children>
+                <BaseEffectNode xsi:type="BurstingCharge">
+                  <Children />
+                  <Auto>false</Auto>
+                  <Energy>81</Energy>
+                  <Delay>1.8</Delay>
+                </BaseEffectNode>
+              </Children>
+              <Count>1</Count>
+            </BaseEffectNode>
+            <BaseEffectNode xsi:type="SubShells">
+              <Children>
+                <BaseEffectNode xsi:type="BurstingCharge">
+                  <Children />
+                  <Auto>false</Auto>
+                  <Energy>86</Energy>
+                  <Delay>2.2</Delay>
+                </BaseEffectNode>
+              </Children>
+              <Count>1</Count>
+            </BaseEffectNode>
+            <BaseEffectNode xsi:type="SubShells">
+              <Children>
+                <BaseEffectNode xsi:type="BurstingCharge">
+                  <Children />
+                  <Auto>false</Auto>
+                  <Energy>81</Energy>
+                  <Delay>2.6</Delay>
+                </BaseEffectNode>
+              </Children>
+              <Count>1</Count>
+            </BaseEffectNode>
+            <BaseEffectNode xsi:type="SubShells">
+              <Children>
+                <BaseEffectNode xsi:type="BurstingCharge">
+                  <Children />
+                  <Auto>false</Auto>
+                  <Energy>90</Energy>
+                  <Delay>3</Delay>
+                </BaseEffectNode>
+              </Children>
+              <Count>1</Count>
+            </BaseEffectNode>
+          </Children>
+          <Auto>false</Auto>
+          <Energy>83</Energy>
+          <Delay>2.3</Delay>
+        </BaseEffectNode>
+      </Children>
+      <ID>0</ID>
+      <AllowRenaming>false</AllowRenaming>
+      <SizeSelection>Advanced</SizeSelection>
+      <Diameter>0.225</Diameter>
+      <LiftingCharge>300</LiftingCharge>
+    </BaseEffectNode>
+  </Children>
+  <Identifier>
+    <Name>BOMBA 6 BOTTE</Name>
+    <Author>lui</Author>
+  </Identifier>
+  <AuthorSoftwareVersion>
+    <Major>2</Major>
+    <Minor>0</Minor>
+  </AuthorSoftwareVersion>
+<HideInLib>true</HideInLib></FireworkEffect>

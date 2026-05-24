@@ -10,8 +10,9 @@ import { Progress } from '@/components/ui/progress';
 import { useProjectStore } from '@/store/useProjectStore';
 import {
   Shield, ShieldAlert, Radio, Signal, Battery, MapPin,
-  Navigation, Activity, Layers, ChevronRight, Crosshair
+  Navigation, Activity, Layers, ChevronRight, Crosshair, Sparkles
 } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import BLEDeviceScanner from '@/components/editor/BLEDeviceScanner';
 
 interface DroneCommandPanelProps {
@@ -159,6 +160,14 @@ export default function DroneCommandPanel({ fs = false }: DroneCommandPanelProps
             </div>
           </div>
           <div className="flex items-center gap-2">
+            <Link
+              to="/ai-choreography"
+              title="Gerar Coreografia com Grok (Vision AI)"
+              className="flex items-center gap-1 px-2 py-0.5 rounded text-[7px] font-mono font-bold uppercase tracking-wider border border-fuchsia-500/40 text-fuchsia-300 bg-fuchsia-500/10 hover:bg-fuchsia-500/20 hover:border-fuchsia-400 transition-colors"
+            >
+              <Sparkles className="w-2.5 h-2.5" />
+              Grok Choreographer
+            </Link>
             <Badge variant="outline" className="text-[7px] h-4 px-1.5 font-mono border-teal-500/20 text-teal-400">
               T+ {formatTime(missionTimer)}
             </Badge>

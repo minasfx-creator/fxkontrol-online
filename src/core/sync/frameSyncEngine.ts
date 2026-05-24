@@ -29,6 +29,14 @@ const DRIFT_LOCK_MS = 2;
 const CORRECTION_ALPHA = 0.2;   // smooth correction factor
 const MAX_CORRECTION_MS = 50;   // never correct more than 50ms per tick
 
+// ── Fatia 8 #5 — drift clamp guards ──────────────────────────────────
+// Bound the *raw* error before it enters the lerp accumulator, otherwise a
+// single ~1s glitch of the timecode source poisons the integrator for minutes.
+const MAX_RAW_DRIFT_MS = 200;
+// Bound the running accumulator so multi-hour shows cannot drift the snap
+// math beyond what `Math.round` can represent precisely (~5s budget).
+const MAX_ACCUMULATED_CORRECTION_MS = 5_000;
+
 class FrameSyncEngine {
   private _accumulatedCorrection = 0;
   private _driftMs = 0;
@@ -45,23 +53,38 @@ class FrameSyncEngine {
    */
   getSyncedTime(globalTimeMs: number): number {
     const frameTimeMs = timecodeProvider.getFrameAlignedTime();
-    const error = frameTimeMs - globalTimeMs;
+    const rawError = frameTimeMs - globalTimeMs;
+
+    // #5 Clamp the raw error first — a glitchy LTC pulse cannot poison the
+    // integrator beyond MAX_RAW_DRIFT_MS in a single tick.
+    const error = rawError > MAX_RAW_DRIFT_MS
+      ? MAX_RAW_DRIFT_MS
+      : rawError < -MAX_RAW_DRIFT_MS
+        ? -MAX_RAW_DRIFT_MS
+        : rawError;
 
     this._driftMs = error;
 
-    // Determine status
-    if (Math.abs(error) <= DRIFT_LOCK_MS) {
+    // Determine status (uses the raw error so the UI still reflects glitches)
+    if (Math.abs(rawError) <= DRIFT_LOCK_MS) {
       this._status = 'locked';
-    } else if (Math.abs(error) <= DRIFT_WARN_MS) {
+    } else if (Math.abs(rawError) <= DRIFT_WARN_MS) {
       this._status = 'locked';
     } else {
       this._status = timecodeProvider.isLocked() ? 'drifting' : 'freerun';
     }
 
-    // Apply smooth correction (never jump)
+    // Apply smooth correction (never jump) — clamped per tick.
     let correction = error * CORRECTION_ALPHA;
     correction = Math.max(-MAX_CORRECTION_MS, Math.min(MAX_CORRECTION_MS, correction));
     this._accumulatedCorrection += correction;
+
+    // #5 Hard ceiling on the accumulator (multi-hour show safety).
+    if (this._accumulatedCorrection > MAX_ACCUMULATED_CORRECTION_MS) {
+      this._accumulatedCorrection = MAX_ACCUMULATED_CORRECTION_MS;
+    } else if (this._accumulatedCorrection < -MAX_ACCUMULATED_CORRECTION_MS) {
+      this._accumulatedCorrection = -MAX_ACCUMULATED_CORRECTION_MS;
+    }
 
     const corrected = globalTimeMs + this._accumulatedCorrection;
 

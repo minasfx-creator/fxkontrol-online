@@ -20,6 +20,7 @@ import { useFrame, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
 import { useProjectStore } from '@/store/useProjectStore';
 import { EFFECT_LIBRARY } from '@/data/effectLibrary';
+import { findEffectById } from '@/data/effectsLibraries/resolveEffect';
 import { useSceneStore } from '@/store/useSceneStore';
 import {
   createEmitter, createSystem, tickSystem, getSystemParticleCount,
@@ -634,7 +635,7 @@ function collectParticlesFromSystems(
 
 // ── Main Component ──────────────────────────────────────────────────
 
-const NiagaraVFXController = React.forwardRef<THREE.Group, {}>(
+const NiagaraVFXController = React.forwardRef<THREE.Group, Record<string, never>>(
   function NiagaraVFXController(_props, _ref) {
     const { scene, camera, size } = useThree();
     const activeSystems = useRef<ActiveVFXSystem[]>([]);
@@ -671,6 +672,9 @@ const NiagaraVFXController = React.forwardRef<THREE.Group, {}>(
       scene.add(haze.mesh);
       heatHazeRef.current = haze;
 
+      // Capture ref at effect-run time so cleanup sees the same trail set.
+      const ribbonTrails = ribbonTrailsRef.current;
+
       return () => {
         scene.remove(sparkRenderer.mesh);
         scene.remove(smokeRenderer.mesh);
@@ -679,7 +683,7 @@ const NiagaraVFXController = React.forwardRef<THREE.Group, {}>(
         smokeRenderer.dispose();
         haze.dispose();
         // Dispose ribbon trails
-        ribbonTrailsRef.current.forEach(rt => {
+        ribbonTrails.forEach(rt => {
           scene.remove(rt.mesh);
           rt.dispose();
         });
@@ -733,7 +737,7 @@ const NiagaraVFXController = React.forwardRef<THREE.Group, {}>(
       for (const item of timelineItems) {
         const elapsed = currentTime - item.startTime;
         if (elapsed >= 0 && elapsed < 0.06) {
-          const effect = EFFECT_LIBRARY.find(e => e.id === item.effectId);
+          const effect = findEffectById(item.effectId);
           if (!effect || effect.type !== 'firework') continue;
 
           const burstKey = `${item.id}-${Math.floor(currentTime * 20)}`;

@@ -1,0 +1,16 @@
+{
+  "source": "WBP_RenderSettings.T3D (UE5 MovieRenderPipeline)",
+  "extracted": {},
+  "defaultsApplied": {
+    "ResX": "1920",
+    "ResY": "1080",
+    "FrameRate": "24",
+    "SpatialSampleCount": "1",
+    "TemporalSampleCount": "8",
+    "TileCount": "1",
+    "EngineWarmUpCount": "8",
+    "AntiAliasingMethod": "TSR",
+    "OutputFormat": "PNG"
+  },
+  "usage": "Apply as preset in /dev/skycanvas-2 capture overlay"
+}

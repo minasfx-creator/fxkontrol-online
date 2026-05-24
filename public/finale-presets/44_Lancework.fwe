@@ -1,0 +1,41 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<FireworkEffect xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+  <Children>
+    <BaseEffectNode xsi:type="Lancework">
+      <Children />
+      <ID>0</ID>
+      <AllowRenaming>false</AllowRenaming>
+      <Shape>
+        <Speed>1</Speed>
+        <Sigma>0.04</Sigma>
+        <PositionSigma>0.25</PositionSigma>
+        <Rotation>
+          <XAxis>0</XAxis>
+          <YAxis>0</YAxis>
+          <ZAxis>0</ZAxis>
+        </Rotation>
+        <PngData>iVBORw0KGgoAAAANSUhEUgAAAgAAAACACAYAAAB9V9ELAAAABGdBTUEAALGPC/xhBQAAAAlwSFlzAAAOwQAADsEBuJFr7QAAAt5JREFUeF7t3UFqG0EURVEvJEPvf2eeeAOKSSCQcIkTuS21n47gTC6oEZr86irRenp7XQCAh5MRANiWEQDYlhEA2JYRANiWEQDYlhEA2JYRANiWEQDYlhEA2JYRANiWEQDYlhEA2JYRANiWEQDYlhEA2JYRANiWEQDYlhEA2JYRANiWEQDYlnHS5bX7R33WdW/hK392AD4kI3dkKANwAxlhxvqCyoIRuFJGAGBbRgBgW0YAYFtGAGBbRgBgW0YAYFtGAGBbRgBgW0YAYFtGAGBbRgBgW0YAYFtGAGBbRgBgW0YAYFtGAGBbRgBgW0YAYFtGAGBbRgBgW0YAYFtGAGBbRgBgW0YAYFtGwuW1+3uufR8AfKKMkwxiAPglIwCwLSMAsC0jALAtIwCwLSMAsC0jALAtIwCwLSMAsC0jAAd6+facHe4oI/zGUxQB5mQEALZlhNOzKwHwIRkBgG0Z4WGcbSfBzgZwIxkBgG0ZAYBtGQGAbRkBgG0ZAYBtGQGAbRkBgG0ZAYBtGWd5yAoA/JARANiWEQDYlhHglF6+PWcH/ltGAMZYPPGHjADAtowAs9wJww8ZAXhQFkgPIyMAsC0jAFzNLsKXkBGAAxmInFBGAGBbRgBgW0YAxl17LOE4Y0ZGgIdhoPGgMgLcjYEMN5ERANiWEQAOZWfndDLCP7u8dr/GkdcC4K8yAm8sSFjh7puQEYCDGL6cVEYAYFtG4BM4UgBOJCMAJEcaMzICnJ5BBB+SEQDYlhEA2JYRAA7hqOa0MgIA2zICANsyAgDbMgJwIOfgnFDGOZ7ABo/J4P3J90DICADJYmJGRgBgW0YAYFtGAGBbRgBgW0YAYFtGgC/FL9Phv2UEuBnDG+4iIwCwLSMAsC0jABzGMc8pZYRD+A8G+OneA9AAJmQEgGQxMSMjALAtI/AOxxvAF5cRANiWEQDYlhEA2JYRANiWEQDYlhEA2JYRANiWEQCY9XT5DtU9V3bKs+L9AAAAAElFTkSuQmCC</PngData>
+      </Shape>
+      <BurningDuration>20</BurningDuration>
+      <Height>6.08</Height>
+    </BaseEffectNode>
+  </Children>
+  <SimulationVersion>1</SimulationVersion>
+  <Protected>false</Protected>
+  <AutotagOverrideQuantity>0</AutotagOverrideQuantity>
+  <AutotagOverrideCaliber>0</AutotagOverrideCaliber>
+  <AutotagOverrideFurther />
+  <Identifier>
+    <Name>Lancework Preset</Name>
+    <Author>LT</Author>
+  </Identifier>
+  <Metadata>
+    <Pieces />
+  </Metadata>
+  <AuthorSoftwareVersion>
+    <Major>3</Major>
+    <Minor>4</Minor>
+    <Build>1</Build>
+    <Revision>1</Revision>
+  </AuthorSoftwareVersion>
+</FireworkEffect>

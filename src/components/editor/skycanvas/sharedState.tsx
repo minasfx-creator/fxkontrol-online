@@ -8,6 +8,7 @@ import { EFFECT_LIBRARY } from '@/data/effectLibrary';
 import { getEffectById as getEffectByIdFromMap } from '@/data/effectLibraryMap';
 import { getCompound, type ChemicalCompound } from '@/render_ultra/fireworks/particleChemistry';
 import { getBreakHeight } from '@/lib/pyroPhysics';
+import { timelineClock } from '@/core/timeline/TimelineClock';
 
 // ═══ Module-level active burst counter for conditional PostProcessing ═══
 let _activeBurstCount = 0;
@@ -26,7 +27,10 @@ let _activeBurstScan: ActiveBurstScanResult | null = null;
 export function getActiveBurstScan() { return _activeBurstScan; }
 
 export function runActiveBurstScan(): ActiveBurstScanResult {
-  const { timelineItems, currentTime } = useProjectStore.getState();
+  const { timelineItems } = useProjectStore.getState();
+  // Authoritative time from the timeline clock (RAF pump in EngineProvider).
+  // Falls back to the store mirror if the clock hasn't been initialised.
+  const currentTime = timelineClock.getTime();
   const freshBursts: ActiveBurstScanResult['freshBursts'] = [];
   const scatterColors: ActiveBurstScanResult['scatterColors'] = [];
   let activeBursts = 0;
@@ -180,30 +184,32 @@ export const CAMERA_PRESETS = [
 
 // ═══ WebGL Error Boundary ═══
 import { Component, type ErrorInfo, type ReactNode } from 'react';
-import { AlertTriangle } from 'lucide-react';
+import { captureSkyCanvasError } from '@/lib/skyCanvasDiagnostics';
+import SimplifiedSkyFallback from '../SimplifiedSkyFallback';
 
-export class WebGLErrorBoundary extends Component<{ children: ReactNode }, { hasError: boolean; retryKey: number }> {
-  state = { hasError: false, retryKey: 0 };
-  static getDerivedStateFromError() { return { hasError: true }; }
+export class WebGLErrorBoundary extends Component<
+  { children: ReactNode },
+  { hasError: boolean; retryKey: number; reason: string }
+> {
+  state = { hasError: false, retryKey: 0, reason: 'WebGL could not be initialized.' };
+  static getDerivedStateFromError(err: Error) {
+    return {
+      hasError: true,
+      retryKey: 0,
+      reason: err?.message || 'WebGL could not be initialized.',
+    };
+  }
   componentDidCatch(error: Error, info: ErrorInfo) {
     console.warn('WebGL unavailable:', error.message);
+    captureSkyCanvasError('WebGLErrorBoundary', error, info.componentStack ?? undefined);
   }
   render() {
     if (this.state.hasError) {
       return (
-        <div className="w-full h-full flex flex-col items-center justify-center bg-surface-0 gap-3 p-8 text-center">
-          <AlertTriangle className="w-10 h-10 text-yellow-500" />
-          <h3 className="text-sm font-semibold text-foreground">3D Engine Unavailable</h3>
-          <p className="text-xs text-muted-foreground max-w-md">
-            WebGL could not be initialized. Try enabling hardware acceleration or use a different browser.
-          </p>
-          <button
-            onClick={() => this.setState(s => ({ hasError: false, retryKey: s.retryKey + 1 }))}
-            className="mt-2 px-4 py-2 rounded-lg text-xs font-mono uppercase tracking-wider bg-card/80 backdrop-blur-md border border-border/30 text-muted-foreground hover:text-foreground hover:bg-card/90 transition-all"
-          >
-            ↻ Retry
-          </button>
-        </div>
+        <SimplifiedSkyFallback
+          reason={this.state.reason}
+          onRetry={() => this.setState(s => ({ hasError: false, retryKey: s.retryKey + 1, reason: s.reason }))}
+        />
       );
     }
     return this.props.children;

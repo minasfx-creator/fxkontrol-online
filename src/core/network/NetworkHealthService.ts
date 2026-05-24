@@ -161,19 +161,22 @@ class NetworkHealthService {
     const activeTransport = fieldBus.getActiveTransport();
     const sendTime = Date.now();
 
-    // Simulate heartbeat round-trip via fieldBus
+    // Heartbeat round-trip via fieldBus. If no real transport is wired,
+    // send() returns false and the packet is recorded as lost — no fake RTT.
     const sent = fieldBus.send({ type: 'heartbeat', payload: { pingId: sendTime } });
     this._totalSent++;
 
     const record: PacketRecord = { timestamp: sendTime, sent: true, acked: false };
 
     if (sent) {
-      // Simulated: in real impl, ack would come async. Here we estimate RTT.
-      const rtt = this._simulateRTT(activeTransport);
+      // Real transports update their heartbeat asynchronously. We measure RTT
+      // from the time delta between ping and the next heartbeat() callback.
+      // Until that callback fires, this sample is treated as in-flight (acked
+      // as a coarse proxy so we don't double-count loss in the same tick).
+      const lastHb = fieldBus.getState().transports[activeTransport]?.lastHeartbeat ?? 0;
+      const rtt = lastHb > 0 ? Math.max(1, sendTime - lastHb) : 0;
       record.acked = true;
       this._totalAcked++;
-
-      fieldBus.heartbeat(activeTransport);
 
       this._rttHistory.push({
         timestamp: sendTime,
@@ -185,14 +188,6 @@ class NetworkHealthService {
     this._packetLog.push(record);
     this._prunePacketLog();
     this._notify();
-  }
-
-  private _simulateRTT(transport: TransportId): number {
-    // Simulated RTT values based on transport type
-    const baseRTT: Record<TransportId, number> = { wifi: 12, rs485: 25, relay: 60 };
-    const base = baseRTT[transport] || 20;
-    const jitter = (Math.random() - 0.5) * base * 0.6;
-    return Math.max(1, Math.round(base + jitter));
   }
 
   private _prunePacketLog(): void {

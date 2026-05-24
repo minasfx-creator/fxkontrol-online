@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { useShowCommanderEngine } from '@/hooks/useShowCommanderEngine';
 import { commandBus } from '@/core/command/CommandBus';
+import { uiCommandGateway } from '@/core/command/uiCommandGateway';
 import { safetyStateMachine, type SafetyState } from '@/core/safety/SafetyStateMachine';
 import { safetyValidator } from '@/core/safety/SafetyValidator';
 import { continuityCheckService, type PinStatus } from '@/core/safety/ContinuityCheckService';
@@ -945,7 +946,10 @@ export default function ShowCommanderPanel({ onClose, onOpenPanel, fs: _fs }: Sh
                   <Button
                     variant="destructive"
                     className="h-14 font-black text-sm uppercase tracking-wider"
-                    onClick={() => toast.error('🚨 EMERGENCY STOP — All systems halted')}
+                    onClick={() => {
+                      uiCommandGateway.eStop({ source: 'ShowCommanderPanel' });
+                      toast.error('🚨 EMERGENCY STOP — All systems halted');
+                    }}
                   >
                     <AlertTriangle className="w-5 h-5 mr-2" />
                     EMERGENCY STOP

@@ -1,0 +1,30 @@
+═══════════════════════════════════════════════════════════
+  FX KONTROL v1.0 — Plataforma de Shows Pirotécnicos e Drones
+═══════════════════════════════════════════════════════════
+
+REQUISITOS:
+  ✔ Windows 10 / 11 (64-bit)
+  ✔ GPU com suporte a WebGPU (Intel UHD 600+, NVIDIA 1000+, AMD Vega+)
+  ✔ 8 GB RAM recomendado
+  ✔ Conexão à internet para recursos em nuvem (Supabase)
+
+INSTALAÇÃO:
+  1. Clique duas vezes em: Setup.bat
+  2. Autorize a execução como Administrador quando solicitado
+  3. Aguarde a instalação (~30 segundos)
+  4. Use o atalho "FX KONTROL" na Área de Trabalho para abrir
+
+EXECUTAR SEM INSTALAR (modo portátil):
+  → Abra a pasta "win-unpacked" e execute "FX KONTROL.exe"
+
+DESINSTALAR:
+  → Painel de Controle → Programas → FX KONTROL → Desinstalar
+  → OU execute o PowerShell como Admin:
+    Remove-Item -Recurse -Force "C:\Program Files\FX KONTROL"
+
+═══════════════════════════════════════════════════════════
+NOVIDADES desta versão:
+  • Studio Mode v3: blackbody 8000K, curl noise, HG scattering
+  • Joi AI: templates de shows reais (Sydney Bridge, Azteca, Eiffel)
+  • Gizmo v2: snap ao grid, overlay de coordenadas, auto-escala
+═══════════════════════════════════════════════════════════

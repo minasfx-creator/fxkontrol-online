@@ -23,4 +23,3 @@ export function gaussianSplatsToPointCloud(
     .slice(0, maxPoints)
     .map((splat) => splat.position);
 }
-

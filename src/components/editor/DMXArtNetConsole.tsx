@@ -4,11 +4,13 @@
  * Gated by VerificationEngine.
  */
 import { useState, useCallback } from 'react';
-import { showPlanManager } from '@/core/showplan/ShowPlanManager';
 import { generateArtNetPatchCSV, downloadArtNetPatch } from '@/core/export/ArtNetPatchExporter';
-import { useVerificationEngine } from '@/core/verification/useVerificationEngine';
+import { useVerificationStore } from '@/core/verification/useVerificationStore';
 import { artNetBridge } from '@/core/protocols/ArtNetBridge';
 import { linkFailoverPolicy } from '@/core/protocols/LinkFailoverPolicy';
+import { useShowPlanProjection } from '@/hooks/useShowPlanProjection';
+import { useConsoleProvenance } from '@/hooks/useConsoleProvenance';
+import { ProvenanceBadge } from '@/components/safety/ProvenanceBadge';
 import { cn } from '@/lib/utils';
 import { Radio, RefreshCw, Wifi, WifiOff, Download, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -19,11 +21,12 @@ export default function DMXArtNetConsole() {
   const [preview, setPreview] = useState('');
   const [cueCount, setCueCount] = useState(0);
   const [exportErrors, setExportErrors] = useState<string[]>([]);
-  const { level } = useVerificationEngine();
+  const level = useVerificationStore((s) => s.level);
   const canExport = level === 'READY_FOR_EXPORT' || level === 'READY_FOR_FIELD';
   const refresh = useCallback(() => setTick(t => t + 1), []);
 
-  const sp = showPlanManager.current;
+  const sp = useShowPlanProjection().plan;
+  const provenance = useConsoleProvenance(['enttec', 'dmx-generic', 'artnet-node']);
   const artnetState = artNetBridge.getState();
   const isConnected = artnetState === 'connected';
   const artnetStats = artNetBridge.getStats();
@@ -59,6 +62,7 @@ export default function DMXArtNetConsole() {
           <span className="text-xs font-mono font-bold tracking-widest text-foreground uppercase">DMX / Art-Net Console</span>
         </div>
         <div className="flex items-center gap-2">
+          <ProvenanceBadge mode={provenance} compact />
           <span className={cn(
             'text-[8px] font-mono font-bold px-1.5 py-0.5 rounded border',
             canExport ? 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30' :

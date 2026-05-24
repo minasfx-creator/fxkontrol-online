@@ -1,0 +1,134 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<FireworkEffect xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+  <Children>
+    <BaseEffectNode xsi:type="Shell">
+      <Children>
+        <BaseEffectNode xsi:type="BurstingCharge">
+          <Children>
+            <BaseEffectNode xsi:type="Stars">
+              <Children />
+              <Count>150</Count>
+              <Distribution xsi:type="CustomShapeDistribution">
+                <Speed>1</Speed>
+                <Sigma>0.02</Sigma>
+                <PositionSigma>0.35</PositionSigma>
+                <Rotation>
+                  <XAxis>0</XAxis>
+                  <YAxis>0</YAxis>
+                  <ZAxis>0</ZAxis>
+                </Rotation>
+                <PngData>iVBORw0KGgoAAAANSUhEUgAAAoAAAAKACAYAAAAMzckjAAAABGdBTUEAALGPC/xhBQAAAAlwSFlzAAAOwAAADsABataJCQAADCdJREFUeF7t3bFx5EYURdENhCbzgIvgkQpjWMmQeUWK2iE58+ag6jjXbQ/1+/evv7/fAAA8lYwAAOzKCADArowAAOzKCADArowAAOzKCADArowAAOzKCADArowAAOzKCADArowAAOzKCADArowAAOzKCADArowAAOzKCADArowAAOzKCADArowAAOzKCADArowAAOzKCADArowAAOzKCADArowAAOzKCADArowAAOzKCADArowAAOzKCADArowAAOzKCADArowAAOzKCADArowAAOzKCADArowAAOzKCADArowAAOzKCADArowAAOzKCADArowAAOzKCADArowAAOzKCADArowAAOzKCADArowAAOzKCADArowAAOzKCADArowAAOzKCADArowAAOzKCADArowAAOzKCADArowAAOzKCADArowAAOzKCADArowAAOzKCADArowAAOzKCADArowAAOzKCADArowAAOzKCADArowAAOzKCADArowAAOzKCADArowAAOzKCADArowAAOzKCADArowAAOzKCADArowAAOzKCADArowAAOzKCADArowAAOzKCADArowAU47zyg7wpDICALArIwAAuzICALArIwAAuzICfMjFil3OFuZlBABgV0YAAHZlBABgV0YAAHZlBABgV0YAAHZlBABgV0YAAHZlBABgV0YAAHZlBABgV0YAAHZlBABgV0YAAHZlBABgV0YAAHZlBABgV0YAAHZlBABgV0YAAHZlBABgV0YAAHZlBG7gOK/sAPDDMgIAsCsjAAC7MgIAsCsjAPAFzAZzJzICALArIwAAuzICALArIwAAuzICALArIwAAuzICALArIwAAuzICALArIwAAuzICALArIwAAuzICALArIwAAuzICALArIwAAuzICALArIwAAuzICAGOO88rOU8oIAMCujAAA7MoIAMCujAAA7MoIAMCujAAA7MoIAMCujAAA7MoIAMCujAAA7MoIAMCujAAA7MoIAMCujPCvjvPKDgA8jIwAAOzKCADArowAAOzKCADArowAAOzKCADArowAAOzKCADArowAAOzKCADArowAADfnOdG7kREAgF0Z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</PngData>
+                <ThisIsForLancework>false</ThisIsForLancework>
+              </Distribution>
+              <Phases>
+                <StarPhase>
+                  <Color>
+                    <CustomR>0</CustomR>
+                    <CustomG>0</CustomG>
+                    <CustomB>0</CustomB>
+                    <Color>Orange</Color>
+                  </Color>
+                  <Strobe>false</Strobe>
+                </StarPhase>
+              </Phases>
+              <Color>
+                <CustomR>0</CustomR>
+                <CustomG>0</CustomG>
+                <CustomB>0</CustomB>
+                <Color>Orange</Color>
+              </Color>
+              <Type>XSmall</Type>
+              <Mass>0.7</Mass>
+              <Birthtime>0</Birthtime>
+              <BirthtimeSigmaRatio>0.1</BirthtimeSigmaRatio>
+              <MinimumLifetime>1.5</MinimumLifetime>
+              <MaximumLifetime>2.82</MaximumLifetime>
+              <FadeCustomization>Custom_Fade</FadeCustomization>
+              <CustomDimmcurve>false</CustomDimmcurve>
+              <FadeRatios>
+                <A>0.1</A>
+                <B>0.3018868</B>
+                <C>0.79622644</C>
+                <D>1</D>
+              </FadeRatios>
+              <Strobe>false</Strobe>
+              <StrobeType>Regular</StrobeType>
+              <StrobeOnTime>0.1</StrobeOnTime>
+              <StrobeFreqMean>14</StrobeFreqMean>
+              <CanOverrideColor>true</CanOverrideColor>
+              <Motorized>false</Motorized>
+              <Motor>
+                <StartPropulsionAt>0.5</StartPropulsionAt>
+                <PropulsionStrength>0</PropulsionStrength>
+                <Curvature>0</Curvature>
+              </Motor>
+              <ColorChanging>false</ColorChanging>
+              <Color2>
+                <CustomR>0</CustomR>
+                <CustomG>0</CustomG>
+                <CustomB>0</CustomB>
+                <Color>PastelRed</Color>
+              </Color2>
+              <StrobeSynchronous>false</StrobeSynchronous>
+            </BaseEffectNode>
+          </Children>
+          <Auto>false</Auto>
+          <Energy>60</Energy>
+          <Color>
+            <CustomR>0</CustomR>
+            <CustomG>0</CustomG>
+            <CustomB>0</CustomB>
+            <Color>Spark</Color>
+          </Color>
+          <ChangeColor>false</ChangeColor>
+          <Sound>true</Sound>
+          <Render>true</Render>
+          <ExplosionSparks>Auto</ExplosionSparks>
+          <Delay>2.5</Delay>
+          <TestSound>false</TestSound>
+        </BaseEffectNode>
+      </Children>
+      <ID>1</ID>
+      <AllowRenaming>true</AllowRenaming>
+      <UserDefinedName />
+      <SizeSelection>Advanced</SizeSelection>
+      <SimpleSize>
+        <DiameterPreset>d75</DiameterPreset>
+      </SimpleSize>
+      <Diameter>0.075</Diameter>
+      <LiftingCharge>105</LiftingCharge>
+      <Rotation>
+        <Mode>Auto</Mode>
+        <RotationsPerSecond>4</RotationsPerSecond>
+        <RotationDiameterMM>100</RotationDiameterMM>
+      </Rotation>
+      <Stabilizer>false</Stabilizer>
+    </BaseEffectNode>
+  </Children>
+  <SimulationVersion>2</SimulationVersion>
+  <AutotagOverride>Shell (Pattern)</AutotagOverride>
+  <Subtype>Smiley</Subtype>
+  <RackType>Shell</RackType>
+  <RackTypeCustom>Shell</RackTypeCustom>
+  <AutotagOverrideQuantity>0</AutotagOverrideQuantity>
+  <AutotagOverrideCaliber>0</AutotagOverrideCaliber>
+  <HideInLib>true</HideInLib>
+  <AutotagOverrideCaliber_Simple xsi:nil="true" />
+  <AutotagOverrideFurther />
+  <Identifier>
+    <Name>29 Smiley</Name>
+    <Author>FWsim_Presets_2026</Author>
+  </Identifier>
+  <VisualizationSource>Unknown</VisualizationSource>
+  <Metadata>
+    <Pieces />
+  </Metadata>
+  <FirstCreated>0001-01-01T00:00:00</FirstCreated>
+  <AuthorSoftwareVersion>
+    <Major>4</Major>
+    <Minor>2</Minor>
+    <Build>9</Build>
+    <Revision>27</Revision>
+  </AuthorSoftwareVersion>
+  <Hints />
+</FireworkEffect>

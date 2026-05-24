@@ -15,25 +15,15 @@ import { useProjectStore } from '@/store/useProjectStore';
 import { useLiveSfxStore } from '@/store/useLiveSfxStore';
 import { useUSBDeviceStore } from '@/store/useUSBDeviceStore';
 import { useSMPTEStore } from '@/store/useSMPTEStore';
-import { useTimelineClock } from '@/hooks/useTimelineClock';
 
 // ── Playback state ──
 export function usePlaybackState() {
-  const { time, playing, duration, speed, source, play, pause, toggle, seek, setSpeed } = useTimelineClock();
-  return {
-    currentTime: time,
-    isPlaying: playing,
-    duration,
-    playbackSpeed: speed,
-    timelineSource: source,
-    setPlaying: (next: boolean) => (next ? play() : pause()),
-    togglePlaying: toggle,
-    setCurrentTime: seek,
-    setPlaybackSpeed: setSpeed,
-    play,
-    pause,
-    seek,
-  };
+  const currentTime = useProjectStore(s => s.currentTime);
+  const isPlaying = useProjectStore(s => s.isPlaying);
+  const setPlaying = useProjectStore(s => s.setPlaying);
+  const setCurrentTime = useProjectStore(s => s.setCurrentTime);
+  const duration = useProjectStore(s => s.duration);
+  return { currentTime, isPlaying, setPlaying, setCurrentTime, duration };
 }
 
 // ── Editor mode ──

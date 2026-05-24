@@ -266,7 +266,11 @@ function generateValidation(
   duration: number,
   fps: number = 4,
 ): SkycValidation {
-  let maxAlt = 0, maxVel = 0, maxAcc = 0, minProx = Infinity, totalDist = 0;
+  let maxAlt = 0;
+  let minProx = Infinity;
+  const maxVel = 0;
+  const maxAcc = 0;
+  const totalDist = 0;
   const altProfile: SkycValidation['altitudeProfile'] = [];
   const velProfile: SkycValidation['velocityProfile'] = [];
   const proxProfile: SkycValidation['proximityProfile'] = [];
@@ -275,7 +279,7 @@ function generateValidation(
   for (let step = 0; step <= steps; step++) {
     const t = step / fps;
     let minAlt = Infinity, mAlt = 0, sumAlt = 0;
-    let minVel = Infinity, mVel = 0, sumVel = 0;
+    const minVel = Infinity, mVel = 0, sumVel = 0;
     let frameMinProx = Infinity;
     let closestPair: [string, string] = ['', ''];
 

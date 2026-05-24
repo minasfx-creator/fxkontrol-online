@@ -1,0 +1,233 @@
+<?xml version="1.0"?>
+<FireworkEffect xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+  <Children>
+    <BaseEffectNode xsi:type="Cake">
+      <Children>
+        <BaseEffectNode xsi:type="Shell">
+          <Children>
+            <BaseEffectNode xsi:type="BurstingCharge">
+              <Children>
+                <BaseEffectNode xsi:type="Stars">
+                  <Children />
+                  <Type>Normal</Type>
+                  <Distribution xsi:type="MineDistribution">
+                    <Speed>1</Speed>
+                    <Sigma>0.04</Sigma>
+                    <Spread>0</Spread>
+                  </Distribution>
+                  <Color>
+                    <CustomR>0</CustomR>
+                    <CustomG>0</CustomG>
+                    <CustomB>0</CustomB>
+                    <Color>Green</Color>
+                  </Color>
+                  <Color2>
+                    <CustomR>0</CustomR>
+                    <CustomG>0</CustomG>
+                    <CustomB>0</CustomB>
+                    <Color>Orange</Color>
+                  </Color2>
+                  <ColorChanging>false</ColorChanging>
+                  <Count>1</Count>
+                  <MinimumLifetime>1.5</MinimumLifetime>
+                  <MaximumLifetime>2.1</MaximumLifetime>
+                  <Strobe>false</Strobe>
+                  <StrobeFreqMean>14</StrobeFreqMean>
+                </BaseEffectNode>
+              </Children>
+              <Auto>false</Auto>
+              <Energy>120</Energy>
+              <Delay>0</Delay>
+            </BaseEffectNode>
+          </Children>
+          <ID>1</ID>
+          <AllowRenaming>true</AllowRenaming>
+          <UserDefinedName>Shell 1</UserDefinedName>
+          <SizeSelection>Advanced</SizeSelection>
+          <Diameter>0.142</Diameter>
+          <LiftingCharge>0</LiftingCharge>
+        </BaseEffectNode>
+        <BaseEffectNode xsi:type="Shell">
+          <Children>
+            <BaseEffectNode xsi:type="BurstingCharge">
+              <Children>
+                <BaseEffectNode xsi:type="Stars">
+                  <Children />
+                  <Type>Normal</Type>
+                  <Distribution xsi:type="MineDistribution">
+                    <Speed>1</Speed>
+                    <Sigma>0.04</Sigma>
+                    <Spread>0</Spread>
+                  </Distribution>
+                  <Color>
+                    <CustomR>0</CustomR>
+                    <CustomG>0</CustomG>
+                    <CustomB>0</CustomB>
+                    <Color>Yellow</Color>
+                  </Color>
+                  <Color2>
+                    <CustomR>0</CustomR>
+                    <CustomG>0</CustomG>
+                    <CustomB>0</CustomB>
+                    <Color>Orange</Color>
+                  </Color2>
+                  <ColorChanging>false</ColorChanging>
+                  <Count>1</Count>
+                  <MinimumLifetime>1.5</MinimumLifetime>
+                  <MaximumLifetime>2.1</MaximumLifetime>
+                  <Strobe>false</Strobe>
+                  <StrobeFreqMean>14</StrobeFreqMean>
+                </BaseEffectNode>
+              </Children>
+              <Auto>false</Auto>
+              <Energy>120</Energy>
+              <Delay>0</Delay>
+            </BaseEffectNode>
+          </Children>
+          <ID>2</ID>
+          <AllowRenaming>true</AllowRenaming>
+          <UserDefinedName>Shell 2</UserDefinedName>
+          <SizeSelection>Advanced</SizeSelection>
+          <Diameter>0.142</Diameter>
+          <LiftingCharge>0</LiftingCharge>
+        </BaseEffectNode>
+        <BaseEffectNode xsi:type="Shell">
+          <Children>
+            <BaseEffectNode xsi:type="BurstingCharge">
+              <Children>
+                <BaseEffectNode xsi:type="Stars">
+                  <Children />
+                  <Type>Normal</Type>
+                  <Distribution xsi:type="MineDistribution">
+                    <Speed>1</Speed>
+                    <Sigma>0.04</Sigma>
+                    <Spread>0</Spread>
+                  </Distribution>
+                  <Color>
+                    <CustomR>0</CustomR>
+                    <CustomG>0</CustomG>
+                    <CustomB>0</CustomB>
+                    <Color>Spark</Color>
+                  </Color>
+                  <Color2>
+                    <CustomR>0</CustomR>
+                    <CustomG>0</CustomG>
+                    <CustomB>0</CustomB>
+                    <Color>Orange</Color>
+                  </Color2>
+                  <ColorChanging>false</ColorChanging>
+                  <Count>1</Count>
+                  <MinimumLifetime>1.5</MinimumLifetime>
+                  <MaximumLifetime>2.1</MaximumLifetime>
+                  <Strobe>false</Strobe>
+                  <StrobeFreqMean>14</StrobeFreqMean>
+                </BaseEffectNode>
+              </Children>
+              <Auto>false</Auto>
+              <Energy>120</Energy>
+              <Delay>0</Delay>
+            </BaseEffectNode>
+          </Children>
+          <ID>3</ID>
+          <AllowRenaming>true</AllowRenaming>
+          <UserDefinedName>Shell 3</UserDefinedName>
+          <SizeSelection>Advanced</SizeSelection>
+          <Diameter>0.142</Diameter>
+          <LiftingCharge>0</LiftingCharge>
+        </BaseEffectNode>
+        <BaseEffectNode xsi:type="Shell">
+          <Children>
+            <BaseEffectNode xsi:type="BurstingCharge">
+              <Children>
+                <BaseEffectNode xsi:type="Stars">
+                  <Children />
+                  <Type>Normal</Type>
+                  <Distribution xsi:type="MineDistribution">
+                    <Speed>1</Speed>
+                    <Sigma>0.04</Sigma>
+                    <Spread>0.160586491</Spread>
+                  </Distribution>
+                  <Color>
+                    <CustomR>0</CustomR>
+                    <CustomG>0</CustomG>
+                    <CustomB>0</CustomB>
+                    <Color>Green</Color>
+                  </Color>
+                  <Color2>
+                    <CustomR>0</CustomR>
+                    <CustomG>0</CustomG>
+                    <CustomB>0</CustomB>
+                    <Color>Orange</Color>
+                  </Color2>
+                  <ColorChanging>false</ColorChanging>
+                  <Count>30</Count>
+                  <MinimumLifetime>1.5</MinimumLifetime>
+                  <MaximumLifetime>2.1</MaximumLifetime>
+                  <Strobe>false</Strobe>
+                  <StrobeFreqMean>14</StrobeFreqMean>
+                </BaseEffectNode>
+              </Children>
+              <Auto>false</Auto>
+              <Energy>189</Energy>
+              <Delay>0</Delay>
+            </BaseEffectNode>
+          </Children>
+          <ID>4</ID>
+          <AllowRenaming>true</AllowRenaming>
+          <UserDefinedName>Mine</UserDefinedName>
+          <SimpleSize>
+            <DiameterPreset>d125</DiameterPreset>
+          </SimpleSize>
+          <SizeSelection>Advanced</SizeSelection>
+          <Diameter>0.125</Diameter>
+          <LiftingCharge>0</LiftingCharge>
+        </BaseEffectNode>
+      </Children>
+      <ID>0</ID>
+      <AllowRenaming>false</AllowRenaming>
+      <Sequence>
+        <CakeSequenceEntry>
+          <NodeID>1</NodeID>
+          <Repetitions>3</Repetitions>
+        </CakeSequenceEntry>
+        <CakeSequenceEntry>
+          <NodeID>2</NodeID>
+          <Repetitions>3</Repetitions>
+        </CakeSequenceEntry>
+        <CakeSequenceEntry>
+          <NodeID>3</NodeID>
+          <Repetitions>3</Repetitions>
+        </CakeSequenceEntry>
+        <CakeSequenceEntry>
+          <NodeID>1</NodeID>
+          <Repetitions>1</Repetitions>
+        </CakeSequenceEntry>
+        <CakeSequenceEntry>
+          <NodeID>2</NodeID>
+          <Repetitions>1</Repetitions>
+        </CakeSequenceEntry>
+        <CakeSequenceEntry>
+          <NodeID>3</NodeID>
+          <Repetitions>1</Repetitions>
+        </CakeSequenceEntry>
+        <CakeSequenceEntry>
+          <NodeID>4</NodeID>
+          <Repetitions>1</Repetitions>
+        </CakeSequenceEntry>
+      </Sequence>
+      <Interval>0.304</Interval>
+      <AutoAssignedIndex>5</AutoAssignedIndex>
+    </BaseEffectNode>
+  </Children>
+  <Identifier>
+    <Name>Cake 1</Name>
+    <Author>LT</Author>
+  </Identifier>
+  <AuthorSoftwareVersion>
+    <Major>2</Major>
+    <Minor>0</Minor>
+  </AuthorSoftwareVersion>
+  <MD5Hash>
+    <Value>CFKE5W/ZcZ/kP9+BWn/h8Q==</Value>
+  </MD5Hash>
+</FireworkEffect>

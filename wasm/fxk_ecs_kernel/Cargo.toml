@@ -1,0 +1,17 @@
+[package]
+name = "fxk_ecs_kernel"
+version = "0.1.0"
+edition = "2021"
+description = "FXK ECS deterministic step kernel (best-effort)"
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+# Intentionally minimal — keep WASM artifact small.
+
+[profile.release]
+opt-level = "z"
+lto = true
+codegen-units = 1
+panic = "abort"

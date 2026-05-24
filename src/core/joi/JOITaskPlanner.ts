@@ -25,13 +25,14 @@ const INTENT_PATTERNS: { pattern: RegExp; category: JOIIntentCategory }[] = [
 // ── Mode to primary category mapping ──
 const MODE_CATEGORIES: Record<JoiMode, JOIIntentCategory> = {
   show: 'show_design',
+  docs: 'document',
+  executive: 'document',
   architect: 'architecture',
   analyst: 'diagnose',
   verify: 'verify',
   hardware_truth: 'hardware_truth',
   planner: 'plan',
   blueprint: 'generate_visual',
-  docs: 'document',
 };
 
 // ── Subtask templates by category ──

@@ -1,0 +1,89 @@
+<?xml version="1.0"?>
+<FireworkEffect xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+  <Children>
+    <BaseEffectNode xsi:type="Shell">
+      <Children>
+        <BaseEffectNode xsi:type="BurstingCharge">
+          <Children>
+            <BaseEffectNode xsi:type="SubShells">
+              <Children>
+                <BaseEffectNode xsi:type="BurstingCharge">
+                  <Children>
+                    <BaseEffectNode xsi:type="Stars">
+                      <Children>
+                        <BaseEffectNode xsi:type="StarTails">
+                          <Children />
+                          <Color>
+                            <CustomR>0</CustomR>
+                            <CustomG>0</CustomG>
+                            <CustomB>0</CustomB>
+                            <Color>Gold</Color>
+                          </Color>
+                          <Width>1.5</Width>
+                          <Density>50</Density>
+                          <EmitStart>0.46</EmitStart>
+                          <EmitEnd>1</EmitEnd>
+                          <Life>4.09</Life>
+                        </BaseEffectNode>
+                      </Children>
+                      <Type>Normal</Type>
+                      <Distribution xsi:type="SphericalDistribution">
+                        <Speed>1</Speed>
+                        <Sigma>0.04</Sigma>
+                      </Distribution>
+                      <Color>
+                        <CustomR>0</CustomR>
+                        <CustomG>0</CustomG>
+                        <CustomB>0</CustomB>
+                        <Color>Invisible</Color>
+                      </Color>
+                      <Color2>
+                        <CustomR>0</CustomR>
+                        <CustomG>0</CustomG>
+                        <CustomB>0</CustomB>
+                        <Color>Orange</Color>
+                      </Color2>
+                      <ColorChanging>false</ColorChanging>
+                      <Count>16</Count>
+                      <MinimumLifetime>2.2</MinimumLifetime>
+                      <MaximumLifetime>4.6</MaximumLifetime>
+                      <Strobe>false</Strobe>
+                      <StrobeFreqMean>14</StrobeFreqMean>
+                    </BaseEffectNode>
+                  </Children>
+                  <Auto>false</Auto>
+                  <Energy>12</Energy>
+                  <Delay>1.1</Delay>
+                </BaseEffectNode>
+              </Children>
+              <Count>7</Count>
+            </BaseEffectNode>
+          </Children>
+          <Auto>false</Auto>
+          <Energy>43.575</Energy>
+          <Delay>3</Delay>
+        </BaseEffectNode>
+      </Children>
+      <ID>0</ID>
+      <AllowRenaming>false</AllowRenaming>
+      <SimpleSize>
+        <DiameterPreset>d125</DiameterPreset>
+      </SimpleSize>
+      <SizeSelection>Simple</SizeSelection>
+      <Diameter>0.125</Diameter>
+      <LiftingCharge>128</LiftingCharge>
+    </BaseEffectNode>
+  </Children>
+  <Identifier>
+    <Name>Waterfall Shell of Shells</Name>
+    <Author>LT</Author>
+  </Identifier>
+  <IsReadonly>false</IsReadonly>
+  <AuthorSoftwareVersion>
+    <Major>2</Major>
+    <Minor>0</Minor>
+  </AuthorSoftwareVersion>
+  <MD5Hash>
+    <Value>Eh/roGbSzNxmh5nHzGLuuA==</Value>
+  </MD5Hash>
+</FireworkEffect>

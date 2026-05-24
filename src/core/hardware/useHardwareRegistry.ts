@@ -2,13 +2,16 @@
  * ─── useHardwareRegistry — Reactive Hardware Store ─────────────────
  * Zustand store wrapping UnifiedHardwareRegistry for React consumption.
  * Provides reactive device list, snapshots, health, and readiness.
+ *
+ * NOTE: All test-scenario / fake-data loaders were removed for the
+ * production cutover. Devices populate exclusively from real adapters
+ * connected via WebSerial / WebUSB / Art-Net.
  */
 
 import { create } from 'zustand';
 import { unifiedHardwareRegistry } from './UnifiedHardwareRegistry';
 import { readinessEvaluator } from './ReadinessEvaluator';
 import { deviceEventLog } from './DeviceEventLog';
-import { loadHardwareTestData, type TestScenario } from './testData';
 import type { HardwareDevice, HardwareStatusSnapshot, ReadinessResult, DeviceEvent } from './types';
 
 interface HardwareRegistryState {
@@ -18,10 +21,9 @@ interface HardwareRegistryState {
   readiness: ReadinessResult | null;
   events: DeviceEvent[];
   isPolling: boolean;
-  
+
   refresh: () => void;
   evaluateReadiness: () => void;
-  loadTestScenario: (scenario: TestScenario) => void;
   startPolling: () => void;
   stopPolling: () => void;
 }
@@ -48,20 +50,10 @@ export const useHardwareRegistry = create<HardwareRegistryState>((set, get) => (
     set({ readiness });
   },
 
-  loadTestScenario: (scenario: TestScenario) => {
-    loadHardwareTestData(scenario);
-    unifiedHardwareRegistry.pollAll();
-    const state = get();
-    state.refresh();
-    state.evaluateReadiness();
-  },
-
   startPolling: () => {
     unifiedHardwareRegistry.startPolling(1000);
     set({ isPolling: true });
-    // Auto-refresh on polls
-    const unsub = unifiedHardwareRegistry.onChange(() => get().refresh());
-    // Store unsub — would need cleanup in real app
+    unifiedHardwareRegistry.onChange(() => get().refresh());
   },
 
   stopPolling: () => {

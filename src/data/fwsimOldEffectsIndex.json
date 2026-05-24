@@ -1,0 +1,1376 @@
+[
+  {
+    "id": "fwsim-old-untitled",
+    "provider": "LT",
+    "name": "Untitled",
+    "category": "morteiros"
+  },
+  {
+    "id": "fwsim-old-atomic-pattern-green-with-inside-kamuro",
+    "provider": "LT",
+    "name": "Atomic Pattern, green, with inside kamuro",
+    "category": "morteiros"
+  },
+  {
+    "id": "fwsim-old-atomic-pattern-green",
+    "provider": "LT",
+    "name": "Atomic Pattern, green",
+    "category": "morteiros"
+  },
+  {
+    "id": "fwsim-old-bengal-flame-green",
+    "provider": "LT",
+    "name": "Bengal flame, green",
+    "category": "sfx"
+  },
+  {
+    "id": "fwsim-old-bengal-flame-red-18s",
+    "provider": "LT",
+    "name": "Bengal flame, red, 18s",
+    "category": "sfx"
+  },
+  {
+    "id": "fwsim-old-cake-1",
+    "provider": "LT",
+    "name": "Cake 1",
+    "category": "cakes_batteries"
+  },
+  {
+    "id": "fwsim-old-color-changing-peony-blue-to-purple",
+    "provider": "LT",
+    "name": "Color-changing peony, blue to purple",
+    "category": "morteiros"
+  },
+  {
+    "id": "fwsim-old-comet-with-tail-crossette-red",
+    "provider": "LT",
+    "name": "Comet with tail & crossette, red",
+    "category": "morteiros"
+  },
+  {
+    "id": "fwsim-old-comet-yellow-with-crackling",
+    "provider": "LT",
+    "name": "Comet, yellow with Crackling",
+    "category": "morteiros"
+  },
+  {
+    "id": "fwsim-old-falling-leaves-red",
+    "provider": "LT",
+    "name": "Falling Leaves, red",
+    "category": "morteiros"
+  },
+  {
+    "id": "fwsim-old-falling-leaves-white-red",
+    "provider": "LT",
+    "name": "Falling Leaves, white+red",
+    "category": "morteiros"
+  },
+  {
+    "id": "fwsim-old-falling-leaves-white",
+    "provider": "LT",
+    "name": "Falling Leaves, white",
+    "category": "morteiros"
+  },
+  {
+    "id": "fwsim-old-farfalle-shell-red",
+    "provider": "LT",
+    "name": "Farfalle Shell, red",
+    "category": "sfx"
+  },
+  {
+    "id": "fwsim-old-farfalle-shell",
+    "provider": "LT",
+    "name": "Farfalle Shell",
+    "category": "sfx"
+  },
+  {
+    "id": "fwsim-old-farfalle-with-red-stars-100mm",
+    "provider": "LT",
+    "name": "Farfalle with red stars, 100mm",
+    "category": "sfx"
+  },
+  {
+    "id": "fwsim-old-fountain-gold",
+    "provider": "LT",
+    "name": "Fountain, Gold",
+    "category": "sfx"
+  },
+  {
+    "id": "fwsim-old-fountain-small",
+    "provider": "LT",
+    "name": "Fountain, small",
+    "category": "sfx"
+  },
+  {
+    "id": "fwsim-old-heart-bomb-dissolving",
+    "provider": "LT",
+    "name": "Heart Bomb, dissolving",
+    "category": "morteiros"
+  },
+  {
+    "id": "fwsim-old-heart-bomb",
+    "provider": "LT",
+    "name": "Heart Bomb",
+    "category": "morteiros"
+  },
+  {
+    "id": "fwsim-old-heart-multibreak",
+    "provider": "LT",
+    "name": "Heart multibreak",
+    "category": "morteiros"
+  },
+  {
+    "id": "fwsim-old-heart-shell-red-to-white",
+    "provider": "LT",
+    "name": "Heart shell, red to white",
+    "category": "morteiros"
+  },
+  {
+    "id": "fwsim-old-heart-with-crossettes",
+    "provider": "LT",
+    "name": "Heart with crossettes",
+    "category": "morteiros"
+  },
+  {
+    "id": "fwsim-old-heart-with-outer-tails",
+    "provider": "LT",
+    "name": "Heart with outer tails",
+    "category": "morteiros"
+  },
+  {
+    "id": "fwsim-old-heart-outer-ring-600mm-red-yellow",
+    "provider": "LT",
+    "name": "Heart, outer ring, 600mm, red/yellow",
+    "category": "morteiros"
+  },
+  {
+    "id": "fwsim-old-hemisphere-w-outer-ring-red-yellow",
+    "provider": "LT",
+    "name": "Hemisphere w outer ring, red/yellow",
+    "category": "morteiros"
+  },
+  {
+    "id": "fwsim-old-kamuro-with-outer-ring",
+    "provider": "LT",
+    "name": "Kamuro with outer ring",
+    "category": "morteiros"
+  },
+  {
+    "id": "fwsim-old-mine-aqua-blue-and-orange",
+    "provider": "LT",
+    "name": "Mine, aqua blue and orange",
+    "category": "mines"
+  },
+  {
+    "id": "fwsim-old-mine-blue-with-yellow-comet",
+    "provider": "LT",
+    "name": "Mine, blue with yellow comet",
+    "category": "mines"
+  },
+  {
+    "id": "fwsim-old-mine-cyan-with-farfalle",
+    "provider": "LT",
+    "name": "Mine, cyan with Farfalle",
+    "category": "mines"
+  },
+  {
+    "id": "fwsim-old-mine-few-stars-green",
+    "provider": "LT",
+    "name": "Mine, few stars, green",
+    "category": "mines"
+  },
+  {
+    "id": "fwsim-old-mine-gold-tails-only",
+    "provider": "LT",
+    "name": "Mine, gold tails only",
+    "category": "mines"
+  },
+  {
+    "id": "fwsim-old-mine-green-tails-only",
+    "provider": "LT",
+    "name": "Mine, green tails only",
+    "category": "mines"
+  },
+  {
+    "id": "fwsim-old-mine-green-to-red-strobe",
+    "provider": "LT",
+    "name": "Mine, green to red strobe",
+    "category": "mines"
+  },
+  {
+    "id": "fwsim-old-mine-green-to-red",
+    "provider": "LT",
+    "name": "Mine, green to red",
+    "category": "mines"
+  },
+  {
+    "id": "fwsim-old-mine-green-3-colored-tail",
+    "provider": "LT",
+    "name": "Mine, green, 3-colored tail",
+    "category": "mines"
+  },
+  {
+    "id": "fwsim-old-mine-high-few-stars-with-tail",
+    "provider": "LT",
+    "name": "Mine, high, few stars, with Tail",
+    "category": "mines"
+  },
+  {
+    "id": "fwsim-old-mine-high-few-stars-yellow",
+    "provider": "LT",
+    "name": "Mine, high, few stars, yellow",
+    "category": "mines"
+  },
+  {
+    "id": "fwsim-old-mine-lemon-yellow",
+    "provider": "LT",
+    "name": "Mine, lemon yellow",
+    "category": "mines"
+  },
+  {
+    "id": "fwsim-old-mine-narrow-and-high-yellow-red",
+    "provider": "LT",
+    "name": "Mine, narrow and high, yellow+red",
+    "category": "mines"
+  },
+  {
+    "id": "fwsim-old-mine-narrow-high-w-tails-red",
+    "provider": "LT",
+    "name": "Mine, narrow, high, w Tails, red",
+    "category": "mines"
+  },
+  {
+    "id": "fwsim-old-mine-pink-with-whistle",
+    "provider": "LT",
+    "name": "Mine, pink with whistle",
+    "category": "mines"
+  },
+  {
+    "id": "fwsim-old-mine-purple-to-orange-narrow",
+    "provider": "LT",
+    "name": "Mine, purple to orange, narrow",
+    "category": "mines"
+  },
+  {
+    "id": "fwsim-old-mine-purple-with-silver-comet",
+    "provider": "LT",
+    "name": "Mine, purple, with silver comet",
+    "category": "mines"
+  },
+  {
+    "id": "fwsim-old-mine-red-tails-only",
+    "provider": "LT",
+    "name": "Mine, red Tails only",
+    "category": "mines"
+  },
+  {
+    "id": "fwsim-old-mine-red-to-green",
+    "provider": "LT",
+    "name": "Mine, red to green",
+    "category": "mines"
+  },
+  {
+    "id": "fwsim-old-mine-very-high-white-with-yellow-tails",
+    "provider": "LT",
+    "name": "Mine, very high, white with yellow tails",
+    "category": "mines"
+  },
+  {
+    "id": "fwsim-old-mine-white-fast",
+    "provider": "LT",
+    "name": "Mine, white & fast",
+    "category": "mines"
+  },
+  {
+    "id": "fwsim-old-mine-white-tails-only",
+    "provider": "LT",
+    "name": "Mine, white tails only",
+    "category": "mines"
+  },
+  {
+    "id": "fwsim-old-mine-white-golden",
+    "provider": "LT",
+    "name": "Mine, white-golden",
+    "category": "mines"
+  },
+  {
+    "id": "fwsim-old-mine-white",
+    "provider": "LT",
+    "name": "Mine, white",
+    "category": "mines"
+  },
+  {
+    "id": "fwsim-old-mine-yellow-to-purple",
+    "provider": "LT",
+    "name": "Mine, yellow to purple",
+    "category": "mines"
+  },
+  {
+    "id": "fwsim-old-mine-yellow-with-tails",
+    "provider": "LT",
+    "name": "Mine, yellow with Tails",
+    "category": "mines"
+  },
+  {
+    "id": "fwsim-old-mine-yellow-strobe",
+    "provider": "LT",
+    "name": "Mine, yellow, strobe",
+    "category": "mines"
+  },
+  {
+    "id": "fwsim-old-miney-yellow-to-purple",
+    "provider": "LT",
+    "name": "Miney, yellow to purple",
+    "category": "mines"
+  },
+  {
+    "id": "fwsim-old-multibreak-palm-yellow-orange-red",
+    "provider": "LT",
+    "name": "Multibreak Palm, yellow orange red",
+    "category": "morteiros"
+  },
+  {
+    "id": "fwsim-old-multibreak-shell",
+    "provider": "LT",
+    "name": "Multibreak Shell",
+    "category": "morteiros"
+  },
+  {
+    "id": "fwsim-old-palm-600mm-red",
+    "provider": "LT",
+    "name": "Palm 600mm red",
+    "category": "morteiros"
+  },
+  {
+    "id": "fwsim-old-palm-150mm-red",
+    "provider": "LT",
+    "name": "Palm, 150mm, red",
+    "category": "morteiros"
+  },
+  {
+    "id": "fwsim-old-palm-200mm-golden-tails-only",
+    "provider": "LT",
+    "name": "Palm, 200mm, golden tails only",
+    "category": "morteiros"
+  },
+  {
+    "id": "fwsim-old-palm-green-with-crossette",
+    "provider": "LT",
+    "name": "Palm, green, with Crossette",
+    "category": "morteiros"
+  },
+  {
+    "id": "fwsim-old-palm-green",
+    "provider": "LT",
+    "name": "Palm, green",
+    "category": "morteiros"
+  },
+  {
+    "id": "fwsim-old-palm-white-tails-only",
+    "provider": "LT",
+    "name": "Palm, white Tails only",
+    "category": "morteiros"
+  },
+  {
+    "id": "fwsim-old-palm-white-to-green",
+    "provider": "LT",
+    "name": "Palm, white to green",
+    "category": "morteiros"
+  },
+  {
+    "id": "fwsim-old-peony-huge",
+    "provider": "LT",
+    "name": "Peony (huge)",
+    "category": "morteiros"
+  },
+  {
+    "id": "fwsim-old-peony-w-crackling-green-300mm",
+    "provider": "LT",
+    "name": "Peony w Crackling, green, 300mm",
+    "category": "morteiros"
+  },
+  {
+    "id": "fwsim-old-peony-w-crackling-invisible-stars",
+    "provider": "LT",
+    "name": "Peony w Crackling, Invisible Stars",
+    "category": "morteiros"
+  },
+  {
+    "id": "fwsim-old-peony-w-strobe-pistil",
+    "provider": "LT",
+    "name": "Peony w Strobe Pistil",
+    "category": "morteiros"
+  },
+  {
+    "id": "fwsim-old-peony-with-ring-pistil",
+    "provider": "LT",
+    "name": "Peony with Ring pistil",
+    "category": "morteiros"
+  },
+  {
+    "id": "fwsim-old-peony-120mm-yellow-w-orange-pistil",
+    "provider": "LT",
+    "name": "Peony, 120mm, yellow w orange pistil",
+    "category": "morteiros"
+  },
+  {
+    "id": "fwsim-old-peony-150mm-white-strobe",
+    "provider": "LT",
+    "name": "Peony, 150mm, white strobe",
+    "category": "morteiros"
+  },
+  {
+    "id": "fwsim-old-peony-200mm-red",
+    "provider": "LT",
+    "name": "Peony, 200mm red",
+    "category": "morteiros"
+  },
+  {
+    "id": "fwsim-old-peony-300mm-green-ascent-effect",
+    "provider": "LT",
+    "name": "Peony, 300mm, green, ascent effect",
+    "category": "morteiros"
+  },
+  {
+    "id": "fwsim-old-peony-300mm-green",
+    "provider": "LT",
+    "name": "Peony, 300mm, Green",
+    "category": "morteiros"
+  },
+  {
+    "id": "fwsim-old-peony-blue-to-red-with-crackling",
+    "provider": "LT",
+    "name": "Peony, blue to red with crackling",
+    "category": "morteiros"
+  },
+  {
+    "id": "fwsim-old-peony-blue-to-red",
+    "provider": "LT",
+    "name": "Peony, blue to red",
+    "category": "morteiros"
+  },
+  {
+    "id": "fwsim-old-peony-blue-with-red-pistil",
+    "provider": "LT",
+    "name": "Peony, blue with red pistil",
+    "category": "morteiros"
+  },
+  {
+    "id": "fwsim-old-peony-blue-purple-crossette",
+    "provider": "LT",
+    "name": "Peony, blue/purple crossette",
+    "category": "morteiros"
+  },
+  {
+    "id": "fwsim-old-peony-green-yellow-pistil-tails",
+    "provider": "LT",
+    "name": "Peony, green yellow pistil tails",
+    "category": "morteiros"
+  },
+  {
+    "id": "fwsim-old-peony-green-white-strobe",
+    "provider": "LT",
+    "name": "Peony, green/white/Strobe",
+    "category": "morteiros"
+  },
+  {
+    "id": "fwsim-old-peony-green-yellow-crossette",
+    "provider": "LT",
+    "name": "Peony, green/yellow crossette",
+    "category": "morteiros"
+  },
+  {
+    "id": "fwsim-old-peony-red",
+    "provider": "LT",
+    "name": "Peony, Red",
+    "category": "morteiros"
+  },
+  {
+    "id": "fwsim-old-peony-strobe-200mm",
+    "provider": "LT",
+    "name": "Peony, Strobe, 200mm",
+    "category": "morteiros"
+  },
+  {
+    "id": "fwsim-old-phys-favourite-effect",
+    "provider": "LT",
+    "name": "pHys Favourite Effect",
+    "category": "morteiros"
+  },
+  {
+    "id": "fwsim-old-polyp-green-strobing-with-crackling",
+    "provider": "LT",
+    "name": "Polyp, green strobing with crackling",
+    "category": "morteiros"
+  },
+  {
+    "id": "fwsim-old-polyp-green-strobing",
+    "provider": "LT",
+    "name": "Polyp, green strobing",
+    "category": "morteiros"
+  },
+  {
+    "id": "fwsim-old-ring-palm-600mm-green",
+    "provider": "LT",
+    "name": "Ring Palm, 600mm, green",
+    "category": "morteiros"
+  },
+  {
+    "id": "fwsim-old-ring-palm",
+    "provider": "LT",
+    "name": "Ring Palm",
+    "category": "morteiros"
+  },
+  {
+    "id": "fwsim-old-ring-shell-red-with-inner-tails",
+    "provider": "LT",
+    "name": "Ring Shell, red with inner Tails",
+    "category": "morteiros"
+  },
+  {
+    "id": "fwsim-old-ring-shell",
+    "provider": "LT",
+    "name": "Ring Shell",
+    "category": "morteiros"
+  },
+  {
+    "id": "fwsim-old-rocket-salut-small",
+    "provider": "LT",
+    "name": "Rocket Salut small",
+    "category": "morteiros"
+  },
+  {
+    "id": "fwsim-old-rocket-empty-72m",
+    "provider": "LT",
+    "name": "Rocket, empty, 72m",
+    "category": "morteiros"
+  },
+  {
+    "id": "fwsim-old-rocket-empty-white-tail",
+    "provider": "LT",
+    "name": "Rocket, empty, white tail",
+    "category": "morteiros"
+  },
+  {
+    "id": "fwsim-old-roman-candle-w-crackling",
+    "provider": "LT",
+    "name": "Roman Candle w Crackling",
+    "category": "roman_candles"
+  },
+  {
+    "id": "fwsim-old-roman-candle-with-tails",
+    "provider": "LT",
+    "name": "Roman Candle with Tails",
+    "category": "roman_candles"
+  },
+  {
+    "id": "fwsim-old-roman-candle-big",
+    "provider": "LT",
+    "name": "Roman Candle, big",
+    "category": "roman_candles"
+  },
+  {
+    "id": "fwsim-old-roman-candle-medium-yellow",
+    "provider": "LT",
+    "name": "Roman Candle, Medium, yellow",
+    "category": "roman_candles"
+  },
+  {
+    "id": "fwsim-old-roman-candle-purple",
+    "provider": "LT",
+    "name": "Roman Candle, Purple",
+    "category": "roman_candles"
+  },
+  {
+    "id": "fwsim-old-roman-candle-red-to-yellow",
+    "provider": "LT",
+    "name": "Roman Candle, red to yellow",
+    "category": "roman_candles"
+  },
+  {
+    "id": "fwsim-old-roman-candle-small-yellow-white",
+    "provider": "LT",
+    "name": "Roman Candle, small, yellow/white",
+    "category": "roman_candles"
+  },
+  {
+    "id": "fwsim-old-salut-shell-with-tail",
+    "provider": "LT",
+    "name": "Salut Shell with Tail",
+    "category": "morteiros"
+  },
+  {
+    "id": "fwsim-old-salut-shell-small",
+    "provider": "LT",
+    "name": "Salut Shell, small",
+    "category": "morteiros"
+  },
+  {
+    "id": "fwsim-old-saturn-green-300mm",
+    "provider": "LT",
+    "name": "Saturn green 300mm",
+    "category": "morteiros"
+  },
+  {
+    "id": "fwsim-old-saturn",
+    "provider": "LT",
+    "name": "Saturn",
+    "category": "morteiros"
+  },
+  {
+    "id": "fwsim-old-shell-of-shells-of-shells",
+    "provider": "LT",
+    "name": "Shell of Shells of Shells ;-)",
+    "category": "morteiros"
+  },
+  {
+    "id": "fwsim-old-shell-of-shells-peony-600mm-yellow-red",
+    "provider": "LT",
+    "name": "Shell of Shells Peony 600mm yellow/red",
+    "category": "morteiros"
+  },
+  {
+    "id": "fwsim-old-shell-of-shells-w-palm-yellow-green",
+    "provider": "LT",
+    "name": "Shell of Shells w Palm, yellow green",
+    "category": "morteiros"
+  },
+  {
+    "id": "fwsim-old-shell-of-shells-red-peony",
+    "provider": "LT",
+    "name": "Shell Of Shells, Red Peony",
+    "category": "morteiros"
+  },
+  {
+    "id": "fwsim-old-shell-of-shells-salut",
+    "provider": "LT",
+    "name": "Shell of Shells, Salut",
+    "category": "morteiros"
+  },
+  {
+    "id": "fwsim-old-shell-of-shells-tigertail-white-peony-strobe-red",
+    "provider": "LT",
+    "name": "Shell of Shells, Tigertail white / Peony strobe red",
+    "category": "morteiros"
+  },
+  {
+    "id": "fwsim-old-shell-with-falling-leaves-red-to-white",
+    "provider": "LT",
+    "name": "Shell with falling leaves, red to white",
+    "category": "morteiros"
+  },
+  {
+    "id": "fwsim-old-shell-with-falling-leaves-red",
+    "provider": "LT",
+    "name": "Shell with Falling Leaves, red",
+    "category": "morteiros"
+  },
+  {
+    "id": "fwsim-old-single-comet-w-tail-high-yellow",
+    "provider": "LT",
+    "name": "Single Comet w Tail, high, yellow",
+    "category": "morteiros"
+  },
+  {
+    "id": "fwsim-old-single-comet-with-crossette-and-crackling-blue",
+    "provider": "LT",
+    "name": "Single Comet with Crossette and Crackling, blue",
+    "category": "morteiros"
+  },
+  {
+    "id": "fwsim-old-single-comet-with-crossette-and-tails-yellow-red",
+    "provider": "LT",
+    "name": "Single Comet with Crossette and Tails, yellow/red",
+    "category": "morteiros"
+  },
+  {
+    "id": "fwsim-old-single-comet-with-crossette-yellow-red",
+    "provider": "LT",
+    "name": "Single Comet with Crossette yellow/red",
+    "category": "morteiros"
+  },
+  {
+    "id": "fwsim-old-single-comet-with-crossette-blue",
+    "provider": "LT",
+    "name": "Single Comet with Crossette, blue",
+    "category": "morteiros"
+  },
+  {
+    "id": "fwsim-old-single-comet-with-crossette-green-blue",
+    "provider": "LT",
+    "name": "Single Comet with Crossette, green/blue",
+    "category": "morteiros"
+  },
+  {
+    "id": "fwsim-old-single-comet-crossette-green-blue",
+    "provider": "LT",
+    "name": "Single Comet, Crossette, green/blue",
+    "category": "morteiros"
+  },
+  {
+    "id": "fwsim-old-single-comet-high-yellow",
+    "provider": "LT",
+    "name": "Single comet, high, yellow",
+    "category": "morteiros"
+  },
+  {
+    "id": "fwsim-old-single-comet-red",
+    "provider": "LT",
+    "name": "Single Comet, red",
+    "category": "morteiros"
+  },
+  {
+    "id": "fwsim-old-standard-rocket",
+    "provider": "LT",
+    "name": "Standard Rocket",
+    "category": "morteiros"
+  },
+  {
+    "id": "fwsim-old-sun-15m-red-crackling",
+    "provider": "LT",
+    "name": "Sun, 15m, red, crackling",
+    "category": "morteiros"
+  },
+  {
+    "id": "fwsim-old-sun-8m-radius-yellow-w-sparks",
+    "provider": "LT",
+    "name": "Sun, 8m radius, yellow w sparks",
+    "category": "morteiros"
+  },
+  {
+    "id": "fwsim-old-sun-golden-small",
+    "provider": "LT",
+    "name": "Sun, golden, small",
+    "category": "morteiros"
+  },
+  {
+    "id": "fwsim-old-sun-yellow-20m-radius",
+    "provider": "LT",
+    "name": "Sun, yellow, 20m radius",
+    "category": "morteiros"
+  },
+  {
+    "id": "fwsim-old-tigertail-200mm-narrow-golden",
+    "provider": "LT",
+    "name": "Tigertail 200mm narrow golden",
+    "category": "morteiros"
+  },
+  {
+    "id": "fwsim-old-tigertail-200mm-narrow-white",
+    "provider": "LT",
+    "name": "Tigertail 200mm narrow white",
+    "category": "morteiros"
+  },
+  {
+    "id": "fwsim-old-tigertail-600mm-golden",
+    "provider": "LT",
+    "name": "Tigertail, 600mm, golden",
+    "category": "morteiros"
+  },
+  {
+    "id": "fwsim-old-tigertail-600mm-white",
+    "provider": "LT",
+    "name": "Tigertail, 600mm, white",
+    "category": "morteiros"
+  },
+  {
+    "id": "fwsim-old-tourbillon-mine",
+    "provider": "LT",
+    "name": "Tourbillon mine",
+    "category": "mines"
+  },
+  {
+    "id": "fwsim-old-tourbillon-shell-yellow",
+    "provider": "LT",
+    "name": "Tourbillon Shell, yellow",
+    "category": "morteiros"
+  },
+  {
+    "id": "fwsim-old-waterfall-150mm-red-golden",
+    "provider": "LT",
+    "name": "Waterfall 150mm red/golden",
+    "category": "waterfalls"
+  },
+  {
+    "id": "fwsim-old-waterfall-shell-of-shells",
+    "provider": "LT",
+    "name": "Waterfall Shell of Shells",
+    "category": "waterfalls"
+  },
+  {
+    "id": "fwsim-old-waterfall-shell-small",
+    "provider": "LT",
+    "name": "Waterfall Shell, small",
+    "category": "waterfalls"
+  },
+  {
+    "id": "fwsim-old-waterfall-shell",
+    "provider": "LT",
+    "name": "Waterfall Shell",
+    "category": "waterfalls"
+  },
+  {
+    "id": "fwsim-old-wheel-golden-2m-radius",
+    "provider": "LT",
+    "name": "Wheel, golden, 2m radius",
+    "category": "morteiros"
+  },
+  {
+    "id": "fwsim-old-whistle-shell",
+    "provider": "LT",
+    "name": "Whistle Shell",
+    "category": "sfx"
+  },
+  {
+    "id": "fwsim-old-yellow-mine",
+    "provider": "LT",
+    "name": "Yellow Mine",
+    "category": "mines"
+  },
+  {
+    "id": "fwsim-old-25-karat",
+    "provider": "maximus",
+    "name": "25 Karat",
+    "category": "morteiros"
+  },
+  {
+    "id": "fwsim-old-aquila",
+    "provider": "maximus",
+    "name": "Aquila",
+    "category": "morteiros"
+  },
+  {
+    "id": "fwsim-old-baracuda-1",
+    "provider": "maximus",
+    "name": "Baracuda-1",
+    "category": "morteiros"
+  },
+  {
+    "id": "fwsim-old-baracuda-2",
+    "provider": "maximus",
+    "name": "Baracuda-2",
+    "category": "morteiros"
+  },
+  {
+    "id": "fwsim-old-baracuda-3",
+    "provider": "maximus",
+    "name": "Baracuda-3",
+    "category": "morteiros"
+  },
+  {
+    "id": "fwsim-old-battery-poeny-klein",
+    "provider": "maximus",
+    "name": "Battery Poeny klein",
+    "category": "morteiros"
+  },
+  {
+    "id": "fwsim-old-battery-poeny-small-blue",
+    "provider": "maximus",
+    "name": "Battery Poeny small Blue",
+    "category": "morteiros"
+  },
+  {
+    "id": "fwsim-old-battery-poeny-small-red",
+    "provider": "maximus",
+    "name": "Battery Poeny small red",
+    "category": "morteiros"
+  },
+  {
+    "id": "fwsim-old-battery-poeny-small-yellow",
+    "provider": "maximus",
+    "name": "Battery Poeny small Yellow",
+    "category": "morteiros"
+  },
+  {
+    "id": "fwsim-old-bengal-flame-pink",
+    "provider": "maximus",
+    "name": "Bengal Flame Pink",
+    "category": "sfx"
+  },
+  {
+    "id": "fwsim-old-bengal-flame-pink1",
+    "provider": "maximus",
+    "name": "Bengal Flame pink1",
+    "category": "sfx"
+  },
+  {
+    "id": "fwsim-old-strobe",
+    "provider": "maximus",
+    "name": "Strobe",
+    "category": "morteiros"
+  },
+  {
+    "id": "fwsim-old-blue-moonlight-1",
+    "provider": "maximus",
+    "name": "Blue Moonlight-1",
+    "category": "morteiros"
+  },
+  {
+    "id": "fwsim-old-blue-moonlight-2",
+    "provider": "maximus",
+    "name": "Blue Moonlight-2",
+    "category": "morteiros"
+  },
+  {
+    "id": "fwsim-old-blue-red-shell",
+    "provider": "maximus",
+    "name": "Blue-Red Shell",
+    "category": "morteiros"
+  },
+  {
+    "id": "fwsim-old-comet-blue",
+    "provider": "maximus",
+    "name": "Comet blue",
+    "category": "morteiros"
+  },
+  {
+    "id": "fwsim-old-comet-multi-wei-mit-pink-stern",
+    "provider": "maximus",
+    "name": "Comet Multi weiß mit pink stern",
+    "category": "morteiros"
+  },
+  {
+    "id": "fwsim-old-comet-rosa",
+    "provider": "maximus",
+    "name": "Comet Rosa",
+    "category": "morteiros"
+  },
+  {
+    "id": "fwsim-old-comet-silver",
+    "provider": "maximus",
+    "name": "Comet Silver",
+    "category": "morteiros"
+  },
+  {
+    "id": "fwsim-old-comet-wei-blue-pink-mine",
+    "provider": "maximus",
+    "name": "Comet Weiß_blue-pink Mine",
+    "category": "mines"
+  },
+  {
+    "id": "fwsim-old-concerto-rossa-2",
+    "provider": "maximus",
+    "name": "Concerto Rossa-2",
+    "category": "morteiros"
+  },
+  {
+    "id": "fwsim-old-concerto-rossa",
+    "provider": "maximus",
+    "name": "Concerto Rossa",
+    "category": "morteiros"
+  },
+  {
+    "id": "fwsim-old-mine-blue-red",
+    "provider": "maximus",
+    "name": "Mine blue-red",
+    "category": "mines"
+  },
+  {
+    "id": "fwsim-old-mine-pink",
+    "provider": "maximus",
+    "name": "Mine-pink",
+    "category": "mines"
+  },
+  {
+    "id": "fwsim-old-mine-pinkblue-glitzer",
+    "provider": "maximus",
+    "name": "Mine pinkblue glitzer",
+    "category": "mines"
+  },
+  {
+    "id": "fwsim-old-mine-big",
+    "provider": "maximus",
+    "name": "Mine big",
+    "category": "mines"
+  },
+  {
+    "id": "fwsim-old-mine-wei-pink-sterne",
+    "provider": "maximus",
+    "name": "Mine Weiß_pink sterne",
+    "category": "mines"
+  },
+  {
+    "id": "fwsim-old-fische-blue-klein",
+    "provider": "maximus",
+    "name": "Fische blue-klein",
+    "category": "morteiros"
+  },
+  {
+    "id": "fwsim-old-fische-multicolored-big",
+    "provider": "maximus",
+    "name": "Fische multicolored big",
+    "category": "morteiros"
+  },
+  {
+    "id": "fwsim-old-fische-green-klein",
+    "provider": "maximus",
+    "name": "Fische green-klein",
+    "category": "morteiros"
+  },
+  {
+    "id": "fwsim-old-fische-red-klein",
+    "provider": "maximus",
+    "name": "Fische red-klein",
+    "category": "morteiros"
+  },
+  {
+    "id": "fwsim-old-fountain-blue-strobe",
+    "provider": "maximus",
+    "name": "Fountain blue Strobe",
+    "category": "sfx"
+  },
+  {
+    "id": "fwsim-old-fountain-breit",
+    "provider": "maximus",
+    "name": "Fountain Breit",
+    "category": "sfx"
+  },
+  {
+    "id": "fwsim-old-fountain-earth",
+    "provider": "maximus",
+    "name": "Fountain Earth",
+    "category": "sfx"
+  },
+  {
+    "id": "fwsim-old-fountain-extra-breit",
+    "provider": "maximus",
+    "name": "Fountain extra breit",
+    "category": "sfx"
+  },
+  {
+    "id": "fwsim-old-funky-sky-1",
+    "provider": "maximus",
+    "name": "Funky Sky-1",
+    "category": "morteiros"
+  },
+  {
+    "id": "fwsim-old-funky-sky-2",
+    "provider": "maximus",
+    "name": "Funky Sky-2",
+    "category": "morteiros"
+  },
+  {
+    "id": "fwsim-old-golden-star",
+    "provider": "maximus",
+    "name": "Golden Star",
+    "category": "morteiros"
+  },
+  {
+    "id": "fwsim-old-glowing-ball-pink",
+    "provider": "maximus",
+    "name": "Glowing Ball_pink",
+    "category": "morteiros"
+  },
+  {
+    "id": "fwsim-old-mr-universe-blue",
+    "provider": "maximus",
+    "name": "Mr.Universe-blue",
+    "category": "morteiros"
+  },
+  {
+    "id": "fwsim-old-mr-universe-pink",
+    "provider": "maximus",
+    "name": "Mr.Universe-pink",
+    "category": "morteiros"
+  },
+  {
+    "id": "fwsim-old-multi-ring-red-hoch",
+    "provider": "maximus",
+    "name": "Multi Ring red Hoch",
+    "category": "morteiros"
+  },
+  {
+    "id": "fwsim-old-multi-ring-blue",
+    "provider": "maximus",
+    "name": "Multi Ring blue",
+    "category": "morteiros"
+  },
+  {
+    "id": "fwsim-old-multi-ring",
+    "provider": "maximus",
+    "name": "Multi Ring",
+    "category": "morteiros"
+  },
+  {
+    "id": "fwsim-old-palm-klein",
+    "provider": "maximus",
+    "name": "Palm klein",
+    "category": "morteiros"
+  },
+  {
+    "id": "fwsim-old-palm-silver-2",
+    "provider": "maximus",
+    "name": "Palm Silver 2",
+    "category": "morteiros"
+  },
+  {
+    "id": "fwsim-old-palm-silver-big",
+    "provider": "maximus",
+    "name": "Palm Silver big",
+    "category": "morteiros"
+  },
+  {
+    "id": "fwsim-old-palm-silver",
+    "provider": "maximus",
+    "name": "Palm Silver",
+    "category": "morteiros"
+  },
+  {
+    "id": "fwsim-old-peony-blue-palm",
+    "provider": "maximus",
+    "name": "Peony blue Palm",
+    "category": "morteiros"
+  },
+  {
+    "id": "fwsim-old-poney-blue-pink",
+    "provider": "maximus",
+    "name": "Poney-blue-pink",
+    "category": "morteiros"
+  },
+  {
+    "id": "fwsim-old-peony-blue-pink",
+    "provider": "maximus",
+    "name": "Peony blue-pink",
+    "category": "morteiros"
+  },
+  {
+    "id": "fwsim-old-peony-blue",
+    "provider": "maximus",
+    "name": "Peony blue",
+    "category": "morteiros"
+  },
+  {
+    "id": "fwsim-old-poeny-coler-big-low",
+    "provider": "maximus",
+    "name": "Poeny Coler big low",
+    "category": "morteiros"
+  },
+  {
+    "id": "fwsim-old-poeny-color-big",
+    "provider": "maximus",
+    "name": "Poeny Color big",
+    "category": "morteiros"
+  },
+  {
+    "id": "fwsim-old-peony-crackling",
+    "provider": "maximus",
+    "name": "Peony Crackling",
+    "category": "morteiros"
+  },
+  {
+    "id": "fwsim-old-peony-glitzer-blue",
+    "provider": "maximus",
+    "name": "Peony Glitzer blue",
+    "category": "morteiros"
+  },
+  {
+    "id": "fwsim-old-peony-glitzer-red",
+    "provider": "maximus",
+    "name": "Peony Glitzer red",
+    "category": "morteiros"
+  },
+  {
+    "id": "fwsim-old-peony-gold-bluee-spitzen",
+    "provider": "maximus",
+    "name": "Peony Gold-bluee spitzen",
+    "category": "morteiros"
+  },
+  {
+    "id": "fwsim-old-peony-klein-green-hoch",
+    "provider": "maximus",
+    "name": "Peony klein green-hoch",
+    "category": "morteiros"
+  },
+  {
+    "id": "fwsim-old-peony-klein-green",
+    "provider": "maximus",
+    "name": "Peony klein green",
+    "category": "morteiros"
+  },
+  {
+    "id": "fwsim-old-peony-pink-klein-hoch",
+    "provider": "maximus",
+    "name": "Peony Pink klein-hoch",
+    "category": "morteiros"
+  },
+  {
+    "id": "fwsim-old-peony-pink-klein",
+    "provider": "maximus",
+    "name": "Peony pink klein",
+    "category": "morteiros"
+  },
+  {
+    "id": "fwsim-old-peony-red-palm",
+    "provider": "maximus",
+    "name": "Peony red Palm",
+    "category": "morteiros"
+  },
+  {
+    "id": "fwsim-old-peony-red",
+    "provider": "maximus",
+    "name": "Peony red",
+    "category": "morteiros"
+  },
+  {
+    "id": "fwsim-old-polarlicht",
+    "provider": "maximus",
+    "name": "Polarlicht",
+    "category": "morteiros"
+  },
+  {
+    "id": "fwsim-old-power-house",
+    "provider": "maximus",
+    "name": "Power House",
+    "category": "morteiros"
+  },
+  {
+    "id": "fwsim-old-red-star",
+    "provider": "maximus",
+    "name": "Red Star",
+    "category": "morteiros"
+  },
+  {
+    "id": "fwsim-old-ring",
+    "provider": "maximus",
+    "name": "Ring",
+    "category": "morteiros"
+  },
+  {
+    "id": "fwsim-old-rush-hour-1",
+    "provider": "maximus",
+    "name": "Rush Hour_1",
+    "category": "morteiros"
+  },
+  {
+    "id": "fwsim-old-salut-big",
+    "provider": "Unknown",
+    "name": "Salut Big",
+    "category": "morteiros"
+  },
+  {
+    "id": "fwsim-old-salut-ground-big",
+    "provider": "maximus",
+    "name": "Salut Ground big",
+    "category": "morteiros"
+  },
+  {
+    "id": "fwsim-old-shell-blue-and-red-pill",
+    "provider": "maximus",
+    "name": "Shell blue and red Pill",
+    "category": "morteiros"
+  },
+  {
+    "id": "fwsim-old-shell-green-spark",
+    "provider": "maximus",
+    "name": "shell green-spark",
+    "category": "morteiros"
+  },
+  {
+    "id": "fwsim-old-shell-greentail",
+    "provider": "maximus",
+    "name": "Shell GreenTail",
+    "category": "morteiros"
+  },
+  {
+    "id": "fwsim-old-shell-red-tail",
+    "provider": "maximus",
+    "name": "Shell Red Tail",
+    "category": "morteiros"
+  },
+  {
+    "id": "fwsim-old-shell-wirbel-und-pink-pille",
+    "provider": "maximus",
+    "name": "Shell wirbel und pink Pille",
+    "category": "morteiros"
+  },
+  {
+    "id": "fwsim-old-silver-palm",
+    "provider": "maximus",
+    "name": "Silver Palm",
+    "category": "morteiros"
+  },
+  {
+    "id": "fwsim-old-silver-star",
+    "provider": "maximus",
+    "name": "Silver Star",
+    "category": "morteiros"
+  },
+  {
+    "id": "fwsim-old-stars-in-heaven",
+    "provider": "maximus",
+    "name": "Stars in Heaven",
+    "category": "morteiros"
+  },
+  {
+    "id": "fwsim-old-tdv",
+    "provider": "maximus",
+    "name": "TDV",
+    "category": "morteiros"
+  },
+  {
+    "id": "fwsim-old-time-square-1",
+    "provider": "maximus",
+    "name": "Time Square-1",
+    "category": "morteiros"
+  },
+  {
+    "id": "fwsim-old-time-square-2",
+    "provider": "maximus",
+    "name": "Time Square-2",
+    "category": "morteiros"
+  },
+  {
+    "id": "fwsim-old-time-square-3",
+    "provider": "maximus",
+    "name": "Time Square-3",
+    "category": "morteiros"
+  },
+  {
+    "id": "fwsim-old-time-square-4",
+    "provider": "maximus",
+    "name": "Time Square-4",
+    "category": "morteiros"
+  },
+  {
+    "id": "fwsim-old-time-suqare-5",
+    "provider": "maximus",
+    "name": "Time Suqare-5",
+    "category": "morteiros"
+  },
+  {
+    "id": "fwsim-old-waterfall-shell-with-tail",
+    "provider": "maximus",
+    "name": "Waterfall shell with tail",
+    "category": "waterfalls"
+  },
+  {
+    "id": "fwsim-old-waterfall-lang",
+    "provider": "maximus",
+    "name": "Waterfall lang",
+    "category": "waterfalls"
+  },
+  {
+    "id": "fwsim-old-waterfall-pink-blue-strobe",
+    "provider": "maximus",
+    "name": "Waterfall pink-blue Strobe",
+    "category": "waterfalls"
+  },
+  {
+    "id": "fwsim-old-waterfall-red",
+    "provider": "maximus",
+    "name": "Waterfall Red",
+    "category": "waterfalls"
+  },
+  {
+    "id": "fwsim-old-peony-w-ascent-effect-green-small",
+    "provider": "Unknown",
+    "name": "Peony w Ascent Effect, green, small",
+    "category": "morteiros"
+  },
+  {
+    "id": "fwsim-old-peony-with-crackling",
+    "provider": "Unknown",
+    "name": "Peony with Crackling",
+    "category": "morteiros"
+  }
+]

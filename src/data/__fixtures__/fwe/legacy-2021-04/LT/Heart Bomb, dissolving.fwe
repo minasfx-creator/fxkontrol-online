@@ -1,0 +1,59 @@
+<?xml version="1.0"?>
+<FireworkEffect xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+  <Children>
+    <BaseEffectNode xsi:type="Shell">
+      <Children>
+        <BaseEffectNode xsi:type="BurstingCharge">
+          <Children>
+            <BaseEffectNode xsi:type="Stars">
+              <Children>
+                <BaseEffectNode xsi:type="StarTails">
+                  <Children />
+                  <Color>
+                    <CustomR>0</CustomR>
+                    <CustomG>0</CustomG>
+                    <CustomB>0</CustomB>
+                    <Color>Spark</Color>
+                  </Color>
+                  <Width>5.8275</Width>
+                  <Density>14</Density>
+                  <EmitStart>0.4885</EmitStart>
+                  <EmitEnd>0.9953</EmitEnd>
+                  <Life>3.1</Life>
+                </BaseEffectNode>
+              </Children>
+              <Type>Normal</Type>
+              <Distribution xsi:type="HeartDistribution">
+                <Speed>1</Speed>
+                <Sigma>0.04</Sigma>
+              </Distribution>
+              <Color>
+                <CustomR>0</CustomR>
+                <CustomG>0</CustomG>
+                <CustomB>0</CustomB>
+                <Color>Red</Color>
+              </Color>
+              <Count>379</Count>
+              <MinimumLifetime>1.9</MinimumLifetime>
+              <MaximumLifetime>2.2687</MaximumLifetime>
+              <Strobe>false</Strobe>
+              <StrobeFreqMean>14</StrobeFreqMean>
+            </BaseEffectNode>
+          </Children>
+          <Energy>80</Energy>
+          <Delay>5.3</Delay>
+        </BaseEffectNode>
+      </Children>
+      <Diameter>0.201</Diameter>
+      <LiftingCharge>140</LiftingCharge>
+    </BaseEffectNode>
+  </Children>
+  <Identifier>
+    <Name>Heart Bomb, dissolving</Name>
+    <Author>LT</Author>
+  </Identifier>
+  <AuthorSoftwareVersion>
+    <Major>0</Major>
+    <Minor>6</Minor>
+  </AuthorSoftwareVersion>
+</FireworkEffect>

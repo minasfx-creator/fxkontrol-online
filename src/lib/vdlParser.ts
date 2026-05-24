@@ -18,6 +18,18 @@
  *   - Type-aware prefire/duration/height per Finale Manual Table 2
  */
 
+import { parseCakeSegments } from './vdlCakeSegments';
+import { parseWithModifiers, type WithModifier } from './vdlWithModifiers';
+import {
+  extractExactCakeBody,
+  parseExactCakeBody,
+  type ExactTube,
+} from './vdlExactSimulationSyntax';
+import {
+  parseCakeDescription,
+  type CakeDescription,
+} from './vdlCakeDescriptions';
+
 export interface VDLResult {
   caliber: number;
   caliberMM: number;
@@ -65,6 +77,16 @@ export interface VDLResult {
   multiColors: string[][];   // & separated multi-color groups
   impliesTrail: boolean;     // color implies trail of sparks
   fuseDelay: number;         // FD — visco fuse delay (distinct from prefire), -1 = not set
+  // ── HTM / Degrees (cake header per-effect height + fan angle) ──
+  htmOverride: number;       // HTM — per-effect height in meters override (top-level), -1 = not set
+  fanAngleDeg: number;       // Cake-level "<N> Degrees" fan angle, -1 = not set
+  cakeSegments: import('./vdlCakeSegments').CakeSegment[]; // per-ingredient {label, htm, dur, body}
+  // ── `With` clauses: extra mine / petal / tail / mixed-stars per-effect ──
+  withModifiers: WithModifier[];
+  // ── Exact Simulation Syntax: per-tube angles/labels/delays ──
+  exactTubes: ExactTube[]; // populated only when `Cake, 1 Row (…/CAK)` detected
+  // ── Cake description structure (auxiliary/body/ingredients/rowSpecs) ──
+  cakeDescription: CakeDescription | null;
   // ── SuperVDL: Niagara fusion ──
   niagaraPreset?: string;           // matched Niagara preset ID
   niagaraProfile?: {
@@ -338,6 +360,9 @@ const BODY_FIRING_PATTERNS: Record<string, string> = {
   'zipper': 'z-shape', 'z-shape': 'z-shape', 'bookend': 'bookend',
   'wipe': 'wipe', 'w-shape': 'w-shape', 'r-shape': 'x-shape',
   'peacock': 'x-shape', 'angle': 'angle', 'fan': 'fan',
+  // Placeholder-cake doc (May 29, 2024): FNR = fan-to-right-in-sequence
+  // (distinct from "fan" which implies simultaneous shots per row).
+  'fnr': 'fnr',
 };
 
 // ── Row firing pattern keywords (3-letter codes) ──
@@ -407,6 +432,10 @@ export function parseVDL(input: string): VDLResult {
     firingPattern: '', isAerial: false,
     multiColors: [], impliesTrail: false,
     fuseDelay: -1,
+    htmOverride: -1, fanAngleDeg: -1, cakeSegments: [],
+    withModifiers: [],
+    exactTubes: [],
+    cakeDescription: null,
   };
 
   if (!raw) return result;
@@ -441,6 +470,35 @@ export function parseVDL(input: string): VDLResult {
   if (durMatch) result.durOverride = parseFloat(durMatch[1]);
   const fdMatch = raw.match(FD_REGEX);
   if (fdMatch) result.fuseDelay = parseFloat(fdMatch[1]);
+
+  // ── HTM (per-effect height) / Degrees (cake fan angle) — canonical Finale VDL ──
+  const htmMatchTop = raw.match(/(\d+\.?\d*)\s*HTM\b/i);
+  if (htmMatchTop) {
+    result.htmOverride = parseFloat(htmMatchTop[1]);
+    result.height = result.htmOverride; // HTM takes precedence over "<N>m" at top level
+  }
+  const degMatchTop = raw.match(/(\d+\.?\d*)\s*Degrees?\b/i);
+  if (degMatchTop) result.fanAngleDeg = parseFloat(degMatchTop[1]);
+
+  // ── Cake ingredient segments (per-segment HTM/DUR after `+`) ──
+  const parsedCake = parseCakeSegments(raw);
+  if (parsedCake.segments.length > 0) result.cakeSegments = parsedCake.segments;
+  if (parsedCake.fanAngleDeg >= 0 && result.fanAngleDeg < 0) {
+    result.fanAngleDeg = parsedCake.fanAngleDeg;
+  }
+
+  // ── Exact Simulation Syntax: `Cake, 1 Row (…/CAK)` per-tube bodies ──
+  const exactBody = extractExactCakeBody(raw);
+  if (exactBody !== null) {
+    result.exactTubes = parseExactCakeBody(exactBody).tubes;
+  }
+
+  // ── Cake description structure (auxiliary/body/ingredients/rowSpecs) ──
+  if (/\bcake\b/i.test(raw)) {
+    result.cakeDescription = parseCakeDescription(raw);
+  }
+
+
 
   // ── Parse angle offset (R45, L30, etc.) ──
   let angleMatch: RegExpExecArray | null;
@@ -589,6 +647,9 @@ export function parseVDL(input: string): VDLResult {
     }
   }
 
+  // ── Parse `With …` / `w/ …` non-pistil clauses (mine / petal / tail / mixed) ──
+  result.withModifiers = parseWithModifiers(raw, VDL_COLORS_TABLE);
+
   // ── Parse type ──
   let foundType = false;
   if (result.type !== 'cake') { // cake already parsed above
@@ -677,6 +738,12 @@ export function parseVDL(input: string): VDLResult {
   if (result.durOverride >= 0) {
     result.duration = result.durOverride;
   }
+
+  // ── Apply HTM override (Finale spec: HTM specifies per-effect height) ──
+  if (result.htmOverride >= 0) {
+    result.height = result.htmOverride;
+  }
+
 
   // ── Apply adjustment scaling (compound stacking) ──
   const adjFactors: Partial<Record<AdjFactor, number>> = {};

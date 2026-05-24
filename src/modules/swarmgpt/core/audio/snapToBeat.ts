@@ -16,4 +16,3 @@ export function snapToBeat(
   }
   return best;
 }
-

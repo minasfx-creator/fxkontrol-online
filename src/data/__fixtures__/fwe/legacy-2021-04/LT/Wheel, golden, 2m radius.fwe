@@ -1,0 +1,40 @@
+<?xml version="1.0"?>
+<FireworkEffect xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+  <Children>
+    <BaseEffectNode xsi:type="Sun">
+      <Children>
+        <BaseEffectNode xsi:type="Stars">
+          <Children />
+          <Type>Sparks</Type>
+          <Distribution xsi:type="EruptionDistribution">
+            <Speed>1</Speed>
+            <Sigma>0.023</Sigma>
+            <Spread>0.160586491</Spread>
+          </Distribution>
+          <Color>
+            <CustomR>0</CustomR>
+            <CustomG>0</CustomG>
+            <CustomB>0</CustomB>
+            <Color>Gold</Color>
+          </Color>
+          <Count>5513</Count>
+          <MinimumLifetime>0.8</MinimumLifetime>
+          <MaximumLifetime>1.4</MaximumLifetime>
+          <Strobe>false</Strobe>
+          <StrobeFreqMean>14</StrobeFreqMean>
+        </BaseEffectNode>
+      </Children>
+      <Radius>2</Radius>
+      <EruptionEnergy>22</EruptionEnergy>
+      <Duration>15</Duration>
+    </BaseEffectNode>
+  </Children>
+  <Identifier>
+    <Name>Wheel, golden, 2m radius</Name>
+    <Author>LT</Author>
+  </Identifier>
+  <AuthorSoftwareVersion>
+    <Major>0</Major>
+    <Minor>6</Minor>
+  </AuthorSoftwareVersion>
+</FireworkEffect>

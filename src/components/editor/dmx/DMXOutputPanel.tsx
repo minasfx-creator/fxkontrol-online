@@ -19,7 +19,7 @@ import {
   type DMXOutputStream,
   type DMXOutputAdapter,
 } from '@/lib/wiredDmxEngine';
-import { isWebSerialSupported } from '@/lib/usbEngine';
+
 
 interface DMXOutputPanelProps {
   onClose?: () => void;
@@ -32,7 +32,6 @@ export default function DMXOutputPanel({ onClose }: DMXOutputPanelProps) {
   const [fps, setFps] = useState(44);
   const [streaming, setStreaming] = useState(false);
   const channelsRef = useRef(new Uint8Array(512));
-  const supported = isWebSerialSupported();
 
   const handleOpenPort = useCallback(async () => {
     try {
@@ -83,12 +82,6 @@ export default function DMXOutputPanel({ onClose }: DMXOutputPanelProps) {
         </Badge>
       </div>
 
-      {!supported && (
-        <div className="bg-destructive/10 border border-destructive/30 rounded-lg p-2">
-          <p className="text-[9px] text-destructive">WebSerial não disponível. Use Chrome/Edge ou o app nativo.</p>
-        </div>
-      )}
-
       {/* Adapter selection */}
       <div className="space-y-1">
         <p className="text-[8px] text-muted-foreground uppercase font-semibold">Adaptador DMX:</p>
@@ -136,7 +129,7 @@ export default function DMXOutputPanel({ onClose }: DMXOutputPanelProps) {
       {/* Controls */}
       <div className="flex gap-2">
         {!stream ? (
-          <Button onClick={handleOpenPort} disabled={!supported} className="flex-1 h-9 text-[10px]">
+          <Button onClick={handleOpenPort} className="flex-1 h-9 text-[10px]">
             <Cable className="w-3 h-3 mr-1" /> Abrir Porta
           </Button>
         ) : (

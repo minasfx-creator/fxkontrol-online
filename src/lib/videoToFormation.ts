@@ -252,7 +252,7 @@ function decodeGifFrames(data: Uint8Array): GifFrame[] {
   const gctSize = hasGCT ? 3 * (1 << ((packed & 0x07) + 1)) : 0;
 
   // Parse global color table
-  let gct: number[] = [];
+  const gct: number[] = [];
   if (hasGCT) {
     for (let i = 0; i < gctSize; i++) {
       gct.push(data[13 + i]);

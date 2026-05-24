@@ -6,7 +6,7 @@
  */
 
 import { blackbox } from '@/core/reliability/blackBoxRecorder';
-import { type FieldBus, type TransportMessage, fieldBus as defaultBus } from '@/core/network/fieldBus';
+import { type FieldBus, type TransportMessage } from '@/core/network/fieldBus';
 
 export interface PyroCue {
   id: string;
@@ -18,10 +18,7 @@ export interface PyroCue {
   effectId: string;
 }
 
-const LOCAL_BUFFER_MAX = 256;
-
 class PyroExecutor {
-  private _localBuffer: PyroCue[] = [];
 
   /**
    * Check if a cue should fire at the given simulation time.
@@ -34,6 +31,19 @@ class PyroExecutor {
 
   /** Fire a pyro cue through the field bus. */
   fire(cue: PyroCue, bus: FieldBus): boolean {
+    if (!Number.isInteger(cue.moduleAddress) || cue.moduleAddress < 0) {
+      blackbox.record('emergency', `PYRO FIRE DENIED invalid module=${cue.moduleAddress}`, { cueId: cue.id });
+      return false;
+    }
+    if (!Number.isInteger(cue.channel) || cue.channel < 0 || cue.channel > 31) {
+      blackbox.record('emergency', `PYRO FIRE DENIED invalid channel=${cue.channel}`, { cueId: cue.id });
+      return false;
+    }
+    if (!Number.isFinite(cue.duration) || cue.duration <= 0 || cue.duration > 10) {
+      blackbox.record('emergency', `PYRO FIRE DENIED invalid duration=${cue.duration}`, { cueId: cue.id });
+      return false;
+    }
+
     const msg: TransportMessage = {
       type: 'pyro',
       payload: {
@@ -55,28 +65,19 @@ class PyroExecutor {
       }
     }
 
-    // Offline fallback: buffer locally
-    if (this._localBuffer.length < LOCAL_BUFFER_MAX) {
-      this._localBuffer.push(cue);
-      blackbox.record('fire', `PYRO BUFFERED (offline) mod=${cue.moduleAddress} ch=${cue.channel}`);
-    }
+    // Safety-critical: pyro FIRE is a single-intent, time-bound command.
+    // Never buffer/replay it after a transport outage; late ignition is worse
+    // than a clearly failed command. The operator must explicitly re-issue.
+    blackbox.record('emergency', `PYRO FIRE FAILED (not buffered) mod=${cue.moduleAddress} ch=${cue.channel}`, { cueId: cue.id });
     return false;
   }
 
-  /** Execute all buffered cues (when connection restores). */
-  flushBuffer(bus: FieldBus): number {
-    let flushed = 0;
-    while (this._localBuffer.length > 0 && bus.isAlive()) {
-      const cue = this._localBuffer.shift()!;
-      this.fire(cue, bus);
-      flushed++;
-    }
-    return flushed;
-  }
+  /** Retained for compatibility; destructive cues are no longer replayed. */
+  flushBuffer(_bus: FieldBus): number { return 0; }
 
-  getBufferSize(): number { return this._localBuffer.length; }
+  getBufferSize(): number { return 0; }
 
-  clearBuffer(): void { this._localBuffer.length = 0; }
+  clearBuffer(): void { /* no-op: pyro queue intentionally disabled */ }
 }
 
 export const pyroExecutor = new PyroExecutor();

@@ -30,6 +30,7 @@ import { useFireOneHardware } from '@/hooks/useFireOneHardware';
 import { parseFireOneCSV, parseFireOneFIR, exportFireOneCSV, downloadFile, autoDetectAndParse } from '@/lib/fireoneScriptParser';
 import type { WirelessConnectionMode } from '@/lib/fireoneProtocol';
 import { artnetModuleService } from '@/services/artnetModuleService';
+import FXK16StatusBar from '@/components/field/FXK16StatusBar';
 
 interface FireLogEntry {
   cueId: string;
@@ -76,29 +77,9 @@ interface IgniterState {
   misfire: boolean;
 }
 
-function createSimModule(addr: number, connected: boolean, wireless = false): FieldModule {
-  const rssi = wireless ? -(40 + Math.random() * 40) : undefined;
-  return {
-    address: addr,
-    connected,
-    armed: false,
-    batteryVoltage: connected ? 11.2 + Math.random() * 1.6 : 0,
-    signalStrength: connected ? 60 + Math.random() * 40 : 0,
-    temperature: connected ? 18 + Math.random() * 12 : 0,
-    connectionMode: wireless ? 'wireless' : 'wired',
-    rssiDbm: rssi,
-    wirelessChannel: wireless ? 1 + Math.floor(Math.random() * 16) : undefined,
-    packetLoss: wireless ? Math.floor(Math.random() * 5) : undefined,
-    linkQuality: wireless ? 80 + Math.floor(Math.random() * 20) : undefined,
-    igniters: Array.from({ length: 32 }, (_, i) => ({
-      position: i + 1,
-      connected: connected && Math.random() > 0.15,
-      fired: false,
-      resistance: connected ? (Math.random() > 0.15 ? 1.2 + Math.random() * 8 : 0) : 0,
-      misfire: false,
-    })),
-  };
-}
+// createSimModule() REMOVED — honest-hardware policy: no synthetic/simulated
+// modules are ever injected into the FireOne roster. Modules come exclusively
+// from real discovery via useFireOneHardware → moduleAggregator.
 
 export default function PyroFireOnePanel({
   fs, fireChannel, channels, pyroArm, dmxArm, handlePanic, artNetConnected, relayConnected, onArmChange,
@@ -107,15 +88,12 @@ export default function PyroFireOnePanel({
   const hardware = useFireOneHardware();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [pyroMode, setPyroMode] = useState<PyroMode>('manual');
-  const [modules, setModules] = useState<FieldModule[]>(() => {
-    const mods: FieldModule[] = [];
-    for (let i = 1; i <= 4; i++) mods.push(createSimModule(i, true, false));
-    for (let i = 5; i <= 6; i++) mods.push(createSimModule(i, true, true));
-    return mods;
-  });
+  // Honest hardware: NEVER seed fake/simulated modules. List starts empty
+  // and is populated only by real FireOne discovery via useFireOneHardware.
+  const [modules, setModules] = useState<FieldModule[]>([]);
   const [selectedModule, setSelectedModule] = useState(1);
   const [masterKeyOn, setMasterKeyOn] = useState(false);
-  const [simMode, setSimMode] = useState(true);
+  const [simMode, setSimMode] = useState(false);
   const [pyroFullscreen, setPyroFullscreen] = useState(false);
   const [artnetLinking, setArtnetLinking] = useState(false);
   const [artnetLinkedModules, setArtnetLinkedModules] = useState<Set<number>>(new Set());
@@ -218,7 +196,7 @@ export default function PyroFireOnePanel({
       await hardware.discoverModules(30);
       toast.success(`Scan complete — ${hardware.modules.size} modules found`);
     } else {
-      toast.success(`SIM Scan — ${modules.filter(m => m.connected).length} modules online`);
+      toast.error('No FireOne hardware connected — pair a controller to scan');
     }
     setScanning(false);
   }, [hardware, modules]);
@@ -284,11 +262,13 @@ export default function PyroFireOnePanel({
 
   useEffect(() => {
     // Subscribe channels once
-    pyroSyncChannel.current.subscribe();
-    mobileLinkChannel.current.subscribe();
+    const pyroSync = pyroSyncChannel.current;
+    const mobileLink = mobileLinkChannel.current;
+    pyroSync.subscribe();
+    mobileLink.subscribe();
     return () => {
-      supabase.removeChannel(pyroSyncChannel.current);
-      supabase.removeChannel(mobileLinkChannel.current);
+      supabase.removeChannel(pyroSync);
+      supabase.removeChannel(mobileLink);
     };
   }, []);
 
@@ -1459,30 +1439,10 @@ export default function PyroFireOnePanel({
     );
   };
 
-  // ── Render: PANIC bar — with warning stripes ──
-  const renderPanic = () => (
-    <div className="border-t-2 border-red-800/30 shrink-0" style={{
-      background: armedModCount > 0
-        ? 'repeating-linear-gradient(-45deg, hsl(45 100% 50% / 0.04), hsl(45 100% 50% / 0.04) 4px, hsl(220 12% 6%) 4px, hsl(220 12% 6%) 8px)'
-        : 'hsl(220 12% 6%)',
-    }}>
-      <div className={cn(sz === 'xl' ? "px-5 py-3" : sz === 'fs' ? "px-4 py-2" : "px-2 py-1.5")}>
-        <button onClick={handlePanic}
-          className={cn(
-            "w-full rounded-lg font-black uppercase transition-all",
-            "bg-gradient-to-b from-red-700 to-red-900 text-white/90",
-            "hover:from-red-600 hover:to-red-800 active:scale-[0.97]",
-            "border-2 border-red-600/50",
-            "flex items-center justify-center gap-2",
-            sz === 'xl' ? "h-16 text-lg tracking-[0.3em] rounded-xl" : sz === 'fs' ? "h-14 text-base tracking-[0.25em]" : "h-10 text-[11px] tracking-[0.25em]",
-            armedModCount > 0 && "armed-pulse"
-          )} style={{ boxShadow: armedModCount > 0 ? '0 0 20px rgba(239,68,68,0.3), inset 0 1px 0 rgba(255,255,255,0.1)' : 'inset 0 1px 0 rgba(255,255,255,0.1)' }}>
-          <AlertTriangle className={cn(sz === 'xl' ? "w-7 h-7" : sz === 'fs' ? "w-5 h-5" : "w-4 h-4")} />
-          PANIC — ALL STOP
-        </button>
-      </div>
-    </div>
-  );
+  // PANIC bar removed: ownership consolidated in LiveFiringPanel chrome,
+  // which routes through uiCommandGateway. `handlePanic` prop kept for
+  // backward-compat but no longer rendered here.
+
 
   // ── Render: Module Scanner Screen ──
   const renderModuleScanner = () => (
@@ -1609,7 +1569,26 @@ export default function PyroFireOnePanel({
         )}
 
         {renderModuleScanner()}
-        {renderPanic()}
+        {/* Fullscreen portal owns its own PANIC button (chrome below is
+            hidden by the portal). Routes to handlePanic prop, which
+            LiveFiringPanel wires to uiCommandGateway.eStop(). */}
+        <div className="border-t-2 border-red-800/30 shrink-0" style={{ background: 'hsl(220 12% 6%)' }}>
+          <div className={cn(sz === 'xl' ? 'px-5 py-3' : 'px-4 py-2')}>
+            <button
+              onClick={handlePanic}
+              className={cn(
+                'w-full rounded-lg font-black uppercase transition-all',
+                'bg-gradient-to-b from-red-700 to-red-900 text-white/90',
+                'hover:from-red-600 hover:to-red-800 active:scale-[0.97]',
+                'border-2 border-red-600/50 flex items-center justify-center gap-2',
+                sz === 'xl' ? 'h-16 text-lg tracking-[0.3em]' : 'h-14 text-base tracking-[0.25em]',
+              )}
+            >
+              <AlertTriangle className="w-6 h-6" />
+              PANIC — ALL STOP
+            </button>
+          </div>
+        </div>
       </div>
     );
 
@@ -1629,6 +1608,12 @@ export default function PyroFireOnePanel({
       {renderFileInput()}
       {renderHeader()}
       {renderConnectionBar()}
+      {/* FXK16 status (read-only): connection card lives in /field#fxk16 by
+          consolidated decision — duplicating it here caused two bridges to
+          coexist and confused the launcher. We still surface live status. */}
+      <div className={cn(sz === 'xl' ? 'px-6 py-1.5' : sz === 'fs' ? 'px-4 py-1' : 'px-2 py-1')}>
+        <FXK16StatusBar compact />
+      </div>
       {renderMasterArm()}
       {renderStatusStrip()}
       {renderModeTabs()}
@@ -1636,7 +1621,9 @@ export default function PyroFireOnePanel({
       {renderModuleInfo()}
       <ScrollArea className="flex-1">{renderModeContent()}</ScrollArea>
       {renderModuleScanner()}
-      {renderPanic()}
+      {/* PANIC bar removed — LiveFiringPanel chrome owns the unified PANIC
+          and routes through uiCommandGateway. Standalone callers should use
+          handlePanic prop themselves if they wrap this panel. */}
     </div>
   );
 }

@@ -1,0 +1,36 @@
+<?xml version="1.0"?>
+<FireworkEffect xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <Children>
+    <BaseEffectNode xsi:type="Bengal">
+      <Children />
+      <ID>0</ID>
+      <AllowRenaming>false</AllowRenaming>
+      <Duration>5</Duration>
+      <Strobe>false</Strobe>
+      <StrobeFrequency>0.4</StrobeFrequency>
+      <Color>
+        <CustomR>0</CustomR>
+        <CustomG>0</CustomG>
+        <CustomB>0</CustomB>
+        <Color>Red</Color>
+      </Color>
+    </BaseEffectNode>
+  </Children>
+  <Protected>false</Protected>
+  <AutotagOverrideQuantity>0</AutotagOverrideQuantity>
+  <AutotagOverrideCaliber>0</AutotagOverrideCaliber>
+  <AutotagOverrideFurther />
+  <Identifier>
+    <Name>Bengal Light Red (05s)</Name>
+    <Author>Marcus Athmer</Author>
+  </Identifier>
+  <Metadata>
+    <Pieces />
+  </Metadata>
+  <AuthorSoftwareVersion>
+    <Major>3</Major>
+    <Minor>1</Minor>
+    <Build>0</Build>
+    <Revision>1</Revision>
+  </AuthorSoftwareVersion>
+</FireworkEffect>

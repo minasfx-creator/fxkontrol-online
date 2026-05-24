@@ -13,6 +13,7 @@ import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { useFireOneModuleMode } from '@/hooks/useFireOneModuleMode';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { uiCommandGateway } from '@/core/command/uiCommandGateway';
 import type { FiringMode } from '@/lib/fireoneModuleEmulator';
 import SignalDiagnosticsPanel from './SignalDiagnosticsPanel';
 
@@ -72,7 +73,7 @@ export default function VirtualIFMx32QPanel({ fs = false }: VirtualIFMx32QProps)
   const togglePin = useCallback((pin: number) => {
     setSelectedPins(prev => {
       const next = new Set(prev);
-      next.has(pin) ? next.delete(pin) : next.add(pin);
+      if (next.has(pin)) next.delete(pin); else next.add(pin);
       return next;
     });
   }, []);
@@ -221,7 +222,11 @@ export default function VirtualIFMx32QPanel({ fs = false }: VirtualIFMx32QProps)
                     ? "bg-red-600 hover:bg-red-700 animate-pulse"
                     : "bg-emerald-700 hover:bg-emerald-600"
                 )}
-                onClick={() => status?.firePowerOn ? module.disarm() : module.arm()}
+                onClick={() => {
+                  const src = { source: 'VirtualIFMx32QPanel' };
+                  if (status?.firePowerOn) { uiCommandGateway.disarm(src); module.disarm(); }
+                  else { uiCommandGateway.arm(src); module.arm(); }
+                }}
                 disabled={status?.state === 'safe_sense' || status?.state === 'idle' || status?.state === 'estop_lockout'}
               >
                 {status?.firePowerOn ? (
@@ -230,7 +235,8 @@ export default function VirtualIFMx32QPanel({ fs = false }: VirtualIFMx32QProps)
                   <><Shield className="w-4 h-4 mr-1" /> ARM</>
                 )}
               </Button>
-              <Button size="sm" variant="destructive" className="font-black uppercase text-xs px-4" onClick={module.eStop}>
+              <Button size="sm" variant="destructive" className="font-black uppercase text-xs px-4"
+                onClick={() => { uiCommandGateway.eStop({ source: 'VirtualIFMx32QPanel' }); module.eStop(); }}>
                 <AlertTriangle className="w-4 h-4 mr-1" /> E-STOP
               </Button>
               <Button size="sm" variant="outline" className="text-xs" onClick={handleContinuityCheck}>
@@ -318,10 +324,6 @@ export default function VirtualIFMx32QPanel({ fs = false }: VirtualIFMx32QProps)
               >
                 {bridgeStatus?.connected
                   ? `${bridgeStatus.transport.toUpperCase()} · ${bridgeStatus.deviceName}`
-                  : bridgeStatus?.connecting
-                    ? 'CONECTANDO...'
-                  : bridgeStatus?.linkHealth === 'handshaking'
-                    ? 'HANDSHAKE...'
                   : 'DESCONECTADO'}
               </Badge>
             </div>
@@ -337,16 +339,13 @@ export default function VirtualIFMx32QPanel({ fs = false }: VirtualIFMx32QProps)
                 { label: 'RELAY', sub: 'Direto', icon: Zap, action: module.connectDirectRelay, transport: 'direct_relay' as const },
               ].map(btn => {
                 const isActive = bridgeStatus?.connected && bridgeStatus.transport === btn.transport;
-                const isSupported = module.transportSupport[btn.transport];
                 return (
                   <button
                     key={btn.label}
                     onClick={() => btn.action()}
-                    disabled={!isSupported || Boolean(bridgeStatus?.connecting)}
                     className={cn(
                       "rounded-lg px-2 py-1.5 flex flex-col items-center gap-0.5 transition-all",
                       "border text-[7px] uppercase font-bold",
-                      (!isSupported || bridgeStatus?.connecting) && "opacity-40 cursor-not-allowed",
                       isActive
                         ? "border-emerald-500/50 bg-emerald-950/30 text-emerald-400 shadow-[0_0_8px_rgba(16,185,129,0.15)]"
                         : "bg-muted/10 hover:bg-muted/20 text-muted-foreground/50 hover:text-foreground/70 border-border/10"
@@ -354,29 +353,11 @@ export default function VirtualIFMx32QPanel({ fs = false }: VirtualIFMx32QProps)
                   >
                     <btn.icon className="w-3.5 h-3.5" />
                     <span>{btn.label}</span>
-                    <span className={cn("text-[6px] font-normal", isActive ? "text-emerald-400/60" : "text-muted-foreground/30")}>
-                      {isSupported ? btn.sub : 'indisponível'}
-                    </span>
+                    <span className={cn("text-[6px] font-normal", isActive ? "text-emerald-400/60" : "text-muted-foreground/30")}>{btn.sub}</span>
                   </button>
                 );
               })}
             </div>
-
-            {!module.transportSupport.ble && (
-              <p className="text-[8px] text-amber-300/80">
-                BLE/WebSerial bloqueados neste ambiente (comum no iPhone Safari). Use app nativo iOS ou Wi-Fi AP seguro (wss://).
-              </p>
-            )}
-            {bridgeStatus?.connecting && (
-              <p className="text-[8px] text-cyan-300/80">
-                Estabelecendo link com hardware... aguarde antes de trocar de transporte.
-              </p>
-            )}
-            {!bridgeStatus?.connected && bridgeStatus?.lastError && (
-              <p className="text-[8px] text-destructive/80">
-Último erro de conexão: {bridgeStatus.lastError}
-              </p>
-            )}
 
             {/* RSSI / Distance indicator */}
             {bridgeStatus?.connected && (bridgeStatus.rssi != null || bridgeStatus.estimatedDistance != null) && (

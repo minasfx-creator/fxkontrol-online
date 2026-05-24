@@ -1,0 +1,73 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<CustomComponent xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+  <AuthorSoftwareVersion>
+    <Major>3</Major>
+    <Minor>5</Minor>
+    <Build>0</Build>
+    <Revision>56</Revision>
+  </AuthorSoftwareVersion>
+  <Inserts>
+    <BaseEffectNode xsi:type="Crackling">
+      <Children />
+      <Elements>
+        <CracklingElement>
+          <StarCount>60</StarCount>
+          <Color>
+            <CustomR>254</CustomR>
+            <CustomG>224</CustomG>
+            <CustomB>184</CustomB>
+            <Color>Custom</Color>
+          </Color>
+          <Life>0.05</Life>
+          <LifeSigma>0.08</LifeSigma>
+          <FadeRatios>
+            <A>0</A>
+            <B>0</B>
+            <C>0.35687023</C>
+            <D>1</D>
+          </FadeRatios>
+          <StarSizeFactor>0.3</StarSizeFactor>
+          <EnergyInfo>
+            <EnergyType>Manual_Speed</EnergyType>
+            <ManualEnergy>10</ManualEnergy>
+          </EnergyInfo>
+        </CracklingElement>
+        <CracklingElement>
+          <StarCount>60</StarCount>
+          <Color>
+            <CustomR>254</CustomR>
+            <CustomG>224</CustomG>
+            <CustomB>184</CustomB>
+            <Color>Custom</Color>
+          </Color>
+          <Life>0.05</Life>
+          <LifeSigma>0.04</LifeSigma>
+          <FadeRatios>
+            <A>0</A>
+            <B>0</B>
+            <C>0.03816794</C>
+            <D>1</D>
+          </FadeRatios>
+          <StarSizeFactor>3.5</StarSizeFactor>
+          <EnergyInfo>
+            <EnergyType>Manual_Speed</EnergyType>
+            <ManualEnergy>5</ManualEnergy>
+          </EnergyInfo>
+        </CracklingElement>
+      </Elements>
+      <Color>
+        <CustomR>0</CustomR>
+        <CustomG>0</CustomG>
+        <CustomB>0</CustomB>
+        <Color>Red</Color>
+      </Color>
+    </BaseEffectNode>
+  </Inserts>
+  <BaseID>
+    <Name>Crackling Pearls Blonde (Large)</Name>
+    <Author>FWsim</Author>
+  </BaseID>
+  <ReadOnly>false</ReadOnly>
+  <InternalUseOnly>false</InternalUseOnly>
+  <Hide>false</Hide>
+</CustomComponent>

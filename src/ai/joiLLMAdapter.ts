@@ -136,9 +136,21 @@ function makeFallbackResponse(prompt: string, reason: string, error?: string): J
 
 export async function generateJoiGraph(
   prompt: string,
-  options?: { constraints?: JoiConstraints },
+  options?: { constraints?: JoiConstraints; isPaid?: boolean },
 ): Promise<JoiLLMResponse> {
   const constraints = options?.constraints ?? DEFAULT_CONSTRAINTS;
+
+  // Free-tier daily quota gate. Paid users (`isPaid: true` from useEntitlements.joiUnlimited)
+  // bypass entirely. On overflow we surface the global UpgradeDialog and short-circuit
+  // with a safe fallback graph (no LLM call, no cost).
+  if (!options?.isPaid) {
+    const { consumeJoiQuota } = await import('@/lib/joiQuota');
+    const { promptUpgrade } = await import('@/lib/upgradePrompt');
+    if (!consumeJoiQuota()) {
+      promptUpgrade({ reason: 'joi-quota' });
+      return makeFallbackResponse(prompt, 'free_tier_quota_exceeded', 'Daily JOI generation limit reached');
+    }
+  }
 
   let rawResponse: unknown;
   try {

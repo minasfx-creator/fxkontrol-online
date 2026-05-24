@@ -6,6 +6,7 @@
 
 import { useEffect, useState } from 'react';
 import { relayBankAdapter } from '@/core/hardware/adapters/RelayBankAdapter32';
+import { shouldAdapterTick } from '@/core/hardware/adapterTickGate';
 import { cn } from '@/lib/utils';
 import { Activity, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -22,6 +23,7 @@ export default function RelayBankMonitor() {
   const [state, setState] = useState<RelayBankState>(relayBankAdapter.getState());
 
   useEffect(() => {
+    if (!shouldAdapterTick(relayBankAdapter)) return;
     const iv = setInterval(() => {
       relayBankAdapter.pollTelemetry();
       setState(relayBankAdapter.getState());

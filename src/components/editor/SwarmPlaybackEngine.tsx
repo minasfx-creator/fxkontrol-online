@@ -13,6 +13,7 @@ import { Html } from '@react-three/drei';
 import * as THREE from 'three';
 import { Crosshair } from 'lucide-react';
 import { useRenderCounter } from '@/hooks/useRenderCounter';
+import { useClockTimeRef } from '@/hooks/useClockTimeRef';
 
 // Variáveis Globais de Memória Estática (Previnem o "Garbage Collector Stutter")
 const _O = new THREE.Object3D();
@@ -62,6 +63,10 @@ export function SwarmPlaybackEngine({
   const [hoveredId, setHoveredId] = useState<number | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
 
+  // Clock-direct time read — keeps the swarm in sync even if the React
+  // prop `manualTime` (driven by the store mirror) is one frame behind.
+  const clockTimeRef = useClockTimeRef();
+
   // Alocação de Baixo Nível
   const stateRef = useRef({
     pathIndices: new Uint32Array(0),
@@ -107,7 +112,13 @@ export function SwarmPlaybackEngine({
     const engine = stateRef.current;
 
     if (manualTime !== null) {
-      engine.internalTime = manualTime;
+      // Caller is following the timeline — read the freshest clock value
+      // directly. The `manualTime` prop is still consumed via React render
+      // scheduling, so we treat it as a hint that the timeline is the
+      // authority and override with the clock time, falling back to the
+      // prop when the clock somehow has not advanced (NaN / pre-mount).
+      const clockT = clockTimeRef.current;
+      engine.internalTime = Number.isFinite(clockT) ? clockT : manualTime;
       engine.pathIndices.fill(0);
       engine.colorIndices.fill(0);
     } else if (isPlaying) {
