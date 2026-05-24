@@ -212,7 +212,6 @@ function App() {
           </TooltipProvider>
         </AuthProvider>
       </QueryClientProvider>
-    </AppErrorBoundary>
   );
 }
 
