@@ -22,6 +22,32 @@ import {
   type SecondaryEffect,
   type EffectStage,
 } from './effectFrameAtlas';
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Blackbody colour helper (approximation good to ±5% across 1000–9000 K)
+// Maps temperature in Kelvin to a normalised [r,g,b] emission colour so that
+// continuous-emitter trail particles reflect actual combustion temperature
+// instead of the old hardcoded (1, 0.8, 0.4) orange placeholder.
+// ─────────────────────────────────────────────────────────────────────────────
+function tempKToColor(k: number): [number, number, number] {
+  const t = Math.max(1000, Math.min(9000, k)) / 100;
+  // Planckian locus approximation (after Tanner Helland / Approximation)
+  let r: number, g: number, b: number;
+  // Red
+  r = t <= 66 ? 1.0 : Math.pow(t - 60, -0.1332) * 1.2929;
+  r = Math.max(0, Math.min(1, r));
+  // Green
+  g = t <= 66
+    ? (Math.log(t) * 0.3912 - 0.6342)
+    : (Math.pow(t - 60, -0.0755) * 1.1402);
+  g = Math.max(0, Math.min(1, g));
+  // Blue
+  b = t >= 66 ? 1.0
+    : t <= 19 ? 0
+    : Math.log(t - 10) * 0.5432 - 1.1963;
+  b = Math.max(0, Math.min(1, b));
+  return [r, g, b];
+}
 import type { BurstPattern } from './burstSimulation';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -108,6 +134,7 @@ export function tickContinuousEmitters(
       // Slight origin drift toward center of expanding shell
       const spreadR = 0.5 * (em.age / em.lifetime) * 2;
 
+      const [bbR, bbG, bbB] = tempKToColor(tempK);
       gpu.emit(count, {
         posX: em.originX + (Math.random() - 0.5) * spreadR,
         posY: em.originY + (Math.random() - 0.5) * spreadR * 0.5,
@@ -118,7 +145,7 @@ export function tickContinuousEmitters(
         size, sizeVariance: size * 0.2,
         maxLife: stageLifetime * (0.5 + Math.random() * 0.7),
         maxLifeVariance: stageLifetime * 0.3,
-        colorR: 1, colorG: 0.8, colorB: 0.4,  // placeholder — overridden by blackbody
+        colorR: bbR, colorG: bbG, colorB: bbB,  // atlas blackbody colour
         brightness: 0.85,
         type: stage.particleType,
       });
@@ -242,10 +269,12 @@ export function processSecondaryBursts(
         d.velZ[idx] = svz + pvz;
         d.life[idx] = ef.lifetime * (0.6 + Math.random() * 0.8);
 
-        d.colorR[idx] = 1; d.colorG[idx] = 0.8; d.colorB[idx] = 0.4;
+        const secTempK = ef.tempK * (0.9 + Math.random() * 0.2);
+        const [secR, secG, secB] = tempKToColor(secTempK);
+        d.colorR[idx] = secR; d.colorG[idx] = secG; d.colorB[idx] = secB;
         d.brightness[idx] = 1.0;
 
-        d.temperature[idx] = ef.tempK * (0.9 + Math.random() * 0.2);
+        d.temperature[idx] = secTempK;
         d.size[idx]        = ef.size  * (0.8 + Math.random() * 0.4);
         d.smoke[idx]       = 0;
         d.particleType[idx] = ef.particleType;

@@ -1858,5 +1858,68 @@ export function sampleVelocityCone(cone: VelocityCone, rng: () => number): [numb
   return [wx, wy, wz];
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Per-stage lookup helpers — used by FireworkRenderer for atlas-aware physics
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Return the dominant physics stage active at a given normalised lifecycle
+ * point for a pattern.  Prefers non-smoke particle types; falls back to the
+ * first active stage.
+ *
+ * @param patternId — effect pattern key (e.g. 'willow')
+ * @param tNorm     — normalised age in [0,1]
+ * @returns The matching EffectStage, or null if the pattern has no atlas entry.
+ */
+export function getAtlasStageAtTNorm(
+  patternId: string,
+  tNorm: number,
+): EffectStage | null {
+  const entry = ATLAS[patternId];
+  if (!entry) return null;
+  let fallback: EffectStage | null = null;
+  for (const s of entry.stages) {
+    if (tNorm < s.tStart || tNorm > s.tEnd) continue;
+    // Prefer primary particle stages (STAR / EMBER) over smoke / trail emitters
+    if (s.particleType === PTYPE.STAR || s.particleType === PTYPE.EMBER) return s;
+    if (!fallback) fallback = s;
+  }
+  return fallback;
+}
+
+/**
+ * Interpolated blackbody temperature (K) at a normalised lifecycle point.
+ * Useful for driving trail head colour and size in the CPU renderer.
+ *
+ * @param patternId — effect pattern key
+ * @param tNorm     — normalised age in [0,1]
+ * @returns Temperature in K (defaults to 3000 K if pattern not in atlas).
+ */
+export function getAtlasTempKAtTNorm(
+  patternId: string,
+  tNorm: number,
+): number {
+  const stage = getAtlasStageAtTNorm(patternId, tNorm);
+  if (!stage) return 3000;
+  // Lerp within the stage window
+  const stageFrac = stage.tEnd > stage.tStart
+    ? Math.max(0, Math.min(1, (tNorm - stage.tStart) / (stage.tEnd - stage.tStart)))
+    : 0;
+  return stage.tempKStart + (stage.tempKEnd - stage.tempKStart) * stageFrac;
+}
+
+/**
+ * Return {gravityScale, dragScale} from the atlas for the dominant stage at
+ * the given tNorm.  Falls back to {1, 1} if the pattern has no atlas entry.
+ */
+export function getAtlasPhysicsAtTNorm(
+  patternId: string,
+  tNorm: number,
+): { gravityScale: number; dragScale: number } {
+  const stage = getAtlasStageAtTNorm(patternId, tNorm);
+  if (!stage) return { gravityScale: 1, dragScale: 1 };
+  return { gravityScale: stage.gravityScale, dragScale: stage.dragScale };
+}
+
 export { ATLAS as EFFECT_ATLAS };
 export type { EffectAtlasEntry, EffectStage, SecondaryEffect, SfxEvent, TrailProfile, VelocityCone };

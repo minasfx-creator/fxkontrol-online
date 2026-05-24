@@ -19,6 +19,7 @@ import { updateFrustum, isSphereInFrustum } from '@/lib/frustumCuller';
 import { clampNiagaraHDR, getNiagaraBudgets } from '@/lib/niagaraBlenderRules';
 import { thermalColor, autoMatchFormulation } from '@/render_ultra/fireworks/particleChemistry';
 import { getBurstConfig, type BurstPattern } from '@/render_ultra/fireworks/burstSimulation';
+import { getAtlasTempKAtTNorm } from '@/render_ultra/fireworks/effectFrameAtlas';
 import {
   hexToCompound,
   getEffectById,
@@ -95,23 +96,63 @@ const STAR_FRAGMENT_SHADER = `
   varying float vSize;
 
   void main() {
-    vec2 uv = gl_PointCoord - 0.5;
+    vec2  uv   = gl_PointCoord - 0.5;
     float dist = length(uv);
-    
-    float core = exp(-dist * dist * 80.0);
-    float inner = exp(-dist * dist * 25.0);
-    float outer = exp(-dist * dist * 8.0);
-    
-    float alpha = core * 1.0 + inner * 0.7 + outer * 0.15;
-    
-    vec3 whiteHot = vec3(1.18, 1.08, 0.90);
-    vec3 col = mix(vColor, whiteHot, core * 0.45);
-    col += vColor * outer * 0.35;
-    
+
+    // ── Point-spread function layers ─────────────────────────────────────
+    // Core: tight Gaussian — diffraction-limited hot nucleus
+    float core   = exp(-dist * dist * 88.0);
+    // Inner: colour-saturated emission zone
+    float inner  = exp(-dist * dist * 22.0);
+    // Outer: Lorentzian (Moffat β≈1) — physically closer to real optical
+    // point-spread than a Gaussian; produces the characteristic soft "glow
+    // skirt" seen on all aerial combustion sources.
+    float moffat = 1.0 / (1.0 + dist * dist * 14.0);
+    // Wide corona: extremely dim large-scale haze
+    float corona = exp(-dist * dist * 2.6);
+
+    // ── Alpha (soft, physics-motivated) ──────────────────────────────────
+    float alpha = core + inner * 0.65 + moffat * 0.22 + corona * 0.04;
+    float edge  = 1.0 - smoothstep(0.44, 0.50, dist);
+
+    // ── Chromatic aberration at limb — prismatic diffraction ring ─────────
+    // Stars are optical point sources; lenses and the human eye both show
+    // wavelength-dependent PSF width → blue fringe inside, red outside.
+    float ringDist = dist - 0.31;
+    float ringMask = exp(-ringDist * ringDist * 130.0);
+    // Fade chroma ring as star ages (less bright = less aberration)
+    float chromaAge = max(0.0, 1.0 - vLife * 2.2);
+    vec3  chromaShift = vec3(0.08, -0.01, 0.16) * ringMask * chromaAge;
+
+    // ── Temperature-driven reference colours ─────────────────────────────
+    // ~8500 K — peak of Mg/Al/Ti combustion
+    vec3 blazeWhite  = vec3(1.24, 1.17, 1.10);
+    // ~1600 K — dying Fe/C ember colour
+    vec3 emberOrange = vec3(0.92, 0.27, 0.02);
+
+    // ── Colour composition ────────────────────────────────────────────────
+    // Layer 1: wide Moffat halo in the star's chemical colour
+    vec3 col = vColor * moffat * 0.50;
+    // Layer 2: inner zone — pull toward saturated chemical colour
+    col = mix(col, vColor * 1.14, inner * 0.62);
+    // Layer 3: core — white-hot blaze overrides chemical colour
+    col = mix(col, blazeWhite, core * 0.64);
+    // Layer 4: chromatic limb fringe
+    col += chromaShift;
+
+    // Youth incandescence: first ~25 % of life = extra white flash
+    // (models the initial ignition overpressure / peak temperature spike)
     float youth = max(0.0, 1.0 - vLife * 4.0);
-    col += mix(vColor, whiteHot, 0.4) * youth * 0.35;
-    
-    float edge = 1.0 - smoothstep(0.42, 0.5, dist);
+    col += blazeWhite * youth * 0.44;
+
+    // Ember tail: last ~35 % of life → warm orange-red glow
+    // (models cooling combustion residue — Fe₂O₃ / carbon char)
+    float emberT = smoothstep(0.65, 1.0, vLife);
+    col = mix(col, emberOrange, emberT * 0.50);
+
+    // Limb darkening: gentle intensity roll-off toward particle edge
+    // (analogous to solar limb darkening — less column depth at edge)
+    col *= max(0.55, 1.0 - dist * 0.28);
 
     gl_FragColor = vec4(col, alpha * edge);
   }
@@ -648,6 +689,29 @@ export const FireworkBurst = React.forwardRef<THREE.Group, {
         px = dragPos(vx, t, dragCoeff * 0.7) + w[0] * t * t * 0.4;
         py = dragPos(vy, t, dragCoeff) + 0.5 * GRAVITY * kamGravMult * t * t;
         pz = dragPos(vz, t, dragCoeff * 0.7) + w[2] * t * t * 0.4;
+      } else if (pattern === 'dragon_egg') {
+        // Dragon egg: Bi₂O₃/Mg pellets — heavy stars with strong initial buoyancy
+        // (tight initial burst, then sharp gravity-driven droop at ~55% life as fuel exhausts)
+        const deGravMult = starAge < 0.55
+          ? gravityMult * 0.85                                          // early: moderate gravity
+          : gravityMult * (0.85 + (starAge - 0.55) / 0.45 * 2.15);   // late: ramp to ~3x
+        // Micro-oscillation: Bi₂O₃ stars have ~15 Hz strobe burn — add sub-pixel jitter
+        // that matches the strobeFlicker twinkle frequency visually
+        const eggJitterX = Math.sin(time * 94.2 + sparkleSeeds[i] * 4.1) * 0.012 * (1 - starAge);
+        const eggJitterZ = Math.cos(time * 94.2 + sparkleSeeds[i] * 2.7) * 0.012 * (1 - starAge);
+        px = dragPos(vx, t, dragCoeff * 0.9) + w[0] * t * t * 0.3 + eggJitterX;
+        py = dragPos(vy, t, dragCoeff) + 0.5 * GRAVITY * deGravMult * t * t;
+        pz = dragPos(vz, t, dragCoeff * 0.9) + w[2] * t * t * 0.3 + eggJitterZ;
+      } else if (pattern === 'strobe') {
+        // Strobe: potassium perchlorate + aluminium — ultra-low-drag, near-weightless stars
+        // (the strobe pellet maintains altitude during each flash cycle)
+        // gravityMult for strobe = 0.1 from BURST_CONFIGS
+        const strobeGravMult = starAge < 0.3
+          ? gravityMult * 0.08    // flash: essentially weightless at peak temperature
+          : THREE.MathUtils.lerp(gravityMult * 0.08, gravityMult * 0.25, (starAge - 0.3) / 0.7);
+        px = dragPos(vx, t, dragCoeff * 0.5) + w[0] * t * t * 0.15;
+        py = dragPos(vy, t, dragCoeff * 0.5) + 0.5 * GRAVITY * strobeGravMult * t * t;
+        pz = dragPos(vz, t, dragCoeff * 0.5) + w[2] * t * t * 0.15;
       } else {
         px = dragPos(vx, t, dragCoeff) + w[0] * t * t * 0.3;
         py = dragPos(vy, t, dragCoeff) + 0.5 * GRAVITY * gravityMult * t * t;
@@ -760,10 +824,15 @@ export const FireworkBurst = React.forwardRef<THREE.Group, {
 
       cols[i * 3] = safeR; cols[i * 3 + 1] = safeG; cols[i * 3 + 2] = safeB;
       
-      const sizeOverLife = starAge < 0.05 
-        ? 0.6 + starAge * 8
-        : starAge < 0.4 ? 1.0 : 1.0 - (starAge - 0.4) / 0.6 * 0.7;
-      sizes[i] = baseSize * Math.max(0.1, sizeOverLife) * (1 + flashIntensity * 0.8);
+      // Size-over-life:  fast expansion at ignition (PSF grows as star burns out),
+      // broad plateau through peak luminance, then a gentle shrink + final extinguish.
+      // Uses a smooth quartic for the shrink tail so very old stars don't "pop" off.
+      const sizeOverLife = starAge < 0.04
+        ? 0.5 + starAge * 14.0                                  // rapid flash expansion
+        : starAge < 0.50
+          ? 1.06 - starAge * 0.12                               // slow plateau sag
+          : Math.max(0.08, Math.pow(1.0 - (starAge - 0.50) / 0.50, 2.0) * 0.85 + 0.08);
+      sizes[i] = baseSize * Math.max(0.08, sizeOverLife) * (1 + flashIntensity * 0.9);
       lives[i] = starAge;
 
       for (let s = 0; s < TRAIL_LENGTH; s++) {
@@ -807,6 +876,16 @@ export const FireworkBurst = React.forwardRef<THREE.Group, {
           trailGrav1 = segAge1 < 0.4 ? gravityMult * 0.8 : gravityMult * (0.8 + (segAge1 - 0.4) / 0.6 * 2.7);
           trailDragH0 = dragCoeff * 0.7;
           trailDragH1 = dragCoeff * 0.7;
+        } else if (pattern === 'dragon_egg') {
+          trailGrav0 = segAge0 < 0.55 ? gravityMult * 0.85 : gravityMult * (0.85 + (segAge0 - 0.55) / 0.45 * 2.15);
+          trailGrav1 = segAge1 < 0.55 ? gravityMult * 0.85 : gravityMult * (0.85 + (segAge1 - 0.55) / 0.45 * 2.15);
+          trailDragH0 = dragCoeff * 0.9;
+          trailDragH1 = dragCoeff * 0.9;
+        } else if (pattern === 'strobe') {
+          trailGrav0 = segAge0 < 0.3 ? gravityMult * 0.08 : THREE.MathUtils.lerp(gravityMult * 0.08, gravityMult * 0.25, (segAge0 - 0.3) / 0.7);
+          trailGrav1 = segAge1 < 0.3 ? gravityMult * 0.08 : THREE.MathUtils.lerp(gravityMult * 0.08, gravityMult * 0.25, (segAge1 - 0.3) / 0.7);
+          trailDragH0 = dragCoeff * 0.5;
+          trailDragH1 = dragCoeff * 0.5;
         } else if (pattern === 'saturn') {
           // Ring stars (first 60%) get reduced gravity to stay flat
           const isRingStar = (i / STAR_COUNT) < 0.6;
@@ -835,14 +914,44 @@ export const FireworkBurst = React.forwardRef<THREE.Group, {
         const segFrac = s / TRAIL_LENGTH;
         const segFade = fadeCubed * Math.pow(1 - segFrac, 2.5) * 0.95;
         const endFade = fadeCubed * Math.pow(1 - (s + 1) / TRAIL_LENGTH, 2.5) * 0.95;
-        
+
+        // trailWarmth: 0 at segment head → 1 at segment tail
         const trailWarmth = Math.pow(segFrac, 0.4);
-        // Ember glow: late-phase stars (>60% life) get warm amber trail instead of fading out
-        const isEmberPhase = starAge > 0.6;
-        const emberGlow = isEmberPhase ? Math.max(0, 1 - (starAge - 0.6) / 0.4) * 0.4 : 0;
-        const trR = THREE.MathUtils.lerp(0.9, r * 0.75, trailWarmth) + (isEmberPhase ? 0.5 * emberGlow : 0);
-        const trG = THREE.MathUtils.lerp(0.55, g * 0.5, trailWarmth) + (isEmberPhase ? 0.2 * emberGlow : 0);
-        const trB = THREE.MathUtils.lerp(0.25, b * 0.2, trailWarmth) + (isEmberPhase ? 0.05 * emberGlow : 0);
+
+        // ── Atlas-driven thermal trail head colour ─────────────────────────
+        // Sample the atlas blackbody temperature at this star's lifecycle
+        // position to derive the trail head colour physically.
+        // tempK range: ~8000K (burst flash, near-white) → ~900K (dying ember,
+        // deep orange-red).  Map linearly to a white-hot / ember-orange blend.
+        const atlasT = getAtlasTempKAtTNorm(pattern, starAge);
+        // Normalise: 900K=0 (ember), 6500K=1 (white-hot)
+        const tempNorm = THREE.MathUtils.clamp((atlasT - 900) / (6500 - 900), 0, 1);
+        // White-hot (high T) → chemical colour (mid T) → ember orange (low T)
+        const headR = THREE.MathUtils.lerp(
+          THREE.MathUtils.lerp(0.90, r, tempNorm),       // ember → chemical
+          1.20,                                            // white-hot peak
+          tempNorm * tempNorm                              // quadratic, so heat is concentrated at flash
+        );
+        const headG = THREE.MathUtils.lerp(
+          THREE.MathUtils.lerp(0.24, g, tempNorm),
+          1.12,
+          tempNorm * tempNorm
+        );
+        const headB = THREE.MathUtils.lerp(
+          THREE.MathUtils.lerp(0.02, b, tempNorm),
+          1.05,
+          tempNorm * tempNorm
+        );
+
+        // Tail of trail: fades to chemical colour at reduced brightness
+        const tailR = r * 0.72;
+        const tailG = g * 0.48;
+        const tailB = b * 0.18;
+
+        const trR = THREE.MathUtils.lerp(headR, tailR, trailWarmth);
+        const trG = THREE.MathUtils.lerp(headG, tailG, trailWarmth);
+        const trB = THREE.MathUtils.lerp(headB, tailB, trailWarmth);
+
         tCol[base2] = trR * segFade;
         tCol[base2 + 1] = trG * segFade;
         tCol[base2 + 2] = trB * segFade;
