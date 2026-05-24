@@ -1645,6 +1645,7 @@ function LightPoint({ position, color }: { position: [number, number, number]; c
 // ═══════════════════════════════════════════════════════════════════════
 // estimateFireworkStarCost
 // ═══════════════════════════════════════════════════════════════════════
+// eslint-disable-next-line react-refresh/only-export-components
 export function estimateFireworkStarCost(
   effect: (typeof EFFECT_LIBRARY)[number],
   particleDensity: number,
@@ -2028,7 +2029,7 @@ TimelineEffects._activeBurstCount = 0;
 // ═══════════════════════════════════════════════════════════════════════
 // LiveSFXEffects — renders effects fired from the Live SFX Console
 // ═══════════════════════════════════════════════════════════════════════
-export const LiveSFXEffects = React.forwardRef<any>(function LiveSFXEffects(_props, _ref) {
+export const LiveSFXEffects = React.forwardRef<object>(function LiveSFXEffects(_props, _ref) {
   const activeEffects = useLiveSfxStore((s) => s.activeEffects);
   const stopEffect = useLiveSfxStore((s) => s.stopEffect);
   const frameRef = useRef(0);
