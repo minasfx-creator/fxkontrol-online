@@ -423,7 +423,7 @@ function parsePLY(text: string): { vertices: Vertex3D[]; triangles: Triangle[] }
   let vertexCount = 0;
   let faceCount = 0;
   let headerEnd = 0;
-  const propOrder: string[] = [];
+  let propOrder: string[] = [];
 
   // Parse header
   for (let i = 0; i < lines.length; i++) {

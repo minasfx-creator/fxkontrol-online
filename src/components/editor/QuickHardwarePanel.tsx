@@ -12,7 +12,6 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { haptics } from '@/lib/haptics';
-import { uiCommandGateway } from '@/core/command/uiCommandGateway';
 import { Badge } from '@/components/ui/badge';
 import { useUSBDeviceStore } from '@/store/useUSBDeviceStore';
 import { useFireOneHardware } from '@/hooks/useFireOneHardware';
@@ -194,7 +193,7 @@ export default function QuickHardwarePanel({ open, onClose, fs }: QuickHardwareP
     haptics.tap();
     setExpandedGroups(prev => {
       const next = new Set(prev);
-      if (next.has(g)) next.delete(g); else next.add(g);
+      next.has(g) ? next.delete(g) : next.add(g);
       return next;
     });
   }, []);
@@ -570,14 +569,14 @@ export default function QuickHardwarePanel({ open, onClose, fs }: QuickHardwareP
           </div>
           <div className="flex gap-2">
             <button
-              onClick={async () => { uiCommandGateway.arm({ source: 'QuickHardwarePanel', detail: 'all-controllers' }); haptics.tap(); await Promise.allSettled([fireone.armAll?.(), pbus.armAll?.()]); }}
+              onClick={async () => { haptics.tap(); await Promise.allSettled([fireone.armAll?.(), pbus.armAll?.()]); }}
               className="flex-1 flex items-center justify-center gap-1.5 h-11 rounded-xl bg-[hsl(var(--destructive)/0.12)] text-[hsl(var(--destructive))] font-bold text-[10px] active:scale-95 transition-transform border border-[hsl(var(--destructive)/0.2)]"
             >
               <ShieldAlert className="w-3.5 h-3.5" />
               ARM ALL
             </button>
             <button
-              onClick={async () => { uiCommandGateway.disarm({ source: 'QuickHardwarePanel', detail: 'all-controllers' }); haptics.tap(); await Promise.allSettled([fireone.disarmAll?.(), pbus.disarmAll?.()]); }}
+              onClick={async () => { haptics.tap(); await Promise.allSettled([fireone.disarmAll?.(), pbus.disarmAll?.()]); }}
               className="flex-1 flex items-center justify-center gap-1.5 h-11 rounded-xl bg-[hsl(var(--success)/0.12)] text-[hsl(var(--success))] font-bold text-[10px] active:scale-95 transition-transform border border-[hsl(var(--success)/0.2)]"
             >
               <Shield className="w-3.5 h-3.5" />
@@ -606,6 +605,7 @@ export default function QuickHardwarePanel({ open, onClose, fs }: QuickHardwareP
             deviceName={otaDevice?.name}
             deviceAddr={otaDevice?.addr}
             deviceTarget={otaDevice?.target}
+            simMode={simMode}
           />
         </Suspense>
       </>

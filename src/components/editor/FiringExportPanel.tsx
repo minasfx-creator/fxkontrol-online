@@ -3,30 +3,27 @@ import { Download, FileDown, Search, X, ChevronDown, ChevronUp, Globe, MapPin, F
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
+import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { useProjectStore } from '@/store/useProjectStore';
 import { useFireOneHardware } from '@/hooks/useFireOneHardware';
 import { FIRING_SYSTEMS, type FiringSystem } from '@/lib/firingSystemExports';
 import { downloadFile, exportFormationsToKML } from '@/lib/exportEngine';
 import { downloadKMZ, downloadAnimatedKML } from '@/lib/kmzExporter';
 import { exportSkyc, downloadSkycFile, exportShowCSV, exportVideoChoreoSkyc } from '@/lib/skycExporter';
+import ICETDirectSendPanel from '@/components/editor/firing/ICETDirectSendPanel';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
-import { useEntitlements } from '@/hooks/useEntitlements';
-import { promptUpgrade } from '@/lib/upgradePrompt';
-import {
-  validateFiringExportInputs,
-  formatFinding,
-  ExportValidationError,
-} from '@/core/export/exportValidation';
+
 
 export default function FiringExportPanel({ onClose }: { onClose: () => void }) {
   const [search, setSearch] = useState('');
   const [expandedSystem, setExpandedSystem] = useState<string | null>(null);
+  const [directSendOpen, setDirectSendOpen] = useState(false);
+
   const items = useProjectStore(s => s.timelineItems);
   const positions = useProjectStore(s => s.positions);
   const projectName = useProjectStore(s => s.projectName);
   const hardware = useFireOneHardware();
-  const { canExport } = useEntitlements();
 
   const pyroCount = items.filter(i => {
     const e = useProjectStore.getState().timelineItems.find(t => t.id === i.id);
@@ -40,38 +37,15 @@ export default function FiringExportPanel({ onClose }: { onClose: () => void }) 
   );
 
   const handleExport = useCallback((sys: FiringSystem) => {
-    if (!canExport) {
-      promptUpgrade({ reason: 'export', feature: sys.name });
-      return;
-    }
-    // Pre-flight: block invalid inputs and surface field-level reasons.
-    const report = validateFiringExportInputs(items, positions);
-    if (!report.ok) {
-      const first = report.errors[0];
-      toast.error(`Export blocked · ${report.errors.length} error(s)`, {
-        description: first ? formatFinding(first) : report.summary,
-      });
-      report.errors.slice(0, 3).forEach((e) => console.warn('[export-validation]', formatFinding(e)));
-      return;
-    }
-    if (report.warnings.length > 0) {
-      toast.warning(`${report.warnings.length} warning(s) — proceeding`, {
-        description: formatFinding(report.warnings[0]),
-      });
-    }
     try {
       const content = sys.exportFn(items, positions);
       const filename = `${projectName.replace(/\s+/g, '_')}_${sys.id}.${sys.fileExt}`;
       downloadFile(content, filename, sys.mimeType);
       toast.success(`Exported to ${sys.name} format`);
     } catch (err) {
-      if (err instanceof ExportValidationError) {
-        toast.error(`Export failed · validation`, { description: err.message.split('\n')[0] });
-      } else {
-        toast.error(`Export failed: ${(err as Error).message}`);
-      }
+      toast.error(`Export failed: ${(err as Error).message}`);
     }
-  }, [items, positions, projectName, canExport]);
+  }, [items, positions, projectName]);
 
   const grouped = {
     '🇺🇸 Americas': filtered.filter(s => ['🇺🇸', '🇧🇷', '🌐'].includes(s.country)),
@@ -208,8 +182,21 @@ export default function FiringExportPanel({ onClose }: { onClose: () => void }) 
                         <Download className="w-3 h-3 mr-1" />
                         Export .{sys.fileExt}
                       </Button>
+                      {sys.directSend && sys.directSender === 'icet' && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="w-full h-7 text-[10px] mt-1 border-status-sync/40 text-status-sync hover:bg-status-sync/10"
+                          onClick={() => setDirectSendOpen(true)}
+                          disabled={items.length === 0}
+                        >
+                          <Usb className="w-3 h-3 mr-1" />
+                          Direct Send (USB ICET)
+                        </Button>
+                      )}
                     </div>
                   )}
+
                 </div>
               ))}
             </div>
@@ -252,7 +239,6 @@ export default function FiringExportPanel({ onClose }: { onClose: () => void }) 
           <Button
             variant="outline" size="sm" className="w-full h-7 text-[10px] justify-start"
             onClick={() => {
-              if (!canExport) { promptUpgrade({ reason: 'export', feature: 'Animated KML' }); return; }
               try {
                 const store = useProjectStore.getState();
                 downloadAnimatedKML({
@@ -280,7 +266,6 @@ export default function FiringExportPanel({ onClose }: { onClose: () => void }) 
           <Button
             variant="outline" size="sm" className="w-full h-7 text-[10px] justify-start"
             onClick={() => {
-              if (!canExport) { promptUpgrade({ reason: 'export', feature: 'Static KML' }); return; }
               try {
                 const store = useProjectStore.getState();
                 const kml = exportFormationsToKML(
@@ -301,7 +286,6 @@ export default function FiringExportPanel({ onClose }: { onClose: () => void }) 
           <Button
             variant="outline" size="sm" className="w-full h-7 text-[10px] justify-start"
             onClick={() => {
-              if (!canExport) { promptUpgrade({ reason: 'export', feature: 'SKYC (Skybrush)' }); return; }
               try {
                 const store = useProjectStore.getState();
                 const skyc = exportSkyc({
@@ -326,7 +310,6 @@ export default function FiringExportPanel({ onClose }: { onClose: () => void }) 
           <Button
             variant="outline" size="sm" className="w-full h-7 text-[10px] justify-start"
             onClick={() => {
-              if (!canExport) { promptUpgrade({ reason: 'export', feature: 'Show CSV (Skybrush)' }); return; }
               try {
                 const store = useProjectStore.getState();
                 const skyc = exportSkyc({
@@ -352,7 +335,6 @@ export default function FiringExportPanel({ onClose }: { onClose: () => void }) 
           <Button
             variant="outline" size="sm" className="w-full h-7 text-[10px] justify-start"
             onClick={() => {
-              if (!canExport) { promptUpgrade({ reason: 'export', feature: 'Video Choreo SKYC' }); return; }
               try {
                 const store = useProjectStore.getState();
                 // Check if videoChoreoResult exists in store
@@ -385,10 +367,6 @@ export default function FiringExportPanel({ onClose }: { onClose: () => void }) 
         <Button
           variant="outline" size="sm" className="w-full h-7 text-[10px]"
           onClick={() => {
-            if (!canExport) {
-              promptUpgrade({ reason: 'export', feature: 'Export All' });
-              return;
-            }
             FIRING_SYSTEMS.forEach(sys => handleExport(sys));
             toast.success('Exported to all systems!');
           }}
@@ -398,6 +376,15 @@ export default function FiringExportPanel({ onClose }: { onClose: () => void }) 
           Export All ({FIRING_SYSTEMS.length} systems)
         </Button>
       </div>
+
+      <Dialog open={directSendOpen} onOpenChange={setDirectSendOpen}>
+        <DialogContent className="max-w-xl p-0 bg-transparent border-0 shadow-none">
+          <DialogTitle className="sr-only">RJ Equipamentos — ICET Direct Send</DialogTitle>
+          <div className="h-[80vh]">
+            <ICETDirectSendPanel onClose={() => setDirectSendOpen(false)} />
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

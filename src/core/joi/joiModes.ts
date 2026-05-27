@@ -14,6 +14,7 @@ import {
   RefreshCw, Trash2, Palette, FolderHeart, Wand2,
   Gavel, Plane, MapPin, AlertTriangle, ShieldCheck, BookOpen, ListChecks,
   Briefcase, Receipt, ScrollText, Calendar, BarChart3,
+  Cpu, Radio, PenTool, Activity, Network, Target,
 } from 'lucide-react';
 
 export type JoiMode =
@@ -218,12 +219,36 @@ export const JOI_MODE_PRESETS: JoiModePreset[] = [
   { mode: 'planner', label: 'PRIORIDADES', icon: Target, prompt: 'Defina prioridades técnicas para os próximos sprints baseado nos gaps e blockers atuais.' },
   { mode: 'planner', label: 'DEPENDÊNCIAS', icon: Network, prompt: 'Mapeie dependências entre os módulos e identifique o caminho crítico.' },
 
-  // ─── DOCS TÉCNICOS ─────────────────────────────────────────────
-  { mode: 'docs', label: 'RELATÓRIO', icon: FileText, prompt: 'Gere um relatório técnico completo do show atual: posições, calibres, contagens de efeitos, BoM, duração, densidade, paleta de cores.' },
-  { mode: 'docs', label: 'CHECKLIST', icon: ListChecks, prompt: 'Gere um checklist de validação pré-show cobrindo posicionamento, distanciamento NFPA, BoM, segurança operacional e contingências.' },
-  { mode: 'docs', label: 'PLANTA NFPA', icon: MapPin, prompt: 'Gere uma planta de distanciamento de segurança conforme NFPA 1123 para o show atual, com raios mínimos por calibre.' },
-  { mode: 'docs', label: 'BOM', icon: BarChart3, prompt: 'Gere a Bill of Materials completa do show: tubo a tubo, calibre por calibre, com fornecedores recomendados.' },
-  { mode: 'docs', label: 'CRONOGRAMA', icon: ListChecks, prompt: 'Gere o cronograma operacional do show: montagem, testes, briefing, contagem regressiva, disparo, desmontagem.' },
+  // ── Templates de shows reais ────────────────────────────────────────
+  {
+    mode: 'show', label: 'PONTE/ARCO', icon: Activity,
+    prompt: `Crie um show estilo Sydney Harbour Bridge: 29 posições em arco (espaçamento 25m), abre com StrobePots simultâneos em todas as posições por 55s, depois cascata de cometas fire-gold, finale com crisântemos 5" em volley.\n[JOI_CMD]{"action":"create_bridge_show","params":{"positionCount":29,"spanMeters":700,"style":"sydney_countdown"}}[/JOI_CMD]`,
+  },
+  {
+    mode: 'show', label: 'ESTÁDIO', icon: Building2,
+    prompt: `Crie um show estilo Estádio Azteca: 24 posições em anel periférico (raio 80m), paleta nacional verde/branco/vermelho, volleys sincronizados a cada 30s, grande finale com 8 posições disparando 5" peônias simultâneas.\n[JOI_CMD]{"action":"create_stadium_show","params":{"positionCount":24,"ringRadius":80,"style":"azteca"}}[/JOI_CMD]`,
+  },
+  {
+    mode: 'show', label: 'MONUMENTO', icon: MapPin,
+    prompt: `Crie um show estilo Eiffel/Taj Mahal: posições em camadas simétricas (base, meio, topo). Cascata de baixo para cima, efeitos dourados e brancos, finale com obus de 8" em todas as camadas simultaneamente. Use create_choreography com layout simétrico frontal.`,
+  },
+  {
+    mode: 'show', label: 'CASCATA LINEAR', icon: Zap,
+    prompt: `Crie uma coreografia de cascata linear em 16 posições (linha reta, 10m de espaçamento). Efeito cascata: posições disparam sequencialmente com 0.3s de offset — da esquerda para direita e de volta. Repita 4 vezes com efeitos diferentes (comet, waterfall, chrysanthemum, finale). Use create_choreography.`,
+  },
+  {
+    mode: 'show', label: 'RÉVEILLON REAL', icon: Sparkles,
+    prompt: `Crie um show de Réveillon completo baseado em padrões de shows reais: 5 minutos, 20 posições, estrutura: [0-30s] abertura waterfall simultânea, [30s-2min] desenvolvimento com cascatas e peônias coloridas, [2-4min] clímax com crisântemos e cometas em volley, [4min-4:30] silêncio/strobe lento, [4:30-5min] apoteose total. Use create_choreography.`,
+  },
+  {
+    mode: 'show', label: 'DRONES + FOGOS', icon: Plane,
+    prompt: `Crie uma coreografia híbrida drones + fogos: 100 drones em formação circular (raio 40m, altura 60m) com cores sincronizadas, intercalados com 12 posições de fogos no solo. Drones formam figuras (círculo → estrela → coração) enquanto fogos fazem cascata nos momentos de transição. Use add_formation e create_choreography.`,
+  },
+
+  // Architect presets
+  { mode: 'architect', label: 'ARQUITETURA', icon: Cpu, prompt: 'Gere um diagrama Mermaid completo da arquitetura atual do FX KONTROL com todos os módulos, adapters e pipelines.\n[JOI_CMD]{"action":"generate_mermaid","params":{"type":"architecture"}}[/JOI_CMD]' },
+  { mode: 'architect', label: 'MÓDULOS', icon: Network, prompt: 'Mapeie todos os módulos do sistema, suas dependências e interfaces.\n[JOI_CMD]{"action":"get_system_state","params":{}}[/JOI_CMD]' },
+  { mode: 'architect', label: 'INTERFACES', icon: Target, prompt: 'Liste e analise os contratos/interfaces entre os subsistemas (ShowPlan, Verification, Hardware, Export).' },
 
   // ─── SECRETARIA EXECUTIVA ──────────────────────────────────────
   { mode: 'executive', label: 'ORÇAMENTO', icon: Receipt, prompt: 'Me ajude a montar um orçamento detalhado para o show atual (produtos, mão de obra, logística, licenças, seguros, margem).' },

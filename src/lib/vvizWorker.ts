@@ -63,10 +63,6 @@ function normColor(value: number | undefined): number {
   return clamp255(Number(value));
 }
 
-// VDL pipeline lives on the main module graph — Vite bundles it into the
-// worker. Falling back to raw rgbToHex on failure keeps the worker honest.
-import { quantizeRgbToVdl } from '@/lib/vdlColorPipeline';
-
 function extractColor(payloads: VVIZPayload[]): string {
   let bestR = 0, bestG = 0, bestB = 0, bestWeight = 0;
   for (const p of payloads) {
@@ -84,14 +80,7 @@ function extractColor(payloads: VVIZPayload[]): string {
       if (weight > bestWeight) { bestWeight = weight; bestR = r; bestG = g; bestB = b; }
     }
   }
-  if (bestWeight <= 0) return '#00B4D8';
-  // Quantize to VDL palette + tint by input luminance so the rendered LED
-  // matches what the real fixture would emit on a Finale 3D VDL command.
-  try {
-    return quantizeRgbToVdl(bestR, bestG, bestB).renderHex;
-  } catch {
-    return rgbToHex(bestR, bestG, bestB);
-  }
+  return bestWeight > 0 ? rgbToHex(bestR, bestG, bestB) : '#00B4D8';
 }
 
 // ── Simplification config ──────────────────────────────────────────
@@ -119,36 +108,15 @@ function downsample(wp: Waypoint[], limit: number): Waypoint[] {
   return out;
 }
 
-// ── Coordinate frame transform (canonical: Finale 3D ENU → Three.js) ─
-// Implementation lives in @/modules/vviz/vvizCoordinateTransform but the
-// worker bundle is isolated, so the math is duplicated here. Keep both in
-// sync — `vvizCoordinateTransform.spec.ts` is the source of truth.
+// ── Coordinate frame transform ────────────────────────────────────
 
-type CoordMode = 'enu_to_three' | 'legacy_zflip' | 'pass';
+type CoordMode = 'flip' | 'pass';
 
 function resolveCoordMode(frame: string | undefined): CoordMode {
-  if (!frame) return 'enu_to_three';
+  if (!frame) return 'flip'; // default VVIZ = Z-forward → Three.js Z-toward-viewer
   const f = frame.toLowerCase().trim();
   if (f === 'threejs' || f === 'opengl' || f === 'r3f') return 'pass';
-  if (f === 'legacy' || f === 'zflip') return 'legacy_zflip';
-  return 'enu_to_three';
-}
-
-function mapPoint(x: number, y: number, z: number, mode: CoordMode): [number, number, number] {
-  switch (mode) {
-    case 'pass': return [x, y, z];
-    case 'legacy_zflip': return [x, y, -z];
-    case 'enu_to_three':
-    default: return [x, z, -y];
-  }
-}
-
-function mapHeadingDeg(h: number, mode: CoordMode): number {
-  if (!Number.isFinite(h)) return 0;
-  const raw = mode === 'pass' ? h : -h;
-  let n = raw % 360;
-  if (n > 180) n -= 360; else if (n <= -180) n += 360;
-  return n;
+  return 'flip'; // "standard", "vviz", or anything else
 }
 
 // ── Process single performance ─────────────────────────────────────
@@ -160,23 +128,20 @@ function processPerf(
   const agent = perf.agentDescription;
   if (!agent) return null;
 
-  // Accumulate in source (VVIZ ENU) frame, transform at emission.
-  const homeSrc = {
+  const zSign = coordMode === 'flip' ? -1 : 1;
+  const home = {
     x: agent.homeX || 0,
     y: agent.homeY || 0,
-    z: agent.homeZ || 0,
+    z: (agent.homeZ || 0) * zSign,
     h: agent.homeH || 0,
   };
   const color = extractColor(perf.payloadDescription || []);
   const posId = uid('vp');
 
-  const homeOut = mapPoint(homeSrc.x, homeSrc.y, homeSrc.z, coordMode);
-  const headingOut = mapHeadingDeg(homeSrc.h, coordMode);
-
   const pos: Position = {
     id: posId, name: `Drone ${idx + 1}`, type: 'drone-pad',
-    x: homeOut[0], y: homeOut[1], z: homeOut[2],
-    heading: headingOut, pitch: 0, roll: 0, color,
+    x: home.x, y: home.y, z: home.z,
+    heading: home.h, pitch: 0, roll: 0, color,
   };
 
   const samples = agent.agentTraversal;
@@ -186,33 +151,30 @@ function processPerf(
   const defaultDt = 1 / rate;
   const cfg = getSimplifyConfig(inputSamples, defaultDt);
 
-  // Source-frame state (East/North/Up).
-  let sx = homeSrc.x, sy = homeSrc.y, sz = homeSrc.z, t = 0;
-  let started = false, lsx = sx, lsy = sy, lsz = sz, lt = 0;
+  let x = home.x, y = home.y, z = home.z, h = home.h, t = 0;
+  let started = false, lx = home.x, ly = home.y, lz = home.z, lt = 0;
   const waypoints: Waypoint[] = [];
 
   for (let i = 0; i < inputSamples; i++) {
     const s = samples[i];
     const dt = s.dt ?? defaultDt;
-    sx += s.dx; sy += s.dy; sz += s.dz; t += dt;
+    x += s.dx; y += s.dy; z += s.dz * zSign; h += s.dh ?? 0; t += dt;
 
     if (!started) {
-      const dsq = (sx - homeSrc.x) ** 2 + (sy - homeSrc.y) ** 2 + (sz - homeSrc.z) ** 2;
+      const dsq = (x - home.x) ** 2 + (y - home.y) ** 2 + (z - home.z) ** 2;
       if (dsq < HOME_SKIP_SQ && i < inputSamples - 1) continue;
-      const [ox, oy, oz] = mapPoint(sx, sy, sz, coordMode);
-      waypoints.push({ id: uid('vw'), position: { x: ox, y: oy, z: oz }, time: t + timeOffset });
-      started = true; lsx = sx; lsy = sy; lsz = sz; lt = t;
+      waypoints.push({ id: uid('vw'), position: { x, y, z }, time: t + timeOffset });
+      started = true; lx = x; ly = y; lz = z; lt = t;
       continue;
     }
 
     const dtS = t - lt;
-    const mvSq = (sx - lsx) ** 2 + (sy - lsy) ** 2 + (sz - lsz) ** 2;
+    const mvSq = (x - lx) ** 2 + (y - ly) ** 2 + (z - lz) ** 2;
     const isLast = i === inputSamples - 1;
 
     if (isLast || dtS >= cfg.maxGap || (dtS >= cfg.minTimeStep && mvSq >= cfg.minDistanceSq)) {
-      const [ox, oy, oz] = mapPoint(sx, sy, sz, coordMode);
-      waypoints.push({ id: uid('vw'), position: { x: ox, y: oy, z: oz }, time: t + timeOffset });
-      lsx = sx; lsy = sy; lsz = sz; lt = t;
+      waypoints.push({ id: uid('vw'), position: { x, y, z }, time: t + timeOffset });
+      lx = x; ly = y; lz = z; lt = t;
     }
   }
 

@@ -28,15 +28,11 @@ function canPrefetch(): boolean {
 }
 
 const ROUTE_LOADERS: Record<string, () => Promise<unknown>> = {
-  '/': () => import('@/pages/Auth'),
+  '/': () => import('@/pages/Index'),
   '/command': () => import('@/pages/CommandCenter'),
-  '/skycanvas': () => import('@/pages/SkyCanvas'),
-  '/editor': () => import('@/pages/SkyCanvas'),
-  '/studio': () => import('@/pages/SkyCanvas'),
-  '/office': () => import('@/pages/Office'),
-  '/training/center': () => import('@/pages/TrainingCenter'),
+  '/editor': () => import('@/pages/Index'),
+  '/show-test': () => import('@/pages/ShowTestSimulator'),
   '/settings': () => import('@/pages/Settings'),
-  '/field': () => import('@/pages/FieldOps'),
 };
 
 export function prefetchRoute(path: string) {

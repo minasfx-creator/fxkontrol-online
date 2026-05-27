@@ -10,6 +10,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import {
+  isWebBluetoothSupported,
   scanBluetoothDevices,
   connectBLEDevice,
   disconnectBLE,
@@ -27,8 +28,13 @@ export default function BluetoothPanel({ onClose }: BluetoothPanelProps) {
   const [scanning, setScanning] = useState(false);
   const [devices, setDevices] = useState<BLEConnectedDevice[]>([]);
   const [selectedProfile, setSelectedProfile] = useState<BLEDeviceProfile | undefined>();
+  const supported = isWebBluetoothSupported();
 
   const handleScan = useCallback(async () => {
+    if (!supported) {
+      toast.error('Web Bluetooth não suportado. Use Chrome/Edge ou o app nativo iOS.');
+      return;
+    }
     setScanning(true);
     try {
       const device = await scanBluetoothDevices(selectedProfile);
@@ -47,7 +53,7 @@ export default function BluetoothPanel({ onClose }: BluetoothPanelProps) {
     } finally {
       setScanning(false);
     }
-  }, [selectedProfile]);
+  }, [supported, selectedProfile]);
 
   const handleDisconnect = useCallback(async (dev: BLEConnectedDevice) => {
     await disconnectBLE(dev);
@@ -78,6 +84,12 @@ export default function BluetoothPanel({ onClose }: BluetoothPanelProps) {
         </Badge>
       </div>
 
+      {!supported && (
+        <div className="bg-destructive/10 border border-destructive/30 rounded-lg p-2">
+          <p className="text-[9px] text-destructive">Web Bluetooth não disponível neste navegador. Use Chrome, Edge ou o app nativo para iOS.</p>
+        </div>
+      )}
+
       {/* Profile filter */}
       <div className="space-y-1">
         <p className="text-[8px] text-muted-foreground uppercase font-semibold">Filtrar por tipo:</p>
@@ -96,7 +108,7 @@ export default function BluetoothPanel({ onClose }: BluetoothPanelProps) {
         </div>
       </div>
 
-      <Button onClick={handleScan} disabled={scanning} className="w-full h-9 text-[10px]">
+      <Button onClick={handleScan} disabled={scanning || !supported} className="w-full h-9 text-[10px]">
         {scanning ? <RefreshCw className="w-3 h-3 mr-1 animate-spin" /> : <Bluetooth className="w-3 h-3 mr-1" />}
         {scanning ? 'Procurando...' : 'Scan Dispositivos BLE'}
       </Button>

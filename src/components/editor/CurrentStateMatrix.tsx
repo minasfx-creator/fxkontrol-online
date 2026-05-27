@@ -5,14 +5,12 @@
 import { useMemo, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { showPlanManager } from '@/core/showplan/ShowPlanManager';
-import { useVerificationStore } from '@/core/verification/useVerificationStore';
+import { useVerificationEngine } from '@/core/verification/useVerificationEngine';
 import { useHardwareRegistry } from '@/core/hardware/useHardwareRegistry';
 import { unifiedHardwareRegistry } from '@/core/hardware/UnifiedHardwareRegistry';
 import { getProvenanceBadge, type IntegrationMode, type EvidenceLevel } from '@/core/hardware/provenance';
-import { ProvenanceBadge } from '@/components/safety/ProvenanceBadge';
 import { cn } from '@/lib/utils';
 import { Activity, CheckCircle2, AlertTriangle, MinusCircle, XCircle } from 'lucide-react';
-import { useShallow } from 'zustand/react/shallow';
 
 type MatrixStatus = 'exists' | 'partial' | 'placeholder' | 'absent';
 
@@ -49,7 +47,7 @@ const EVIDENCE_COLORS: Record<EvidenceLevel, string> = {
 
 export default function CurrentStateMatrix() {
   const sp = showPlanManager.current;
-  const level = useVerificationStore((s) => s.level);
+  const { level } = useVerificationEngine();
   const { devices, snapshots, refresh } = useHardwareRegistry();
   const navigate = useNavigate();
 
@@ -157,7 +155,7 @@ export default function CurrentStateMatrix() {
                 <span className={cn('text-[7px] font-mono px-1.5 py-0.5 rounded', cfg.bg, cfg.color)}>{cfg.label}</span>
               </div>
               <div className="flex justify-center">
-                <ProvenanceBadge mode={row.integrationMode} compact />
+                <span className={cn('text-[7px] font-mono px-1.5 py-0.5 rounded', MODE_COLORS[row.integrationMode])}>{badge.label}</span>
               </div>
               <div className="flex justify-center">
                 <span className={cn('text-[7px] font-mono', EVIDENCE_COLORS[row.evidenceLevel])}>{row.evidenceLevel.replace(/_/g, ' ')}</span>

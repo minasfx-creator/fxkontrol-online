@@ -23,7 +23,7 @@
  */
 import { Canvas } from '@react-three/fiber';
 import { OrbitControls, PerspectiveCamera } from '@react-three/drei';
-import { Suspense, useRef, useState, useCallback } from 'react';
+import { Suspense, useRef, useState, useCallback, useEffect } from 'react';
 import { NightSky, GroundPlane } from './Environment';
 import { LightPointsLayer } from './LightPointsLayer';
 import { PyroPadsLayer } from './PyroPadsLayer';
@@ -35,6 +35,7 @@ import { WebGLContextRecovery } from './WebGLContextRecovery';
 import { AdaptiveDPRController } from './AdaptiveDPRController';
 import { PerfHUDProbe, PerfHUDOverlay } from './PerfHUD';
 import { isSkycanvasV2StageEnabled, isEnabled } from '@/lib/featureFlags';
+import { useWebGPUCapability } from '@/hooks/useWebGPUCapability';
 import type { SkyCanvas2Props } from './types';
 
 interface SkyCanvas2ExtraProps {
@@ -58,6 +59,17 @@ export default function SkyCanvas2({
   onFatalError,
 }: SkyCanvas2Props & SkyCanvas2ExtraProps) {
   const [contextLost, setContextLost] = useState(false);
+  const { available: webGPUAvailable, reported: webGPUReported } = useWebGPUCapability();
+
+  // Log WebGPU capability once after mount — drives diagnostics + future feature gates.
+  // R3F uses WebGLRenderer internally; WebGPU path goes through initSkyCanvasRenderer
+  // (src/render_ultra/skyCanvasRenderer.ts) for non-R3F contexts (Studio Mode exports).
+  useEffect(() => {
+    if (!webGPUReported) return;
+    // eslint-disable-next-line no-console
+    console.debug('[SkyCanvas2] WebGPU capability:', webGPUAvailable ? 'AVAILABLE' : 'UNAVAILABLE (WebGL2 fallback)');
+  }, [webGPUAvailable, webGPUReported]);
+
   const [minDpr, maxDpr] = Array.isArray(dpr) ? dpr : [dpr, dpr];
   // Mobile high-DPI (>2.5) starts at minDpr to avoid first-frame jank;
   // AdaptiveDPRController will probe and raise as headroom allows.

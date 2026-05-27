@@ -6,7 +6,6 @@
 import { useRef, useMemo } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
-import { useProjectStore } from '@/store/useProjectStore';
 
 // ═══ God Rays Shader ═══
 const godRaysVertexShader = /* glsl */ `
@@ -118,7 +117,7 @@ export default function VolumetricGodRays({
   }), []);
 
   // Project light position to screen space each frame
-  useFrame(() => {
+  useFrame(({ clock }) => {
     if (!enabled) return;
 
     _lightWorldPos.set(lightPosition[0], lightPosition[1], lightPosition[2]);
@@ -130,8 +129,7 @@ export default function VolumetricGodRays({
     );
 
     uniforms.uLightScreenPos.value.copy(_lightScreenPos);
-    // Deterministic clock: tied to timeline so god-ray noise freezes on pause/scrub.
-    uniforms.uTime.value = useProjectStore.getState().currentTime;
+    uniforms.uTime.value = clock.elapsedTime;
     uniforms.uDensity.value = density;
     uniforms.uWeight.value = weight;
     uniforms.uDecay.value = decay;

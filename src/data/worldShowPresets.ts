@@ -903,6 +903,264 @@ function generateRecife() {
 }
 
 // ═══════════════════════════════════════════════════════════════
+// 17. ESTADIO AZTECA — Mexico City
+// ═══════════════════════════════════════════════════════════════
+function generateAzteca() {
+  // 8 positions around the stadium ring at ~50m (roof edge) + 2 central FG
+  const ring: Position[] = Array.from({ length: 8 }, (_, i) => {
+    const angle = (i / 8) * Math.PI * 2;
+    return pos(uid(), `Anel ${i + 1}`, Math.cos(angle) * 110, 50, Math.sin(angle) * 110 - 80, 0);
+  });
+  // Center field: 2 low positions for mines and ground bursts
+  const field: Position[] = [
+    pos(uid(), 'Campo Centro', 0, 0, -80, 0),
+    pos(uid(), 'Campo Norte', 0, 0, -30, 0),
+  ];
+  const all = [...ring, ...field];
+  const items: TimelineItem[] = [];
+
+  // Phase 1 (0-30s): Stadium ring simultaneous opening burst
+  items.push(...simultaneous(ring, 'mine-01', 0, 0));
+  items.push(...wavePattern(ring, 'comet-01', 5, 1, 0.4));
+  items.push(...simultaneous(field, 'mine-02', 8, 0));
+  items.push(...simultaneous(ring, 'mine-05', 20, 0));
+
+  // Phase 2 (30-180s): Shells from ring — stadium bounce effect
+  items.push(...wavePattern(ring, 'mort-01', 30, 2, 0.5));
+  items.push(...simultaneous(field, 'comet-02', 40, 1));
+  items.push(...alternating(ring, 'shell-01', 60, 2, 1.5));
+  items.push(...simultaneous(ring, 'shell-02', 90, 2));
+  items.push(...wavePattern(ring, 'peon-01', 110, 2, 0.4));
+  items.push(...simultaneous(field, 'mine-05', 130, 0));
+  items.push(...alternating(ring, 'mort-04', 150, 3, 2));
+
+  // Phase 3 (180-360s): Big shells — stadium ring crescendo
+  items.push(...wavePattern(ring, 'shell-05', 180, 3, 0.6));
+  items.push(...simultaneous(all, 'shell-08', 210, 3));
+  items.push(...wavePattern(ring, 'shell-09', 250, 4, 0.5));
+  items.push(...simultaneous(field, 'shell-10', 290, 4));
+  items.push(...alternating(ring, 'shell-17', 320, 4, 2));
+  items.push(...simultaneous(all, 'shell-19', 350, 4));
+
+  // Phase 4 (360-480s): Grand Finale — all ring simultaneous
+  items.push(...simultaneous(ring, 'cake-03', 360, 6));
+  items.push(...simultaneous(all, 'shell-10', 380, 6));
+  items.push(...simultaneous(ring, 'shell-12', 400, 6));
+  items.push(...simultaneous(all, 'mine-05', 415, 0));
+  items.push(...simultaneous(ring, 'shell-13', 430, 6));
+  items.push(...wavePattern(ring, 'shell-12', 450, 6, 0.15));
+  items.push(...simultaneous(all, 'shell-13', 470, 6));
+
+  return { positions: all, timelineItems: items };
+}
+
+// ═══════════════════════════════════════════════════════════════
+// 18. TAJ MAHAL — Agra, India (Diwali)
+// ═══════════════════════════════════════════════════════════════
+function generateTajMahal() {
+  // Main reflecting pool axis: 8 positions along the charbagh garden (N→S)
+  const garden: Position[] = Array.from({ length: 8 }, (_, i) => {
+    const z = -200 + i * 55; // from far garden toward mausoleum
+    return pos(uid(), `Jardim ${i + 1}`, 0, 0, z, 0);
+  });
+  // 4 flanking positions — east/west of the central axis at mausoleum level
+  const flanks: Position[] = [
+    pos(uid(), 'Leste 1', -120, 0, -80, 45),
+    pos(uid(), 'Leste 2', -80, 0, -20, 45),
+    pos(uid(), 'Oeste 1', 120, 0, -80, -45),
+    pos(uid(), 'Oeste 2', 80, 0, -20, -45),
+  ];
+  // 4 minaret positions — at height of minarets (~40m, offset from center)
+  const minarets: Position[] = [
+    pos(uid(), 'Minarete NE', -50, 40, -150, 180),
+    pos(uid(), 'Minarete NW', 50, 40, -150, 180),
+    pos(uid(), 'Minarete SE', -50, 40, -50, 0),
+    pos(uid(), 'Minarete SW', 50, 40, -50, 0),
+  ];
+
+  const all = [...garden, ...flanks, ...minarets];
+  const items: TimelineItem[] = [];
+
+  // Phase 1 (0-30s): Diwali opening — low sparkle pots + comets (garden axis)
+  items.push(...wavePattern(garden, 'mine-01', 0, 0, 0.5));
+  items.push(...simultaneous(minarets, 'comet-01', 3, 1));
+  items.push(...simultaneous(flanks, 'mine-02', 8, 0));
+  items.push(...wavePattern(garden.slice().reverse(), 'comet-02', 15, 1, 0.4));
+  items.push(...simultaneous(minarets, 'mine-05', 25, 0));
+
+  // Phase 2 (30-240s): Indian patakha style — rhythmic alternating
+  items.push(...wavePattern(garden, 'mort-01', 30, 2, 0.6));
+  items.push(...simultaneous(flanks, 'shell-01', 50, 2));
+  items.push(...alternating(garden, 'shell-02', 70, 2, 1.5));
+  items.push(...simultaneous(minarets, 'wf-01', 100, 5));
+  items.push(...wavePattern(garden, 'peon-01', 120, 2, 0.5));
+  items.push(...simultaneous(flanks, 'shell-05', 150, 3));
+  items.push(...alternating(garden, 'mort-04', 180, 3, 2));
+  items.push(...simultaneous(minarets, 'shell-08', 220, 3));
+
+  // Phase 3 (240-480s): Crescendo — multi-break over mausoleum
+  items.push(...simultaneous(all, 'shell-09', 240, 4));
+  items.push(...wavePattern(garden, 'shell-10', 280, 4, 0.4));
+  items.push(...simultaneous(minarets, 'wf-02', 320, 5));
+  items.push(...simultaneous(flanks, 'shell-12', 360, 4));
+  items.push(...wavePattern(garden.slice().reverse(), 'shell-17', 400, 4, 0.3));
+  items.push(...simultaneous(all, 'shell-19', 450, 4));
+
+  // Phase 4 (480-600s): Grand Finale — Diwali burst
+  items.push(...simultaneous(all, 'cake-03', 480, 6));
+  items.push(...simultaneous(minarets, 'wf-03', 490, 5));
+  items.push(...simultaneous(all, 'shell-12', 510, 6));
+  items.push(...simultaneous(garden, 'mine-05', 525, 0));
+  items.push(...simultaneous(all, 'shell-13', 540, 6));
+  items.push(...wavePattern(garden, 'shell-12', 565, 6, 0.15));
+  items.push(...simultaneous(minarets, 'wf-04', 580, 5));
+  items.push(...simultaneous(all, 'shell-13', 595, 6));
+
+  return { positions: all, timelineItems: items };
+}
+
+// ═══════════════════════════════════════════════════════════════
+// 19. GWANGAN BRIDGE — Busan, Korea
+// ═══════════════════════════════════════════════════════════════
+function generateGwanganBridge() {
+  // Diamond Bridge: 7.4km span — 20 positions along the twin-deck bridge
+  const bridge: Position[] = Array.from({ length: 20 }, (_, i) => {
+    const spread = (i - 9.5) * 185; // ~3.5km each side, centered
+    const t = (i - 9.5) / 9.5; // -1 to 1
+    const h = 60 + (1 - t * t) * 15; // slight arch: 60m at ends, 75m at center
+    return pos(uid(), `교각 ${i + 1}`, spread, h, -150, 180);
+  });
+  // 8 barges in Gwangalli Beach bay — foreground (z: -40 to -80)
+  const barges: Position[] = Array.from({ length: 8 }, (_, i) => {
+    const spread = (i - 3.5) * 200;
+    const t = Math.abs((i - 3.5) / 3.5);
+    const zDepth = -40 - (1 - t) * 40;
+    return pos(uid(), `바지선 ${i + 1}`, spread, 0, zDepth, 0);
+  });
+
+  const all = [...bridge, ...barges];
+  const items: TimelineItem[] = [];
+
+  // Phase 1 (0-60s): Bridge cascade L→R + beach mines
+  items.push(...simultaneous(barges, 'mine-01', 0, 0));
+  items.push(...wavePattern(bridge, 'comet-01', 3, 1, 0.3));
+  items.push(...simultaneous(barges, 'mine-05', 20, 0));
+  items.push(...wavePattern(bridge.slice().reverse(), 'comet-02', 35, 1, 0.3));
+  items.push(...simultaneous(barges, 'mine-02', 50, 0));
+
+  // Phase 2 (60-300s): Shells from barges + bridge accents (K-pop style: precise, fast)
+  items.push(...wavePattern(barges, 'mort-01', 60, 2, 0.6));
+  items.push(...simultaneous(bridge, 'shell-01', 80, 2));
+  items.push(...alternating(barges, 'mort-04', 100, 2, 1.5));
+  items.push(...wavePattern(bridge, 'shell-05', 130, 3, 0.4));
+  items.push(...simultaneous(barges, 'shell-08', 165, 3));
+  items.push(...simultaneous(bridge, 'wf-01', 200, 5));
+  items.push(...alternating(barges, 'shell-09', 230, 4, 2));
+  items.push(...wavePattern(bridge, 'shell-17', 265, 4, 0.3));
+
+  // Phase 3 (300-480s): Multi-break crescendo + bridge waterfall
+  items.push(...simultaneous(barges, 'shell-19', 300, 4));
+  items.push(...simultaneous(bridge, 'wf-02', 320, 5));
+  items.push(...wavePattern(barges, 'shell-10', 350, 4, 0.5));
+  items.push(...simultaneous(bridge, 'wf-03', 400, 5));
+  items.push(...simultaneous(barges, 'shell-11', 430, 4));
+  items.push(...simultaneous(bridge, 'wf-04', 460, 5));
+
+  // Phase 4 (480-600s): Grand Finale — bridge + beach simultaneous
+  items.push(...simultaneous(all, 'cake-03', 480, 6));
+  items.push(...simultaneous(bridge, 'wf-03', 490, 5));
+  items.push(...simultaneous(barges, 'shell-12', 500, 6));
+  items.push(...simultaneous(all, 'mine-05', 515, 0));
+  items.push(...simultaneous(all, 'shell-13', 530, 6));
+  items.push(...wavePattern(bridge, 'shell-12', 550, 6, 0.1));
+  items.push(...simultaneous(all, 'shell-13', 575, 6));
+  items.push(...simultaneous(all, 'shell-12', 590, 6));
+
+  return { positions: all, timelineItems: items };
+}
+
+// ═══════════════════════════════════════════════════════════════
+// 20. SYDNEY 2018 COUNTDOWN — Authentic VSC (VSDCreator)
+//     Positions extracted verbatim from SYDNEY.vsc (InfinityVisions A)
+//     29 pyrotechnic positions on the Sydney Harbour Bridge arc.
+//     Countdown display: effectName digits "2", "0", "1", "8"
+//     at P1, P10, P20, P29 spell "2018".
+// ═══════════════════════════════════════════════════════════════
+function generateSydneyCountdown2018() {
+  // Raw VSC coordinates, re-centered (subtract centroid x≈270) and z-shifted to -71
+  const vscBridge: Position[] = [
+    pos(uid(), 'Bridge P01', -352, 113,  -71, 180),
+    pos(uid(), 'Bridge P02', -327, 119,  -71, 180),
+    pos(uid(), 'Bridge P03', -302, 127,  -71, 180),
+    pos(uid(), 'Bridge P04', -276, 136,  -71, 180),
+    pos(uid(), 'Bridge P05', -251, 146,  -71, 180),
+    pos(uid(), 'Bridge P06', -225, 157,  -71, 180),
+    pos(uid(), 'Bridge P07', -199, 167,  -71, 180),
+    pos(uid(), 'Bridge P08', -175, 176,  -71, 180),
+    pos(uid(), 'Bridge P09', -150, 183,  -71, 180),
+    pos(uid(), 'Bridge P10', -125, 190,  -71, 180), // digit "0"
+    pos(uid(), 'Bridge P11',  -98, 195,  -71, 180),
+    pos(uid(), 'Bridge P12',  -75, 199,  -71, 180),
+    pos(uid(), 'Bridge P13',  -49, 201,  -71, 180),
+    pos(uid(), 'Bridge P14',  -23, 203,  -71, 180),
+    pos(uid(), 'Bridge P15',    1, 204,  -71, 180),
+    pos(uid(), 'Bridge P16',   26, 203,  -71, 180),
+    pos(uid(), 'Bridge P17',   52, 201,  -71, 180),
+    pos(uid(), 'Bridge P18',   77, 198,  -71, 180),
+    pos(uid(), 'Bridge P19',  101, 195,  -71, 180),
+    pos(uid(), 'Bridge P20',  127, 190,  -71, 180), // digit "1"
+    pos(uid(), 'Bridge P21',  153, 183,  -71, 180),
+    pos(uid(), 'Bridge P22',  179, 176,  -71, 180),
+    pos(uid(), 'Bridge P23',  202, 167,  -71, 180),
+    pos(uid(), 'Bridge P24',  229, 157,  -71, 180),
+    pos(uid(), 'Bridge P25',  255, 146,  -71, 180),
+    pos(uid(), 'Bridge P26',  281, 135,  -71, 180),
+    pos(uid(), 'Bridge P27',  305, 125,  -71, 180),
+    pos(uid(), 'Bridge P28',  330, 119,  -71, 180),
+    pos(uid(), 'Bridge P29',  353, 114,  -71, 180), // digit "8"
+  ];
+  // Digit positions: P1="2", P10="0", P20="1", P29="8" → "2018"
+  const digit2 = vscBridge[0];  // P1
+  const digit0 = vscBridge[9];  // P10
+  const digit1 = vscBridge[19]; // P20
+  const digit8 = vscBridge[28]; // P29
+
+  const items: TimelineItem[] = [];
+
+  // Cue t=0.464s: Red strobe pots across entire bridge (55s duration in VSC)
+  items.push(...simultaneous(vscBridge, 'mort-01', 0.464, 2));
+
+  // Cue t≈15s: Build — wave cascade across bridge
+  items.push(...wavePattern(vscBridge, 'comet-01', 15, 1, 0.3));
+
+  // Cue t≈30s: Wave back L←R
+  items.push(...wavePattern(vscBridge.slice().reverse(), 'comet-02', 30, 1, 0.3));
+
+  // Cue t≈45s: Simultaneous mines before countdown
+  items.push(...simultaneous(vscBridge, 'mine-01', 45, 0));
+
+  // Cue t≈55s: All-bridge shell burst
+  items.push(...simultaneous(vscBridge, 'shell-05', 55, 3));
+
+  // Cue t=70.774s: "2018" digit display — authentic VSC timing
+  // Each digit fires simultaneously (in VSC: duration=10s, effectName=character)
+  items.push(cue(uid(), 'shell-08', 70.774, 4, { x: digit2.x, y: digit2.y, z: digit2.z }, digit2.id));
+  items.push(cue(uid(), 'shell-01', 70.774, 4, { x: digit0.x, y: digit0.y, z: digit0.z }, digit0.id));
+  items.push(cue(uid(), 'shell-02', 70.774, 4, { x: digit1.x, y: digit1.y, z: digit1.z }, digit1.id));
+  items.push(cue(uid(), 'shell-08', 70.774, 4, { x: digit8.x, y: digit8.y, z: digit8.z }, digit8.id));
+
+  // Post-countdown finale — 30s of grand finish
+  items.push(...simultaneous(vscBridge, 'mine-05', 85, 0));
+  items.push(...simultaneous(vscBridge, 'shell-10', 90, 4));
+  items.push(...wavePattern(vscBridge, 'shell-12', 95, 6, 0.15));
+  items.push(...simultaneous(vscBridge, 'shell-13', 105, 6));
+  items.push(...simultaneous(vscBridge, 'cake-03', 115, 6));
+  items.push(...simultaneous(vscBridge, 'shell-13', 120, 6));
+
+  return { positions: vscBridge, timelineItems: items };
+}
+
+// ═══════════════════════════════════════════════════════════════
 // PRESET REGISTRY
 // ═══════════════════════════════════════════════════════════════
 export const WORLD_SHOW_PRESETS: WorldShowPreset[] = [
@@ -1305,6 +1563,107 @@ export const WORLD_SHOW_PRESETS: WorldShowPreset[] = [
       regulatory: 'DECEA (NOTAM) + Capitania dos Portos de Pernambuco + PCR (Prefeitura) + CPRH (meio ambiente)',
     },
     generate: generateRecife,
+  },
+  // ── Templates derived from ZIP archives (2026-05-24) ─────────────────────
+  {
+    id: 'azteca-mexico',
+    name: 'Estadio Azteca',
+    location: 'Ciudad de México',
+    country: 'México',
+    flag: '🇲🇽',
+    continent: 'americas',
+    description: 'Show em estádio com 105K lugares. 10 posições no anel do teto + campo central. Celebration pirotécnica para campeonatos e finais.',
+    gps: { lat: 19.3029, lng: -99.1505, heading: 0, altitude: 2240 },
+    duration: 480,
+    stats: { positions: 10, cues: 280, calibers: '3"-10"' },
+    sceneOverrides: { timeOfDay: 21, google3DTilesEnabled: true },
+    intel: {
+      population: '21 milhões (ZMVM)',
+      lastShows: ['Copa do Mundo 2026 — Final (agosto 2026, prevista)', 'Conmebol Libertadores Final 2023 — show pirotécnico de abertura', 'NYE 2024 — show localizado no estacionamento do Azteca'],
+      recentWinners: ['Copa 2026: licitação prevista USD $4M+', '2023: Pirotecnia Tultitlán — MXN $5M'],
+      safetyNotes: ['Estádio fechado: fumaça acumula — usar efeitos clean-burning', 'Calibres limitados a 4" por altura do teto (~50m)', 'Gramado sintético: risco de ignição com pontas quentes', 'Altitude 2.240m: barômetro afeta fusíveis eletrônicos — recalibrar temporizadores'],
+      terrain: 'Estádio indoor/outdoor em altitude de 2.240m. Anel de lançamento a 50m de altura. Campo de 105x68m. Capacidade 87K espectadores (reformado 2026).',
+      tideInfo: 'N/A — localização terrestre, altitude 2.240m',
+      culture: 'Futebol é religião no México. Copa do Mundo e partidas da Seleção Nacional. Gritos de "México, México!" sincronizados. Tradição de fogos na abertura de jogos de alta tensão.',
+      keyInsights: ['Anel do teto como plataforma principal — shells em leque para dentro do campo', 'Altitude alta: shells sobem mais e explodem mais alto — ajustar altura', 'Fumaça retida: intervalo mínimo de 8s entre disparos consecutivos', 'Posições de campo: somente minas baixas (<10m) para não atingir jogadores'],
+      regulatory: 'SEDEMA (meio ambiente CDMX) + CENAPRED (vulcão próximo Popocatépetl) + Proteção Civil CDMX + FMF (Federação Mexicana de Futebol)',
+    },
+    generate: generateAzteca,
+  },
+  {
+    id: 'taj-mahal-diwali',
+    name: 'Taj Mahal Diwali',
+    location: 'Agra, Uttar Pradesh',
+    country: 'India',
+    flag: '🇮🇳',
+    continent: 'asia',
+    description: 'Show de Diwali com 16 posições nos jardins do Charbagh + minaretes. Cascatas no reflexo do canal central. Fogos de 10 min.',
+    gps: { lat: 27.1751, lng: 78.0421, heading: 0, altitude: 169 },
+    duration: 600,
+    stats: { positions: 16, cues: 340, calibers: '3"-10"' },
+    sceneOverrides: { timeOfDay: 20, google3DTilesEnabled: true },
+    intel: {
+      population: '1.7 milhões (Agra) / 1.4 bilhões (India)',
+      lastShows: ['Diwali 2024 — show nos jardins externos (ASI autorizado)', 'G20 Cúpula Cultural 2023 — show especial externo', 'Republic Day 2024 — fogos em Agra Fort (1km do Taj)'],
+      recentWinners: ['Diwali 2024: Sivakashi Fireworks Co. — INR ₹15M', '2023: Consórcio Sivakashi/Standard — INR ₹12M'],
+      safetyNotes: ['Patrimônio UNESCO: nenhuma fixação permanente, proibido qualquer dano ao mármore', 'Zona de proibição: 500m ao redor do mausoléu sem fogos (ASI regulação)', 'Poluição do ar: fogos aumentam AQI temporariamente — licença ambiental especial', 'Reflective pool: cascatas criamreflexo duplo — posicionar com cuidado de ângulo'],
+      terrain: 'Jardins formais Mughal (Charbagh), 300x300m. Canal central (Hauz-i-Kausar). Mausoléu de mármore branco a 74m de altura. Minaretes a 40m.',
+      tideInfo: 'N/A — terrestre. Rio Yamuna a 200m a norte (não usado).',
+      culture: 'Diwali (Festival das Luzes) — 5 dias de celebração. Fogos são tradição central. Cultura mogol-indiana. Show deve respeitar a estética do patrimônio (nada de cores "comerciais" — preferência por dourado, branco, vermelho).',
+      keyInsights: ['Reflexo no canal central dobra o impacto visual — posicionar para aproveitar', 'Mármore branco do Taj reflete fogos — escolher cores que complementem', 'Zona proibida de 500m: shows devem ser nos jardins externos', 'Direção do vento crucial: fumaça NÃO pode encostar no mármore do mausoléu'],
+      regulatory: 'Archaeological Survey of India (ASI) + UP Pollution Control Board + DGCA (aviação) + Ministry of Culture India',
+    },
+    generate: generateTajMahal,
+  },
+  {
+    id: 'busan-gwangan',
+    name: 'Busan Gwangan Bridge',
+    location: 'Gwangalli Beach, Busan',
+    country: 'South Korea',
+    flag: '🇰🇷',
+    continent: 'asia',
+    description: 'Diamond Bridge (7.4km): 20 posições na ponte + 8 barges em Gwangalli Beach. Show de 10 min para 1M+ de espectadores.',
+    gps: { lat: 35.1527, lng: 129.1183, heading: 180, altitude: 0 },
+    duration: 600,
+    stats: { positions: 28, cues: 420, calibers: '3"-12"' },
+    sceneOverrides: { waterEnabled: true, waterPreset: 'ocean', timeOfDay: 0, google3DTilesEnabled: true },
+    intel: {
+      population: '3.4 milhões (Busan)',
+      lastShows: ['Busan Fireworks Festival 2024 — Hanwha Co. (20 min)', 'Busan Fireworks Festival 2023 — Hanwha + StarBang (18 min)', 'NYE 2024 — show especial Gwangalli (10 min)'],
+      recentWinners: ['Festival 2024: Hanwha Corporation Fireworks — KRW ₩3.5B', 'Festival 2023: Hanwha Corp. — KRW ₩3.0B'],
+      safetyNotes: ['Diamond Bridge (Gwangan): 7.4km de extensão, 2 andares — posições no andar superior', 'Gwangalli Beach: 1.5km de praia com 1M+ — maior densidade de público na Ásia', 'Barges: Estreito de Busan com correntes fortes (2-3 nós)', 'Festival em outubro: tufões possíveis — monitorar 72h antes'],
+      terrain: 'Gwangan Bridge (Gwangdaegyo) sobre o Estreito de Busan. Praia de 1.4km. Fundo rochoso no estreito, areia fina na praia. Profundidade 15-25m.',
+      tideInfo: 'Maré: 0.5-1.5m amplitude. Corrente de maré 2-3 nós no estreito. Ondulação baixa — baía semi-abrigada.',
+      culture: 'Festival de fogos mais famoso da Ásia (Festival Internacional de Fogos de Artifício de Busan). Precisão K-pop, coreografia milimétrica. Público usa LED bracelets sincronizados com o show.',
+      keyInsights: ['Diamond Bridge: posições na travessia superior criam linha de 7.4km', 'K-pop timing: fogos sincronizados com música (precisão <0.1s)', 'LED bracelets do público formam padrões — integrar timing da plateia', 'Correntes no estreito: barges precisam de ancoragem de 4 pontos'],
+      regulatory: 'Busan Metropolitan Government + Korea Coast Guard + Ministry of Maritime Affairs + Korea Aviation Authority (KCA)',
+    },
+    generate: generateGwanganBridge,
+  },
+  {
+    id: 'sydney-2018-countdown',
+    name: 'Sydney 2018 Countdown (VSC)',
+    location: 'Sydney Harbour Bridge',
+    country: 'Australia',
+    flag: '🇦🇺',
+    continent: 'oceania',
+    description: 'Show autêntico extraído de arquivo VSDCreator (.vsc — InfinityVisions A). 29 posições reais na ponte, contagem regressiva "2018" e finale de 2 min.',
+    gps: { lat: -33.8523, lng: 151.2108, heading: 180, altitude: 134 },
+    duration: 130,
+    stats: { positions: 29, cues: 13, calibers: '3"-8"' },
+    sceneOverrides: { waterEnabled: true, waterPreset: 'ocean', timeOfDay: 0, google3DTilesEnabled: true },
+    intel: {
+      population: '5.3 milhões (Greater Sydney)',
+      lastShows: ['Autêntico: VSDCreator show design "SYDNEY" — fonte: InfinityVisions A', 'Posições P1-P29 ao longo do arco da Sydney Harbour Bridge', 'Sequência de contagem: StrobePots vermelhos + dígitos "2018"'],
+      recentWinners: ['Dados do arquivo: SEPTIEMBRE 2017.lib (biblioteca de efeitos)', 'Música original: Tiësto — TRAFFIC.wav'],
+      safetyNotes: ['Posições autênticas do arquivo VSC original — use como referência de posicionamento real', 'P1 (esq) a P29 (dir): arco da ponte de -352m a +353m, altura 113m-204m', 'Todos os pontos em z=-71 (profundidade da ponte em relação ao palco)'],
+      terrain: 'Sydney Harbour Bridge — arco principal de 1149m, altura máxima 134m. Posições extraídas do arquivo VSC InfinityVisions A.',
+      tideInfo: 'Ver preset "Sydney NYE" para dados operacionais completos.',
+      culture: 'Show de Réveillon com contagem regressiva pirotécnica. O arquivo VSC usa efeitos "StrobePot" para colorir segmentos da ponte e efeitos de dígito para formar "2018" às 23:59:30.',
+      keyInsights: ['Posições P1/P10/P20/P29 marcam os 4 dígitos do ano', 'Use este preset como base para shows de contagem em pontes', 'Coordenadas VSC convertidas: subtraído centróide x=270, z mantido em -71', 'Duração real do show: ~71s de operação + 50s de finale'],
+      regulatory: 'Ver preset "Sydney NYE" — mesmas autoridades regulatórias.',
+    },
+    generate: generateSydneyCountdown2018,
   },
 ];
 

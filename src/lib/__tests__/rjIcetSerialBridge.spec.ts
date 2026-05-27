@@ -93,7 +93,7 @@ describe('rjIcetSerialBridge — sendIcetScript happy path', () => {
     });
 
     expect(result.ok).toBe(true);
-    
+    if (result.ok) {
       expect(result.cuesSent).toBe(3);
       expect(result.firmwareVersion).toBe('ICET-1.5');
     }
@@ -115,7 +115,7 @@ describe('rjIcetSerialBridge — error paths', () => {
       ackTimeoutMs: 50,
     });
     expect(result.ok).toBe(false);
-    
+    if (!result.ok) {
       expect(result.code).toBe('response-timeout');
       expect(result.cuesSent).toBe(0);
     }
@@ -130,7 +130,7 @@ describe('rjIcetSerialBridge — error paths', () => {
       ackTimeoutMs: 200,
     });
     expect(result.ok).toBe(false);
-    
+    if (!result.ok) {
       expect(result.code).toBe('version-incompatible');
       expect(result.message).toMatch(/Versão do equipamento incompatível/);
     }
@@ -147,7 +147,7 @@ describe('rjIcetSerialBridge — error paths', () => {
       ackTimeoutMs: 200,
     });
     expect(result.ok).toBe(false);
-    
+    if (!result.ok) {
       expect(result.code).toBe('transfer-error');
       expect(result.cuesSent).toBe(1);
     }
@@ -169,7 +169,7 @@ describe('rjIcetSerialBridge — error paths', () => {
       onProgress: progress,
     });
     expect(result.ok).toBe(false);
-    
+    if (!result.ok) {
       expect(['aborted', 'response-timeout']).toContain(result.code);
     }
     expect(progress).toHaveBeenCalled();

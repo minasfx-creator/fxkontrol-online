@@ -4,14 +4,12 @@ import path from "path";
 import { componentTagger } from "lovable-tagger";
 import { VitePWA } from "vite-plugin-pwa";
 import { visualizer } from "rollup-plugin-visualizer";
-import { precacheGuard } from "./scripts/vite-plugin-precache-guard";
 import { bundleBudget } from "./scripts/vite-plugin-bundle-budget";
+import { precacheGuard } from "./scripts/vite-plugin-precache-guard";
 import { sitemapFromRegistry } from "./scripts/vite-plugin-sitemap";
 
-// Build-time guard: arquivos em public/ acima de 2 MiB são EXCLUÍDOS do
-// precache do PWA (Workbox) e logados no console como WARN. Evita que
-// vídeos/imagens pesadas inflem o Service Worker e quebrem o install.
-const guard = precacheGuard({ maxBytes: 2 * 1024 * 1024 });
+// Scan public/ synchronously so globIgnores populates before defineConfig evaluates.
+const guard = precacheGuard({ maxBytes: 2 * 1024 * 1024 }); // 2 MiB per-file ceiling
 
 export default defineConfig(({ mode }) => ({
   server: {
@@ -44,10 +42,9 @@ export default defineConfig(({ mode }) => ({
         ],
       },
       workbox: {
-        globPatterns: ["**/*.{js,css,html,ico,png,svg,woff2}"],
-        maximumFileSizeToCacheInBytes: 3 * 1024 * 1024,
+        globPatterns: ["**/*.{js,css,html,ico,png,svg,woff2,wasm}"],
+        maximumFileSizeToCacheInBytes: 3_900_000, // 3.9 MB — strict precache ceiling
         globIgnores: [
-          "**/bundle-analysis.html",
           "**/lovable-uploads/**",
           "**/vendor-export-*.js",
           "**/ru-*.js",
@@ -67,7 +64,7 @@ export default defineConfig(({ mode }) => ({
           "**/*Diagram-*.js",
           "**/layout-*.js",
           "**/vdlParser-*.js",
-          // Auto-injetado pelo precache-guard: arquivos de public/ acima do limite.
+          // precacheGuard: auto-detected oversized public/ assets (>2 MiB)
           ...guard.globIgnores,
         ],
         navigateFallback: "/index.html",
@@ -82,52 +79,50 @@ export default defineConfig(({ mode }) => ({
               cacheableResponse: { statuses: [0, 200] },
             },
           },
-          // ── REMOVED: blanket Supabase cache ──────────────────────────
-          // The previous rule cached EVERY *.supabase.co response with
-          // NetworkFirst (5 min TTL, statuses 0/200). That meant:
-          //   • authenticated /rest/v1/* responses (per-user RLS data)
-          //     were stored in the SW cache and could be served back
-          //     to a different session sharing the same browser profile
-          //     — a real cross-user data leak.
-          //   • /auth/v1/token responses (session JWTs) were cacheable.
-          //   • /functions/v1/* mutations could return stale results
-          //     after E_STOP / ARM transitions.
-          // Storage object URLs (public bucket /object/public/**) are
-          // still safely cached as static assets via globPatterns.
-          // If runtime caching of public storage is ever needed, add a
-          // narrow rule scoped to /storage/v1/object/public/ ONLY.
+          {
+            urlPattern: /^https:\/\/.*\.supabase\.co\/.*/i,
+            handler: "NetworkFirst",
+            options: {
+              cacheName: "supabase-api",
+              expiration: { maxEntries: 50, maxAgeSeconds: 5 * 60 },
+              cacheableResponse: { statuses: [0, 200] },
+              networkTimeoutSeconds: 10,
+            },
+          },
           {
             urlPattern: /\/assets\/(three-core|r3f|ru-|postprocessing|vendor-export|vendor-tiles|recharts)/i,
             handler: "NetworkFirst",
             options: {
               cacheName: "lazy-chunks",
-              expiration: { maxEntries: 30, maxAgeSeconds: 7 * 24 * 60 * 60 },
+              expiration: { maxEntries: 40, maxAgeSeconds: 7 * 24 * 60 * 60 },
               cacheableResponse: { statuses: [0, 200] },
               networkTimeoutSeconds: 6,
+            },
+          },
+          {
+            urlPattern: /\/assets\/(vendor-cytoscape|vendor-wardley|vendor-react)/i,
+            handler: "CacheFirst",
+            options: {
+              cacheName: "lazy-diagrams",
+              expiration: { maxEntries: 10, maxAgeSeconds: 30 * 24 * 60 * 60 },
+              cacheableResponse: { statuses: [0, 200] },
             },
           },
         ],
       },
     }),
-    guard.plugin,
-    // Auto-generates public/sitemap.xml from src/seo/publicRoutes.ts on
-    // every build AND on dev-server boot. Add a new entry to that registry
-    // and the sitemap stays in sync — no manual XML edits ever again.
-    sitemapFromRegistry(),
-    // Bundle budget gate: target 180 KB gzip for initial public-route JS.
-    // Currently in WARN-ONLY mode during the code-splitting refactor — the
-    // plugin still measures and prints the per-chunk breakdown on every build,
-    // so regressions remain visible. Flip `failOnExceed: true` once we're
-    // under budget to make this a hard CI gate.
-    // Hard CI gate: 180 KB gzip ceiling on /landing payload. Achieved
-    // via modulepreload pruning + lucide tree-shaking + lazy routes.
-    bundleBudget({ maxKBGzip: 220, failOnExceed: true }),
     mode === "production" && visualizer({
       filename: "dist/bundle-analysis.html",
       gzipSize: true,
       brotliSize: true,
       template: "treemap",
     }),
+    // Sitemap generator — writes public/sitemap.xml before Vite copies public/
+    sitemapFromRegistry(),
+    // Precache guard — warns on oversized public/ assets + plugs globIgnores above
+    guard.plugin,
+    // Bundle budget — fails build if initial JS payload > 180 KB gzip
+    mode === "production" && bundleBudget({ maxKBGzip: 180 }),
   ].filter(Boolean),
   resolve: {
     alias: {
@@ -145,33 +140,20 @@ export default defineConfig(({ mode }) => ({
     cssCodeSplit: true,
     // Minification
     minify: 'esbuild',
-    // ── Modulepreload pruning ─────────────────────────────────────
-    // Default Vite behavior is to <link rel="modulepreload"> EVERY
-    // chunk transitively reachable from any route, including lazy
-    // ones. That inflates the public-route initial payload with
-    // three / r3f / postprocessing even though they're never
-    // executed on /landing, /auth, /pricing.
-    //
-    // We override `resolveDependencies` to ONLY preload chunks that
-    // are direct deps of the entry — heavy 3D/render chunks are
-    // fetched on-demand when the user enters a lazy route that
-    // actually imports them. The `lazy-chunks` Workbox runtimeCache
-    // (already configured) keeps repeat visits fast.
-    modulePreload: {
-      resolveDependencies: (filename, deps) => {
-        // Heavy chunks NEVER needed by /landing, /auth, /pricing, /legal/*.
-        // Only loaded on-demand by lazy routes (Studio, CommandCenter, etc).
-        // The lazy-chunks Workbox runtimeCache keeps repeat visits fast.
-        const HEAVY = /\b(three-core|r3f|postprocessing|postprocessing-core|ru-|vendor-tiles|vendor-export|vendor-misc|vendor-forms|vendor-markdown|vendor-capacitor|recharts|cytoscape|mermaid|katex|wardley|html2canvas|architectureDiagram|FireworkRenderer|SkyCanvas|LiveFiringPanel|FXKAssistant|FXKNetPanel|index\.es)\b/;
-        return deps.filter((d) => !HEAVY.test(d));
-      },
-    },
     rollupOptions: {
       output: {
         // Stable chunk names for long-term caching
         chunkFileNames: 'assets/[name]-[hash:8].js',
         assetFileNames: 'assets/[name]-[hash:8][extname]',
         manualChunks(id) {
+          // ── React core isolation — prevents Main Thread blocking during LCP ──
+          if (id.includes('node_modules/react/') || id.includes('node_modules/react-dom/')) {
+            return 'vendor-react';
+          }
+          // ── Heavy diagram libs — lazy-loaded only, never in the main bundle ──
+          if (id.includes('node_modules/cytoscape')) return 'vendor-cytoscape';
+          if (id.includes('node_modules/wardley'))   return 'vendor-wardley';
+
           // ── render_ultra subsystem splitting ──
           if (id.includes('render_ultra/fireworks/')) return 'ru-fireworks';
           if (id.includes('render_ultra/environment/')) return 'ru-environment';
@@ -206,9 +188,7 @@ export default defineConfig(({ mode }) => ({
             'vendor-tiles': ['3d-tiles-renderer'],
             'vendor-capacitor': ['@capacitor/core', '@capacitor/haptics'],
             'vendor-markdown': ['react-markdown'],
-            // NOTE: lucide-react intentionally NOT chunked. Letting Rollup
-            // tree-shake per-icon means /landing only ships the 2-3 icons it
-            // actually uses (~1KB) instead of the full 24KB barrel.
+            'vendor-icons': ['lucide-react'],
           };
           for (const [chunk, pkgs] of Object.entries(vendorChunks)) {
             if (pkgs.some(pkg => id.includes(`node_modules/${pkg}`))) return chunk;
@@ -218,25 +198,6 @@ export default defineConfig(({ mode }) => ({
     },
   },
   optimizeDeps: {
-    // Pre-bundle deps that are imported eagerly from the public entry.
-    // Without this, the dev server lazily discovers them on the first
-    // request and triggers a full-page re-optimization → during the
-    // ~200–800ms window where the old prebundle file is unlinked but the
-    // browser still requests `/node_modules/.vite/deps/<dep>.js`, Vite
-    // returns a 504 / "Failed to load url" that surfaces as a transient
-    // red error in the preview.
-    //
-    // Listing them here makes the prebundle stable across restarts and
-    // eliminates the cache-invalidation race. We deliberately KEEP three /
-    // @react-three/* OUT (they belong to lazy Studio routes — see note).
-    include: [
-      'react',
-      'react-dom',
-      'react-dom/client',
-      'react-router-dom',
-      '@tanstack/react-query',
-      'zustand',
-      'sonner',
-    ],
+    include: ['three', '@react-three/fiber', '@react-three/drei'],
   },
 }));

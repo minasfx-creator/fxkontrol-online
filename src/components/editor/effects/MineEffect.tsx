@@ -11,6 +11,8 @@ import { selectMineSilhouette } from '@/render/silhouettes/mineSilhouettes';
 import { isEnabled } from '@/lib/featureFlags';
 import { getFwsimGraphics, sampleCurve } from '@/data/fwsimGraphicsConfig';
 import { getFwsimSmokeTexture } from '@/render/textures/fwsimSmokeTexture';
+import { resolveEffectVector } from '@/render/behavior/resolveEffectVector';
+import { getBehavior } from '@/render/behavior/effectBehaviorMap';
 
 /**
  * Mine Effect — Multi-phase ground burst (PyroJam 2026 reference)
@@ -532,10 +534,22 @@ export default function MineEffect({
     return { widthMult, speedMult, variance, nrStarsTarget };
   }, [sprayCount]);
 
-  // Mines are omnidirectional — root group is intentionally NOT rotated.
-  // launchHeading/launchPitch are still accepted in the props for future
-  // selective use (e.g. sutil column tilt ≤10°), but never tip the cloud.
-  void launchHeading; void launchPitch;
+  // Mines use behavior-map mode='pattern-fan'. Only Y-axis (heading) rotation is applied —
+  // the vertical axis of the burst cloud stays aligned with gravity so the ground ring and
+  // symmetric particle field are preserved. Pitch/tilt is intentionally suppressed per NFPA.
+  const mineHeadingRotation = useMemo(() => {
+    const beh = getBehavior('mine');
+    if (!beh) return new THREE.Euler(0, 0, 0, 'YXZ');
+    const { unit } = resolveEffectVector({
+      behavior: beh,
+      patternAngleDeg: 0,
+      parentHeadingDeg: -(launchHeading || 0), // negate Finale CW→math CCW
+      jitterSeed: 0.5,
+    });
+    const headingRad = Math.atan2(unit.x, unit.z);
+    return new THREE.Euler(0, headingRad, 0, 'YXZ');
+  }, [launchHeading]);
+  void launchPitch;
 
   // Combustion-modulated muzzle flash
   const muzzleFlashOpacity = useMemo(() => 0.7 * mineCalib.brightness / 0.7, [mineCalib]);
@@ -571,11 +585,10 @@ export default function MineEffect({
   `;
 
   return (
-    <group position={position} renderOrder={50}>
-      {/* launchHeading/launchPitch intentionally NOT applied to the root group:
-          mines are omnidirectional ground bursts (NFPA) — column rises vertical,
-          spray fans hemispherically, drips fall by gravity. Tilting the whole
-          group would tip the ground ring and the entire particle field. */}
+    <group position={position} rotation={mineHeadingRotation} renderOrder={50}>
+      {/* Only Y-axis heading rotation applied (from resolveEffectVector / behavior map).
+          Pitch is suppressed: mines are omnidirectional ground bursts (NFPA) — tilting
+          the whole group would distort the ground ring and the symmetric particle field. */}
       {/* Combustion muzzle flash with flicker */}
       {progress < 0.08 * mineCalib.durationMult && (
         <mesh position={[0, 0.3, 0]}>

@@ -55,8 +55,6 @@ export default function SACNMonitorPanel({ compact = false, onClose }: SACNMonit
   const changeCount = useRef(0);
   const receiver = useRef(getSACNReceiver());
   const sfxChannels = useSfxChannelStore(s => s.channels);
-  // `universes` is a forced-recompute signal — getMappings() reads external state.
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   const mappings = useMemo(() => getMappings(), [universes]);
 
   // Poll sACN data at ~15fps

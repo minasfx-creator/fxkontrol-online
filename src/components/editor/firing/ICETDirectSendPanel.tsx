@@ -38,10 +38,13 @@ export default function ICETDirectSendPanel({ onClose }: Props) {
   const [title, setTitle] = useState(() => projectName.slice(0, ICET_TITLE_MAX));
   const [busy, setBusy] = useState(false);
   const [progress, setProgress] = useState({ sent: 0, total: 0 });
+  const [startedAt, setStartedAt] = useState<number | null>(null);
+  const [now, setNow] = useState<number>(() => Date.now());
   const [lastResult, setLastResult] = useState<IcetSendResult | null>(null);
   const [pairedLabel, setPairedLabel] = useState<string | null>(null);
   const portRef = useRef<SerialPortLike | null>(null);
   const abortRef = useRef<AbortController | null>(null);
+  const tickRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const build = useMemo(
     () => buildIcetScript(items, positions, { title }),
@@ -81,6 +84,11 @@ export default function ICETDirectSendPanel({ onClose }: Props) {
     setBusy(true);
     setProgress({ sent: 0, total: build.cues.length });
     setLastResult(null);
+    const t0 = Date.now();
+    setStartedAt(t0);
+    setNow(t0);
+    if (tickRef.current) clearInterval(tickRef.current);
+    tickRef.current = setInterval(() => setNow(Date.now()), 250);
     const ac = new AbortController();
     abortRef.current = ac;
 
@@ -89,6 +97,7 @@ export default function ICETDirectSendPanel({ onClose }: Props) {
       onProgress: (sent, total) => setProgress({ sent, total }),
     });
 
+    if (tickRef.current) { clearInterval(tickRef.current); tickRef.current = null; }
     setLastResult(result);
     setBusy(false);
     abortRef.current = null;
@@ -191,20 +200,46 @@ export default function ICETDirectSendPanel({ onClose }: Props) {
         )}
 
         {/* Progress */}
-        {busy && (
-          <div className="space-y-1">
-            <div className="flex items-center justify-between text-[10px] font-mono">
-              <span>Enviando…</span>
-              <span>{progress.sent}/{progress.total}</span>
+        {busy && (() => {
+          const pct = progress.total ? (progress.sent / progress.total) * 100 : 0;
+          const elapsedMs = startedAt ? Math.max(1, now - startedAt) : 0;
+          const rate = elapsedMs > 0 ? progress.sent / (elapsedMs / 1000) : 0;
+          const remaining = Math.max(0, progress.total - progress.sent);
+          const etaSec = rate > 0.05 ? remaining / rate : null;
+          const fmtEta = (s: number) =>
+            s >= 60 ? `${Math.floor(s / 60)}m ${Math.round(s % 60)}s` : `${Math.round(s)}s`;
+          const currentCue = build.cues[Math.max(0, progress.sent - 1)];
+          return (
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between text-[10px] font-mono">
+                <span className="flex items-center gap-1.5">
+                  <Loader2 className="w-3 h-3 animate-spin text-status-sync" />
+                  Enviando…
+                </span>
+                <span className="tabular-nums">
+                  <span className="text-status-sync font-bold">{progress.sent}</span>
+                  <span className="text-muted-foreground">/{progress.total}</span>
+                  <span className="text-muted-foreground/70 ml-2">({pct.toFixed(1)}%)</span>
+                </span>
+              </div>
+              <div className="h-2 bg-surface-1 rounded overflow-hidden border border-border/20">
+                <div
+                  className="h-full bg-status-sync transition-all duration-150"
+                  style={{ width: `${pct}%` }}
+                />
+              </div>
+              <div className="flex items-center justify-between text-[9px] font-mono text-muted-foreground">
+                <span>{rate > 0 ? `${rate.toFixed(1)} cues/s` : '— cues/s'}</span>
+                {currentCue && progress.sent > 0 && (
+                  <span className="truncate max-w-[55%]">
+                    M{currentCue.modulo}/C{currentCue.canal} @ {currentCue.timecode}
+                  </span>
+                )}
+                <span>ETA {etaSec !== null ? fmtEta(etaSec) : '—'}</span>
+              </div>
             </div>
-            <div className="h-1.5 bg-surface-1 rounded overflow-hidden">
-              <div
-                className="h-full bg-status-sync transition-all"
-                style={{ width: `${progress.total ? (progress.sent / progress.total) * 100 : 0}%` }}
-              />
-            </div>
-          </div>
-        )}
+          );
+        })()}
 
         {/* Resultado */}
         {lastResult && !busy && (

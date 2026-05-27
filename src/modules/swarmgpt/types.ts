@@ -157,3 +157,119 @@ export interface SwarmGPTResult {
   timelineCues?: TimelineCue[];
   error?: string;
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SwarmGPT 3.0 — Multi-Agent Refinement Pipeline types
+// ─────────────────────────────────────────────────────────────────────────────
+
+/** One creative direction generated during prompt expansion. */
+export interface PromptVariant {
+  id: string;
+  /** Short narrative label, e.g. "Opening ceremony — national pride arc". */
+  direction: string;
+  style: SwarmGPTStyle;
+  energyCurve: SwarmGPTEnergyCurve;
+  keyMoments: number[];
+  /** Why this direction serves the user prompt given the constraints. */
+  rationale: string;
+}
+
+/** Output of the prompt expansion + selection phase. */
+export interface PromptExpansionResult {
+  variants: PromptVariant[];
+  selectedVariantId: string;
+  selectionRationale: string;
+}
+
+/** A plan candidate generated during parallel planning. */
+export interface PlanCandidate {
+  id: string;
+  plan: ChoreographyPlan;
+  variantId: string;
+}
+
+/** Output of one specialist critic (creativity / safety / tech). */
+export interface SpecialistCritique {
+  role: 'creativity' | 'safety' | 'tech';
+  score: number;
+  issues: ChoreographyCritiqueIssue[];
+  summary: string;
+}
+
+/** Aggregate output from all specialist critics for a single plan. */
+export interface MultiCritiqueResult {
+  specialists: SpecialistCritique[];
+  /** Weighted combination of specialist scores. */
+  aggregateScore: number;
+  /** Deduplicated, severity-escalated union of all issues. */
+  combinedIssues: ChoreographyCritiqueIssue[];
+  /** Unified improvement brief for the enhancer. */
+  improvementBrief: string;
+}
+
+/** Record of one critic→enhance cycle. */
+export interface RefinementIteration {
+  pass: number;
+  scoreBefore: number;
+  scoreAfter: number;
+  multiCritique: MultiCritiqueResult;
+}
+
+/** A single finding from the Devil's Advocate agent. */
+export interface DevilsAdvocateFinding {
+  risk: string;
+  severity: 'low' | 'medium' | 'high' | 'critical';
+  mitigation: string;
+}
+
+/** Full output of the adversarial review agent. */
+export interface DevilsAdvocateReport {
+  /** true when no critical or high-severity findings remain. */
+  passed: boolean;
+  findings: DevilsAdvocateFinding[];
+  finalVerdict: string;
+}
+
+/** Pipeline phase identifier for progress tracking. */
+export type PipelinePhase =
+  | 'prompt_expansion'
+  | 'parallel_planning'
+  | 'candidate_selection'
+  | 'refinement_loop'
+  | 'adversarial_review'
+  | 'validation'
+  | 'post_processing'
+  | 'compilation'
+  | 'complete'
+  | 'failed';
+
+/** Emitted during pipeline execution for UI progress display. */
+export interface PipelineProgressEvent {
+  phase: PipelinePhase;
+  message: string;
+  /** Normalised 0–1 overall progress. */
+  progress: number;
+  /** Optional phase-specific payload (e.g. intermediate scores). */
+  data?: unknown;
+}
+
+/** Callback signature for streaming progress to UI. */
+export type PipelineProgressCallback = (event: PipelineProgressEvent) => void;
+
+/** Extended result from the SwarmGPT 3.0 pipeline. */
+export interface SwarmGPTResult3 {
+  ok: boolean;
+  expansion?: PromptExpansionResult;
+  refinedPrompt?: RefinedPrompt;
+  candidates?: PlanCandidate[];
+  selectedCandidateId?: string;
+  refinementIterations?: RefinementIteration[];
+  finalCritique?: MultiCritiqueResult;
+  devilsAdvocate?: DevilsAdvocateReport;
+  plan?: ChoreographyPlan;
+  validation?: ValidationReport;
+  timelineCues?: TimelineCue[];
+  totalPasses?: number;
+  finalScore?: number;
+  error?: string;
+}

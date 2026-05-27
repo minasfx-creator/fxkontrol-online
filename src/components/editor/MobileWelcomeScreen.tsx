@@ -22,7 +22,7 @@ export function hasCompletedWelcome(): boolean {
 }
 
 export function markWelcomeComplete(): void {
-  try { localStorage.setItem(STORAGE_KEY, '1'); } catch { /* best-effort: localStorage may be disabled */ }
+  try { localStorage.setItem(STORAGE_KEY, '1'); } catch {}
 }
 
 export default function MobileWelcomeScreen({ onComplete }: MobileWelcomeScreenProps) {

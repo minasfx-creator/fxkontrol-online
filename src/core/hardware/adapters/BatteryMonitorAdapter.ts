@@ -5,14 +5,7 @@
  */
 
 import type { HardwareAdapter, HardwareCapabilities, HardwareStatusSnapshot, DeviceConnectionState, BatteryState } from '../types';
-import {
-  createSimulatedProvenance,
-  markHandshakeOk as provenanceMarkHandshakeOk,
-  markHandshakeLost as provenanceMarkHandshakeLost,
-  type ProvenanceInfo,
-  type TransportType,
-} from '../provenance';
-import { isHardwareSimulatorEnabled } from '@/lib/featureFlags';
+import { createSimulatedProvenance, type ProvenanceInfo } from '../provenance';
 
 export class BatteryMonitorAdapter implements HardwareAdapter<BatteryState> {
   readonly deviceId = 'battery-12v';
@@ -58,8 +51,7 @@ export class BatteryMonitorAdapter implements HardwareAdapter<BatteryState> {
 
   pollTelemetry(): void {
     if (this._connected !== 'connected') return;
-    if (!isHardwareSimulatorEnabled()) return;
-    // Simulate slow discharge (only when simulator gate is ON)
+    // Simulate slow discharge
     if (!this._state.charging && this._state.voltage > 10.5) {
       this._state.voltage -= 0.001 + Math.random() * 0.002;
     }
@@ -79,24 +71,22 @@ export class BatteryMonitorAdapter implements HardwareAdapter<BatteryState> {
   reset(): void {
     this._connected = 'disconnected';
     this._state = { voltage: 0, source: 'battery', percentage: 0, low_battery_alarm: false, charging: false };
-    provenanceMarkHandshakeLost(this._provenance);
   }
 
-  /**
-   * Promote to LIVE READ-ONLY. Battery telemetry is piggy-back on the
-   * host controller (FXK16/Arduino) — the bridge calls this once the
-   * host completes its handshake. Read-only by construction (canWrite=false).
-   */
-  markHandshakeOk(transport: TransportType = 'serial_usb'): void {
+  simulateConnect(voltage: number = 12.4): void {
     this._connected = 'connected';
-    provenanceMarkHandshakeOk(this._provenance, transport);
+    this._state.voltage = voltage;
+    this._state.percentage = ((voltage - 10.5) / (12.6 - 10.5)) * 100;
+    this._state.low_battery_alarm = voltage < 11.0;
   }
 
-  /** Demote back to NOT_INTEGRATED when the host link drops. */
-  markHandshakeLost(): void {
-    this._connected = 'disconnected';
-    provenanceMarkHandshakeLost(this._provenance);
+  simulateLowBattery(): void {
+    this._state.voltage = 10.8;
+    this._state.percentage = 15;
+    this._state.low_battery_alarm = true;
   }
+
+  simulateDisconnect(): void { this._connected = 'disconnected'; this._state.voltage = 0; }
 }
 
 export const batteryMonitorAdapter = new BatteryMonitorAdapter();

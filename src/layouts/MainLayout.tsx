@@ -1,47 +1,19 @@
-import { Outlet, useLocation, useNavigate } from 'react-router-dom';
+import { Outlet, useLocation } from 'react-router-dom';
 import { SidebarProvider, useSidebar } from '@/components/ui/sidebar';
 import { useIsMobile } from '@/hooks/use-mobile';
-import { PanelLeftClose, PanelLeft, AlertOctagon, Menu } from 'lucide-react';
+import { PanelLeftClose, PanelLeft, Menu } from 'lucide-react';
 import minasfxLogo from '@/assets/minasfx-logo-white.png';
-import { useLiveSfxStore } from '@/store/useLiveSfxStore';
 import { useDisplayStore } from '@/store/useDisplayStore';
-import { haptics } from '@/lib/haptics';
 import { ambientSound } from '@/lib/ambientSound';
 import { useEffect, useRef, useState, lazy, Suspense } from 'react';
-import { flushSync } from 'react-dom';
 import DockBar from '@/components/DockBar';
-import BetaPromoBanner from '@/components/BetaPromoBanner';
-import QuickJumpMenu from '@/components/QuickJumpMenu';
-import { lazyRetry } from '@/lib/lazyRetry';
 
-// Native View Transitions API support — captured once at module load.
-// Graceful fallback to CSS dissolve/materialize when unavailable.
-const SUPPORTS_VIEW_TRANSITIONS =
-  typeof document !== 'undefined' && 'startViewTransition' in document;
-
-// Dev-only overlay — tree-shaken in production
-const RenderCounterOverlay = import.meta.env.DEV
-  ? lazy(lazyRetry(() => import('@/components/dev/RenderCounterOverlay')))
-  : () => null;
+// RenderCounterOverlay (dev) removido — Joi é produto final, sem instrumentação dev.
+const RenderCounterOverlay = () => null;
 
 // Lazy-load heavy components that aren't needed for initial paint
-const AppSidebar = lazy(lazyRetry(() => import('@/components/AppSidebar').then(m => ({ default: m.AppSidebar }))));
-const FXKAssistant = lazy(lazyRetry(() => import('@/components/FXKAssistant').then(m => ({ default: m.FXKAssistant }))));
-const AutoControllerLauncher = lazy(lazyRetry(() => import('@/components/hardware/AutoControllerLauncher').then(m => ({ default: m.AutoControllerLauncher }))));
-// Global E-STOP — always-visible top-right safety button. Routes through
-// uiCommandGateway → CommandBus → SafetyStateMachine. Hold-to-confirm 600ms
-// when idle; instant fire when ARMED/FIRING (life-safety <50ms).
-const GlobalEStopButton = lazy(lazyRetry(() => import('@/components/safety/GlobalEStopButton')));
-const RealFiringReadinessBadge = lazy(lazyRetry(() => import('@/components/safety/RealFiringReadinessBadge')));
-// Deterministic kernel (timeline clock pump, lockstep, persistence) — must
-// mount on EVERY protected route AND on mobile so Play actually advances time.
-// Previously this was nested inside <Index> desktop branch only, which left
-// the timeline frozen on mobile and on routes other than /studio.
-const EngineProvider = lazy(lazyRetry(() => import('@/orchestration/EngineProvider')));
-// Mission Control cockpit strip — read-only chips (work mode, safety state,
-// readiness, devices, plan hash). Hidden in /command and /pairing/*.
-const GlobalSafetyBar = lazy(lazyRetry(() => import('@/components/safety/GlobalSafetyBar')));
-const FieldDiagnosticsDock = lazy(lazyRetry(() => import('@/components/safety/FieldDiagnosticsDock')));
+const AppSidebar = lazy(() => import('@/components/AppSidebar').then(m => ({ default: m.AppSidebar })));
+const FXKAssistant = lazy(() => import('@/components/FXKAssistant').then(m => ({ default: m.FXKAssistant })));
 
 function SidebarToggleButton() {
   const { state, toggleSidebar } = useSidebar();
@@ -49,7 +21,7 @@ function SidebarToggleButton() {
   return (
     <button
       onClick={toggleSidebar}
-      className="flex items-center justify-center h-8 w-8 rounded-control text-muted-foreground hover:text-foreground hover:bg-white/[0.04] transition-all active:scale-90"
+      className="flex items-center justify-center h-7 w-7 rounded-lg text-muted-foreground hover:text-foreground hover:bg-white/[0.04] transition-all active:scale-90"
       title={collapsed ? 'Expandir menu' : 'Recolher menu'}
     >
       {collapsed ? <PanelLeft className="h-4 w-4" /> : <PanelLeftClose className="h-4 w-4" />}
@@ -62,7 +34,7 @@ function MobileSidebarTrigger() {
   return (
     <button
       onClick={toggleSidebar}
-      className="flex items-center justify-center h-8 w-8 rounded-control text-muted-foreground hover:text-primary hover:bg-primary/10 transition-all active:scale-90"
+      className="flex items-center justify-center h-8 w-8 rounded-lg text-muted-foreground hover:text-primary hover:bg-primary/10 transition-all active:scale-90"
       title="Menu"
     >
       <Menu className="h-4.5 w-4.5" />
@@ -72,8 +44,7 @@ function MobileSidebarTrigger() {
 
 export default function MainLayout() {
   const location = useLocation();
-  const navigate = useNavigate();
-  const isEditor = location.pathname === '/skycanvas';
+  const isEditor = location.pathname === '/editor';
   const isCommand = location.pathname === '/command';
   const commandImmersive = isCommand;
   const isMobile = useIsMobile();
@@ -84,10 +55,6 @@ export default function MainLayout() {
   const [transitionPhase, setTransitionPhase] = useState<'idle' | 'dissolve-out' | 'materialize-in'>('idle');
   const [displayedPath, setDisplayedPath] = useState(location.pathname);
   const transitionTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  const activeEffects = useLiveSfxStore(s => s.activeEffects);
-  const clearAll = useLiveSfxStore(s => s.clearAll);
-  const isArmed = activeEffects.length > 0;
 
   const backlight = useDisplayStore(s => s.backlight);
 
@@ -106,68 +73,35 @@ export default function MainLayout() {
     return () => document.removeEventListener('click', handler);
   }, [humStarted]);
 
-  // Route change: native View Transitions when supported (Chromium 111+,
-  // Safari 18+, Edge 111+). Fallback: CSS cross-fade (180ms+220ms).
-  //
-  // Why native:
-  //   • The browser captures both DOM states as compositor-level snapshots
-  //     and animates the swap on the GPU — no React reflow during the fade,
-  //     no JIT layout work, no stutter on heavy consoles.
-  //   • Glassmorphism layers (Dock, Sidebar, Header) keep their `backdrop-
-  //     filter` blur stable across the transition because they're captured
-  //     as bitmap snapshots — no per-frame blur recomputation.
-  //   • Animation timing/easing lives entirely in CSS via the
-  //     `::view-transition-*` pseudo-elements — see index.css.
+  // Route change: holographic dissolve-out → materialize-in
   useEffect(() => {
-    if (prevPathRef.current === location.pathname) return;
-    ambientSound.play('nav');
-    prevPathRef.current = location.pathname;
+    if (prevPathRef.current !== location.pathname) {
+      ambientSound.play('nav');
 
-    if (SUPPORTS_VIEW_TRANSITIONS) {
-      // Native path: skip the CSS state-machine and let the browser
-      // crossfade the captured snapshots. flushSync forces React to commit
-      // the new tree synchronously inside the transition callback so the
-      // browser snapshots the *new* state, not the stale one.
-      // We also keep `transitionPhase` at 'idle' so the fallback CSS
-      // animation classes don't fire on top of the native crossfade.
-      setTransitionPhase('idle');
-      (document as Document & { startViewTransition: (cb: () => void) => unknown })
-        .startViewTransition(() => {
-          flushSync(() => setDisplayedPath(location.pathname));
-        });
-      return;
-    }
+      // Phase 1: dissolve out current content
+      setTransitionPhase('dissolve-out');
 
-    // Fallback path — CSS dissolve/materialize.
-    setTransitionPhase('dissolve-out');
-    if (transitionTimeout.current) clearTimeout(transitionTimeout.current);
-    transitionTimeout.current = setTimeout(() => {
-      setDisplayedPath(location.pathname);
-      setTransitionPhase('materialize-in');
+      if (transitionTimeout.current) clearTimeout(transitionTimeout.current);
+
       transitionTimeout.current = setTimeout(() => {
-        setTransitionPhase('idle');
-      }, 220);
-    }, 180);
+        // Phase 2: swap content & materialize in
+        setDisplayedPath(location.pathname);
+        setTransitionPhase('materialize-in');
 
+        transitionTimeout.current = setTimeout(() => {
+          setTransitionPhase('idle');
+        }, 700);
+      }, 350);
+
+      prevPathRef.current = location.pathname;
+    }
     return () => {
       if (transitionTimeout.current) clearTimeout(transitionTimeout.current);
     };
   }, [location.pathname]);
 
-  // Bridge: when ANY E-STOP fires through the CommandBus (e.g. global
-  // GlobalEStopButton, SafetyConsole, hardware panel), drop all live SFX
-  // and trigger panic haptics. Runs once at mount; cleans up on unmount.
-  useEffect(() => {
-    let unsub: (() => void) | undefined;
-    (async () => {
-      const { commandBus } = await import('@/core/command/CommandBus');
-      unsub = commandBus.on('E_STOP', () => {
-        clearAll();
-        try { haptics.panic(); } catch { /* */ }
-      });
-    })();
-    return () => { unsub?.(); };
-  }, [clearAll]);
+  // handlePanic removido com o botão PANIC do editor.
+  // E-STOP físico vive em /command via uiCommandGateway.
 
   return (
     <SidebarProvider defaultOpen={!isMobile}>
@@ -175,10 +109,6 @@ export default function MainLayout() {
         className="h-[100dvh] flex w-full bg-background br2049-vignette overflow-hidden"
         style={{ filter: `brightness(${backlight / 100})` }}
       >
-        {/* Quick-jump pill — only on immersive routes (sidebar hidden);
-            on normal routes the AppSidebar already covers this nav. */}
-        {(isEditor || commandImmersive) && <QuickJumpMenu />}
-
         {!commandImmersive && !isEditor && (
           <Suspense fallback={null}>
             <AppSidebar />
@@ -186,62 +116,48 @@ export default function MainLayout() {
         )}
 
         <div className="flex-1 flex flex-col min-w-0 min-h-0">
-          {/* Beta Promo Banner */}
-          {!commandImmersive && !isEditor && <BetaPromoBanner />}
+          {/* ARMED banner intentionally removed from editor chrome.
+              Editor is a pure design/composition surface — disparos e hardware vivem só em /command. */}
 
-          {/* ARMED Banner */}
-          {isArmed && !commandImmersive && (
-            <button
-              onClick={() => navigate('/command')}
-              className="shrink-0 w-full flex items-center justify-center gap-2 py-1.5 danger-stripe armed-pulse cursor-pointer transition-all hover:brightness-110"
-              style={{
-                background: 'hsl(var(--destructive) / 0.15)',
-                borderBottom: '1px solid hsl(var(--destructive) / 0.3)',
-              }}
-            >
-              <AlertOctagon className="w-3.5 h-3.5 text-destructive animate-pulse" />
-              <span className="text-[10px] font-mono-code font-black tracking-[0.2em] text-destructive uppercase">
-                ⚠ SYSTEM ARMED — {activeEffects.length} CHANNEL{activeEffects.length > 1 ? 'S' : ''} HOT
-              </span>
-            </button>
-          )}
-
-          {/* Header — Apple minimal: toggle + logo. Sem texto redundante,
-              sem dot pulsante. A sidebar já identifica o app; o header só
-              dá ar e controla a navegação. */}
+          {/* Header */}
           {!commandImmersive && !isEditor && (
             <header
               role="banner"
-              className="material-thin flex items-center px-3 shrink-0 relative h-10"
-              style={{ borderBottom: '1px solid hsl(var(--material-stroke))' }}
+              className="flex items-center border-b px-3 shrink-0 relative overflow-hidden h-10"
+              style={{
+                background: 'rgba(8, 10, 14, 0.85)',
+                backdropFilter: 'blur(48px) saturate(1.8)',
+                WebkitBackdropFilter: 'blur(48px) saturate(1.8)',
+                borderColor: 'hsl(32 100% 50% / 0.06)',
+              }}
             >
+              <div className="absolute inset-0 animate-holographic-scan pointer-events-none opacity-20" />
               {isMobile ? (
                 <MobileSidebarTrigger />
               ) : (
                 <SidebarToggleButton />
               )}
-              <div className="ml-auto flex items-center gap-3 relative z-10">
-                <img
-                  src={minasfxLogo}
-                  alt="MinasFX"
-                  className="h-4 object-contain opacity-50 hover:opacity-80 transition-opacity duration-200"
-                />
+              <div className="ml-3 flex items-center gap-2 relative z-10">
+                <div className="h-1.5 w-1.5 rounded-full animate-pulse" style={{ background: 'hsl(32 100% 50%)', boxShadow: '0 0 6px hsl(32 100% 50% / 0.5)' }} />
+                <span className="text-[10px] font-mono tracking-widest uppercase" style={{ color: 'hsl(32 100% 50% / 0.8)', textShadow: '0 0 8px hsl(32 100% 50% / 0.3)' }}>
+                  FX KONTROL
+                </span>
+              </div>
+              <div className="ml-auto flex items-center gap-2 relative z-10">
+                <img src={minasfxLogo} alt="MinasFX" className="h-4 object-contain opacity-60" />
               </div>
             </header>
           )}
 
           <main role="main" className={`${(isEditor || isCommand) ? 'flex-1 min-h-0 overflow-hidden' : 'flex-1 overflow-auto p-4 md:p-6'} relative`}
             style={showDock || showMobileDock ? { paddingBottom: '72px' } : undefined}>
-            {!commandImmersive && (
-              <Suspense fallback={null}>
-                <GlobalSafetyBar />
-                <FieldDiagnosticsDock />
-              </Suspense>
-            )}
             {(isEditor || isCommand) ? (
               <Outlet />
             ) : (
               <>
+                {transitionPhase !== 'idle' && (
+                  <div className="absolute inset-0 pointer-events-none z-50 animate-page-sweep" />
+                )}
                 <div
                   key={displayedPath}
                   className={`h-full ${
@@ -251,11 +167,6 @@ export default function MainLayout() {
                         ? 'animate-page-materialize-in'
                         : ''
                   }`}
-                  // `view-transition-name` opts this subtree into the native
-                  // crossfade. Persistent chrome (sidebar, dock, header) lives
-                  // *outside* this div so it stays put across the transition —
-                  // only the route content morphs.
-                  style={{ viewTransitionName: 'route-content' }}
                 >
                   <Outlet />
                 </div>
@@ -265,32 +176,13 @@ export default function MainLayout() {
         </div>
       </div>
 
-      {/* Deterministic kernel — boots once for the entire app session */}
-      <Suspense fallback={null}>
-        <EngineProvider />
-      </Suspense>
-
       {/* Overlays OUTSIDE the filtered div so position:fixed works correctly */}
       <Suspense fallback={null}>
         <FXKAssistant />
       </Suspense>
 
-      {/* Auto-launcher: any recognised module/equipment online → controller card
-          appears bottom-right with ARM/FIRE/E-STOP ready. */}
-      <Suspense fallback={null}>
-        <AutoControllerLauncher />
-      </Suspense>
-
-      {/* Global E-STOP — always visible top-right, above all overlays.
-          Replaces the legacy isArmed-conditional PANIC button. Routes
-          through uiCommandGateway → CommandBus → SafetyStateMachine.
-          Hidden on /command (immersive mode has its own dedicated UI). */}
-      {!commandImmersive && (
-        <Suspense fallback={null}>
-          <GlobalEStopButton />
-          <RealFiringReadinessBadge />
-        </Suspense>
-      )}
+      {/* PANIC floating button removed — Editor é zona de criação;
+          E-STOP físico só em /command (rota dedicada, intertravamentos completos). */}
 
       {(showDock || showMobileDock) && <DockBar />}
 
